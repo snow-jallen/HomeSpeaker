@@ -1,4 +1,4 @@
-﻿using HomeSpeaker.Server2;
+﻿using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server.Data;

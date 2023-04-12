@@ -1,6 +1,6 @@
 ﻿using HomeSpeaker.Shared;
 
-namespace HomeSpeaker.Server2;
+namespace HomeSpeaker.Server2.Data;
 
 public interface IDataStore
 {

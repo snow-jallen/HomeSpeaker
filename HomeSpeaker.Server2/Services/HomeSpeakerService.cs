@@ -1,5 +1,6 @@
 ﻿using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
+using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Shared;
 using static HomeSpeaker.Shared.HomeSpeaker;

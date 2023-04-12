@@ -1,4 +1,5 @@
-﻿using HomeSpeaker.Shared;
+﻿using HomeSpeaker.Server2.Data;
+using HomeSpeaker.Shared;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;

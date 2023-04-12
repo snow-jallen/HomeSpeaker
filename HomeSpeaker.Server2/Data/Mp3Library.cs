@@ -1,7 +1,7 @@
-﻿using HomeSpeaker.Server2;
+﻿using HomeSpeaker.Server;
 using HomeSpeaker.Shared;
 
-namespace HomeSpeaker.Server
+namespace HomeSpeaker.Server2.Data
 {
     public class Mp3Library
     {
