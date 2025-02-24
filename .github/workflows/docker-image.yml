@@ -11,8 +11,11 @@ on:
   # Then a new version will be deployed on the self-hosted runner.
 
 jobs:
-  build:
-    runs-on: self-hosted
+  rpi4:
+    runs-on: [self-hosted, "${{ matrix.runner}}" ]
+    strategy:
+      matrix:
+        runner: [rpi4, rpi42]
 
     steps:
     - uses: actions/checkout@v3
@@ -28,3 +31,4 @@ jobs:
         COMPOSE_DOCKER_CLI_BUILD: 1
         DOCKER_BUILDKIT: 1
       run: docker-compose up -d --build --remove-orphans
+     

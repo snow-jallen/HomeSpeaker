@@ -1,7 +1,28 @@
 ﻿@page "/nightscout"
+@using Microsoft.AspNetCore.Components.WebAssembly.Hosting
 @layout NoTopLayout
+@inject IWebAssemblyHostEnvironment hostEnv
 @inject IConfiguration config
 
 <div class="col px-0">
-    <iframe title="NightScout" src=@config["NIGHTSCOUT_ADDRESS"] frameborder="0" allowfullscreen></iframe>
+    <iframe id="nsFrame" title="NightScout" src=@nightscoutUrl frameborder="0" allowfullscreen></iframe>
 </div>
+
+<script>
+    function refreshIFrame() {
+        var x = document.getElementById("nsFrame");
+        x.contentWindow.location.reload();
+        var t = setTimeout(refreshIFrame, 5 * 60 * 1000);
+    }
+</script>
+
+@code
+{
+    private static string? nightscoutUrl = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var httpClient = new HttpClient();
+        nightscoutUrl = await httpClient.GetStringAsync($"{hostEnv.BaseAddress}ns") ?? string.Empty;
+    }
+}

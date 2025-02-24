@@ -1,0 +1,34 @@
+﻿@page "/aspire"
+@using Microsoft.AspNetCore.Components.WebAssembly.Hosting
+@layout NoTopLayout
+@inject IWebAssemblyHostEnvironment hostEnv
+@inject IConfiguration config
+
+<div class="col px-0">
+    <iframe id="frame" title="Aspire Dashboard" src=@aspireUrl?.AbsoluteUri frameborder="0" allowfullscreen></iframe>
+</div>
+
+@* <script> *@
+@*     function refreshIFrame() { *@
+@*     var x = document.getElementById("frame"); *@
+@*     x.contentWindow.location.reload(); *@
+@*     var t = setTimeout(refreshIFrame, 5 * 60 * 1000); *@
+@*     } *@
+@* </script> *@
+
+@code
+{
+    private Uri? aspireUrl = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (aspireUrl is null)
+        {
+            UriBuilder uriBuilder = new UriBuilder(hostEnv.BaseAddress)
+                {
+                    Port = 18888
+                };
+            aspireUrl = uriBuilder.Uri;
+        }
+    }
+}

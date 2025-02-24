@@ -6,7 +6,7 @@ namespace HomeSpeaker.WebAssembly.Services;
 
 public class HomeSpeakerService
 {
-    private HomeSpeaker.Shared.HomeSpeaker.HomeSpeakerClient client;
+    private HomeSpeakerClient client;
     private List<SongMessage> songs = new();
     public IEnumerable<SongMessage> Songs => songs;
     public event EventHandler QueueChanged;
@@ -22,9 +22,8 @@ public class HomeSpeakerService
             HttpHandler = new GrpcWebHandler(new HttpClientHandler())
         });
 
-        client = new HomeSpeaker.Shared.HomeSpeaker.HomeSpeakerClient(channel);
+        client = new HomeSpeakerClient(channel);
         this.logger = logger;
-
         _ = listenForEvents();
     }
 

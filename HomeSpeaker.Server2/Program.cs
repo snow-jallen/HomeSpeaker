@@ -76,6 +76,7 @@ app.MapRazorPages();
 // Configure the HTTP request pipeline.
 app.MapGrpcService<GreeterService>();
 app.MapGrpcService<HomeSpeakerService>();
+app.MapGet("/ns", (IConfiguration config) => config["NIGHTSCOUT_URL"] ?? string.Empty);
 
 app.MapFallbackToFile("index.html");
 

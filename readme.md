@@ -4,7 +4,7 @@
 - Install ffmpeg `winget install gyan.ffmpeg.shared`
 - Run the following command to run the Aspire Dashboard in a container
    `docker run --rm -it -p 18888:18888 -p 4317:18889 -p 4318:18890 -e DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true -e DASHBOARD__OTLP__CORS__ALLOWEDORIGINS=http://localhost:5028 --name aspire-dashboard mcr.microsoft.com/dotnet/aspire-dashboard:9.0`
-- Run the `http` profile for the HomeSpeaker.Server2 project
+- Make sure you're running the `https` profile for the HomeSpeaker.Server2 project
 
 ## Deployment Notes
 

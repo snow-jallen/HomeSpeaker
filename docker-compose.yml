@@ -28,7 +28,7 @@ services:
     - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
     - OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire:18889
     - OTEL_SERVICE_NAME=HomeSpeaker
-    - NIGHTSCOUT_ADDRESS=https://janedoe.azurewebsites.net
+    - NIGHTSCOUT_URL=https://janedoe.azurewebsites.net
     networks:
       speakernet:
 
