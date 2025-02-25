@@ -1,8 +1,13 @@
-﻿using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using System.Diagnostics;
+﻿using System.Diagnostics;
+using Grpc.Core;
+using Grpc.Net.Client;
+using HomeSpeaker.Shared;
+using HomeSpeaker.Maui.Models;
 using static HomeSpeaker.Shared.HomeSpeaker;
+using static HomeSpeaker.Shared.ProtobufExtensions;
+using Microsoft.Extensions.Logging;
 
-namespace HomeSpeaker.WebAssembly.Services;
+namespace HomeSpeaker.Maui.Services;
 
 public class HomeSpeakerService
 {
@@ -11,21 +16,13 @@ public class HomeSpeakerService
     public IEnumerable<SongMessage> Songs => songs;
     public event EventHandler QueueChanged;
 
-    public HomeSpeakerService(IConfiguration config, ILogger<HomeSpeakerService> logger, IWebAssemblyHostEnvironment hostEnvironment)
+    public HomeSpeakerService(string address)
     {
-        string address = config["ServerAddress"] ?? throw new MissingConfigException("ServerAddress");
-        logger.LogInformation($"I was about to use {address}");
-        address = hostEnvironment.BaseAddress;
-        logger.LogInformation("But instead I'll use {address}", address);
-        var channel = GrpcChannel.ForAddress(address, new GrpcChannelOptions
-        {
-            HttpHandler = new GrpcWebHandler(new HttpClientHandler())
-        });
+        var channel = GrpcChannel.ForAddress(address);
 
         client = new HomeSpeakerClient(channel);
         this.logger = logger;
         _ = listenForEvents();
-        
     }
 
     public HomeSpeakerClient HomeSpeakerClient => client;
