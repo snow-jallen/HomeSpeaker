@@ -1,0 +1,9 @@
+﻿namespace HomeSpeaker.Maui;
+
+public partial class AppShell : Shell
+{
+    public AppShell()
+    {
+        InitializeComponent();
+    }
+}
