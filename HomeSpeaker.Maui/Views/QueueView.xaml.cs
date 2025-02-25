@@ -2,9 +2,9 @@ using HomeSpeaker.Maui.ViewModels;
 
 namespace HomeSpeaker.Maui.Views;
 
-public partial class ManageDevicesView : ContentPage
+public partial class QueueView : ContentPage
 {
-	public ManageDevicesView(ManageDevicesViewModel vm)
+	public QueueView(QueueViewModel vm)
 	{
 		InitializeComponent();
         BindingContext = vm;
