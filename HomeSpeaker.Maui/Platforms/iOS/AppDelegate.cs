@@ -1,6 +1,6 @@
 ﻿using Foundation;
 
-namespace HomeSpeaker.Maui;
+namespace HomeSpeaker.Maui.Platforms.iOS;
 [Register("AppDelegate")]
 public class AppDelegate : MauiUIApplicationDelegate
 {

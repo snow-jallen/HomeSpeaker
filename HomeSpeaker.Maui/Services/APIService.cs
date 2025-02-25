@@ -1,4 +1,4 @@
-﻿using Android.Locations;
+﻿//using Android.Locations;
 using Grpc.Net.Client;
 using Grpc.Net.ClientFactory;
 using Microsoft.Office.Interop.Excel;
@@ -16,7 +16,7 @@ namespace HomeSpeaker.Maui.Services
             GrpcClientFactory.AllowUnencryptedHttp2 = true;
             using (var channel = GrpcChannel.ForAddress(address))
             {
-                var client = channel.CreateGrpcService<IStyle>();
+                var client = channel.CreateGrpcService<HomeSpeakerService>();
             }
         }
         public void Dispose()
