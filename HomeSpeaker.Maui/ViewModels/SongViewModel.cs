@@ -1,11 +1,18 @@
-﻿using HomeSpeaker.Shared;
+﻿using Android.Database;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using HomeSpeaker.Shared;
 
-namespace HomeSpeaker.Maui.Services;
+namespace HomeSpeaker.Maui.ViewModels;
 
-public class SongViewModel
+public partial class SongViewModel() : ObservableObject
 {
-    public int SongId { get; set; }
-    public required string Name { get; init; }
+    [ObservableProperty]
+    public int _songId;
+
+    [ObservableProperty]
+    public string _name;
+
     private string? path;
     public string? Path
     {
@@ -19,9 +26,21 @@ public class SongViewModel
                 Folder = System.IO.Path.GetDirectoryName(path);
         }
     }
-    public required string Album { get; init; }
-    public required string Artist { get; init; }
-    public string? Folder { get; private set; }
+
+    [ObservableProperty]
+    private string _album;
+
+    [ObservableProperty]
+    private string _artist;
+
+    [ObservableProperty]
+    private string? _folder;
+
+    [RelayCommand]
+    private async Task PlaySong()
+    {
+
+    }
 }
 
 public partial class SongGroup : List<SongViewModel>

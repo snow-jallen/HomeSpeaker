@@ -1,12 +1,25 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pageModels="clr-namespace:HomeSpeaker.Maui.ViewModels"
              x:Class="HomeSpeaker.Maui.Views.QueueView"
+             x:DataType="pageModels:QueueViewModel"
              Title="QueueView">
-    <VerticalStackLayout>
-        <Label 
-            Text="Welcome to .NET MAUI!"
-            VerticalOptions="Center" 
-            HorizontalOptions="Center" />
-    </VerticalStackLayout>
+    <ScrollView>
+        <VerticalStackLayout>
+            <CollectionView ItemsSource="{Binding Songs}" >
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="pageModels:SongViewModel">
+                        <HorizontalStackLayout>
+                            <Label Text="{Binding SongId, StringFormat='Id: {0}'}" />
+                            <Label Text="{Binding Artist, StringFormat='Artist: {0}'}" />
+                            <Label Text="{Binding Album, StringFormat='Album: {0}'}" />
+                            <Label Text="{Binding Name, StringFormat='Song: {0}'}" />
+                            <Button Text="Play" />
+                        </HorizontalStackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>

@@ -5,7 +5,8 @@ using HomeSpeaker.Shared;
 using static HomeSpeaker.Shared.HomeSpeaker;
 using static HomeSpeaker.Shared.ProtobufExtensions;
 using Microsoft.Extensions.Logging;
-using HomeSpeaker.Maui.Services;
+using HomeSpeaker.Maui.ViewModels;
+using Microsoft.Extensions.Configuration;
 
 namespace HomeSpeaker.Maui.Services;
 
@@ -16,8 +17,9 @@ public class HomeSpeakerService
     public IEnumerable<SongMessage> Songs => songs;
     public event EventHandler QueueChanged;
 
-    public HomeSpeakerService(string address)
+    public HomeSpeakerService(IConfiguration config)
     {
+        var address = config["ServerAddress"];
         var channel = GrpcChannel.ForAddress(address);
 
         client = new HomeSpeakerClient(channel);
