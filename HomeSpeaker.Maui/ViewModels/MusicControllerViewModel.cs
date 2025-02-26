@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Google.Protobuf.WellKnownTypes;
 using HomeSpeaker.Maui.Services;
 using System;
 using System.Collections.Generic;
@@ -20,12 +21,30 @@ namespace HomeSpeaker.Maui.ViewModels
         {
             var songs = await client.GetAllSongsAsync();
             Songs = new ObservableCollection<SongViewModel>(songs);
+            Volume = await client.GetVolumeAsync();
+
         }
 
         [RelayCommand]
         private async Task StopPlaying()
         {
             await client.StopPlayingAsync();
+        }
+
+
+        // volume functionality 
+        [ObservableProperty]
+        private int volume;
+
+        [ObservableProperty]
+        private int volumeInput;
+
+
+        [RelayCommand]
+        public async Task SetVolumeAsync()
+        {
+            await client.SetVolumeAsync(VolumeInput);
+            Volume = VolumeInput;
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿//using Android.Database;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Google.Protobuf.WellKnownTypes;
 using HomeSpeaker.Maui.Services;
 using HomeSpeaker.Shared;
 
@@ -42,6 +43,9 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
     {
         await client.PlaySongAsync(SongId);
     }
+
+
+  
 }
 
 public partial class SongGroup : List<SongViewModel>

@@ -21,6 +21,15 @@
                 </CollectionView.ItemTemplate>
             </CollectionView>
             <Button Text="Stop" Command="{Binding StopPlayingCommand}" />
+
+            <Label Text="{Binding Volume, StringFormat='Current Volume: {0}'}"/>
+            <HorizontalStackLayout Spacing="10">
+                <Label Text="New Volume:" VerticalOptions="Center"/>
+                <Entry Text="{Binding VolumeInput}" WidthRequest="80" Keyboard="Numeric"/>
+                <Button Text="Set" Command="{Binding SetVolumeCommand}"/>
+            </HorizontalStackLayout>
         </VerticalStackLayout>
+
+      
     </ScrollView>
 </ContentPage>

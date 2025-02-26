@@ -13,6 +13,7 @@ public partial class MusicController : ContentPage
 	}
 	protected override async void OnAppearing()
     {
+        base.OnAppearing();
 		await _vm.Initialize();
 	}
 
