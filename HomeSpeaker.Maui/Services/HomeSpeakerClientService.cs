@@ -22,6 +22,7 @@ public class HomeSpeakerClientService
     public HomeSpeakerClientService()
     {
         var httpHandler = new GrpcWebHandler(GrpcWebMode.GrpcWeb, new HttpClientHandler());
+
         var channel = GrpcChannel.ForAddress("http://localhost:5280", new GrpcChannelOptions
         {
             HttpHandler = httpHandler
