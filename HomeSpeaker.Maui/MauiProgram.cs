@@ -21,7 +21,7 @@ public static class MauiProgram
             .RegisterViewModels()
             .RegisterViews();
 
-        builder.Services.AddSingleton<HomeSpeakerService>();
+        builder.Services.AddSingleton<HomeSpeakerClientService>();
 
 #if DEBUG
 		builder.Logging.AddDebug();
@@ -33,14 +33,14 @@ public static class MauiProgram
     public static MauiAppBuilder RegisterViews(this MauiAppBuilder builder)
     {
         builder.Services.AddTransient<ManageDevicesView>();
-        builder.Services.AddTransient<QueueView>();
+        builder.Services.AddTransient<SpeakerControllerView>();
         return builder;
     }
 
     public static MauiAppBuilder RegisterViewModels(this MauiAppBuilder builder)
     {
         builder.Services.AddTransient<ManageDevicesViewModel>();
-        builder.Services.AddTransient<QueueViewModel>();
+        builder.Services.AddTransient<SpeakerControllerViewModel>();
         return builder;
     }
 }

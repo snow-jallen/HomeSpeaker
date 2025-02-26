@@ -16,7 +16,7 @@ public class HomeSpeakerService
     public IEnumerable<SongMessage> Songs => songs;
     public event EventHandler QueueChanged;
 
-    public HomeSpeakerService(string address)
+    public HomeSpeakerService(string address, ILogger<HomeSpeakerService> logger)
     {
         var channel = GrpcChannel.ForAddress(address);
 
