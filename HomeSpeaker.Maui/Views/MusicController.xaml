@@ -15,11 +15,12 @@
                             <Label Text="{Binding Artist, StringFormat='Artist: {0}'}" />
                             <Label Text="{Binding Album, StringFormat='Album: {0}'}" />
                             <Label Text="{Binding Name, StringFormat='Song: {0}'}" />
-                            <Button Text="Play" Command="{Binding PlaySongCommand}"/>
+                            <Button Text="Play" Command="{Binding PlaySongCommand}" />
                         </HorizontalStackLayout>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
+            <Button Text="Stop" Command="{Binding StopPlayingCommand}" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

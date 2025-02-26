@@ -22,8 +22,6 @@ public class HomeSpeakerClientService
         _client = new HomeSpeakerClient(channel);
     }
 
-
-
     public async Task SetVolumeAsync(int volume0to100)
     {
         var request = new PlayerControlRequest { SetVolume = true, VolumeLevel = volume0to100 };
@@ -54,6 +52,8 @@ public class HomeSpeakerClientService
 
         return songs;
     }
+
+    public async Task StopPlayingAsync() => await _client.PlayerControlAsync(new PlayerControlRequest { Stop = true });
 
     public async Task<bool> PlaySongAsync(int songId)
     {

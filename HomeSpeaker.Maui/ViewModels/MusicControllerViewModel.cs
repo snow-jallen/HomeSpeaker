@@ -21,5 +21,11 @@ namespace HomeSpeaker.Maui.ViewModels
             var songs = await client.GetAllSongsAsync();
             Songs = new ObservableCollection<SongViewModel>(songs);
         }
+
+        [RelayCommand]
+        private async Task StopPlaying()
+        {
+            await client.StopPlayingAsync();
+        }
     }
 }
