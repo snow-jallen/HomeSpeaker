@@ -13,23 +13,13 @@ public class HomeSpeakerClientService
 {
     private readonly HomeSpeakerClient _client; // HomeSpeakerClient is generated from the proto file
 
-    //public HomeSpeakerClientService()
-    //{
-    //    var channel = GrpcChannel.ForAddress("http://localhost:5280"); // hard-coding this for now
-    //    _client = new HomeSpeakerClient(channel);
-    //}
-
     public HomeSpeakerClientService()
     {
-        var httpHandler = new GrpcWebHandler(GrpcWebMode.GrpcWeb, new HttpClientHandler());
-
-        var channel = GrpcChannel.ForAddress("http://localhost:5280", new GrpcChannelOptions
-        {
-            HttpHandler = httpHandler
-        });
-
+        var channel = GrpcChannel.ForAddress("http://localhost:5280");
         _client = new HomeSpeakerClient(channel);
     }
+
+
 
     public async Task SetVolumeAsync(int volume0to100)
     {
