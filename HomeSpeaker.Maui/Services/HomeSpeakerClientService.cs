@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Grpc.Core;
 using Grpc.Net.Client;
 using Grpc.Net.Client.Web;
+using HomeSpeaker.Maui.ViewModels;
 using HomeSpeaker.Shared;
 using static HomeSpeaker.Shared.HomeSpeaker;
 
@@ -38,6 +41,18 @@ public class HomeSpeakerClientService
         var request = new GetPlaylistsRequest();
         var response = await _client.GetPlaylistsAsync(request);
         return response.Playlists.ToList();
+    }
+
+    public async Task<IEnumerable<SongViewModel>> GetAllSongsAsync()
+    {
+        var songs = new List<SongViewModel>();
+        var getSongsReply = _client.GetSongs(new GetSongsRequest { });
+        await foreach (var reply in getSongsReply.ResponseStream.ReadAllAsync())
+        {
+            songs.AddRange(reply.Songs.Select(s => s.ToSongViewModel(this)));
+        }
+
+        return songs;
     }
 
     public async Task<bool> PlaySongAsync(int songId)

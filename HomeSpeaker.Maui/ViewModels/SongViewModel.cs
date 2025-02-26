@@ -1,11 +1,12 @@
 ﻿//using Android.Database;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using HomeSpeaker.Maui.Services;
 using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Maui.ViewModels;
 
-public partial class SongViewModel() : ObservableObject
+public partial class SongViewModel(HomeSpeakerClientService client) : ObservableObject
 {
     [ObservableProperty]
     public int _songId;
@@ -39,7 +40,7 @@ public partial class SongViewModel() : ObservableObject
     [RelayCommand]
     private async Task PlaySong()
     {
-
+        await client.PlaySongAsync(SongId);
     }
 }
 
@@ -58,9 +59,9 @@ public partial class SongGroup : List<SongViewModel>
 
 public static class ViewModelExtensions
 {
-    public static SongViewModel ToSongViewModel(this SongMessage song)
+    public static SongViewModel ToSongViewModel(this SongMessage song, HomeSpeakerClientService client)
     {
-        return new SongViewModel
+        return new SongViewModel(client)
         {
             SongId = song?.SongId ?? -1,
             Name = song?.Name?.Trim() ?? "[ Null Song Response ??? ]",

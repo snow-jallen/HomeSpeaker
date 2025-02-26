@@ -17,4 +17,9 @@
         ContentTemplate="{DataTemplate local:ManageDevicesView}"
         Route="Devices" />
 
+    <ShellContent
+        Title="Musica"
+        ContentTemplate="{DataTemplate local:MusicController}"
+        Route="Music" />
+
 </Shell>

@@ -4,9 +4,16 @@ namespace HomeSpeaker.Maui.Views;
 
 public partial class MusicController : ContentPage
 {
+	private readonly MusicControllerViewModel _vm;
 	public MusicController(MusicControllerViewModel vm)
 	{
 		InitializeComponent();
-		BindingContext = vm;
+		_vm = vm;
+		BindingContext = _vm;
 	}
+	protected override async void OnAppearing()
+    {
+		await _vm.Initialize();
+	}
+
 }
