@@ -15,7 +15,7 @@ public class HomeSpeakerClientService
 
     public HomeSpeakerClientService()
     {
-        var channel = GrpcChannel.ForAddress("http://localhost:5280");
+        var channel = GrpcChannel.ForAddress("https://localhost:7238/");
         _client = new HomeSpeakerClient(channel);
     }
 

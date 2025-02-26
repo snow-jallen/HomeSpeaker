@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using HomeSpeaker.Maui.Services;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,6 +18,9 @@ public partial class SpeakerControllerViewModel : ObservableObject
 
     [ObservableProperty]
     private int volumeInput;
+
+    [ObservableProperty]
+    private ObservableCollection<SongViewModel> _songs;
 
 
     public SpeakerControllerViewModel(HomeSpeakerClientService clientService)
