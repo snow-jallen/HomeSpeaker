@@ -1,6 +1,6 @@
 ﻿using HomeSpeaker.Shared;
 
-namespace HomeSpeaker.Maui.Models;
+namespace HomeSpeaker.Maui.Services;
 
 public class SongViewModel
 {

@@ -82,12 +82,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Protobuf Include="..\HomeSpeaker.Shared\homespeaker.proto" GrpcServices="Client">
-	    <Link>Protos\homespeaker.proto</Link>
-	  </Protobuf>
-	</ItemGroup>
-
-	<ItemGroup>
 	  <MauiXaml Update="Views\ManageDevicesView.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>

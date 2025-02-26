@@ -2,10 +2,10 @@
 using Grpc.Core;
 using Grpc.Net.Client;
 using HomeSpeaker.Shared;
-using HomeSpeaker.Maui.Models;
 using static HomeSpeaker.Shared.HomeSpeaker;
 using static HomeSpeaker.Shared.ProtobufExtensions;
 using Microsoft.Extensions.Logging;
+using HomeSpeaker.Maui.Services;
 
 namespace HomeSpeaker.Maui.Services;
 
