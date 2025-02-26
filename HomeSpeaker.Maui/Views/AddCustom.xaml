@@ -4,9 +4,17 @@
              x:Class="HomeSpeaker.Maui.Views.AddCustom"
              Title="AddCustom">
     <VerticalStackLayout>
+        <Label Text="Name"/>
+        <Entry Text="{Binding Name, FallbackValue='input name here'}"/>
+        <Label Text="Album"/>
+        <Entry Text="{Binding Album, FallbackValue='input album here'}"/>
+        <Label Text="Artist"/>
+        <Entry Text="{Binding Artist, FallbackValue='input artist here'}"/>
+        <Label Text="{Binding Song.Name, FallbackValue='-'}"/>
         <Label Text="{Binding Result.FileName, FallbackValue='No File Set'}"/>
         <Button
             Text="Pick your music"
             Command="{Binding PickFileCommand}"/>
+        <Button Text="Submit Song" Command="{Binding SendCommand}"/>
     </VerticalStackLayout>
 </ContentPage>

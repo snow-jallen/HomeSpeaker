@@ -5,6 +5,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HomeSpeaker.Shared;
+using System.Net.Http.Headers;
+using System.Net.Http;
 
 namespace HomeSpeaker.Maui.ViewModels
 {
@@ -12,6 +15,14 @@ namespace HomeSpeaker.Maui.ViewModels
     {
         [ObservableProperty]
         FileResult? result;
+        [ObservableProperty]
+        string name;
+        [ObservableProperty]
+        string album;
+        [ObservableProperty]
+        string artist;
+        [ObservableProperty]
+        Song song;
         [RelayCommand]
         public async void PickFile()
         {
@@ -24,7 +35,28 @@ namespace HomeSpeaker.Maui.ViewModels
                 }),
                 PickerTitle="Pick Song"
             });
-            
+        }
+        [RelayCommand]
+        public async void Send()
+        {
+            HttpClient httpClient = new();
+            Song = new Song()
+            {
+                Name = this.Name,
+                Album=this.Album,
+                Artist=this.Artist
+            };
+            //using (var multipartFormContent = new MultipartFormDataContent())
+            //{
+            //    var fileStreamContent = new StreamContent(File.OpenRead(Song.Path));
+            //    fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue("audio/mp4");
+
+            //    multipartFormContent.Add(fileStreamContent, name: Song.Name, fileName: Song.Name);
+
+            //    var response = await httpClient.PostAsync("https://localhost:5000/files/", multipartFormContent);
+            //    response.EnsureSuccessStatusCode();
+            //    await response.Content.ReadAsStringAsync();
+            //}
         }
     }
 }
