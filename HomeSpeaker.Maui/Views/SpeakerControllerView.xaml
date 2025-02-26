@@ -22,4 +22,12 @@
             </CollectionView>
         </VerticalStackLayout>
     </ScrollView>
+             x:Class="HomeSpeaker.Maui.Views.SpeakerControllerView"
+             Title="SpeakerControllerView">
+    <VerticalStackLayout>
+        <Label Text="Current Volume: "/>
+        <Label Text="{Binding Volume}"/>
+
+
+    </VerticalStackLayout>
 </ContentPage>
