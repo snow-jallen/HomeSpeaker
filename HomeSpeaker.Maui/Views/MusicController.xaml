@@ -6,30 +6,50 @@
              x:DataType="pageModels:MusicControllerViewModel"
              Title="MusicController">
     <ScrollView>
-        <VerticalStackLayout>
-            <CollectionView ItemsSource="{Binding Songs}" >
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="pageModels:SongViewModel">
-                        <HorizontalStackLayout>
-                            <Label Text="{Binding SongId, StringFormat='Id: {0}'}" />
-                            <Label Text="{Binding Artist, StringFormat='Artist: {0}'}" />
-                            <Label Text="{Binding Album, StringFormat='Album: {0}'}" />
-                            <Label Text="{Binding Name, StringFormat='Song: {0}'}" />
-                            <Button Text="Play" Command="{Binding PlaySongCommand}" />
-                        </HorizontalStackLayout>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
-            <Button Text="Stop" Command="{Binding StopPlayingCommand}" />
+        <VerticalStackLayout Spacing="20" Padding="10">
 
-            <Label Text="{Binding Volume, StringFormat='Current Volume: {0}'}"/>
-            <HorizontalStackLayout Spacing="10">
-                <Label Text="New Volume:" VerticalOptions="Center"/>
-                <Entry Text="{Binding VolumeInput}" WidthRequest="80" Keyboard="Numeric"/>
-                <Button Text="Set" Command="{Binding SetVolumeCommand}"/>
-            </HorizontalStackLayout>
+
+            <!-- music controls (stop, volume) -->
+            <Border Stroke="Black" StrokeThickness="0" 
+                    StrokeShape="RoundRectangle 10"
+                    BackgroundColor="#383838"
+                    WidthRequest="550">
+                <VerticalStackLayout Spacing="10" Padding="10">
+
+                    <Label Text="{Binding Volume, StringFormat='Current Volume: {0}'}"
+                           FontSize="18"/>
+                    <HorizontalStackLayout Spacing="10">
+                        <Label Text="New Volume:" VerticalOptions="Center"/>
+                        <Entry Text="{Binding VolumeInput}" WidthRequest="80" Keyboard="Numeric"/>
+                        <Button Text="Set" Command="{Binding SetVolumeCommand}"/>
+                    </HorizontalStackLayout>
+                    <Button Text="Stop" 
+                            Command="{Binding StopPlayingCommand}"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- list of songs from the YouTube cache -->
+            <Border Stroke="Black" StrokeThickness="0" 
+                    StrokeShape="RoundRectangle 10"
+                    BackgroundColor="#383838"
+                    Margin="10"
+                    WidthRequest="550">
+                <CollectionView ItemsSource="{Binding Songs}" >
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="pageModels:SongViewModel">
+                            <VerticalStackLayout Padding="15,20,15,20">
+                                <Label Text="{Binding SongId, StringFormat='Id: {0}'}" FontSize="15" TextColor="Gray"/>
+                                <Label Text="{Binding Name, StringFormat='Song: {0}'}" FontSize="22" FontAttributes="Bold" TextColor="White"/>
+                                <Label Text="{Binding Artist, StringFormat='Artist: {0}'}" FontSize="19" TextColor="DarkGray"/>
+                                <Label Text="{Binding Album, StringFormat='Album: {0}'}" FontSize="19" TextColor="DarkGray"/>
+
+                                <Button Text="Play" Command="{Binding PlaySongCommand}" Margin="0,10,0,10" />
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Border>
+
         </VerticalStackLayout>
-
-      
     </ScrollView>
 </ContentPage>
