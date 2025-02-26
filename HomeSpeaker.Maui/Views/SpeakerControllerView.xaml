@@ -5,24 +5,8 @@
              x:Class="HomeSpeaker.Maui.Views.SpeakerControllerView"
              x:DataType="pageModels:SpeakerControllerViewModel"
              Title="SpeakerControllerView">
-    <ScrollView>
-        <VerticalStackLayout>
-            <CollectionView ItemsSource="{Binding Songs}" >
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="pageModels:SongViewModel">
-                        <HorizontalStackLayout>
-                            <Label Text="{Binding SongId, StringFormat='Id: {0}'}" />
-                            <Label Text="{Binding Artist, StringFormat='Artist: {0}'}" />
-                            <Label Text="{Binding Album, StringFormat='Album: {0}'}" />
-                            <Label Text="{Binding Name, StringFormat='Song: {0}'}" />
-                            <Button Text="Play" />
-                        </HorizontalStackLayout>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
-            
-            <Label Text="Current Volume: "/>
-            <Label Text="{Binding Volume}"/>
-        </VerticalStackLayout>
-    </ScrollView>
+    <VerticalStackLayout>
+        <Label Text="Current Volume: "/>
+        <Label Text="{Binding Volume}"/>
+    </VerticalStackLayout>
 </ContentPage>

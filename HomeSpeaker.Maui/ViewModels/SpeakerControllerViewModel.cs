@@ -19,9 +19,6 @@ public partial class SpeakerControllerViewModel : ObservableObject
     [ObservableProperty]
     private int volumeInput;
 
-    [ObservableProperty]
-    private ObservableCollection<SongViewModel> _songs;
-
 
     public SpeakerControllerViewModel(HomeSpeakerClientService clientService)
     {

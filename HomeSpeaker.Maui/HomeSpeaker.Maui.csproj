@@ -85,6 +85,9 @@
 	  <MauiXaml Update="Views\ManageDevicesView.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
+	  <MauiXaml Update="Views\MusicController.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="Views\SpeakerControllerView.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>

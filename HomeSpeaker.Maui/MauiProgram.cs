@@ -34,6 +34,7 @@ public static class MauiProgram
     {
         builder.Services.AddTransient<ManageDevicesView>();
         builder.Services.AddTransient<SpeakerControllerView>();
+        builder.Services.AddTransient<MusicController>();
         return builder;
     }
 
@@ -41,6 +42,7 @@ public static class MauiProgram
     {
         builder.Services.AddTransient<ManageDevicesViewModel>();
         builder.Services.AddTransient<SpeakerControllerViewModel>();
+        builder.Services.AddTransient<MusicControllerViewModel>();
         return builder;
     }
 }
