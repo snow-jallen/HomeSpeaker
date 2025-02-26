@@ -5,27 +5,27 @@
 
     <ScrollView>
         <VerticalStackLayout Padding="20">
+            <Label Text="HomeSpeaker Maui" FontSize="24" HorizontalOptions="Center" />
 
-            <Button Text="Get Songs"
-                Clicked="OnGetSongsClicked" />
-
+            <Button Text="Load Songs" 
+                Command="{Binding LoadSongsAsyncCommand}" />
             <Button Text="Get Status"
-                Clicked="OnGetStatusClicked"
-                Margin="0,10,0,0" />
+                Command="{Binding GetStatusAsyncCommand}" />
 
-            <ListView x:Name="SongsListView">
-                <ListView.ItemTemplate>
-                    <DataTemplate>
-                        <TextCell Text="{Binding Name}" Detail="{Binding Artist}" />
+            <Label Text="{Binding StatusMessage}" TextColor="Green" Margin="0,10,0,10"/>
+
+            <CollectionView ItemsSource="{Binding Songs}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate >
+                        <StackLayout Orientation="Horizontal" Padding="5">
+                            <Label Text="{Binding Name}" />
+                            <Button Text="Play" 
+                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=PlaySongAsyncCommand}"
+                                CommandParameter="{Binding .}"/>
+                        </StackLayout>
                     </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
-
-            <Label x:Name="StatusLabel"
-               Margin="0,10,0,0"
-               Text="(status...)" 
-               FontSize="14" />
-
+                </CollectionView.ItemTemplate>
+            </CollectionView>
         </VerticalStackLayout>
     </ScrollView>
 

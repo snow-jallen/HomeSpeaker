@@ -20,15 +20,6 @@ public static class MauiProgram
 #if DEBUG
 		builder.Logging.AddDebug();
 #endif
-        var httpHandler = new GrpcWebHandler(new HttpClientHandler());
-        var channel = GrpcChannel.ForAddress("http://192.168.144.1", new GrpcChannelOptions
-        {
-            HttpHandler = httpHandler
-        });
-
-        var homeSpeakerClient = new HomeSpeaker.HomeSpeakerClient(channel);
-
-        builder.Services.AddSingleton(homeSpeakerClient);
         return builder.Build();
 	}
 }
