@@ -8,23 +8,18 @@
     Title="HomeSpeaker.Maui">
 
     <ShellContent
+        Title="Musica"
+        ContentTemplate="{DataTemplate local:MusicController}"
+        Route="Music" />
+
+    <ShellContent
         Title="FileUpload"
         ContentTemplate="{DataTemplate local:AddCustom}"
         Route="Custom"/>
 
     <ShellContent
-        Title="Controller"
-        ContentTemplate="{DataTemplate local:SpeakerControllerView}"
-        Route="Controller" />
-
-    <ShellContent
         Title="Devices"
         ContentTemplate="{DataTemplate local:ManageDevicesView}"
         Route="Devices" />
-
-    <ShellContent
-        Title="Musica"
-        ContentTemplate="{DataTemplate local:MusicController}"
-        Route="Music" />
 
 </Shell>

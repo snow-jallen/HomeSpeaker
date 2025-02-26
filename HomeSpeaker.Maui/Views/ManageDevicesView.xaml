@@ -9,6 +9,7 @@
             VerticalOptions="Center" 
             HorizontalOptions="Center" />
         
+        <!--Add devices to be controlled. Do we also want to include play/pause functionality here?-->
         
     </VerticalStackLayout>
 </ContentPage>
