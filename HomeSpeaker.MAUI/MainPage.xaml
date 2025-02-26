@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:HomeSpeaker.MAUI.ViewModels"
              x:Class="HomeSpeaker.MAUI.MainPage">
 
     <ScrollView>
@@ -8,15 +9,15 @@
             <Label Text="HomeSpeaker Maui" FontSize="24" HorizontalOptions="Center" />
 
             <Button Text="Load Songs" 
-                Command="{Binding LoadSongsAsyncCommand}" />
+                Command="{Binding LoadSongsAsyncCommand}" WidthRequest="200" Margin="0, 30, 0, 20"/>
             <Button Text="Get Status"
-                Command="{Binding GetStatusAsyncCommand}" />
+                Command="{Binding GetStatusAsyncCommand}"  WidthRequest="200"/>
 
             <Label Text="{Binding StatusMessage}" TextColor="Green" Margin="0,10,0,10"/>
 
             <CollectionView ItemsSource="{Binding Songs}">
                 <CollectionView.ItemTemplate>
-                    <DataTemplate >
+                    <DataTemplate>
                         <StackLayout Orientation="Horizontal" Padding="5">
                             <Label Text="{Binding Name}" />
                             <Button Text="Play" 

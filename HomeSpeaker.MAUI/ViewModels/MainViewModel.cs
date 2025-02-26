@@ -26,34 +26,29 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     public async Task LoadSongsAsync()
     {
-      
-            var allSongs = await homeSpeakerService.GetAllSongsAsync();
-            Songs = new ObservableCollection<Song>(allSongs);
-            StatusMessage = $"Loaded {allSongs.Count} songs.";
+        var allSongs = await homeSpeakerService.GetAllSongsAsync();
+        Songs = new ObservableCollection<Song>(allSongs);
+        StatusMessage = $"Loaded {allSongs.Count} songs.";
     }
 
     [RelayCommand]
     public async Task PlaySongAsync(Song selectedSong)
     {
-     
-            var reply = await homeSpeakerService.PlaySongAsync(selectedSong.SongId);
-            if (reply.Ok)
-            {
-                StatusMessage = $"Playing: {selectedSong.Name}";
-            }
-            else
-            {
-                StatusMessage = "Server said: not OK to play that song.";
-            }
-
-
+        var reply = await homeSpeakerService.PlaySongAsync(selectedSong.SongId);
+        if (reply.Ok)
+        {
+            StatusMessage = $"Playing: {selectedSong.Name}";
+        }
+        else
+        {
+            StatusMessage = "Server said: not OK to play that song.";
+        }
     }
 
     [RelayCommand]
     public async Task GetStatusAsync()
     {
-  
-            var status = await homeSpeakerService.GetStatusAsync();
-            StatusMessage = $"Current: {status.CurrentSong?.Name} / Volume: {status.Volume}";
+        var status = await homeSpeakerService.GetStatusAsync();
+        StatusMessage = $"Current: {status.CurrentSong?.Name} / Volume: {status.Volume}";
     }
 }
