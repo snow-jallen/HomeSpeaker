@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Grpc.Net.Client;
+using Grpc.Net.Client.Web;
+using Microsoft.Extensions.Logging;
 
 namespace HomeSpeaker.MAUI;
 
@@ -18,7 +20,15 @@ public static class MauiProgram
 #if DEBUG
 		builder.Logging.AddDebug();
 #endif
+        var httpHandler = new GrpcWebHandler(new HttpClientHandler());
+        var channel = GrpcChannel.ForAddress("http://192.168.144.1", new GrpcChannelOptions
+        {
+            HttpHandler = httpHandler
+        });
 
-		return builder.Build();
+        var homeSpeakerClient = new HomeSpeaker.HomeSpeakerClient(channel);
+
+        builder.Services.AddSingleton(homeSpeakerClient);
+        return builder.Build();
 	}
 }
