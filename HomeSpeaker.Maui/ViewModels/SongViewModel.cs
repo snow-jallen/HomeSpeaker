@@ -63,6 +63,7 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
     [RelayCommand]
     private async Task UpdateMetadataAsync()
     {
+
         var success = await client.UpdateSongMetadataAsync(UpdatedSongId, UpdatedSongName, UpdatedSongAlbum, UpdatedSongArtist);
         if (success)
         {

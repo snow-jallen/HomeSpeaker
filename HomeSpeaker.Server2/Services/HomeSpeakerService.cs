@@ -331,6 +331,12 @@ public class HomeSpeakerService : HomeSpeakerBase
     public override async Task<UpdateSongMetadataReply> UpdateSongMetadata(UpdateSongMetadataRequest request, ServerCallContext context)
     {
         var song = library.Songs.FirstOrDefault(s => s.SongId == request.SongId);
+
+        if (musicPlayer.StillPlaying)
+        {
+            return new UpdateSongMetadataReply { Success = false };
+        }
+
         if (song != null)
         {
             string filePath = song.Path;

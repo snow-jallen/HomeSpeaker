@@ -72,15 +72,15 @@ public class HomeSpeakerClientService
 
     public async Task<bool> UpdateSongMetadataAsync(int songId, string songName, string album, string artist)
     {
-        var request = new UpdateSongMetadataRequest
-        {
-            SongName = songName,
-            SongId = songId,
-            Album = album,
-            Artist = artist
-        };
-        var reply = await _client.UpdateSongMetadataAsync(request);
-        return reply.Success;
+            var request = new UpdateSongMetadataRequest
+            {
+                SongName = songName,
+                SongId = songId,
+                Album = album,
+                Artist = artist
+            };
+            var reply = await _client.UpdateSongMetadataAsync(request);
+            return reply.Success;
     }
 }
 
