@@ -45,7 +45,36 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
     }
 
 
-  
+
+    // update metadata functionality
+
+    [ObservableProperty]
+    private int updatedSongId;
+
+    [ObservableProperty]
+    private string updatedSongName;
+
+    [ObservableProperty]
+    private string updatedSongAlbum;
+
+    [ObservableProperty]
+    private string updatedSongArtist;
+
+    [RelayCommand]
+    private async Task UpdateMetadataAsync()
+    {
+        var success = await client.UpdateSongMetadataAsync(UpdatedSongId, UpdatedSongName, UpdatedSongAlbum, UpdatedSongArtist);
+        if (success)
+        {
+            // Notify the user of success
+        }
+        else
+        {
+            // Notify the user of failure
+        }
+    }
+
+
 }
 
 public partial class SongGroup : List<SongViewModel>

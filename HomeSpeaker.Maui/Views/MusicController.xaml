@@ -9,7 +9,6 @@
     <ScrollView>
         <VerticalStackLayout Spacing="20" Padding="10">
 
-
             <!-- music controls (stop, volume) -->
             <Border Stroke="Black" StrokeThickness="0" 
                     StrokeShape="RoundRectangle 10"
@@ -43,11 +42,17 @@
                         <DataTemplate x:DataType="pageModels:SongViewModel">
                             <VerticalStackLayout Padding="15,20,15,20">
                                 <Label Text="{Binding SongId, StringFormat='Id: {0}'}" FontSize="15" TextColor="Gray"/>
-                                <Label Text="{Binding Name, StringFormat='Song: {0}'}" FontSize="22" FontAttributes="Bold" TextColor="White"/>
+                                <Label Text="{Binding Name, StringFormat='{0}'}" FontSize="22" FontAttributes="Bold" TextColor="White"/>
                                 <Label Text="{Binding Artist, StringFormat='Artist: {0}'}" FontSize="19" TextColor="DarkGray"/>
                                 <Label Text="{Binding Album, StringFormat='Album: {0}'}" FontSize="19" TextColor="DarkGray"/>
 
                                 <Button Text="Play" Command="{Binding PlaySongCommand}" Margin="0,10,0,10" />
+
+                                <!-- Editable fields -->
+                                <Entry Text="{Binding UpdatedSongName}" Placeholder="Edit Name" BackgroundColor="White" TextColor="Black"/>
+                                <Entry Text="{Binding UpdatedSongArtist}" Placeholder="Edit Artist" BackgroundColor="White" TextColor="Black"/>
+                                <Entry Text="{Binding UpdatedSongAlbum}" Placeholder="Edit Album" BackgroundColor="White" TextColor="Black"/>
+                                <Button Text="Save" Command="{Binding UpdateMetadataCommand}" Margin="0,10,0,10" />
                             </VerticalStackLayout>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>

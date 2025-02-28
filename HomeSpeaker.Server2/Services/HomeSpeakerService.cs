@@ -328,4 +328,32 @@ public class HomeSpeakerService : HomeSpeakerBase
 
         return new Empty();
     }
+    public override async Task<UpdateSongMetadataReply> UpdateSongMetadata(UpdateSongMetadataRequest request, ServerCallContext context)
+    {
+        var song = library.Songs.FirstOrDefault(s => s.SongId == request.SongId);
+        if (song != null)
+        {
+            string filePath = song.Path;
+            if (!File.Exists(filePath))
+            {
+                logger.LogError("File not found: {FilePath}", filePath);
+                return new UpdateSongMetadataReply { Success = false };
+            }
+
+            using var mediaFile = MediaFile.Create(filePath);
+            mediaFile.SetTitle(request.SongName);
+            mediaFile.SetArtist(request.Artist);
+            mediaFile.SetAlbum(request.Album);
+
+            song.Name = request.SongName;
+            song.Artist = request.Artist;
+            song.Album = request.Album;
+
+            library.IsDirty = true;
+            logger.LogInformation("Updated metadata for {FilePath}", filePath);
+
+            return new UpdateSongMetadataReply { Success = true };
+        }
+        return new UpdateSongMetadataReply { Success = false };
+    }
 }

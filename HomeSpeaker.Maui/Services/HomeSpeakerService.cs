@@ -232,5 +232,7 @@ public class HomeSpeakerService
         QueueChanged?.Invoke(this, EventArgs.Empty);
     }
 
+
+
     public event EventHandler<string>? StatusChanged;
 }

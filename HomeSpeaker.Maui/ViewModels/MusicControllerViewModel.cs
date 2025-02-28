@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.Input;
 using Google.Protobuf.WellKnownTypes;
 using HomeSpeaker.Maui.Services;
+using HomeSpeaker.Shared;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -46,5 +47,8 @@ namespace HomeSpeaker.Maui.ViewModels
             await client.SetVolumeAsync(VolumeInput);
             Volume = VolumeInput;
         }
+
+
+      
     }
 }
