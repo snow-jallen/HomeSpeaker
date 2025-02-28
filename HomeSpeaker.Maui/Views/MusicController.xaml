@@ -4,7 +4,8 @@
              xmlns:pageModels="clr-namespace:HomeSpeaker.Maui.ViewModels"
              x:Class="HomeSpeaker.Maui.Views.MusicController"
              x:DataType="pageModels:MusicControllerViewModel"
-             Title="MusicController">
+             Title="MusicController"
+             BackgroundColor="#1B1A55">
     <ScrollView>
         <VerticalStackLayout Spacing="20" Padding="10">
 
@@ -12,15 +13,18 @@
             <!-- music controls (stop, volume) -->
             <Border Stroke="Black" StrokeThickness="0" 
                     StrokeShape="RoundRectangle 10"
-                    BackgroundColor="#383838"
+                    BackgroundColor="#2E236C"
                     WidthRequest="550">
                 <VerticalStackLayout Spacing="10" Padding="10">
 
                     <Label Text="{Binding Volume, StringFormat='Current Volume: {0}'}"
-                           FontSize="18"/>
+                           FontSize="18"
+                           TextColor="White"/>
                     <HorizontalStackLayout Spacing="10">
-                        <Label Text="New Volume:" VerticalOptions="Center"/>
-                        <Entry Text="{Binding VolumeInput}" WidthRequest="80" Keyboard="Numeric"/>
+                        <Label Text="New Volume:" VerticalOptions="Center"
+                               TextColor="White"/>
+                        <Entry Text="{Binding VolumeInput}" WidthRequest="80" Keyboard="Numeric"
+                               BackgroundColor="White"/>
                         <Button Text="Set" Command="{Binding SetVolumeCommand}"/>
                     </HorizontalStackLayout>
                     <Button Text="Stop" 
@@ -31,7 +35,7 @@
             <!-- list of songs from the YouTube cache -->
             <Border Stroke="Black" StrokeThickness="0" 
                     StrokeShape="RoundRectangle 10"
-                    BackgroundColor="#383838"
+                    BackgroundColor="#2E236C"
                     Margin="10"
                     WidthRequest="550">
                 <CollectionView ItemsSource="{Binding Songs}" >
