@@ -1,9 +1,12 @@
 ﻿//using Android.Database;
+using CommunityToolkit.Maui.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Google.Protobuf.WellKnownTypes;
 using HomeSpeaker.Maui.Services;
 using HomeSpeaker.Shared;
+using CommunityToolkit.Maui.Alerts;
+using CommunityToolkit.Maui.Core;
 
 namespace HomeSpeaker.Maui.ViewModels;
 
@@ -48,6 +51,8 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
 
     // update metadata functionality
 
+    public event Action<SongViewModel>? MetadataUpdated;
+
     [ObservableProperty]
     private bool isEditing;
 
@@ -72,10 +77,11 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
         if(string.IsNullOrEmpty(UpdatedSongName) || string.IsNullOrEmpty(UpdatedSongAlbum) || string.IsNullOrEmpty(UpdatedSongArtist))
         {
             Message = "Please fill out all fields before saving changes.";
+            await ShowSnackbarAsync(Message);
             return;
         }
 
-        var success = await client.UpdateSongMetadataAsync(UpdatedSongId, UpdatedSongName, UpdatedSongAlbum, UpdatedSongArtist);
+        var success = await client.UpdateSongMetadataAsync(SongId, UpdatedSongName, UpdatedSongAlbum, UpdatedSongArtist);
         if (success)
         {
             Message = "Song metadata updated successfully!";
@@ -84,6 +90,18 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
         {
             Message = "Song metadata could not be updated. Before attempting to edit a song's details, please ensure it is not currently playing.";
         }
+
+        IsEditing = false;
+        MetadataUpdated?.Invoke(this);
+        //await ShowSnackbarAsync(Message);
+
+    }
+
+    private async Task ShowSnackbarAsync(string message)
+    {
+        var snackbar = Snackbar.Make(message, async () => { await Task.CompletedTask; },  "OK", TimeSpan.FromSeconds(3));
+
+        await snackbar.Show();
     }
 
     [RelayCommand]
@@ -120,6 +138,8 @@ public static class ViewModelExtensions
             Path = song?.Path?.Trim()
         };
     }
+
+
     //public async static IAsyncEnumerable<T> ReadAllAsync<T>(this IAsyncStreamReader<T> streamReader, CancellationToken cancellationToken = default)
     //{
     //    if (streamReader == null)

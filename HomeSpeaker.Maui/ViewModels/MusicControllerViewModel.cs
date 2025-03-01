@@ -22,9 +22,21 @@ namespace HomeSpeaker.Maui.ViewModels
         {
             var songs = await client.GetAllSongsAsync();
             Songs = new ObservableCollection<SongViewModel>(songs);
+
+            foreach(SongViewModel songVm in songs)
+            {
+                songVm.MetadataUpdated += OnSongMetadataUpdated;
+            }
+
             Volume = await client.GetVolumeAsync();
 
         }
+
+        private async void OnSongMetadataUpdated(SongViewModel updatedSong)
+        {
+            var songs = await client.GetAllSongsAsync();
+        }
+
 
         [RelayCommand]
         private async Task StopPlaying()
