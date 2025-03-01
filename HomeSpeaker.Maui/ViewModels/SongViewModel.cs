@@ -51,8 +51,6 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
 
     // update metadata functionality
 
-    public event Action<SongViewModel>? MetadataUpdated;
-
     [ObservableProperty]
     private bool isEditing;
 
@@ -84,6 +82,10 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
         var success = await client.UpdateSongMetadataAsync(SongId, UpdatedSongName, UpdatedSongAlbum, UpdatedSongArtist);
         if (success)
         {
+            Name = UpdatedSongName;
+            Album = UpdatedSongAlbum;
+            Artist = UpdatedSongArtist;
+
             Message = "Song metadata updated successfully!";
         }
         else
@@ -92,7 +94,6 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
         }
 
         IsEditing = false;
-        MetadataUpdated?.Invoke(this);
         //await ShowSnackbarAsync(Message);
 
     }
