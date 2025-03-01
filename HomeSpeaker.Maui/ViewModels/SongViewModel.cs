@@ -49,6 +49,12 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
     // update metadata functionality
 
     [ObservableProperty]
+    private bool isEditing;
+
+    [ObservableProperty]
+    private string message;
+
+    [ObservableProperty]
     private int updatedSongId;
 
     [ObservableProperty]
@@ -63,18 +69,28 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
     [RelayCommand]
     private async Task UpdateMetadataAsync()
     {
+        if(string.IsNullOrEmpty(UpdatedSongName) || string.IsNullOrEmpty(UpdatedSongAlbum) || string.IsNullOrEmpty(UpdatedSongArtist))
+        {
+            Message = "Please fill out all fields before saving changes.";
+            return;
+        }
 
         var success = await client.UpdateSongMetadataAsync(UpdatedSongId, UpdatedSongName, UpdatedSongAlbum, UpdatedSongArtist);
         if (success)
         {
-            // Notify the user of success
+            Message = "Song metadata updated successfully!";
         }
         else
         {
-            // Notify the user of failure
+            Message = "Song metadata could not be updated. Before attempting to edit a song's details, please ensure it is not currently playing.";
         }
     }
 
+    [RelayCommand]
+    private void ToggleEdit()
+    {
+        IsEditing = !IsEditing;
+    }
 
 }
 
