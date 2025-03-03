@@ -72,11 +72,15 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
     [RelayCommand]
     private async Task UpdateMetadataAsync()
     {
-        if(string.IsNullOrEmpty(UpdatedSongName) || string.IsNullOrEmpty(UpdatedSongAlbum) || string.IsNullOrEmpty(UpdatedSongArtist))
+        if(string.IsNullOrEmpty(UpdatedSongName) && string.IsNullOrEmpty(UpdatedSongAlbum) && string.IsNullOrEmpty(UpdatedSongArtist))
         {
-            Message = "Please fill out all fields before saving changes.";
-            await ShowSnackbarAsync(Message);
             return;
+        }
+        else
+        {
+            if(string.IsNullOrEmpty(UpdatedSongName)) UpdatedSongName = Name;
+            if(string.IsNullOrEmpty(UpdatedSongAlbum)) UpdatedSongAlbum = Album;
+            if(string.IsNullOrEmpty(UpdatedSongArtist)) UpdatedSongArtist = Artist;
         }
 
         var success = await client.UpdateSongMetadataAsync(SongId, UpdatedSongName, UpdatedSongAlbum, UpdatedSongArtist);
@@ -95,6 +99,7 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
 
         IsEditing = false;
         //await ShowSnackbarAsync(Message);
+        await ShowToastAsync(Message);
 
     }
 
@@ -103,6 +108,12 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
         var snackbar = Snackbar.Make(message, async () => { await Task.CompletedTask; },  "OK", TimeSpan.FromSeconds(3));
 
         await snackbar.Show();
+    }
+
+    private async Task ShowToastAsync(string message)
+    {
+        var toast = Toast.Make(message, ToastDuration.Long, 14);
+        toast.Show();
     }
 
     [RelayCommand]
@@ -153,4 +164,5 @@ public static class ViewModelExtensions
     //        yield return streamReader.Current;
     //    }
     //}
+
 }
