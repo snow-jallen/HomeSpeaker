@@ -24,6 +24,12 @@
                                TextColor="White"/>
                         <Entry Text="{Binding VolumeInput}" WidthRequest="80" Keyboard="Numeric"
                                BackgroundColor="White"/>
+
+                   <!-- <Slider Maximum="100"
+                            Minimum="0"
+                            Value="{Binding VolumeInput, Mode=TwoWay}"
+                            ValueChanged="OnSliderValueChanged" /> -->
+
                         <Button Text="Set" Command="{Binding SetVolumeCommand}"/>
                     </HorizontalStackLayout>
                     <Button Text="Stop" 

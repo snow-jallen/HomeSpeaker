@@ -17,4 +17,10 @@ public partial class MusicController : ContentPage
 		await _vm.Initialize();
 	}
 
+	private async void OnSliderValueChanged(object sender, ValueChangedEventArgs e)
+    {
+        _vm.VolumeInput = (int)e.NewValue;
+        await _vm.SetVolumeAsync();
+    }
+
 }
