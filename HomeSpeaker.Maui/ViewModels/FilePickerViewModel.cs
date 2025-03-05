@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using HomeSpeaker.Shared;
 using System.Net.Http.Headers;
 using System.Net.Http;
+using System.Net.Http.Json;
 
 namespace HomeSpeaker.Maui.ViewModels
 {
@@ -31,7 +32,7 @@ namespace HomeSpeaker.Maui.ViewModels
                 FileTypes = new
                 FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
                 {
-                    { DevicePlatform.WinUI, new[] { ".mp4", ".txt" } }, // file extension
+                    { DevicePlatform.WinUI, new[] { ".mp3", ".txt" } }, // file extension
                 }),
                 PickerTitle="Pick Song"
             });
@@ -40,23 +41,26 @@ namespace HomeSpeaker.Maui.ViewModels
         public async void Send()
         {
             HttpClient httpClient = new();
-            Song = new Song()
+            using (var multipartFormContent = new MultipartFormDataContent())
             {
-                Name = this.Name,
-                Album=this.Album,
-                Artist=this.Artist
-            };
-            //using (var multipartFormContent = new MultipartFormDataContent())
-            //{
-            //    var fileStreamContent = new StreamContent(File.OpenRead(Song.Path));
-            //    fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue("audio/mp4");
+                var fileStreamContent = new StreamContent(File.OpenRead(Result.FullPath));
+                fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue("audio/mp4");
 
-            //    multipartFormContent.Add(fileStreamContent, name: Song.Name, fileName: Song.Name);
+                multipartFormContent.Add(fileStreamContent, name: Name, fileName: Name);
 
-            //    var response = await httpClient.PostAsync("https://localhost:5000/files/", multipartFormContent);
-            //    response.EnsureSuccessStatusCode();
-            //    await response.Content.ReadAsStringAsync();
-            //}
+                var song = new SongDTO
+                {
+                    Album = this.Album,
+                    Artist = this.Artist,
+                    Name = this.Name,
+                    File = multipartFormContent
+                };
+
+
+                var response = await httpClient.PostAsync("https://localhost:7238/files/add", multipartFormContent);
+                response.EnsureSuccessStatusCode();
+                await response.Content.ReadAsStringAsync();
+            }
         }
     }
 }
