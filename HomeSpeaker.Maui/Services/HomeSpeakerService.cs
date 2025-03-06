@@ -86,7 +86,10 @@ public class HomeSpeakerService
             .Playlists
             .Select(p => new Playlist(
                 p.PlaylistName,
-                p.Songs.Select(s => s.ToSong())
+                p.Songs.Select(s =>
+                {
+                    return s.ToSong();
+                })
             ));
 
     public async Task AddToPlaylistAsync(string playlistName, string songPath)
