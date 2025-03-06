@@ -8,89 +8,90 @@ option csharp_namespace = "HomeSpeaker.Shared";
 package homespeaker;
 
 service HomeSpeaker {
-	rpc GetSongs(GetSongsRequest) returns (stream GetSongsReply);
-	rpc PlaySong(PlaySongRequest) returns (PlaySongReply);
-	rpc PlayFolder(PlayFolderRequest) returns (PlayFolderReply);
-	rpc EnqueueFolder(EnqueueFolderRequest) returns (EnqueueFolderReply);
-	rpc PlayStream(PlayStreamRequest) returns (PlaySongReply);
-	rpc EnqueueSong(PlaySongRequest) returns (PlaySongReply);
-	rpc GetPlayerStatus(GetStatusRequest) returns (GetStatusReply);
-	rpc GetPlayQueue(GetSongsRequest) returns (stream GetSongsReply);
-	rpc PlayerControl(PlayerControlRequest) returns (PlayerControlReply);
-	rpc ShuffleQueue(ShuffleQueueRequest) returns (ShuffleQueueReply);
-	rpc SendEvent(google.protobuf.Empty) returns (stream StreamServerEvent);
-	rpc SearchViedo(SearchVideoRequest) returns (SearchVideoReply);
-	rpc CacheVideo(CacheVideoRequest) returns (stream CacheVideoReply);
-	rpc DeleteSong(DeleteSongRequest) returns (DeleteSongReply);
-	rpc AddSongToPlaylist(AddSongToPlaylistRequest) returns (AddSongToPlaylistReply);
-	rpc RemoveSongFromPlaylist(RemoveSongFromPlaylistRequest) returns (RemoveSongFromPlaylistReply);
-	rpc GetPlaylists(GetPlaylistsRequest) returns (GetPlaylistsReply);
-	rpc PlayPlaylist(PlayPlaylistRequest) returns (PlayPlaylistReply);
-	rpc UpdateQueue(UpdateQueueRequest) returns (UpdateQueueReply);
-	rpc ToggleBacklight(google.protobuf.Empty) returns (google.protobuf.Empty);
+    rpc GetSongs(GetSongsRequest) returns (stream GetSongsReply);
+    rpc PlaySong(PlaySongRequest) returns (PlaySongReply);
+    rpc PlayFolder(PlayFolderRequest) returns (PlayFolderReply);
+    rpc EnqueueFolder(EnqueueFolderRequest) returns (EnqueueFolderReply);
+    rpc PlayStream(PlayStreamRequest) returns (PlaySongReply);
+    rpc EnqueueSong(PlaySongRequest) returns (PlaySongReply);
+    rpc GetPlayerStatus(GetStatusRequest) returns (GetStatusReply);
+    rpc GetPlayQueue(GetSongsRequest) returns (stream GetSongsReply);
+    rpc PlayerControl(PlayerControlRequest) returns (PlayerControlReply);
+    rpc ShuffleQueue(ShuffleQueueRequest) returns (ShuffleQueueReply);
+    rpc SendEvent(google.protobuf.Empty) returns (stream StreamServerEvent);
+    rpc SearchViedo(SearchVideoRequest) returns (SearchVideoReply);
+    rpc CacheVideo(CacheVideoRequest) returns (stream CacheVideoReply);
+    rpc DeleteSong(DeleteSongRequest) returns (DeleteSongReply);
+    rpc AddSongToPlaylist(AddSongToPlaylistRequest) returns (AddSongToPlaylistReply);
+    rpc RemoveSongFromPlaylist(RemoveSongFromPlaylistRequest) returns (RemoveSongFromPlaylistReply);
+    rpc GetPlaylists(GetPlaylistsRequest) returns (GetPlaylistsReply);
+    rpc PlayPlaylist(PlayPlaylistRequest) returns (PlayPlaylistReply);
+    rpc UpdateQueue(UpdateQueueRequest) returns (UpdateQueueReply);
+    rpc ToggleBacklight(google.protobuf.Empty) returns (google.protobuf.Empty);
+    rpc UpdateSongMetadata(UpdateSongMetadataRequest) returns (UpdateSongMetadataReply);
 }
 
 message UpdateQueueRequest {
-	repeated string Songs=1;
+    repeated string Songs=1;
 }
 message UpdateQueueReply{}
 message PlayPlaylistRequest {
-	string PlaylistName=1;
+    string PlaylistName=1;
 }
 message PlayPlaylistReply{}
 message AddSongToPlaylistRequest {
-	string PlaylistName=1;
-	string SongPath=2;
+    string PlaylistName=1;
+    string SongPath=2;
 }
 message AddSongToPlaylistReply{}
 message RemoveSongFromPlaylistRequest {
-	string PlaylistName=1;
-	string SongPath=2;
+    string PlaylistName=1;
+    string SongPath=2;
 }
 message RemoveSongFromPlaylistReply{}
 message GetPlaylistsRequest{}
 message GetPlaylistsReply{
-	repeated PlaylistMessage Playlists=1;
+    repeated PlaylistMessage Playlists=1;
 }
 message PlaylistMessage{
-	string PlaylistName=1;
-	repeated SongMessage Songs=3;
+    string PlaylistName=1;
+    repeated SongMessage Songs=3;
 }
 message ShuffleQueueRequest {}
 message ShuffleQueueReply {}
 message PlayerControlRequest {
-	bool Stop=1;
-	bool Play=2;
-	bool ClearQueue=3;
-	bool SkipToNext=4;
-	bool SetVolume=5;
-	int32 VolumeLevel=6;
+    bool Stop=1;
+    bool Play=2;
+    bool ClearQueue=3;
+    bool SkipToNext=4;
+    bool SetVolume=5;
+    int32 VolumeLevel=6;
 }
 message PlayerControlReply {
 }
 message GetStatusRequest {}
 message GetStatusReply {
-	google.protobuf.Duration Elapsed=1;
-	google.protobuf.Duration Remaining=2;
-	bool StilPlaying=3;
-	double PercentComplete=4;
-	SongMessage CurrentSong=5;
-	int32 Volume=6;
+    google.protobuf.Duration Elapsed=1;
+    google.protobuf.Duration Remaining=2;
+    bool StilPlaying=3;
+    double PercentComplete=4;
+    SongMessage CurrentSong=5;
+    int32 Volume=6;
 }
 message GetSongsRequest {
-	string Folder=1;
+    string Folder=1;
 }
 message GetSongsReply {
   repeated SongMessage Songs = 1;
 }
 message PlaySongRequest {
-	int32 SongId=1;
+    int32 SongId=1;
 }
 message PlaySongReply {
-	bool Ok=1;
+    bool Ok=1;
 }
 message PlayStreamRequest {
-	string StreamUrl=1;
+    string StreamUrl=1;
 }
 message SongMessage {
   int32 SongId=1;
@@ -100,38 +101,48 @@ message SongMessage {
   string Artist=5;
 }
 message PlayFolderRequest {
-	string FolderPath=1;
+    string FolderPath=1;
 }
 message PlayFolderReply {}
 message EnqueueFolderRequest {
-	string FolderPath=1;
+    string FolderPath=1;
 }
 message EnqueueFolderReply {}
 message StreamServerEvent{
-	string Message=1;
+    string Message=1;
 }
 message SearchVideoRequest {
-	string SearchTerm = 1;
+    string SearchTerm = 1;
 }
 message SearchVideoReply {
-	repeated Video Results = 1;
+    repeated Video Results = 1;
 }
 message Video{
-	string Title=1;
-	string Id=2;
-	string Url=3;
-	string Thumbnail=4;
-	string Author=5;
-	google.protobuf.Duration Duration=6;
+    string Title=1;
+    string Id=2;
+    string Url=3;
+    string Thumbnail=4;
+    string Author=5;
+    google.protobuf.Duration Duration=6;
 }
 message CacheVideoRequest {
-	Video Video=1;
+    Video Video=1;
 }
 message CacheVideoReply {
-	double PercentComplete=1;
-	string Title=2;
+    double PercentComplete=1;
+    string Title=2;
 }
 message DeleteSongRequest{
-	int32 SongId=1;
+    int32 SongId=1;
 }
 message DeleteSongReply{}
+
+message UpdateSongMetadataRequest {
+    int32 SongId=1;
+    string SongName=2;
+    string Album=3;
+    string Artist=4;
+}
+message UpdateSongMetadataReply {
+    bool Success=1;
+}

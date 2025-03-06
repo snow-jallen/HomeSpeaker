@@ -3,6 +3,7 @@ using HomeSpeaker.Server.Data;
 using HomeSpeaker.Server2;
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Services;
+using HomeSpeaker.Shared;
 using Microsoft.EntityFrameworkCore;
 using System.Runtime.InteropServices;
 
@@ -35,19 +36,27 @@ if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
     builder.Services.AddSingleton<WindowsMusicPlayer>();
 }
+else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+{
+    builder.Services.AddSingleton<MacMusicPlayer>();
+}
 else
 {
     builder.Services.AddSingleton<LinuxSoxMusicPlayer>();
 }
 
+
 builder.Services.AddSingleton<IMusicPlayer>(services =>
 {
     IMusicPlayer actualPlayer = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
         ? services.GetRequiredService<WindowsMusicPlayer>()
-        : services.GetRequiredService<LinuxSoxMusicPlayer>();
+        : RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+            ? services.GetRequiredService<MacMusicPlayer>()
+            : services.GetRequiredService<LinuxSoxMusicPlayer>();
 
     return new ChattyMusicPlayer(actualPlayer);
 });
+
 builder.Services.AddSingleton<Mp3Library>();
 builder.Services.AddHostedService<LifecycleEvents>();
 
@@ -70,6 +79,7 @@ app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseAntiforgery();
 app.UseCors(LocalCorsPolicy);
 app.MapRazorPages();
 
@@ -77,6 +87,14 @@ app.MapRazorPages();
 app.MapGrpcService<GreeterService>();
 app.MapGrpcService<HomeSpeakerService>();
 app.MapGet("/ns", (IConfiguration config) => config["NIGHTSCOUT_URL"] ?? string.Empty);
+app.MapPost("/files/add", async (IFormFile file) =>
+{
+    using (var fileStream = new StreamWriter(File.Open($"/HomeSpeakerMedia/Mp3Uploads/{file.Name}.mp3", FileMode.Create)))
+    {
+        fileStream.Write(file);
+    }
+}).DisableAntiforgery();
+
 
 app.MapFallbackToFile("index.html");
 

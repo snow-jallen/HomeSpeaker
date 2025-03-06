@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using HomeSpeaker.Maui.ViewModels;
 using HomeSpeaker.Maui.Views;
+using HomeSpeaker.Maui.Services;
 
 namespace HomeSpeaker.Maui;
 public static class MauiProgram
@@ -11,7 +12,7 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
-            .UseMauiCommunityToolkit()
+            .UseMauiCommunityToolkit(options => options.SetShouldEnableSnackbarOnWindows(true))
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -19,6 +20,8 @@ public static class MauiProgram
             })
             .RegisterViewModels()
             .RegisterViews();
+
+        builder.Services.AddSingleton<HomeSpeakerClientService>();
 
 #if DEBUG
 		builder.Logging.AddDebug();
@@ -30,14 +33,14 @@ public static class MauiProgram
     public static MauiAppBuilder RegisterViews(this MauiAppBuilder builder)
     {
         builder.Services.AddTransient<ManageDevicesView>();
-        builder.Services.AddTransient<QueueView>();
+        builder.Services.AddTransient<MusicController>();
         return builder;
     }
 
     public static MauiAppBuilder RegisterViewModels(this MauiAppBuilder builder)
     {
         builder.Services.AddTransient<ManageDevicesViewModel>();
-        builder.Services.AddTransient<QueueViewModel>();
+        builder.Services.AddTransient<MusicControllerViewModel>();
         return builder;
     }
 }

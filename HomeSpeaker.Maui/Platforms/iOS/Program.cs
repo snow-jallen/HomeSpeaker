@@ -1,7 +1,7 @@
 ﻿using ObjCRuntime;
 using UIKit;
 
-namespace HomeSpeaker.Maui;
+namespace HomeSpeaker.Maui.Platforms.iOS;
 public class Program
 {
     // This is the main entry point of the application.

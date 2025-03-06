@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pageModels="clr-namespace:HomeSpeaker.Maui.ViewModels"
+             x:Class="HomeSpeaker.Maui.Views.MusicController"
+             x:DataType="pageModels:MusicControllerViewModel"
+             Title="MusicController"
+             BackgroundColor="#1B1A55">
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="10">
+
+            <!-- music controls (stop, volume) -->
+            <Border Stroke="Black" StrokeThickness="0" 
+                    StrokeShape="RoundRectangle 10"
+                    BackgroundColor="#2E236C"
+                    WidthRequest="550">
+                <VerticalStackLayout Spacing="10" Padding="10">
+
+                    <Label Text="{Binding Volume, StringFormat='Current Volume: {0}'}"
+                           FontSize="18"
+                           TextColor="White"/>
+                    <HorizontalStackLayout Spacing="10">
+                        <Label Text="New Volume:" VerticalOptions="Center"
+                               TextColor="White"/>
+                        <Entry Text="{Binding VolumeInput}" WidthRequest="80" Keyboard="Numeric"
+                               BackgroundColor="White"/>
+
+                   <!-- <Slider Maximum="100"
+                            Minimum="0"
+                            Value="{Binding VolumeInput, Mode=TwoWay}"
+                            ValueChanged="OnSliderValueChanged" /> -->
+
+                        <Button Text="Set" Command="{Binding SetVolumeCommand}"/>
+                    </HorizontalStackLayout>
+                    <Button Text="Stop" 
+                            Command="{Binding StopPlayingCommand}"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- list of songs from the YouTube cache -->
+            <Border Stroke="Black" StrokeThickness="0" 
+                    StrokeShape="RoundRectangle 10"
+                    BackgroundColor="#2E236C"
+                    Margin="10"
+                    WidthRequest="550">
+                <CollectionView ItemsSource="{Binding Songs}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="pageModels:SongViewModel">
+                            <VerticalStackLayout Padding="15,20,15,20">
+                                <Label Text="{Binding SongId, StringFormat='Id: {0}'}" FontSize="15" TextColor="Gray"/>
+                                <Label Text="{Binding Name, StringFormat='{0}'}" FontSize="22" FontAttributes="Bold" TextColor="White"/>
+                                <Label Text="{Binding Artist, StringFormat='Artist: {0}'}" FontSize="19" TextColor="DarkGray"/>
+                                <Label Text="{Binding Album, StringFormat='Album: {0}'}" FontSize="19" TextColor="DarkGray"/>
+
+                                <Grid ColumnDefinitions="3*,1*" ColumnSpacing="10">
+                                    <Button Text="Play" Command="{Binding PlaySongCommand}" 
+                                            Grid.Column="0" 
+                                            Margin="0,10,0,10" 
+                                            BackgroundColor="#4599a8"/>
+                                    <Button Text="Edit" 
+                                            Command="{Binding ToggleEditCommand}" 
+                                            Grid.Column="1" 
+                                            Margin="0,10,0,10"/>
+                                </Grid>
+
+                                <!-- editable fields -->
+                                <VerticalStackLayout
+                                    IsVisible="{Binding IsEditing}"
+                                    Padding="5"
+                                    Spacing="10">
+                                    <Entry Text="{Binding UpdatedSongName}" Placeholder="Song Name" BackgroundColor="White" TextColor="Black"/>
+                                    <Entry Text="{Binding UpdatedSongArtist}" Placeholder="Artist" BackgroundColor="White" TextColor="Black"/>
+                                    <Entry Text="{Binding UpdatedSongAlbum}" Placeholder="Album" BackgroundColor="White" TextColor="Black"/>
+
+                                    <Grid ColumnDefinitions="3*,1*" ColumnSpacing="10">
+                                        <Button Text="Save" 
+                                                Command="{Binding UpdateMetadataCommand}" 
+                                                Grid.Column="0" 
+                                                Margin="0,10,0,10"
+                                                BackgroundColor="#8280bf"/>
+                                        <Button Text="Cancel" 
+                                                Command="{Binding ToggleEditCommand}" 
+                                                Grid.Column="1" 
+                                                Margin="0,10,0,10"
+                                                BackgroundColor="#7a3c41"/>
+                                    </Grid>
+                                </VerticalStackLayout>
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

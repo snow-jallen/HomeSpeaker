@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="HomeSpeaker.Maui.Views.AddCustom"
+             Title="AddCustom">
+    <VerticalStackLayout>
+        <Label Text="Name"/>
+        <Entry Text="{Binding Name, FallbackValue='input name here'}"/>
+        <Label Text="Album"/>
+        <Entry Text="{Binding Album, FallbackValue='input album here'}"/>
+        <Label Text="Artist"/>
+        <Entry Text="{Binding Artist, FallbackValue='input artist here'}"/>
+        <Label Text="{Binding Song.Name, FallbackValue='-'}"/>
+        <Label Text="{Binding Result.FileName, FallbackValue='No File Set'}"/>
+        <Button
+            Text="Pick your music"
+            Command="{Binding PickFileCommand}"/>
+        <Button Text="Submit Song" Command="{Binding SendCommand}"/>
+    </VerticalStackLayout>
+</ContentPage>

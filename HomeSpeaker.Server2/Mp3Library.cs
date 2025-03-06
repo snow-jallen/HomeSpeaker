@@ -1,4 +1,5 @@
 ﻿using HomeSpeaker.Server2;
+using HomeSpeaker.Server2.Services;
 
 namespace HomeSpeaker.Server;
 
@@ -77,5 +78,24 @@ public class Mp3Library
         fileSource.SoftDelete(song.Path);
         IsDirty = true;
     }
+
+
+    public void UpdateSongMetadata(string filePath, string newTitle, string newArtist, string newAlbum)
+    {
+        try
+        {
+            using var mediaFile = MediaFile.Create(filePath);
+            mediaFile.SetTitle(newTitle);
+            mediaFile.SetArtist(newArtist);
+            mediaFile.SetAlbum(newAlbum);
+
+            logger.LogInformation("Updated metadata for {filePath}: {newTitle}, {newArtist}, {newAlbum}", filePath, newTitle, newArtist, newAlbum);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to update metadata for {filePath}", filePath);
+        }
+    }
+
 
 }
