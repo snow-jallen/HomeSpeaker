@@ -16,6 +16,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HomeSpeaker.Maui", "HomeSpeaker.Maui\HomeSpeaker.Maui.csproj", "{A617711B-5182-4D73-991C-3E758AF2F270}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HomeSpeaker.Test", "HomeSpeaker.Test\HomeSpeaker.Test.csproj", "{836B0CA3-12E4-4AB5-A2CB-5BF79FFB966A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,8 +38,13 @@ Global
 		{72E636EC-4188-479E-9FCE-6B7EC1EF9339}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A617711B-5182-4D73-991C-3E758AF2F270}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A617711B-5182-4D73-991C-3E758AF2F270}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A617711B-5182-4D73-991C-3E758AF2F270}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
 		{A617711B-5182-4D73-991C-3E758AF2F270}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A617711B-5182-4D73-991C-3E758AF2F270}.Release|Any CPU.Build.0 = Release|Any CPU
+		{836B0CA3-12E4-4AB5-A2CB-5BF79FFB966A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{836B0CA3-12E4-4AB5-A2CB-5BF79FFB966A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{836B0CA3-12E4-4AB5-A2CB-5BF79FFB966A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{836B0CA3-12E4-4AB5-A2CB-5BF79FFB966A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

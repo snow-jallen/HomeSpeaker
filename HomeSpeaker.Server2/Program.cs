@@ -87,12 +87,15 @@ app.MapRazorPages();
 app.MapGrpcService<GreeterService>();
 app.MapGrpcService<HomeSpeakerService>();
 app.MapGet("/ns", (IConfiguration config) => config["NIGHTSCOUT_URL"] ?? string.Empty);
-app.MapPost("/files/add", async (IFormFile file) =>
+app.MapPost("/files/add", async (IFormFile file, Mp3Library lib) =>
 {
     using (var fileStream = new StreamWriter(File.Open($"/HomeSpeakerMedia/Mp3Uploads/{file.Name}.mp3", FileMode.Create)))
     {
         fileStream.Write(file);
     }
+    //song.Path = $"/HomeSpeakerMedia/Mp3Uploads/{file.Name}.mp3";
+    //lib.Songs.Append(song);
+
 }).DisableAntiforgery();
 
 

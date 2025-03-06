@@ -47,14 +47,13 @@ namespace HomeSpeaker.Maui.ViewModels
                 fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue("audio/mp4");
 
                 multipartFormContent.Add(fileStreamContent, name: Name, fileName: Name);
-
-                var song = new SongDTO
+                song = new Song
                 {
                     Album = this.Album,
                     Artist = this.Artist,
                     Name = this.Name,
-                    File = multipartFormContent
                 };
+                multipartFormContent.Add(JsonContent.Create(song));
 
 
                 var response = await httpClient.PostAsync("https://localhost:7238/files/add", multipartFormContent);
