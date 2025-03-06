@@ -32,7 +32,7 @@ namespace HomeSpeaker.Maui.ViewModels
                 FileTypes = new
                 FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
                 {
-                    { DevicePlatform.WinUI, new[] { ".mp4", ".txt" } }, // file extension
+                    { DevicePlatform.WinUI, new[] { ".mp3", ".txt" } }, // file extension
                 }),
                 PickerTitle = "Pick Song"
             });
@@ -44,7 +44,7 @@ namespace HomeSpeaker.Maui.ViewModels
             using (var multipartFormContent = new MultipartFormDataContent())
             {
                 var fileStreamContent = new StreamContent(File.OpenRead(Result.FullPath));
-                fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue("audio/mp4");
+                fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue("audio/mp3");
 
                 multipartFormContent.Add(fileStreamContent, name: Name, fileName: Name);
                 song = new Song
@@ -55,12 +55,10 @@ namespace HomeSpeaker.Maui.ViewModels
                 };
                 multipartFormContent.Add(JsonContent.Create(song));
 
-                //    multipartFormContent.Add(fileStreamContent, name: Song.Name, fileName: Song.Name);
 
-                //    var response = await httpClient.PostAsync("https://localhost:5000/files/", multipartFormContent);
-                //    response.EnsureSuccessStatusCode();
-                //    await response.Content.ReadAsStringAsync();
-                //}
+                var response = await httpClient.PostAsync("https://localhost:7238/files/add", multipartFormContent);
+                response.EnsureSuccessStatusCode();
+                await response.Content.ReadAsStringAsync();
             }
         }
     }
