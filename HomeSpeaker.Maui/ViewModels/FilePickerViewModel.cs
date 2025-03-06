@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using HomeSpeaker.Shared;
 using System.Net.Http.Headers;
 using System.Net.Http;
+using System.Net.Http.Json;
 
 namespace HomeSpeaker.Maui.ViewModels
 {
@@ -33,14 +34,14 @@ namespace HomeSpeaker.Maui.ViewModels
                 {
                     { DevicePlatform.WinUI, new[] { ".mp4", ".txt" } }, // file extension
                 }),
-                PickerTitle="Pick Song"
+                PickerTitle = "Pick Song"
             });
         }
         [RelayCommand]
         public async void Send()
         {
             HttpClient httpClient = new();
-            Song = new Song()
+            using (var multipartFormContent = new MultipartFormDataContent())
             {
                 var fileStreamContent = new StreamContent(File.OpenRead(Result.FullPath));
                 fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue("audio/mp4");
@@ -54,12 +55,13 @@ namespace HomeSpeaker.Maui.ViewModels
                 };
                 multipartFormContent.Add(JsonContent.Create(song));
 
-            //    multipartFormContent.Add(fileStreamContent, name: Song.Name, fileName: Song.Name);
+                //    multipartFormContent.Add(fileStreamContent, name: Song.Name, fileName: Song.Name);
 
-            //    var response = await httpClient.PostAsync("https://localhost:5000/files/", multipartFormContent);
-            //    response.EnsureSuccessStatusCode();
-            //    await response.Content.ReadAsStringAsync();
-            //}
+                //    var response = await httpClient.PostAsync("https://localhost:5000/files/", multipartFormContent);
+                //    response.EnsureSuccessStatusCode();
+                //    await response.Content.ReadAsStringAsync();
+                //}
+            }
         }
     }
 }
