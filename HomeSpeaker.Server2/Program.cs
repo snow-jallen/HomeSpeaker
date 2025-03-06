@@ -3,7 +3,6 @@ using HomeSpeaker.Server.Data;
 using HomeSpeaker.Server2;
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Services;
-using HomeSpeaker.Shared;
 using Microsoft.EntityFrameworkCore;
 using System.Runtime.InteropServices;
 
@@ -79,7 +78,6 @@ app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 app.UseRouting();
-app.UseAntiforgery();
 app.UseCors(LocalCorsPolicy);
 app.MapRazorPages();
 
