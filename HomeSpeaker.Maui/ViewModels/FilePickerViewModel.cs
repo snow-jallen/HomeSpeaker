@@ -34,7 +34,7 @@ namespace HomeSpeaker.Maui.ViewModels
                 {
                     { DevicePlatform.WinUI, new[] { ".mp3", ".txt" } }, // file extension
                 }),
-                PickerTitle="Pick Song"
+                PickerTitle = "Pick Song"
             });
         }
         [RelayCommand]

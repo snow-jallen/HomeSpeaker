@@ -81,7 +81,6 @@ app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 app.UseRouting();
-app.UseAntiforgery();
 app.UseCors(LocalCorsPolicy);
 app.MapRazorPages();
 
