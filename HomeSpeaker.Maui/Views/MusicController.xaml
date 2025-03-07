@@ -25,7 +25,7 @@
                         <Entry Text="{Binding VolumeInput}" WidthRequest="80" Keyboard="Numeric"
                                BackgroundColor="White"/>
 
-                   <!-- <Slider Maximum="100"
+                        <!-- <Slider Maximum="100"
                             Minimum="0"
                             Value="{Binding VolumeInput, Mode=TwoWay}"
                             ValueChanged="OnSliderValueChanged" /> -->
@@ -43,52 +43,57 @@
                     BackgroundColor="#2E236C"
                     Margin="10"
                     WidthRequest="550">
-                <CollectionView ItemsSource="{Binding Songs}">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="pageModels:SongViewModel">
-                            <VerticalStackLayout Padding="15,20,15,20">
-                                <Label Text="{Binding SongId, StringFormat='Id: {0}'}" FontSize="15" TextColor="Gray"/>
-                                <Label Text="{Binding Name, StringFormat='{0}'}" FontSize="22" FontAttributes="Bold" TextColor="White"/>
-                                <Label Text="{Binding Artist, StringFormat='Artist: {0}'}" FontSize="19" TextColor="DarkGray"/>
-                                <Label Text="{Binding Album, StringFormat='Album: {0}'}" FontSize="19" TextColor="DarkGray"/>
+                <VerticalStackLayout>
 
-                                <Grid ColumnDefinitions="3*,1*" ColumnSpacing="10">
-                                    <Button Text="Play" Command="{Binding PlaySongCommand}" 
+                    <CollectionView ItemsSource="{Binding Songs}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="pageModels:SongViewModel">
+                                <VerticalStackLayout Padding="15,20,15,20">
+                                    <Label Text="{Binding SongId, StringFormat='Id: {0}'}" FontSize="15" TextColor="Gray"/>
+                                    <Label Text="{Binding Name, StringFormat='{0}'}" FontSize="22" FontAttributes="Bold" TextColor="White"/>
+                                    <Label Text="{Binding Artist, StringFormat='Artist: {0}'}" FontSize="19" TextColor="DarkGray"/>
+                                    <Label Text="{Binding Album, StringFormat='Album: {0}'}" FontSize="19" TextColor="DarkGray"/>
+
+                                    <Grid ColumnDefinitions="3*,1*" ColumnSpacing="10">
+                                        <Button Text="Play" Command="{Binding PlaySongCommand}" 
                                             Grid.Column="0" 
                                             Margin="0,10,0,10" 
                                             BackgroundColor="#4599a8"/>
-                                    <Button Text="Edit" 
+                                        <Button Text="Edit" 
                                             Command="{Binding ToggleEditCommand}" 
                                             Grid.Column="1" 
                                             Margin="0,10,0,10"/>
-                                </Grid>
+                                    </Grid>
 
-                                <!-- editable fields -->
-                                <VerticalStackLayout
+                                    <!-- editable fields -->
+                                    <VerticalStackLayout
                                     IsVisible="{Binding IsEditing}"
                                     Padding="5"
                                     Spacing="10">
-                                    <Entry Text="{Binding UpdatedSongName}" Placeholder="Song Name" BackgroundColor="White" TextColor="Black"/>
-                                    <Entry Text="{Binding UpdatedSongArtist}" Placeholder="Artist" BackgroundColor="White" TextColor="Black"/>
-                                    <Entry Text="{Binding UpdatedSongAlbum}" Placeholder="Album" BackgroundColor="White" TextColor="Black"/>
+                                        <Entry Text="{Binding UpdatedSongName}" Placeholder="Song Name" BackgroundColor="White" TextColor="Black"/>
+                                        <Entry Text="{Binding UpdatedSongArtist}" Placeholder="Artist" BackgroundColor="White" TextColor="Black"/>
+                                        <Entry Text="{Binding UpdatedSongAlbum}" Placeholder="Album" BackgroundColor="White" TextColor="Black"/>
 
-                                    <Grid ColumnDefinitions="3*,1*" ColumnSpacing="10">
-                                        <Button Text="Save" 
+                                        <Grid ColumnDefinitions="3*,1*" ColumnSpacing="10">
+                                            <Button Text="Save" 
                                                 Command="{Binding UpdateMetadataCommand}" 
                                                 Grid.Column="0" 
                                                 Margin="0,10,0,10"
                                                 BackgroundColor="#8280bf"/>
-                                        <Button Text="Cancel" 
+                                            <Button Text="Cancel" 
                                                 Command="{Binding ToggleEditCommand}" 
                                                 Grid.Column="1" 
                                                 Margin="0,10,0,10"
                                                 BackgroundColor="#7a3c41"/>
-                                    </Grid>
+                                        </Grid>
+                                    </VerticalStackLayout>
                                 </VerticalStackLayout>
-                            </VerticalStackLayout>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                    <Button Text="Upload From Home" Command="{Binding CreateNewCommand}"/>
+                </VerticalStackLayout>
+
             </Border>
 
         </VerticalStackLayout>

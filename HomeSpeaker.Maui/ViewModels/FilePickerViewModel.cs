@@ -17,13 +17,11 @@ namespace HomeSpeaker.Maui.ViewModels
         [ObservableProperty]
         FileResult? result;
         [ObservableProperty]
+        [NotifyCanExecuteChangedFor(nameof(SendCommand))]
         string name;
         [ObservableProperty]
-        string album;
-        [ObservableProperty]
-        string artist;
-        [ObservableProperty]
         Song song;
+
         [RelayCommand]
         public async void PickFile()
         {
@@ -36,8 +34,11 @@ namespace HomeSpeaker.Maui.ViewModels
                 }),
                 PickerTitle = "Pick Song"
             });
+            SendCommand.NotifyCanExecuteChanged();
         }
-        [RelayCommand]
+        bool canSend() =>!(name==null||Result==null);
+
+        [RelayCommand(CanExecute =nameof(canSend))]
         public async void Send()
         {
             HttpClient httpClient = new();
@@ -47,18 +48,17 @@ namespace HomeSpeaker.Maui.ViewModels
                 fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue("audio/mp3");
 
                 multipartFormContent.Add(fileStreamContent, name: Name, fileName: Name);
-                song = new Song
-                {
-                    Album = this.Album,
-                    Artist = this.Artist,
-                    Name = this.Name,
-                };
+
                // multipartFormContent.Add(JsonContent.Create(song));
 
 
                 var response = await httpClient.PostAsync("https://localhost:7238/files/add", multipartFormContent);
                 response.EnsureSuccessStatusCode();
                 await response.Content.ReadAsStringAsync();
+                Result = null;
+                Name = null;
+
+                await Shell.Current.GoToAsync("///Music");
             }
         }
     }

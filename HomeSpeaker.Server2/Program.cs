@@ -94,9 +94,9 @@ app.MapPost("/files/add", async (IFormFileCollection file, Mp3Library lib, IConf
     if (!Directory.Exists(destinationPath))
         Directory.CreateDirectory(destinationPath);
     destinationPath = Path.Combine(destinationPath, file.First().Name + ".mp3");
-    using (var fileStream = new StreamWriter(File.Open(destinationPath, FileMode.Create)))
+    using (var fileStream = File.Open(destinationPath, FileMode.Create))
     {
-        fileStream.Write(file);
+        file.First().CopyTo(fileStream);
     }
     Song s = new Song() { Name = file.First().Name, Path = $"/HomeSpeakerMedia/Mp3Uploads/{file.First().Name}.mp3" };
     try

@@ -21,7 +21,7 @@ public static class MauiProgram
             .RegisterViewModels()
             .RegisterViews();
 
-        builder.Services.AddScoped<HomeSpeakerClientService>();
+        builder.Services.AddTransient<HomeSpeakerClientService>();
 
 #if DEBUG
 		builder.Logging.AddDebug();

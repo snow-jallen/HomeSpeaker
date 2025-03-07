@@ -14,16 +14,18 @@ namespace HomeSpeaker.Maui.ViewModels
 {
     public partial class MusicControllerViewModel(HomeSpeakerClientService client) : ObservableObject
     {
-        [ObservableProperty]
-        private ObservableCollection<SongViewModel> _songs;
 
+        [ObservableProperty]
+        private ObservableCollection<SongViewModel> songs;
 
         public async Task Initialize()
         {
-            var songs = await client.GetAllSongsAsync();
-            Songs = new ObservableCollection<SongViewModel>(songs);
+            Songs = new ObservableCollection<SongViewModel>();
+            var _songs = await client.GetAllSongsAsync();
+            foreach(SongViewModel song in _songs)
+                Songs.Add(song);
             Volume = await client.GetVolumeAsync();
-
+            
         }
 
         [RelayCommand]
@@ -31,8 +33,11 @@ namespace HomeSpeaker.Maui.ViewModels
         {
             await client.StopPlayingAsync();
         }
-
-
+        [RelayCommand]
+        private async Task CreateNew()
+        {
+            await Shell.Current.GoToAsync("///Custom");
+        }
         // volume functionality 
         [ObservableProperty]
         private int volume;
