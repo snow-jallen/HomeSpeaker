@@ -44,7 +44,7 @@ namespace HomeSpeaker.Maui.ViewModels
             using (var multipartFormContent = new MultipartFormDataContent())
             {
                 var fileStreamContent = new StreamContent(File.OpenRead(Result.FullPath));
-                fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue("audio/mp4");
+                fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue("audio/mp3");
 
                 multipartFormContent.Add(fileStreamContent, name: Name, fileName: Name);
                 song = new Song
@@ -53,7 +53,7 @@ namespace HomeSpeaker.Maui.ViewModels
                     Artist = this.Artist,
                     Name = this.Name,
                 };
-                multipartFormContent.Add(JsonContent.Create(song));
+               // multipartFormContent.Add(JsonContent.Create(song));
 
 
                 var response = await httpClient.PostAsync("https://localhost:7238/files/add", multipartFormContent);

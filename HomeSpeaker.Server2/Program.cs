@@ -4,8 +4,10 @@ using HomeSpeaker.Server2;
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Shared;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Runtime.InteropServices;
+using System.Xml.Linq;
 
 const string LocalCorsPolicy = nameof(LocalCorsPolicy);
 
@@ -87,14 +89,32 @@ app.MapRazorPages();
 app.MapGrpcService<GreeterService>();
 app.MapGrpcService<HomeSpeakerService>();
 app.MapGet("/ns", (IConfiguration config) => config["NIGHTSCOUT_URL"] ?? string.Empty);
-app.MapPost("/files/add", async (IFormFile file, Mp3Library lib) =>
+app.MapPost("/files/add", async (IFormFileCollection file, Mp3Library lib, IConfiguration config) =>
 {
-    using (var fileStream = new StreamWriter(File.Open($"/HomeSpeakerMedia/Mp3Uploads/{file.Name}.mp3", FileMode.Create)))
+    var destinationPath = Path.Combine(config[ConfigKeys.MediaFolder]!, "Mp3Uploads");
+    if (!Directory.Exists(destinationPath))
+        Directory.CreateDirectory(destinationPath);
+    destinationPath = Path.Combine(destinationPath, file.First().Name + ".mp3");
+    using (var fileStream = new StreamWriter(File.Open(destinationPath, FileMode.Create)))
     {
         fileStream.Write(file);
     }
+    Song s = new Song() { Name = file.First().Name, Path = $"/HomeSpeakerMedia/Mp3Uploads/{file.First().Name}.mp3" };
+    try
+    {
+        using var mediaFile = MediaFile.Create(destinationPath);
+        mediaFile.SetArtist("Custom Cache");
+        mediaFile.SetAlbum("Custom Cache");
+        mediaFile.SetTitle(file.First().Name);
+    }
+    catch
+    {
+        // Media tagging is not critical
+    }
+    app.Logger.LogInformation("Finished caching {title}.  Saved to {destination}", file.First().Name, destinationPath);
     //song.Path = $"/HomeSpeakerMedia/Mp3Uploads/{file.Name}.mp3";
-    //lib.Songs.Append(song);
+    lib.Songs.Append(s);
+    return Results.Ok();
 
 }).DisableAntiforgery();
 
