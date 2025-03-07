@@ -9,11 +9,15 @@ using HomeSpeaker.Shared;
 using System.Net.Http.Headers;
 using System.Net.Http;
 using System.Net.Http.Json;
+using HomeSpeaker.Maui.Models;
 
 namespace HomeSpeaker.Maui.ViewModels
 {
-    public partial class FilePickerViewModel : ObservableObject
+    public partial class FilePickerViewModel : ObservableObject, IQueryAttributable
     {
+        private DeviceModel _device;
+        private HttpClient _client;
+
         [ObservableProperty]
         FileResult? result;
         [ObservableProperty]
@@ -41,7 +45,6 @@ namespace HomeSpeaker.Maui.ViewModels
         [RelayCommand(CanExecute =nameof(canSend))]
         public async void Send()
         {
-            HttpClient httpClient = new();
             using (var multipartFormContent = new MultipartFormDataContent())
             {
                 var fileStreamContent = new StreamContent(File.OpenRead(Result.FullPath));
@@ -52,14 +55,20 @@ namespace HomeSpeaker.Maui.ViewModels
                // multipartFormContent.Add(JsonContent.Create(song));
 
 
-                var response = await httpClient.PostAsync("https://localhost:7238/files/add", multipartFormContent);
+                var response = await _client.PostAsync("files/add", multipartFormContent);
                 response.EnsureSuccessStatusCode();
                 await response.Content.ReadAsStringAsync();
                 Result = null;
                 Name = null;
 
-                await Shell.Current.GoToAsync("///Music");
+                await Shell.Current.GoToAsync("///Music", new Dictionary<string, object> { { "device", _device } });
             }
+        }
+
+        public void ApplyQueryAttributes(IDictionary<string, object> query)
+        {
+            _device = (DeviceModel)query["device"];
+            _client = _device._httpClient;
         }
     }
 }

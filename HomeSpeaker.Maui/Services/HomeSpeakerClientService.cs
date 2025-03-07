@@ -16,9 +16,9 @@ public class HomeSpeakerClientService
 {
     private readonly HomeSpeakerClient _client; // HomeSpeakerClient is generated from the proto file
 
-    public HomeSpeakerClientService()
+    public HomeSpeakerClientService(string path)
     {
-        var channel = GrpcChannel.ForAddress("https://localhost:7238/");
+        var channel = GrpcChannel.ForAddress(path);
         _client = new HomeSpeakerClient(channel);
     }
 

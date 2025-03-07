@@ -14,12 +14,12 @@ public partial class MusicController : ContentPage
 	}
     protected async override void OnNavigatedTo(NavigatedToEventArgs e)
     {
-        await _vm.Initialize();
+        //await _vm.Initialize();
     }
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-		await _vm.Initialize();
+		//await _vm.Initialize();
 	}
 
 	private async void OnSliderValueChanged(object sender, ValueChangedEventArgs e)

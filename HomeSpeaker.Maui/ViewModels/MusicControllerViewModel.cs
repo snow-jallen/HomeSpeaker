@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Google.Protobuf.WellKnownTypes;
+using HomeSpeaker.Maui.Models;
 using HomeSpeaker.Maui.Services;
 using HomeSpeaker.Shared;
 using System;
@@ -12,8 +13,12 @@ using System.Threading.Tasks;
 
 namespace HomeSpeaker.Maui.ViewModels
 {
-    public partial class MusicControllerViewModel(HomeSpeakerClientService client) : ObservableObject
+    public partial class MusicControllerViewModel : ObservableObject, IQueryAttributable
     {
+        private HomeSpeakerClientService Client { get; set; }
+
+        [ObservableProperty]
+        private DeviceModel device;
 
         [ObservableProperty]
         private ObservableCollection<SongViewModel> songs;
@@ -21,22 +26,22 @@ namespace HomeSpeaker.Maui.ViewModels
         public async Task Initialize()
         {
             Songs = new ObservableCollection<SongViewModel>();
-            var _songs = await client.GetAllSongsAsync();
+            var _songs = await Client.GetAllSongsAsync();
             foreach(SongViewModel song in _songs)
                 Songs.Add(song);
-            Volume = await client.GetVolumeAsync();
+            Volume = await Client.GetVolumeAsync();
             
         }
 
         [RelayCommand]
         private async Task StopPlaying()
         {
-            await client.StopPlayingAsync();
+            await Client.StopPlayingAsync();
         }
         [RelayCommand]
         private async Task CreateNew()
         {
-            await Shell.Current.GoToAsync("///Custom");
+            await Shell.Current.GoToAsync("///Custom", new Dictionary<string, object> { { "device", Device } });
         }
         // volume functionality 
         [ObservableProperty]
@@ -49,11 +54,15 @@ namespace HomeSpeaker.Maui.ViewModels
         [RelayCommand]
         public async Task SetVolumeAsync()
         {
-            await client.SetVolumeAsync(VolumeInput);
+            await Client.SetVolumeAsync(VolumeInput);
             Volume = VolumeInput;
         }
 
-
-      
+        public async void ApplyQueryAttributes(IDictionary<string, object> query)
+        {
+            Device = (DeviceModel)query["device"];
+            Client = Device._grpcClient;
+            await Initialize();
+        }
     }
 }

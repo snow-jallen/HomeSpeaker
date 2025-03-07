@@ -1,15 +1,30 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pageModels="clr-namespace:HomeSpeaker.Maui.ViewModels"
+             xmlns:models="clr-namespace:HomeSpeaker.Maui.Models"
              x:Class="HomeSpeaker.Maui.Views.ManageDevicesView"
+             x:DataType="pageModels:ManageDevicesViewModel"
              Title="ManageDevicesView">
     <VerticalStackLayout>
-        <Label 
-            Text="Welcome to .NET MAUI!"
-            VerticalOptions="Center" 
-            HorizontalOptions="Center" />
-        
         <!--Add devices to be controlled. Do we also want to include play/pause functionality here?-->
-        
+        <VerticalStackLayout>
+            <Entry Placeholder="Name here" Text="{Binding Name}" />
+            <Entry Placeholder="Url here" Text="{Binding Path}" />
+            <Button Text="Add Client" Command="{Binding AddServerCommand}" />
+        </VerticalStackLayout>
+        <VerticalStackLayout>
+            <CollectionView ItemsSource="{Binding Devices}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:DeviceModel">
+                        <HorizontalStackLayout>
+                            <Label Text="{Binding Name, StringFormat='Name: {0}'}" />
+                            <Label Text="{Binding Url, StringFormat='Url: {0}'}" />
+                            <Button Text="Controls" Command="{Binding ControlCommand}" />
+                        </HorizontalStackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
     </VerticalStackLayout>
 </ContentPage>
