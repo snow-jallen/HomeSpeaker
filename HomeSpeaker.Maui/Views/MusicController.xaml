@@ -15,7 +15,10 @@
                     BackgroundColor="#2E236C"
                     WidthRequest="550">
                 <VerticalStackLayout Spacing="10" Padding="10">
-
+                    <Label Text="{Binding Device.Name}" 
+                           FontSize="22"
+                           TextColor="White"
+                           FontAttributes="Bold" />
                     <Label Text="{Binding Volume, StringFormat='Current Volume: {0}'}"
                            FontSize="18"
                            TextColor="White"/>
@@ -44,7 +47,7 @@
                     Margin="10"
                     WidthRequest="550">
                 <VerticalStackLayout>
-
+                    <Button Text="Upload From Home" Command="{Binding CreateNewCommand}"/>
                     <CollectionView ItemsSource="{Binding Songs}">
                         <CollectionView.ItemTemplate>
                             <DataTemplate x:DataType="pageModels:SongViewModel">
@@ -91,7 +94,6 @@
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>
-                    <Button Text="Upload From Home" Command="{Binding CreateNewCommand}"/>
                 </VerticalStackLayout>
 
             </Border>

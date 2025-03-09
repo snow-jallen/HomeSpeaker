@@ -5,26 +5,57 @@
              xmlns:models="clr-namespace:HomeSpeaker.Maui.Models"
              x:Class="HomeSpeaker.Maui.Views.ManageDevicesView"
              x:DataType="pageModels:ManageDevicesViewModel"
-             Title="ManageDevicesView">
-    <VerticalStackLayout>
-        <!--Add devices to be controlled. Do we also want to include play/pause functionality here?-->
-        <VerticalStackLayout>
-            <Entry Placeholder="Name here" Text="{Binding Name}" />
-            <Entry Placeholder="Url here" Text="{Binding Path}" />
-            <Button Text="Add Client" Command="{Binding AddServerCommand}" />
+             Title="ManageDevicesView"
+             BackgroundColor="#1B1A55">
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="10">
+            <!--Add devices to be controlled. Do we also want to include play/pause functionality here?-->
+            <Border Stroke="Black" StrokeThickness="0" 
+                    StrokeShape="RoundRectangle 10"
+                    BackgroundColor="#2E236C"
+                    WidthRequest="550">
+                <VerticalStackLayout Spacing="10" Padding="10">
+                    <Entry Placeholder="Name here" Text="{Binding Name}" BackgroundColor="White" />
+                    <Entry Placeholder="Url here" Text="{Binding Path}" BackgroundColor="White" />
+                    <Button Text="Add Client" 
+                    Command="{Binding AddServerCommand}" 
+                    Margin="0,10,0,10"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Stroke="Black" StrokeThickness="0" 
+                    StrokeShape="RoundRectangle 10"
+                    BackgroundColor="#2E236C"
+                    Margin="10"
+                    WidthRequest="550">
+                <VerticalStackLayout Padding="15,20,15,20">
+                    <CollectionView ItemsSource="{Binding Devices}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:DeviceModel">
+                                <Grid RowDefinitions="*,*" ColumnDefinitions="2*,1*,1*" ColumnSpacing="10">
+                                    <Label Text="{Binding Name, StringFormat='{0}'}" 
+                                           FontSize="24" 
+                                           FontAttributes="Bold" 
+                                           TextColor="White"
+                                           Grid.Column="0"
+                                           Grid.Row="0" />
+                                    <Label Text="{Binding Url, StringFormat='Url: {0}'}" 
+                                           TextColor="White"
+                                           Grid.Column="0"
+                                           Grid.Row="1" />
+                                    <Button Text="Controls" 
+                                            Command="{Binding ControlCommand}" 
+                                            Grid.Column="1" 
+                                            Grid.Row="0" 
+                                            Grid.ColumnSpan="2"
+                                            Grid.RowSpan="2"
+                                            WidthRequest="250"/>
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
         </VerticalStackLayout>
-        <VerticalStackLayout>
-            <CollectionView ItemsSource="{Binding Devices}">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="models:DeviceModel">
-                        <HorizontalStackLayout>
-                            <Label Text="{Binding Name, StringFormat='Name: {0}'}" />
-                            <Label Text="{Binding Url, StringFormat='Url: {0}'}" />
-                            <Button Text="Controls" Command="{Binding ControlCommand}" />
-                        </HorizontalStackLayout>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
-        </VerticalStackLayout>
-    </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>

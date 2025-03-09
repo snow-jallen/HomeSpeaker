@@ -25,12 +25,13 @@ namespace HomeSpeaker.Maui.ViewModels
 
         public async Task Initialize()
         {
+            // Page is updating, but the server isn't. We initialize everytime we navigate to this page.
+            // Song may take awhile to upload
             Songs = new ObservableCollection<SongViewModel>();
             var _songs = await Client.GetAllSongsAsync();
             foreach(SongViewModel song in _songs)
                 Songs.Add(song);
-            Volume = await Client.GetVolumeAsync();
-            
+            Volume = await Client.GetVolumeAsync();     
         }
 
         [RelayCommand]
