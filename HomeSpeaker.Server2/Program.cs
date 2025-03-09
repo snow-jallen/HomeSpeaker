@@ -113,6 +113,8 @@ app.MapPost("/files/add", async (IFormFileCollection file, Mp3Library lib, IConf
     app.Logger.LogInformation("Finished caching {title}.  Saved to {destination}", file.First().Name, destinationPath);
     //song.Path = $"/HomeSpeakerMedia/Mp3Uploads/{file.Name}.mp3";
     //lib.Songs.Append(s);
+
+    // Sync MP3 Library to pull the new songs from disk
     lib.SyncLibrary();
     return Results.Ok();
 
