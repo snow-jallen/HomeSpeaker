@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.Intrinsics.Arm;
 using System.Text;
 using System.Threading.Tasks;
 using Grpc.Core;
@@ -9,17 +10,19 @@ using Grpc.Net.Client;
 using Grpc.Net.Client.Web;
 using HomeSpeaker.Maui.ViewModels;
 using HomeSpeaker.Shared;
+using Microsoft.Extensions.Logging;
 using static HomeSpeaker.Shared.HomeSpeaker;
 
 namespace HomeSpeaker.Maui.Services;
 public class HomeSpeakerClientService
 {
     private readonly HomeSpeakerClient _client; // HomeSpeakerClient is generated from the proto file
-
-    public HomeSpeakerClientService(string path)
+    private DeviceViewerService deviceViewerService;
+    public HomeSpeakerClientService(DeviceViewerService deviceViewerService)
     {
-        var channel = GrpcChannel.ForAddress(path);
+        var channel = GrpcChannel.ForAddress(deviceViewerService.Current.Path);
         _client = new HomeSpeakerClient(channel);
+        this.deviceViewerService = deviceViewerService;
     }
 
     public async Task SetVolumeAsync(int volume0to100)
@@ -81,6 +84,16 @@ public class HomeSpeakerClientService
             };
             var reply = await _client.UpdateSongMetadataAsync(request);
             return reply.Success;
+    }
+    public async Task<IEnumerable<Video>> SearchAsync(string searchTerm)
+    { 
+        var response = await _client.SearchViedoAsync(new SearchVideoRequest { SearchTerm = searchTerm });
+        var videos = response.Results;
+        return videos;
+    }
+    public AsyncServerStreamingCall<CacheVideoReply> CacheVideo(Video video)
+    {
+        return _client.CacheVideo(new CacheVideoRequest() {Video=video});
     }
 }
 

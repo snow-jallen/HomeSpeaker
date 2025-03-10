@@ -21,6 +21,9 @@
         Title="FileUpload"
         ContentTemplate="{DataTemplate local:AddCustom}"
         Route="Custom"/>
-
+    <ShellContent
+        Title="YouTubeCache"
+        ContentTemplate="{DataTemplate local:YouTubeView}"
+        Route="YouTube"/>
 
 </Shell>
