@@ -20,7 +20,7 @@
                                     <Label Text="|"/>
                                     <Label Text="{Binding Author}"/>
                                 </HorizontalStackLayout>
-                                <Button ImageSource="Resources\AppIcon\oi--cloud-download.svg"Command="{Binding CacheVideoAsyncCommand}"/>
+                                <Button ImageSource="Resources\AppIcon\oi--cloud-download.svg" Command="{Binding CacheVideoAsyncCommand}"/>
                                 <ProgressBar Progress="{Binding ProgressValue}"/>
                             </VerticalStackLayout>
                         </Border>
