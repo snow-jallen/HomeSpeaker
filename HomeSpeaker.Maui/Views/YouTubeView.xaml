@@ -20,8 +20,8 @@
                                     <Label Text="|"/>
                                     <Label Text="{Binding Author}"/>
                                 </HorizontalStackLayout>
-                                <Button ImageSource="Resources\AppIcon\oi--cloud-download.svg" Command="{Binding CacheVideoAsyncCommand}"/>
-                                <ProgressBar Progress="{Binding ProgressValue}"/>
+                                <Button HeightRequest="50" WidthRequest="50" Padding="0" ImageSource="cloud.svg" Command="{Binding CacheVideoAsyncCommand}"/>
+                                <ProgressBar Progress="{Binding ProgressValue}" IsVisible="{Binding IsnComplete}"/>
                             </VerticalStackLayout>
                         </Border>
                     </DataTemplate>

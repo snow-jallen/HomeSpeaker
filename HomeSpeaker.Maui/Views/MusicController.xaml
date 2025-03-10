@@ -47,8 +47,10 @@
                     Margin="10"
                     WidthRequest="550">
                 <VerticalStackLayout>
-                    <Button Text="Upload From Home" Command="{Binding CreateNewCommand}"/>
-                    <Button Text="Search Youtube" Command="{Binding NavigateToYoutubeCommand}"/>
+                    <Button Text="Upload From Home" Command="{Binding CreateNewCommand}"
+                            Margin="10"/>
+                    <Button Text="Search Youtube" Command="{Binding NavigateToYoutubeCommand}"
+                            Margin="10"/>
                     <CollectionView ItemsSource="{Binding Songs}">
                         <CollectionView.ItemTemplate>
                             <DataTemplate x:DataType="pageModels:SongViewModel">

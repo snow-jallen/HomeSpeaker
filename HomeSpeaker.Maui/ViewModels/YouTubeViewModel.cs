@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using Grpc.Core;
 using HomeSpeaker.Maui.Models;
 using YoutubeExplode.Common;
+using System.Runtime.CompilerServices;
 namespace HomeSpeaker.Maui.ViewModels;
 
 public partial class YouTubeViewModel : ObservableObject, IQueryAttributable
@@ -50,6 +51,7 @@ public partial class YouTubeVideoViewModel : ObservableObject
         Name = video.Title;
         Author = video.Author;
     }
+    
     [ObservableProperty]
     string name;
     [ObservableProperty]
@@ -60,6 +62,12 @@ public partial class YouTubeVideoViewModel : ObservableObject
     bool isComplete;
     [ObservableProperty]
     double progressValue;
+    partial void OnIsCompleteChanged(bool value)
+    {
+        IsnComplete=!IsComplete;
+    }
+    [ObservableProperty]
+    public bool isnComplete=true;
     [RelayCommand]
     async void CacheVideoAsync()
     {
