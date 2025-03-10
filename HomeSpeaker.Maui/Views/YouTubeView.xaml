@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="HomeSpeaker.Maui.Views.YouTubeView"
+             Title="YouTubeView"
+             >
+    <VerticalStackLayout>
+        <Label Text="Search Youtube"/>
+        <Entry Text="{Binding SearchTerm}"/>
+        <Button Text="Search" Command="{Binding SearchCommand}"/>
+        <Button Text="MusicController" Command="{Binding Device.ControlCommand}"/>
+        <VerticalStackLayout>
+            <CollectionView ItemsSource="{Binding Videos}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border>
+                            <VerticalStackLayout>
+                                <HorizontalStackLayout>
+                                    <Label Text="{Binding Name}"/>
+                                    <Label Text="|"/>
+                                    <Label Text="{Binding Author}"/>
+                                </HorizontalStackLayout>
+                                <Button ImageSource="Resources\AppIcon\oi--cloud-download.svg"Command="{Binding CacheVideoAsyncCommand}"/>
+                                <ProgressBar Progress="{Binding ProgressValue}"/>
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+    </VerticalStackLayout>
+</ContentPage>

@@ -40,6 +40,7 @@ public static class MauiProgram
 
     public static MauiAppBuilder RegisterViewModels(this MauiAppBuilder builder)
     {
+        builder.Services.AddScoped<YouTubeViewModel>();
         builder.Services.AddSingleton<ManageDevicesViewModel>();
         builder.Services.AddTransient<MusicControllerViewModel>();
         return builder;
