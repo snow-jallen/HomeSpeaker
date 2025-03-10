@@ -2,22 +2,25 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="HomeSpeaker.Maui.Views.YouTubeView"
-             Title="YouTubeView">
+             Title="YouTubeView"
+             >
     <VerticalStackLayout>
         <Label Text="Search Youtube"/>
         <Entry Text="{Binding SearchTerm}"/>
-        <Button Command="{Binding SearchCommand}"/>
+        <Button Text="Search" Command="{Binding SearchCommand}"/>
+        <Button Text="MusicController" Command="{Binding Device.ControlCommand}"/>
         <VerticalStackLayout>
-            <CollectionView>
+            <CollectionView ItemsSource="{Binding Videos}">
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
                         <Border>
                             <VerticalStackLayout>
                                 <HorizontalStackLayout>
-                                    <Label Text="{Binding Video.Title}"/>
-                                    <Label Text="{Binding Video.Author}"/>
-                                    <Button Command="{Binding CacheVideoAsyncCommand}"/>
+                                    <Label Text="{Binding Name}"/>
+                                    <Label Text="|"/>
+                                    <Label Text="{Binding Author}"/>
                                 </HorizontalStackLayout>
+                                <Button ImageSource="Resources\AppIcon\oi--cloud-download.svg"Command="{Binding CacheVideoAsyncCommand}"/>
                                 <ProgressBar Progress="{Binding ProgressValue}"/>
                             </VerticalStackLayout>
                         </Border>

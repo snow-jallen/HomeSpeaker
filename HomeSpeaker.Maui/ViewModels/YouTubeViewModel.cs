@@ -12,9 +12,11 @@ using System.Runtime.Intrinsics.Arm;
 using System.Text;
 using System.Threading.Tasks;
 using Grpc.Core;
+using HomeSpeaker.Maui.Models;
+using YoutubeExplode.Common;
 namespace HomeSpeaker.Maui.ViewModels;
 
-public partial class YouTubeViewModel(HomeSpeakerClientService hscs) : ObservableObject
+public partial class YouTubeViewModel : ObservableObject, IQueryAttributable
 {
     [ObservableProperty]
     ObservableCollection<YouTubeVideoViewModel> videos;
@@ -24,17 +26,34 @@ public partial class YouTubeViewModel(HomeSpeakerClientService hscs) : Observabl
     public async void Search()
     {
         Videos = new ObservableCollection<YouTubeVideoViewModel>();
-        var result = await hscs.SearchAsync(SearchTerm);
+        var result = await device._grpcClient.SearchAsync(SearchTerm);
         foreach(Video video in result)
         {
-            Videos.Add(new YouTubeVideoViewModel(video, hscs));
+            Videos.Add(new YouTubeVideoViewModel(video, device._grpcClient));
         }
     }
-}
-public partial class YouTubeVideoViewModel(Video video, HomeSpeakerClientService hscs) : ObservableObject
-{
     [ObservableProperty]
+    DeviceModel device;
+    public async void ApplyQueryAttributes(IDictionary<string, object> query)
+    {
+        device = (DeviceModel)query["device"];
+    }
+}
+public partial class YouTubeVideoViewModel : ObservableObject
+{
     Video video;
+    HomeSpeakerClientService hscs;
+    public YouTubeVideoViewModel(Video video, HomeSpeakerClientService hscs)
+    {
+        this.video = video;
+        this.hscs = hscs;
+        Name = video.Title;
+        Author = video.Author;
+    }
+    [ObservableProperty]
+    string name;
+    [ObservableProperty]
+    string author;
     [ObservableProperty]
     bool isDownloading;
     [ObservableProperty]

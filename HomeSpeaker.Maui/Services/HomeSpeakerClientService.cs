@@ -18,9 +18,9 @@ public class HomeSpeakerClientService
 {
     private readonly HomeSpeakerClient _client; // HomeSpeakerClient is generated from the proto file
     private DeviceViewerService deviceViewerService;
-    public HomeSpeakerClientService(DeviceViewerService deviceViewerService)
+    public HomeSpeakerClientService(string path)
     {
-        var channel = GrpcChannel.ForAddress(deviceViewerService.Current.Path);
+        var channel = GrpcChannel.ForAddress(path);
         _client = new HomeSpeakerClient(channel);
         this.deviceViewerService = deviceViewerService;
     }

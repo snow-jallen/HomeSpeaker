@@ -65,5 +65,10 @@ namespace HomeSpeaker.Maui.ViewModels
             Client = Device._grpcClient;
             await Initialize();
         }
+        [RelayCommand]
+        private async void NavigateToYoutube()
+        {
+            await Shell.Current.GoToAsync("///YouTube", new Dictionary<string, object> { { "device", Device } });
+        }
     }
 }
