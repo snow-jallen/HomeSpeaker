@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace HomeSpeaker.Maui.ViewModels
+namespace HomeSpeaker.Maui.ViewModels;
+public partial class ManagePlaylistsViewModel : ObservableObject
 {
-    public partial class ManagePlaylistsViewModel : ObservableObject
-    {
-    }
+    
 }
+
