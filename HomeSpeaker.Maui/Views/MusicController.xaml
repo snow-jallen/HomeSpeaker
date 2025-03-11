@@ -92,6 +92,10 @@
                                                 Margin="0,10,0,10"
                                                 BackgroundColor="#7a3c41"/>
                                         </Grid>
+                                        <Picker Title="Playlist"
+                                                ItemsSource="{Binding Playlists}"
+                                                SelectedItem="{Binding SelectedPlaylist}"/>
+                                        <Button />
                                     </VerticalStackLayout>
                                 </VerticalStackLayout>
                             </DataTemplate>

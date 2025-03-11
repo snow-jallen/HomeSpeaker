@@ -7,10 +7,11 @@ using HomeSpeaker.Maui.Services;
 using HomeSpeaker.Shared;
 using CommunityToolkit.Maui.Alerts;
 using CommunityToolkit.Maui.Core;
+using System.Collections.ObjectModel;
 
 namespace HomeSpeaker.Maui.ViewModels;
 
-public partial class SongViewModel(HomeSpeakerClientService client) : ObservableObject
+public partial class SongViewModel(HomeSpeakerClientService client, PlaylistService pService) : ObservableObject
 {
     [ObservableProperty]
     public int _songId;
@@ -122,6 +123,18 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
         IsEditing = !IsEditing;
     }
 
+    [ObservableProperty]
+    private string selectedPlaylist;
+
+    [ObservableProperty]
+    private ObservableCollection<string> playlists;
+
+    [RelayCommand]
+    private void AddToPlaylist()
+    {
+        
+    }
+
 }
 
 public partial class SongGroup : List<SongViewModel>
@@ -139,9 +152,9 @@ public partial class SongGroup : List<SongViewModel>
 
 public static class ViewModelExtensions
 {
-    public static SongViewModel ToSongViewModel(this SongMessage song, HomeSpeakerClientService client)
+    public static SongViewModel ToSongViewModel(this SongMessage song, HomeSpeakerClientService client, PlaylistService pService)
     {
-        return new SongViewModel(client)
+        return new SongViewModel(client, pService)
         {
             SongId = song?.SongId ?? -1,
             Name = song?.Name?.Trim() ?? "[ Null Song Response ??? ]",

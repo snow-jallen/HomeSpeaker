@@ -12,14 +12,9 @@ namespace HomeSpeaker.Maui.Services
 {
     public class PlaylistService
     {
-        public Dictionary<string, PlaylistViewModel> _playlists;
+        public Dictionary<string, PlaylistViewModel> _playlists =new();
         public HomeSpeakerClientService _client;
-        public PlaylistService(HomeSpeakerClientService client) 
-        { 
-           _client = client;
-           _playlists = new Dictionary<string, PlaylistViewModel>();
-           Sync();
-        }
+
         public async Task Sync()
         {
             var playlists = await _client.GetPlaylistsAsync();
