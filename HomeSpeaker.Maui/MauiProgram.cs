@@ -23,6 +23,7 @@ public static class MauiProgram
 
         builder.Services.AddSingleton<HomeSpeakerClientFactory>();
         builder.Services.AddSingleton<DeviceViewerService>();
+        builder.Services.AddScoped<PlaylistServiceFactory>();
 
 #if DEBUG
 		builder.Logging.AddDebug();

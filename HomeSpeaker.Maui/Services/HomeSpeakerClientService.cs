@@ -95,5 +95,20 @@ public class HomeSpeakerClientService
     {
         return _client.CacheVideo(new CacheVideoRequest() {Video=video});
     }
+
+    public async Task AddToPlaylistAsync(string playlistName, string songPath)
+    {
+        await _client.AddSongToPlaylistAsync(new AddSongToPlaylistRequest { PlaylistName = playlistName, SongPath = songPath });
+    }
+
+    public async Task RemoveFromPlaylistAsync(string playlistName, string songPath)
+    {
+        await _client.RemoveSongFromPlaylistAsync(new RemoveSongFromPlaylistRequest { PlaylistName = playlistName, SongPath = songPath });
+    }
+
+    public async Task PlayPlaylistAsync(string playlistName)
+    {
+        await _client.PlayPlaylistAsync(new PlayPlaylistRequest { PlaylistName = playlistName });
+    }
 }
 
