@@ -6,14 +6,18 @@
              x:DataType="pageModels:FilePickerViewModel"
              Title="AddCustom"
              BackgroundColor="#1B1A55">
-    <VerticalStackLayout>
-        <Label Text="Name" TextColor="White"/>
-        <Entry Text="{Binding Name, FallbackValue='input name here'}" BackgroundColor="White"/>
-        <Label Text="{Binding Song.Name, FallbackValue='-'}" TextColor="White"/>
-        <Label Text="{Binding Result.FileName, FallbackValue='No File Set'}" TextColor="White"/>
-        <Button
-            Text="Pick your music"
-            Command="{Binding PickFileCommand}"/>
-        <Button Text="Submit Song" Command="{Binding SendCommand}"/>
+    <VerticalStackLayout Spacing="20" Padding="10" Margin="10" MaximumWidthRequest="800">
+        <Border Padding="15">
+        <VerticalStackLayout Spacing="10">
+            <Label Text="Track Name" TextColor="White"/>
+            <Entry Text="{Binding Name, FallbackValue='input name here'}" BackgroundColor="White"/>
+            <Label Text="{Binding Song.Name, FallbackValue='-'}" TextColor="White"/>
+            <Label Text="{Binding Result.FileName, FallbackValue='No File Set'}" TextColor="White"/>
+            <Button
+                Text="Pick your music"
+                Command="{Binding PickFileCommand}"/>
+            <Button Text="Submit Song" Command="{Binding SendCommand}"/>
+        </VerticalStackLayout>
+        </Border>
     </VerticalStackLayout>
 </ContentPage>

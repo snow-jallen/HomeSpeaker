@@ -8,12 +8,9 @@
              Title="ManageDevicesView"
              BackgroundColor="#1B1A55">
     <ScrollView>
-        <VerticalStackLayout Spacing="20" Padding="10">
+        <VerticalStackLayout Spacing="20" Padding="10" MaximumWidthRequest="550">
             <!--Add devices to be controlled. Do we also want to include play/pause functionality here?-->
-            <Border Stroke="Black" StrokeThickness="0" 
-                    StrokeShape="RoundRectangle 10"
-                    BackgroundColor="#2E236C"
-                    WidthRequest="550">
+            <Border >
                 <VerticalStackLayout Spacing="10" Padding="10">
                     <Entry Placeholder="Name here" Text="{Binding Name}" BackgroundColor="White" />
                     <Entry Placeholder="Url here" Text="{Binding Path}" BackgroundColor="White" />
@@ -23,11 +20,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Border Stroke="Black" StrokeThickness="0" 
-                    StrokeShape="RoundRectangle 10"
-                    BackgroundColor="#2E236C"
-                    Margin="10"
-                    WidthRequest="550">
+            <Border>
                 <VerticalStackLayout Padding="15,20,15,20">
                     <CollectionView ItemsSource="{Binding Devices}">
                         <CollectionView.ItemTemplate>
