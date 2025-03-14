@@ -23,7 +23,6 @@
                                 <Span Text="{StaticResource VolumeIcon}" FontFamily="FontAwesomeSolid"/>
                                 <Span Text="  "/>
                                 <Span Text="{Binding Volume}"/>
-
                             </FormattedString>
                         </Label.FormattedText>
                     </Label>
@@ -31,8 +30,11 @@
                     <Slider Maximum="100"
                             Minimum="0"
                             Value="{Binding VolumeInput, Mode=TwoWay}"
-                            ValueChanged="OnSliderValueChanged" />
-                    
+                            MaximumTrackColor="#615fa3"
+                            DragCompletedCommand="{Binding SetVolumeCommand}"
+                            MinimumTrackColor="#4599a8"
+                            ThumbColor="#4599a8"/>
+
                     <Button Text="Stop" 
                             Command="{Binding StopPlayingCommand}"/>
                 </VerticalStackLayout>
