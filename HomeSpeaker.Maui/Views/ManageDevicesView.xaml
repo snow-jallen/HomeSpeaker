@@ -9,7 +9,6 @@
              BackgroundColor="#1B1A55">
     <ScrollView>
         <VerticalStackLayout Spacing="20" Padding="10" MaximumWidthRequest="550">
-            <!--Add devices to be controlled. Do we also want to include play/pause functionality here?-->
             <Border >
                 <VerticalStackLayout Spacing="10" Padding="10">
                     <Entry Placeholder="Name here" Text="{Binding Name}" BackgroundColor="White" />
