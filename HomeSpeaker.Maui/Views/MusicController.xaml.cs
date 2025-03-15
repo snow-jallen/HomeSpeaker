@@ -22,4 +22,9 @@ public partial class MusicController : ContentPage
         //await _vm.Initialize();
     }
 
+    private void OnSearchBarTextChanged(object sender, TextChangedEventArgs e)
+    {
+        _vm.LoadFilteredSongsCommand.Execute(null);
+    }
+
 }

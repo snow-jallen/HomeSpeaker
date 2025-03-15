@@ -56,8 +56,9 @@
                 <VerticalStackLayout>
                      <SearchBar Placeholder="Search songs"
                                 Text="{Binding FilterInput, Mode=TwoWay}"
-                                SearchCommand="{Binding LoadFilteredSongsCommand}"
+                                TextChanged="OnSearchBarTextChanged"
                                 BackgroundColor="White" />
+                                <!-- SearchCommand="{Binding LoadFilteredSongsCommand}" -->
 
                     <CollectionView ItemsSource="{Binding Songs}">
                         <CollectionView.ItemTemplate>
