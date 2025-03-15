@@ -29,9 +29,9 @@ namespace HomeSpeaker.Maui.ViewModels
             // Song may take awhile to upload
             Songs = new ObservableCollection<SongViewModel>();
             var _songs = await Client.GetAllSongsAsync();
-            foreach(SongViewModel song in _songs)
+            foreach (SongViewModel song in _songs)
                 Songs.Add(song);
-            Volume = await Client.GetVolumeAsync();     
+            Volume = await Client.GetVolumeAsync();
         }
 
         [RelayCommand]
@@ -50,6 +50,26 @@ namespace HomeSpeaker.Maui.ViewModels
 
         [ObservableProperty]
         private int volumeInput;
+
+        [ObservableProperty]
+        private string filterInput;
+
+        [RelayCommand]
+        private async Task LoadFilteredSongs()
+        {
+            // use FilterInput
+            // filter by name and/or artist?
+
+            var allSongs = await Client.GetAllSongsAsync();
+            var filteredSongs = allSongs.Where(s => s.Name.Contains(FilterInput, StringComparison.OrdinalIgnoreCase) || s.Artist.Contains(FilterInput, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            Songs.Clear();
+
+            foreach (SongViewModel song in filteredSongs)
+            {
+                Songs.Add(song);
+            }
+        }
 
 
         [RelayCommand]

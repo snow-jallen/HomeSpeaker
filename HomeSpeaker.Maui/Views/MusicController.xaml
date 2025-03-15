@@ -20,9 +20,12 @@
                     <Label HorizontalOptions="Center" FontSize="18">
                         <Label.FormattedText>
                             <FormattedString>
-                                <Span Text="{StaticResource VolumeIcon}" FontFamily="FontAwesomeSolid"/>
+                                <Span Text="{StaticResource VolumeIcon}" 
+                                      FontFamily="FontAwesomeSolid"
+                                      TextColor="White"/>
                                 <Span Text="  "/>
-                                <Span Text="{Binding Volume}"/>
+                                <Span Text="{Binding Volume}"
+                                        TextColor="White"/>
                             </FormattedString>
                         </Label.FormattedText>
                     </Label>
@@ -51,6 +54,11 @@
             <!-- list of songs from the YouTube cache -->
             <Border Margin="10,0,10,0">
                 <VerticalStackLayout>
+                     <SearchBar Placeholder="Search songs"
+                                Text="{Binding FilterInput, Mode=TwoWay}"
+                                SearchCommand="{Binding LoadFilteredSongsCommand}"
+                                BackgroundColor="White" />
+
                     <CollectionView ItemsSource="{Binding Songs}">
                         <CollectionView.ItemTemplate>
                             <DataTemplate x:DataType="pageModels:SongViewModel">
