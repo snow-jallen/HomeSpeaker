@@ -119,6 +119,7 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
     private void ToggleEdit()
     {
         IsEditing = !IsEditing;
+        Playlists = new ObservableCollection<string>(client.Playlists.Select(p => p.PlaylistName));
     }
 
     [ObservableProperty]
