@@ -119,16 +119,17 @@ public class HomeSpeakerClientService
     public async Task PlayPlaylistAsync(string playlistName)
     {
         await _client.PlayPlaylistAsync(new PlayPlaylistRequest { PlaylistName = playlistName });
+        await Sync();
     }
 
     public async Task Sync()
     {
+        _queue = new List<SongViewModel>(await GetPlayQueueAsync());
+
         var playlists = await GetPlaylistsAsync();
         _playlists = new List<PlaylistModel>();
         foreach (var playlist in playlists)
             _playlists.Add(new PlaylistModel(playlist, this));
-
-        _queue = new List<SongViewModel>(await GetPlayQueueAsync());
     }
 
     public async Task AddSongToPlaylist(string playlistName, SongViewModel song)

@@ -22,7 +22,6 @@ namespace HomeSpeaker.Maui.ViewModels
         public void Sync()
         {
             Songs = new ObservableCollection<SongViewModel>(_client.Queue);
-            OnPropertyChanged(nameof(Songs));
         }
 
         [RelayCommand]
