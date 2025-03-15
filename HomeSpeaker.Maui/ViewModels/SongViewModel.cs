@@ -119,11 +119,19 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
     private void ToggleEdit()
     {
         IsEditing = !IsEditing;
-        Playlists = new ObservableCollection<string>(client.Playlists.Select(p => p.PlaylistName));
+        PlaylistMenuOpen = false;
     }
 
     [ObservableProperty]
-    private string selectedPlaylist;
+    private bool playlistMenuOpen;
+
+    [RelayCommand]
+    private void TogglePlaylists()
+    {
+        PlaylistMenuOpen = !PlaylistMenuOpen;
+        IsEditing = false;
+        Playlists = new ObservableCollection<string>(client.Playlists.Select(p => p.PlaylistName));
+    }
 
     [ObservableProperty]
     private ObservableCollection<string> playlists;
@@ -136,6 +144,7 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
     private async Task AddToPlaylist()
     {
         await client.AddSongToPlaylist(PlaylistName, this);
+        PlaylistMenuOpen = false;
     }
 
     private bool CanAddSongToPlaylist() => PlaylistName != null;
