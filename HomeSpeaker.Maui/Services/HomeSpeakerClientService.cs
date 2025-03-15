@@ -21,6 +21,12 @@ public class HomeSpeakerClientService
     private DeviceViewerService deviceViewerService;
     private List<PlaylistModel> _playlists { get; set; } = new();
     public List<PlaylistModel> Playlists { get => _playlists; }
+
+    private List<SongViewModel> _queue = new();
+
+    public List<SongViewModel> Queue { get => _queue; }
+
+    public event EventHandler QueueChanged;
     public HomeSpeakerClientService(string path)
     {
         var channel = GrpcChannel.ForAddress(path);
@@ -118,8 +124,11 @@ public class HomeSpeakerClientService
     public async Task Sync()
     {
         var playlists = await GetPlaylistsAsync();
+        _playlists = new List<PlaylistModel>();
         foreach (var playlist in playlists)
             _playlists.Add(new PlaylistModel(playlist, this));
+
+        _queue = new List<SongViewModel>(await GetPlayQueueAsync());
     }
 
     public async Task AddSongToPlaylist(string playlistName, SongViewModel song)
@@ -131,6 +140,28 @@ public class HomeSpeakerClientService
     public async Task RemoveSongToPlaylist(string playListName, SongViewModel song)
     {
         await RemoveFromPlaylistAsync(playListName, song.Path);
+        await Sync();
+    }
+
+    public async Task<IEnumerable<SongViewModel>> GetPlayQueueAsync()
+    {
+        var queue = new List<SongViewModel>();
+        var queueResponse = _client.GetPlayQueue(new GetSongsRequest());
+        await foreach (var reply in queueResponse.ResponseStream.ReadAllAsync())
+        {
+            queue.AddRange(reply.Songs.Select(s => s.ToSongViewModel(this)));
+        }
+        return queue;
+    }
+    public async Task ClearQueueAsync()
+    {
+        await _client.PlayerControlAsync(new PlayerControlRequest { ClearQueue = true });
+        await Sync();
+    }
+
+    public async Task ShuffleQueueAsync()
+    {
+        await _client.ShuffleQueueAsync(new ShuffleQueueRequest());
         await Sync();
     }
 }

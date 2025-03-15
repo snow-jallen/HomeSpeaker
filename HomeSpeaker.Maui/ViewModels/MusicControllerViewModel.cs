@@ -96,5 +96,11 @@ namespace HomeSpeaker.Maui.ViewModels
         {
             await Shell.Current.GoToAsync("Playlists", new Dictionary<string, object> { { "device", Device } });
         }
+
+        [RelayCommand]
+        private async Task NavigateToQueue()
+        {
+            await Shell.Current.GoToAsync("Queue", new Dictionary<string, object> { { "device", Device } });
+        }
     }
 }

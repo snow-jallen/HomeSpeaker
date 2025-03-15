@@ -45,6 +45,8 @@
 
             <Border Margin="10,0,10,0">
                 <VerticalStackLayout>
+                    <Button Text="Queue" Command="{Binding NavigateToQueueCommand}" 
+                            Margin="5"/>
                     <Button Text="Upload From Home" Command="{Binding CreateNewCommand}"
                             Margin="5"/>
                     <Button Text="Search Youtube" Command="{Binding NavigateToYoutubeCommand}"

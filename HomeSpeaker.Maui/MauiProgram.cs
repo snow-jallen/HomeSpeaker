@@ -46,6 +46,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<ManageDevicesViewModel>();
         builder.Services.AddTransient<MusicControllerViewModel>();
         builder.Services.AddScoped<PlaylistViewModel>();
+        builder.Services.AddScoped<QueueViewModel>();
         return builder;
     }
 }
