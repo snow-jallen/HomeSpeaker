@@ -7,6 +7,7 @@ using HomeSpeaker.Maui.Services;
 using HomeSpeaker.Shared;
 using CommunityToolkit.Maui.Alerts;
 using CommunityToolkit.Maui.Core;
+using System.Collections.ObjectModel;
 
 namespace HomeSpeaker.Maui.ViewModels;
 
@@ -46,8 +47,6 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
     {
         await client.PlaySongAsync(SongId);
     }
-
-
 
     // update metadata functionality
 
@@ -122,6 +121,23 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
         IsEditing = !IsEditing;
     }
 
+    [ObservableProperty]
+    private string selectedPlaylist;
+
+    [ObservableProperty]
+    private ObservableCollection<string> playlists;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(AddToPlaylistCommand))]
+    private string playlistName;
+
+    [RelayCommand(CanExecute = nameof(CanAddSongToPlaylist))]
+    private async Task AddToPlaylist()
+    {
+        await client.AddSongToPlaylist(PlaylistName, this);
+    }
+
+    private bool CanAddSongToPlaylist() => PlaylistName != null;
 }
 
 public partial class SongGroup : List<SongViewModel>

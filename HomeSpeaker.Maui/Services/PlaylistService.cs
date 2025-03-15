@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using HomeSpeaker.Maui.Models;
 using HomeSpeaker.Maui.ViewModels;
 using HomeSpeaker.Shared;
 using System;
@@ -10,21 +11,15 @@ using System.Threading.Tasks;
 
 namespace HomeSpeaker.Maui.Services
 {
-    public class PlaylistService
+    public class PlaylistService(HomeSpeakerClientService _client)
     {
-        public Dictionary<string, PlaylistViewModel> _playlists;
-        public HomeSpeakerClientService _client;
-        public PlaylistService(HomeSpeakerClientService client) 
-        { 
-           _client = client;
-           _playlists = new Dictionary<string, PlaylistViewModel>();
-           Sync();
-        }
+        public Dictionary<string, PlaylistModel> _playlists = new();
+
         public async Task Sync()
         {
             var playlists = await _client.GetPlaylistsAsync();
             foreach (var playlist in playlists)
-                _playlists.Add(playlist.PlaylistName, new PlaylistViewModel(playlist, _client));
+                _playlists.Add(playlist.PlaylistName, new PlaylistModel(playlist, _client));
         }
         
         public async Task AddSongToPlaylist(string playlistName, SongViewModel song)
@@ -37,24 +32,6 @@ namespace HomeSpeaker.Maui.Services
         {
             await _client.RemoveFromPlaylistAsync(playListName, song.Path);
             await Sync();
-        }
-    }
-
-    public partial class PlaylistViewModel : ObservableObject
-    {
-        [ObservableProperty]
-        public string playlistName;
-
-        [ObservableProperty]
-        public ObservableCollection<SongViewModel> songs;
-
-        public HomeSpeakerClientService _client;
-
-        public PlaylistViewModel(PlaylistMessage playlist, HomeSpeakerClientService client)
-        {
-            _client = client;
-            PlaylistName = playlist.PlaylistName;
-            Songs = new ObservableCollection<SongViewModel>(playlist.Songs.Select(s => s.ToSongViewModel(_client)));
         }
     }
 }
