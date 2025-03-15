@@ -21,7 +21,7 @@
                                     <Label Text="{Binding PlaylistName}" Grid.Column="0" TextColor="White"/>
                                     <Button Text="Songs" Grid.Column="1" HorizontalOptions="End" Command="{Binding SeeSongsCommand}"/>
                                 </Grid>
-                                <VerticalStackLayout IsVisible="{Binding SongsAreVisible}" Padding="5" Spacing="10">
+                                <VerticalStackLayout IsVisible="{Binding SongsAreVisible}">
                                     <Grid ColumnDefinitions="2*, *, *, *" RowDefinitions="*, *">
                                         <Label Text="Song:" 
                                                TextColor="White" 
