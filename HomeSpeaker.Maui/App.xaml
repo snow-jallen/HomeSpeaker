@@ -14,8 +14,10 @@
             <x:String x:Key="DownloadIcon">&#xf019;</x:String>
             <x:String x:Key="VolumeIcon">&#xf027;</x:String>
             <x:String x:Key="LeftArrow">&#xf060;</x:String>
-            
-            
+            <x:String x:Key="CaretDown">&#xf0d7;</x:String>
+            <x:String x:Key="CaretUp">&#xf0d8;</x:String> 
+
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

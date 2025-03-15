@@ -23,17 +23,31 @@ namespace HomeSpeaker.Maui.Models
         [ObservableProperty]
         private bool songsAreVisible;
 
+        [ObservableProperty]
+        private bool songsAreNotVisible;
+
         public HomeSpeakerClientService _client;
 
         public PlaylistModel(PlaylistMessage playlist, HomeSpeakerClientService client)
         {
             _client = client;
             SongsAreVisible = false;
+            SongsAreNotVisible = true;
             PlaylistName = playlist.PlaylistName;
             Songs = new ObservableCollection<SongViewModel>(playlist.Songs.Select(s => s.ToSongViewModel(_client)));
         }
 
         [RelayCommand]
-        private void SeeSongs() => SongsAreVisible = !SongsAreVisible;
+        private void SeeSongs()
+        {
+            SongsAreVisible = !SongsAreVisible;
+            SongsAreNotVisible = !SongsAreVisible;
+        }
+
+        [RelayCommand]
+        private async Task PlaySongs()
+        {
+            await _client.PlayPlaylistAsync(PlaylistName);
+        }
     }
 }
