@@ -51,6 +51,8 @@
                             Margin="10"/>
                     <Button Text="Search Youtube" Command="{Binding NavigateToYoutubeCommand}"
                             Margin="10"/>
+                    <Button Text="See Playlists" Command="{Binding NavigateToPlaylistsCommand}" 
+                            Margin="10"/>
                     <CollectionView ItemsSource="{Binding Songs}">
                         <CollectionView.ItemTemplate>
                             <DataTemplate x:DataType="pageModels:SongViewModel">
@@ -92,10 +94,11 @@
                                                 Margin="0,10,0,10"
                                                 BackgroundColor="#7a3c41"/>
                                         </Grid>
+                                        <Entry Placeholder="Playlist name here" Text="{Binding PlaylistName}" />
                                         <Picker Title="Playlist"
                                                 ItemsSource="{Binding Playlists}"
                                                 SelectedItem="{Binding SelectedPlaylist}"/>
-                                        <Button />
+                                        <Button Text="Add Song" Command="{Binding AddToPlaylistCommand}" />
                                     </VerticalStackLayout>
                                 </VerticalStackLayout>
                             </DataTemplate>
