@@ -20,11 +20,13 @@
                                 <Grid ColumnDefinitions="1*,2*">
                                     <Label Text="{Binding PlaylistName}" Grid.Column="0" TextColor="White"/>
                                     <Button Text="{StaticResource CaretUp}" 
+                                                 FontFamily="FontAwesomeSolid"
                                                  IsVisible="{Binding SongsAreVisible}" 
                                                  Grid.Column="1"
                                                  Command="{Binding SeeSongsCommand}"
                                                  HorizontalOptions="Center"/>
                                     <Button Text="{StaticResource CaretDown}" 
+                                                 FontFamily="FontAwesomeSolid"
                                                  IsVisible="{Binding SongsAreNotVisible}" 
                                                  Grid.Column="1"
                                                  Command="{Binding SeeSongsCommand}"

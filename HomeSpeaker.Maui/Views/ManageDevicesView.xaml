@@ -24,7 +24,7 @@
                     <CollectionView ItemsSource="{Binding Devices}">
                         <CollectionView.ItemTemplate>
                             <DataTemplate x:DataType="models:DeviceModel">
-                                <Grid RowDefinitions="*,*" ColumnDefinitions="2*,1*,1*" ColumnSpacing="10">
+                                <Grid RowDefinitions="*,*" ColumnDefinitions="3*,1*,1*" ColumnSpacing="10">
                                     <Label Text="{Binding Name, StringFormat='{0}'}" 
                                            FontSize="24" 
                                            FontAttributes="Bold" 
@@ -41,7 +41,7 @@
                                             Grid.Row="0" 
                                             Grid.ColumnSpan="2"
                                             Grid.RowSpan="2"
-                                            WidthRequest="250"/>
+                                            MaximumWidthRequest="200"/>
                                 </Grid>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
