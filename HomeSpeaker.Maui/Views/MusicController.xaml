@@ -54,8 +54,9 @@
             <!-- list of songs from the YouTube cache -->
             <Border Margin="10,0,10,0">
                 <VerticalStackLayout>
-                     <SearchBar Placeholder="Search songs"
+                     <SearchBar Placeholder="A highly visible search bar"
                                 Text="{Binding FilterInput, Mode=TwoWay}"
+                                TextColor="Black"
                                 TextChanged="OnSearchBarTextChanged"
                                 BackgroundColor="White" />
                                 <!-- SearchCommand="{Binding LoadFilteredSongsCommand}" -->
