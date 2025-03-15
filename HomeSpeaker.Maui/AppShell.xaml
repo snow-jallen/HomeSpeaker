@@ -25,8 +25,4 @@
         Title="YouTubeCache"
         ContentTemplate="{DataTemplate local:YouTubeView}"
         Route="YouTube"/>
-    <ShellContent
-        Title="ManagePlaylists"
-        ContentTemplate="{DataTemplate local:ManagePlaylists}"
-        Route="ManagePlaylists"/>
 </Shell>

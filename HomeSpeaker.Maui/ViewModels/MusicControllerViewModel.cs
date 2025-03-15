@@ -74,7 +74,7 @@ namespace HomeSpeaker.Maui.ViewModels
         [RelayCommand]
         private async Task NavigateToPlaylists()
         {
-            await Shell.Current.GoToAsync("/Playlists", new Dictionary<string, object> { { "device", Device } });
+            await Shell.Current.GoToAsync("Playlists", new Dictionary<string, object> { { "device", Device } });
         }
     }
 }

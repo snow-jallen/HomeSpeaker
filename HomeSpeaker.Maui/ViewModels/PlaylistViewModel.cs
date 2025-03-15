@@ -13,6 +13,7 @@ namespace HomeSpeaker.Maui.ViewModels
 {
     public partial class PlaylistViewModel : ObservableObject, IQueryAttributable
     {
+        private DeviceModel device;
         private HomeSpeakerClientService client;
 
         [ObservableProperty]
@@ -26,7 +27,8 @@ namespace HomeSpeaker.Maui.ViewModels
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)
         {
-            client = (HomeSpeakerClientService)query["device"];
+            device = (DeviceModel)query["device"];
+            client = device._grpcClient;
             Sync();
         }
     }
