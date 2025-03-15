@@ -17,21 +17,26 @@
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="models:PlaylistModel">
                             <VerticalStackLayout Padding="5" Spacing="10">
-                                <Grid ColumnDefinitions="1*,2*">
-                                    <Label Text="{Binding PlaylistName}" Grid.Column="0" TextColor="White"/>
+                                <Grid ColumnDefinitions="3*,1*,1*">
+                                    <Label Text="{Binding PlaylistName}" Grid.Column="0" FontSize="22" TextColor="White"/>
                                     <Button Text="{StaticResource CaretUp}" 
                                                  FontFamily="FontAwesomeSolid"
                                                  IsVisible="{Binding SongsAreVisible}" 
                                                  Grid.Column="1"
                                                  Command="{Binding SeeSongsCommand}"
-                                                 HorizontalOptions="Center"/>
+                                                 HorizontalOptions="End" />
                                     <Button Text="{StaticResource CaretDown}" 
                                                  FontFamily="FontAwesomeSolid"
                                                  IsVisible="{Binding SongsAreNotVisible}" 
                                                  Grid.Column="1"
                                                  Command="{Binding SeeSongsCommand}"
-                                                 HorizontalOptions="Center"/>
-                                    <Button Text="Play" Grid.Column="1" HorizontalOptions="End" Command="{Binding PlaySongsCommand}" />
+                                                 HorizontalOptions="End" />
+                                    <Button Text="Play" 
+                                            Grid.Column="2" 
+                                            HorizontalOptions="End" 
+                                            WidthRequest="100" 
+                                            Command="{Binding PlaySongsCommand}" 
+                                            BackgroundColor="#4599a8" />
                                 </Grid>
                                 <VerticalStackLayout IsVisible="{Binding SongsAreVisible}">
                                     <Grid ColumnDefinitions="2*, *, *, *" RowDefinitions="*, *">

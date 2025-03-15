@@ -46,11 +46,11 @@
             <Border Margin="10,0,10,0">
                 <VerticalStackLayout>
                     <Button Text="Upload From Home" Command="{Binding CreateNewCommand}"
-                            Margin="10"/>
+                            Margin="5"/>
                     <Button Text="Search Youtube" Command="{Binding NavigateToYoutubeCommand}"
-                            Margin="10,0,10,10"/>
+                            Margin="5"/>
                     <Button Text="See Playlists" Command="{Binding NavigateToPlaylistsCommand}" 
-                            Margin="10"/>
+                            Margin="5"/>
                 </VerticalStackLayout>
             </Border>
             <!-- list of songs from the YouTube cache -->
@@ -117,7 +117,8 @@
                                         <Picker Title="Playlist"
                                                 ItemsSource="{Binding Playlists}"
                                                 SelectedItem="{Binding PlaylistName}" 
-                                                TextColor="White"/>
+                                                TitleColor="White"
+                                                BackgroundColor="White"/>
                                         <Button Text="Add Song" Command="{Binding AddToPlaylistCommand}" />
                                     </VerticalStackLayout>
                                 </VerticalStackLayout>
