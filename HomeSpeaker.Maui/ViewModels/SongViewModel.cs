@@ -93,7 +93,7 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
         }
         else
         {
-            Message = "Song metadata could not be updated. Before attempting to edit a song's details, please ensure it is not currently playing.";
+            Message = "Song metadata could not be updated. Before attempting to edit a song's details, please ensure music is not currently playing.";
         }
 
         IsEditing = false;

@@ -32,6 +32,7 @@ namespace HomeSpeaker.Maui.ViewModels
             foreach (SongViewModel song in _songs)
                 Songs.Add(song);
             Volume = await Client.GetVolumeAsync();
+            VolumeInput = Volume;
         }
 
         [RelayCommand]

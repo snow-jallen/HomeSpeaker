@@ -7,7 +7,7 @@
              Title="MusicController"
              BackgroundColor="#1B1A55">
     <ScrollView>
-        <VerticalStackLayout Spacing="20" Padding="10" MaximumWidthRequest="600">
+        <VerticalStackLayout Spacing="20" Padding="10" MaximumWidthRequest="700">
 
             <!-- music controls (stop, volume) -->
             <Border Margin="10,0,10,0">
