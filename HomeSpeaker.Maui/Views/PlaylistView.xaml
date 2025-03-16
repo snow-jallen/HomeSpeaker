@@ -18,7 +18,7 @@
                         <DataTemplate x:DataType="models:PlaylistModel">
                             <VerticalStackLayout Padding="5" Spacing="10">
                                 <Grid ColumnDefinitions="3*,1*,1*">
-                                    <Label Text="{Binding PlaylistName}" Grid.Column="0" FontSize="22" TextColor="White"/>
+                                    <Label Text="{Binding PlaylistName}" Grid.Column="0" FontSize="20" TextColor="White"/>
                                     <Button Text="{StaticResource CaretUp}" 
                                                  FontFamily="FontAwesomeSolid"
                                                  IsVisible="{Binding SongsAreVisible}" 
