@@ -12,23 +12,18 @@
                     StrokeShape="RoundRectangle 10"
                     BackgroundColor="#2E236C"
                     WidthRequest="550">
-                <Grid ColumnDefinitions="*,*">
-                    <Button Text="Shuffle" 
+                <VerticalStackLayout>
+                    <Grid ColumnDefinitions="*,*">
+                        <Button Text="Shuffle" 
                             Command="{Binding ShuffleCommand}" 
                             Grid.Column="0" 
                             HorizontalOptions="Fill" 
                             BackgroundColor="#4599a8" />
-                    <Button Text="Clear" 
+                        <Button Text="Clear" 
                             Command="{Binding ClearCommand}" 
                             Grid.Column="1" 
                             HorizontalOptions="Fill" />
-                </Grid>
-            </Border>
-            <Border Stroke="Black" StrokeThickness="0" 
-                    StrokeShape="RoundRectangle 10"
-                    BackgroundColor="#2E236C"
-                    WidthRequest="550">
-                <VerticalStackLayout>
+                    </Grid>
                     <CollectionView ItemsSource="{Binding Songs}">
                         <CollectionView.ItemTemplate>
                             <DataTemplate x:DataType="pageModels:SongViewModel">
