@@ -7,6 +7,7 @@ using HomeSpeaker.Maui.Services;
 using HomeSpeaker.Shared;
 using CommunityToolkit.Maui.Alerts;
 using CommunityToolkit.Maui.Core;
+using System.Collections.ObjectModel;
 
 namespace HomeSpeaker.Maui.ViewModels;
 
@@ -46,8 +47,6 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
     {
         await client.PlaySongAsync(SongId);
     }
-
-
 
     // update metadata functionality
 
@@ -94,7 +93,7 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
         }
         else
         {
-            Message = "Song metadata could not be updated. Before attempting to edit a song's details, please ensure it is not currently playing.";
+            Message = "Song metadata could not be updated. Before attempting to edit a song's details, please ensure music is not currently playing.";
         }
 
         IsEditing = false;
@@ -120,8 +119,35 @@ public partial class SongViewModel(HomeSpeakerClientService client) : Observable
     private void ToggleEdit()
     {
         IsEditing = !IsEditing;
+        PlaylistMenuOpen = false;
     }
 
+    [ObservableProperty]
+    private bool playlistMenuOpen;
+
+    [RelayCommand]
+    private void TogglePlaylists()
+    {
+        PlaylistMenuOpen = !PlaylistMenuOpen;
+        IsEditing = false;
+        Playlists = new ObservableCollection<string>(client.Playlists.Select(p => p.PlaylistName));
+    }
+
+    [ObservableProperty]
+    private ObservableCollection<string> playlists;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(AddToPlaylistCommand))]
+    private string playlistName;
+
+    [RelayCommand(CanExecute = nameof(CanAddSongToPlaylist))]
+    private async Task AddToPlaylist()
+    {
+        await client.AddSongToPlaylist(PlaylistName, this);
+        PlaylistMenuOpen = false;
+    }
+
+    private bool CanAddSongToPlaylist() => PlaylistName != null;
 }
 
 public partial class SongGroup : List<SongViewModel>

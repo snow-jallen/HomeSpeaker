@@ -4,14 +4,14 @@ namespace HomeSpeaker.Maui.Views;
 
 public partial class MusicController : ContentPage
 {
-    
-	private readonly MusicControllerViewModel _vm;
-	public MusicController(MusicControllerViewModel vm)
-	{
-		InitializeComponent();
-		_vm = vm;
-		BindingContext = _vm;
-	}
+
+    private readonly MusicControllerViewModel _vm;
+    public MusicController(MusicControllerViewModel vm)
+    {
+        InitializeComponent();
+        _vm = vm;
+        BindingContext = _vm;
+    }
     protected async override void OnNavigatedTo(NavigatedToEventArgs e)
     {
         //await _vm.Initialize();
@@ -19,13 +19,12 @@ public partial class MusicController : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-		//await _vm.Initialize();
-	}
+        //await _vm.Initialize();
+    }
 
-	private async void OnSliderValueChanged(object sender, ValueChangedEventArgs e)
+    private void OnSearchBarTextChanged(object sender, TextChangedEventArgs e)
     {
-        _vm.VolumeInput = (int)e.NewValue;
-        await _vm.SetVolumeAsync();
+        _vm.LoadFilteredSongsCommand.Execute(null);
     }
 
 }

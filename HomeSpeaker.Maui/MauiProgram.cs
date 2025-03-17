@@ -17,12 +17,14 @@ public static class MauiProgram
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+                fonts.AddFont("fa-solid.otf", "FontAwesomeSolid");
             })
             .RegisterViewModels()
             .RegisterViews();
 
         builder.Services.AddSingleton<HomeSpeakerClientFactory>();
         builder.Services.AddSingleton<DeviceViewerService>();
+        builder.Services.AddScoped<PlaylistServiceFactory>();
 
 #if DEBUG
 		builder.Logging.AddDebug();
@@ -40,8 +42,11 @@ public static class MauiProgram
 
     public static MauiAppBuilder RegisterViewModels(this MauiAppBuilder builder)
     {
+        builder.Services.AddScoped<YouTubeViewModel>();
         builder.Services.AddSingleton<ManageDevicesViewModel>();
         builder.Services.AddTransient<MusicControllerViewModel>();
+        builder.Services.AddScoped<PlaylistViewModel>();
+        builder.Services.AddScoped<QueueViewModel>();
         return builder;
     }
 }
