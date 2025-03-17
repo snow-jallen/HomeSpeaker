@@ -58,7 +58,7 @@
             <!-- list of songs from the YouTube cache -->
             <Border Margin="10,0,10,0">
                 <VerticalStackLayout>
-                     <SearchBar Placeholder="A highly visible search bar"
+                     <SearchBar Placeholder="Filter by song name or artist"
                                 Text="{Binding FilterInput, Mode=TwoWay}"
                                 TextColor="Black"
                                 TextChanged="OnSearchBarTextChanged"
