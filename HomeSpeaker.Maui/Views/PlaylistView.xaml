@@ -16,7 +16,7 @@
                 <CollectionView ItemsSource="{Binding Playlists}">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="models:PlaylistModel">
-                            <VerticalStackLayout Padding="5" Spacing="10">
+                            <VerticalStackLayout Padding="10" Spacing="10">
                                 <Grid ColumnDefinitions="3*,1*,1*">
                                     <Label Text="{Binding PlaylistName}" Grid.Column="0" FontSize="20" TextColor="White"/>
                                     <Button Text="{StaticResource CaretUp}" 
@@ -62,23 +62,31 @@
                                             Grid.ColumnSpan="3"
                                             WidthRequest="425"/>
                                     </Grid>
-                                    <Button Text ="Shuffle" Command="{Binding ShuffleSongsCommand}"/>
+                                    <Button Text ="Shuffle" Command="{Binding ShuffleSongsCommand}" Margin="10" WidthRequest="400"
+                                            HorizontalOptions="Start"/>
                                     <CollectionView ItemsSource="{Binding Songs}">
                                         <CollectionView.ItemTemplate>
                                             <DataTemplate x:DataType="pageModels:SongViewModel">
-                                                <Grid ColumnDefinitions="2*, *, *, *">
+                                                <Grid ColumnDefinitions="3*, 2*, 2*, *">
                                                     <Label Text="{Binding Name}" 
                                                            TextColor="White" 
                                                            Grid.Column="0" 
-                                                           HorizontalOptions="Start" />
+                                                           HorizontalOptions="Start"
+                                                           Margin="10,10,10,10"
+                                                           FontSize="13"
+                                                           LineBreakMode="TailTruncation"/>
                                                     <Label Text="{Binding Album}" 
                                                            TextColor="White"
                                                            Grid.Column="1"
-                                                           HorizontalOptions="Start" />
+                                                           HorizontalOptions="Start"
+                                                           Margin="0,10,0,10"
+                                                           FontSize="12"/>
                                                     <Label Text="{Binding Artist}" 
                                                            TextColor="White"
                                                            Grid.Column="2"
-                                                           HorizontalOptions="Start"/>
+                                                           HorizontalOptions="Start"
+                                                           Margin="0,10,0,10"
+                                                           FontSize="12"/>
                                                    
                                                 </Grid>
                                             </DataTemplate>
