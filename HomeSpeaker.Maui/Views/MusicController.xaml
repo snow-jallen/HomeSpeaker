@@ -32,9 +32,9 @@
                             Minimum="0"
                             Value="{Binding VolumeInput, Mode=TwoWay}"
                             ValueChanged="OnSliderValueChanged" /> -->
-
                         <Button Text="Set" Command="{Binding SetVolumeCommand}"/>
                     </HorizontalStackLayout>
+                    <Label Text="{Binding CpsName, FallbackValue= 'No Song Selected'}"/>
                     <Button Text="Stop" 
                             Command="{Binding StopPlayingCommand}"/>
                 </VerticalStackLayout>

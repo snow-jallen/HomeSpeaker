@@ -68,7 +68,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer
         playerProcess.BeginErrorReadLine();
     }
 
-    public void PlaySong(Song song)
+    public void PlaySong(Song song, float startTime = 0)
     {
         startedPlaying = true;
         currentSong = song;

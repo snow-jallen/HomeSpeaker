@@ -86,6 +86,7 @@ message GetSongsReply {
 }
 message PlaySongRequest {
     int32 SongId=1;
+    google.protobuf.Duration StartTime=2;
 }
 message PlaySongReply {
     bool Ok=1;

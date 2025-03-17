@@ -18,6 +18,8 @@ public partial class ManageDevicesViewModel : ObservableObject
     string path;
     [ObservableProperty]
     string name;
+    [ObservableProperty]
+    string errors = null;
     DeviceViewerService dvs { set; get; }
     public ManageDevicesViewModel(DeviceViewerService dvs, HomeSpeakerClientFactory factory)
     {
@@ -29,14 +31,34 @@ public partial class ManageDevicesViewModel : ObservableObject
         _factory = factory;
     }
     [RelayCommand]
-    void AddServer()
+    async Task AddServer()
     {
         //var ser = new Server() { Name = this.Name, Path = this.Path };
         //dvs.Servers.Add(ser);
         //servers.Add(ser);
+        Errors = null;
+        try
+        {
+            var client = _factory.Create(Path);
 
-        var client = _factory.Create(Path);
-        Devices.Add(new DeviceModel(Name, Path, client));
+            try
+            {
+                await client.GetPlayerStatusAsync();
+            }
+            catch (Exception ex)
+            {
+                Errors = "Unable to connect to server check validity";
+            }
+            finally
+            {
+                if (Errors == null)
+                    Devices.Add(new DeviceModel(Name, Path, client));
+            }
+        }
+        catch (Exception ex)
+        {
+            Errors = "Invalid Url syntax";
+        }
     }
     //[ObservableProperty]
     //ObservableCollection<Server> servers;

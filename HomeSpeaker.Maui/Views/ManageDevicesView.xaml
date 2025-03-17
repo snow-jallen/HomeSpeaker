@@ -15,6 +15,7 @@
                     BackgroundColor="#2E236C"
                     WidthRequest="550">
                 <VerticalStackLayout Spacing="10" Padding="10">
+                    <Label Text="{Binding Errors, TargetNullValue='Please enter server data below'}"/>
                     <Entry Placeholder="Name here" Text="{Binding Name}" BackgroundColor="White" />
                     <Entry Placeholder="Url here" Text="{Binding Path}" BackgroundColor="White" />
                     <Button Text="Add Client" 
