@@ -22,6 +22,7 @@ public static class MauiProgram
             .RegisterViewModels()
             .RegisterViews();
 
+        builder.Services.AddSingleton<PersistanceService>();
         builder.Services.AddSingleton<HomeSpeakerClientFactory>();
         builder.Services.AddSingleton<DeviceViewerService>();
         builder.Services.AddScoped<PlaylistServiceFactory>();

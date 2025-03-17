@@ -152,12 +152,15 @@ public class HomeSpeakerService : HomeSpeakerBase
         logger.LogInformation("PlaySong request for {songid}", request.SongId);
 
         var song = library.Songs.FirstOrDefault(s => s.SongId == request.SongId);
+        float x=0;
+        if(request.StartTime != null)
+            x=(float)request.StartTime.Seconds;
 
         var reply = new PlaySongReply { Ok = false };
         if (song != null)
         {
             _ = Task.Run(() =>
-                musicPlayer.PlaySong(song)
+                musicPlayer.PlaySong(song, x)
             );
             reply.Ok = true;
         }

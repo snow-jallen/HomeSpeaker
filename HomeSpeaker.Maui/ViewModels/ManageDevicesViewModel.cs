@@ -18,25 +18,61 @@ public partial class ManageDevicesViewModel : ObservableObject
     string path;
     [ObservableProperty]
     string name;
+    [ObservableProperty]
+    string errors = null;
     DeviceViewerService dvs { set; get; }
-    public ManageDevicesViewModel(DeviceViewerService dvs, HomeSpeakerClientFactory factory)
+    PersistanceService persistanceService;
+    public ManageDevicesViewModel(DeviceViewerService dvs, HomeSpeakerClientFactory factory, PersistanceService persistanceService)
     {
         Devices = new ObservableCollection<DeviceModel>();
         Path = "";
         Name = "";
         //this.dvs = dvs;
         //Servers = new(dvs.Servers);
+        this.persistanceService = persistanceService;
         _factory = factory;
     }
+    public async Task Initialize()
+    {
+        foreach(var kvpair in persistanceService.DeviceNames)
+        {
+            if (kvpair.Value.Length>1&&kvpair.Value[1]!="")
+                Devices.Add(new(kvpair.Value[0], kvpair.Value[1], _factory.Create(kvpair.Value[1])));
+        }    
+        
+    }
     [RelayCommand]
-    void AddServer()
+    async Task AddServer()
     {
         //var ser = new Server() { Name = this.Name, Path = this.Path };
         //dvs.Servers.Add(ser);
         //servers.Add(ser);
+        Errors = null;
+        try
+        {
+            var client = _factory.Create(Path);
 
-        var client = _factory.Create(Path);
-        Devices.Add(new DeviceModel(Name, Path, client));
+            try
+            {
+                await client.GetPlayerStatusAsync();
+            }
+            catch (Exception ex)
+            {
+                Errors = "Unable to connect to server check validity";
+            }
+            finally
+            {
+                if (Errors == null)
+                {
+                    Devices.Add(new DeviceModel(Name, Path, client));
+                    persistanceService.AddDevice(Name, Path);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Errors = "Invalid Url syntax";
+        }
     }
     //[ObservableProperty]
     //ObservableCollection<Server> servers;

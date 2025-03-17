@@ -62,6 +62,7 @@
                                             Grid.ColumnSpan="3"
                                             WidthRequest="425"/>
                                     </Grid>
+                                    <Button Text ="Shuffle" Command="{Binding ShuffleSongsCommand}"/>
                                     <CollectionView ItemsSource="{Binding Songs}">
                                         <CollectionView.ItemTemplate>
                                             <DataTemplate x:DataType="pageModels:SongViewModel">
@@ -78,6 +79,7 @@
                                                            TextColor="White"
                                                            Grid.Column="2"
                                                            HorizontalOptions="Start"/>
+                                                   
                                                 </Grid>
                                             </DataTemplate>
                                         </CollectionView.ItemTemplate>

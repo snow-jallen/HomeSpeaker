@@ -4,7 +4,7 @@ namespace HomeSpeaker.Server;
 
 public interface IMusicPlayer
 {
-    void PlaySong(Song song);
+    void PlaySong(Song song, float startTime=0);
     void PlayStream(string streamUrl);
     bool StillPlaying { get; }
     void EnqueueSong(Song song);

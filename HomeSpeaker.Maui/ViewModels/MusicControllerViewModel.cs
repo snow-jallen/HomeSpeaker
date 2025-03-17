@@ -15,6 +15,9 @@ namespace HomeSpeaker.Maui.ViewModels
 {
     public partial class MusicControllerViewModel : ObservableObject, IQueryAttributable
     {
+        private GetStatusReply? currentPausedSong;
+        [ObservableProperty]
+        string? cpsName;
         private HomeSpeakerClientService Client { get; set; }
 
         [ObservableProperty]
@@ -25,6 +28,7 @@ namespace HomeSpeaker.Maui.ViewModels
 
         public async Task Initialize()
         {
+            
             // Page is updating, but the server isn't. We initialize everytime we navigate to this page.
             // Song may take awhile to upload
             Songs = new ObservableCollection<SongViewModel>();
@@ -33,6 +37,17 @@ namespace HomeSpeaker.Maui.ViewModels
                 Songs.Add(song);
             Volume = await Client.GetVolumeAsync();
             VolumeInput = Volume;
+        }
+        [RelayCommand]
+        async Task ResumePlaying()
+        {
+            await Client.PlaySongAsync(currentPausedSong.CurrentSong.SongId, currentPausedSong.Elapsed);
+        }
+        [RelayCommand]
+        async Task PausePlaying()
+        {
+            currentPausedSong = await Client.PausePlayingAsync();
+            CpsName = currentPausedSong.CurrentSong.Name;
         }
 
         [RelayCommand]

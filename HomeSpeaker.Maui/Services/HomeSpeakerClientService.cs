@@ -53,6 +53,14 @@ public class HomeSpeakerClientService
         var response = await _client.GetPlaylistsAsync(request);
         return response.Playlists.ToList();
     }
+    public async Task SetOrderPlaylist(string playListName, IEnumerable<string> songs)
+    {
+        foreach (var song in songs)
+        {
+            await _client.RemoveSongFromPlaylistAsync(new() { SongPath = song, PlaylistName = playListName });
+            await _client.AddSongToPlaylistAsync(new() { PlaylistName = playListName, SongPath = song });
+        }
+    }
 
     public async Task<IEnumerable<SongViewModel>> GetAllSongsAsync()
     {
@@ -67,10 +75,16 @@ public class HomeSpeakerClientService
     }
 
     public async Task StopPlayingAsync() => await _client.PlayerControlAsync(new PlayerControlRequest { Stop = true });
-
-    public async Task<bool> PlaySongAsync(int songId)
+    public async Task<GetStatusReply> PausePlayingAsync()
     {
-        var request = new PlaySongRequest { SongId = songId };
+        var result = await _client.GetPlayerStatusAsync(new GetStatusRequest() { });
+        await StopPlayingAsync();
+        return result;
+    }
+
+    public async Task<bool> PlaySongAsync(int songId, Google.Protobuf.WellKnownTypes.Duration? start = null)
+    {
+        var request = new PlaySongRequest { SongId = songId, StartTime=start };
         var response = await _client.PlaySongAsync(request);
         return response.Ok;
     }
