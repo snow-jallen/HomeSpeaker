@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿//using Android.OS;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HomeSpeaker.Maui.Services;
 using HomeSpeaker.Maui.ViewModels;
@@ -26,6 +27,8 @@ namespace HomeSpeaker.Maui.Models
         [ObservableProperty]
         private bool songsAreNotVisible;
 
+        public Task Shuffle;
+
         public HomeSpeakerClientService _client;
 
         public PlaylistModel(PlaylistMessage playlist, HomeSpeakerClientService client)
@@ -36,7 +39,13 @@ namespace HomeSpeaker.Maui.Models
             PlaylistName = playlist.PlaylistName;
             Songs = new ObservableCollection<SongViewModel>(playlist.Songs.Select(s => s.ToSongViewModel(_client)));
         }
-
+        [RelayCommand]
+        private async Task  ShuffleSongs()
+        {
+            Random r = new();
+            Songs = new ObservableCollection<SongViewModel>(Songs.ToList().OrderBy<SongViewModel, int>((p)=>r.Next()));
+            await Shuffle;
+        }
         [RelayCommand]
         private void SeeSongs()
         {

@@ -4,9 +4,18 @@ namespace HomeSpeaker.Maui.Views;
 
 public partial class ManageDevicesView : ContentPage
 {
-	public ManageDevicesView(ManageDevicesViewModel vm)
+    ManageDevicesViewModel vm;
+
+    public ManageDevicesView(ManageDevicesViewModel vm)
 	{
 		InitializeComponent();
         BindingContext = vm;
+        this.vm = vm;
     }
+    protected override async void OnAppearing()
+    {
+        await vm.Initialize();
+
+    }
+    
 }

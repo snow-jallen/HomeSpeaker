@@ -53,6 +53,14 @@ public class HomeSpeakerClientService
         var response = await _client.GetPlaylistsAsync(request);
         return response.Playlists.ToList();
     }
+    public async Task SetOrderPlaylist(string playListName, IEnumerable<string> songs)
+    {
+        foreach (var song in songs)
+        {
+            await _client.RemoveSongFromPlaylistAsync(new() { SongPath = song, PlaylistName = playListName });
+            await _client.AddSongToPlaylistAsync(new() { PlaylistName = playListName, SongPath = song });
+        }
+    }
 
     public async Task<IEnumerable<SongViewModel>> GetAllSongsAsync()
     {
