@@ -43,8 +43,10 @@ namespace HomeSpeaker.Maui.Models
         private async Task  ShuffleSongs()
         {
             Random r = new();
-            Songs = new ObservableCollection<SongViewModel>(Songs.ToList().OrderBy<SongViewModel, int>((p)=>r.Next()));
+            songs = new ObservableCollection<SongViewModel>(Songs.ToList().OrderBy<SongViewModel, int>((p)=>r.Next()));
             await Shuffle;
+            OnPropertyChanged(nameof(Songs));
+            
         }
         [RelayCommand]
         private void SeeSongs()

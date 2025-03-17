@@ -24,7 +24,7 @@ namespace HomeSpeaker.Maui.ViewModels
             Playlists = new ObservableCollection<PlaylistModel>(client.Playlists);
             foreach(var playlist in Playlists)
             {
-                playlist.Shuffle = client.SetOrderPlaylist(playlist.playlistName, playlist.songs.Select<SongViewModel, string>((p) => p.Path));
+                playlist.Shuffle = client.SetOrderPlaylist(playlist.PlaylistName, playlist.Songs.Select<SongViewModel, string>((p) => p.Path));
             }
             OnPropertyChanged(nameof(Playlists));
         }
