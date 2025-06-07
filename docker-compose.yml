@@ -17,7 +17,8 @@ services:
     - "/home/piuser/cert:/certs"
     - "/sys/class/backlight/10-0045:/sys/class/backlight/10-0045"
     depends_on:
-    - aspire    environment:
+    - aspire    
+    environment:
     - MediaFolder=/music
     - ALSA_CARD=Headphones
     - SqliteConnectionString=Data Source=/music/HomeSpeaker.db
