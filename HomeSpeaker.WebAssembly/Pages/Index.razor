@@ -3,6 +3,8 @@
 @inject ILogger<Index> logger
 @using Microsoft.Fast.Components.FluentUI
 
+<TemperatureMonitor />
+
 <div class="row">
     <div class="col">
         <FluentSearch class="w-100 mb-2" Placeholder="Search / Filter" DisplayName="Search & Filter" ValueChanged="(s)=>FilterValue = s" ValueExpression="() => FilterValue" />

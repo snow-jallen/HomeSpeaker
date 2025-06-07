@@ -1,0 +1,167 @@
+@using HomeSpeaker.WebAssembly.Models.Temperature
+@using HomeSpeaker.WebAssembly.Services
+@inject ITemperatureService TemperatureService
+@inject ILogger<TemperatureMonitor> Logger
+@implements IDisposable
+
+<div class="temperature-card mb-4">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-thermometer-half me-2"></i>
+                Temperature Monitor
+            </h5>
+        </div>
+        <div class="card-body">
+            @if (temperatureStatus != null)
+            {
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="text-center">
+                            <h6 class="text-muted">Outside</h6>
+                            <div class="temperature-display">
+                                <span class="h4 text-info">@FormatTemperature(temperatureStatus.OutsideTemperature)</span>
+                            </div>
+                            <small class="text-muted">Current temperature</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="text-center">
+                            <h6 class="text-muted">Girl's Room</h6>
+                            <div class="temperature-display">
+                                <span class="h4 text-success">@FormatTemperature(temperatureStatus.YoungerGirlsRoomTemperature)</span>
+                            </div>
+                            <small class="text-muted">Indoor temperature</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="text-center">
+                            <h6 class="text-muted">Window Recommendation</h6>
+                            <div class="recommendation-display">
+                                @if (temperatureStatus.OutsideTemperature.HasValue && temperatureStatus.YoungerGirlsRoomTemperature.HasValue)
+                                {
+                                    @if (temperatureStatus.ShouldWindowsBeClosed)
+                                    {
+                                        <span class="badge bg-warning fs-6 p-2">
+                                            <i class="fas fa-window-close me-1"></i>
+                                            Keep Closed
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success fs-6 p-2">
+                                            <i class="fas fa-window-restore me-1"></i>
+                                            Open Window
+                                        </span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary fs-6 p-2">
+                                        <i class="fas fa-question me-1"></i>
+                                        No Data
+                                    </span>
+                                }
+                            </div>
+                            <small class="text-muted">Based on temperature difference</small>
+                        </div>
+                    </div>
+                </div>
+                @if (temperatureStatus.OutsideTemperature.HasValue && temperatureStatus.YoungerGirlsRoomTemperature.HasValue)
+                {
+                    <div class="text-center mt-2">
+                        <small class="text-muted">
+                            Temperature difference: @temperatureStatus.TemperatureDifference.ToString("F1")°F
+                        </small>
+                    </div>
+                }
+                <div class="text-center">
+                    <small class="text-muted">
+                        Last updated: @lastUpdated.ToString("HH:mm:ss")
+                    </small>
+                </div>
+            }
+            else if (isLoading)
+            {
+                <div class="text-center p-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div class="mt-2">Loading temperature data...</div>
+                </div>
+            }
+            else
+            {
+                <div class="text-center p-4">
+                    <div class="text-muted">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Unable to load temperature data
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm mt-2" @onclick="RefreshTemperatureData">
+                        <i class="fas fa-sync-alt me-1"></i>
+                        Retry
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .temperature-card .temperature-display {
+        margin: 0.5rem 0;
+    }
+    
+    .temperature-card .recommendation-display {
+        margin: 0.5rem 0;
+    }
+    
+    .temperature-card .badge {
+        white-space: nowrap;
+    }
+</style>
+
+@code {
+    private TemperatureStatus? temperatureStatus;
+    private DateTime lastUpdated = DateTime.Now;
+    private Timer? refreshTimer;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshTemperatureData();
+        
+        // Set up auto-refresh every 5 minutes
+        refreshTimer = new Timer(async _ => await InvokeAsync(RefreshTemperatureData), null, TimeSpan.Zero, TimeSpan.FromMinutes(5));
+    }
+
+    private async Task RefreshTemperatureData()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+            
+            temperatureStatus = await TemperatureService.GetTemperatureStatusAsync();
+            lastUpdated = DateTime.Now;
+            isLoading = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh temperature data");
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string FormatTemperature(double? temperature)
+    {
+        return temperature.HasValue ? $"{temperature.Value:F1}°F" : "N/A";
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}
