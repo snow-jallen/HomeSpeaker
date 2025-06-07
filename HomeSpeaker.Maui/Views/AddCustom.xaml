@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pageModels="clr-namespace:HomeSpeaker.Maui.ViewModels"
+             x:Class="HomeSpeaker.Maui.Views.AddCustom"
+             x:DataType="pageModels:FilePickerViewModel"
+             Title="AddCustom"
+             BackgroundColor="#1B1A55">
+    <VerticalStackLayout Spacing="20" Padding="10" Margin="10" MaximumWidthRequest="800">
+        <Border Padding="15">
+        <VerticalStackLayout Spacing="10">
+            <Label Text="Track Name" TextColor="White"/>
+            <Entry Text="{Binding Name, FallbackValue='input name here'}" BackgroundColor="White"/>
+            <Label Text="{Binding Song.Name, FallbackValue='-'}" TextColor="White"/>
+            <Label Text="{Binding Result.FileName, FallbackValue='No File Set'}" TextColor="White"/>
+            <Button
+                Text="Pick your music"
+                Command="{Binding PickFileCommand}"/>
+            <Button Text="Submit Song" Command="{Binding SendCommand}"/>
+        </VerticalStackLayout>
+        </Border>
+    </VerticalStackLayout>
+</ContentPage>

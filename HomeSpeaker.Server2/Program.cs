@@ -3,8 +3,11 @@ using HomeSpeaker.Server.Data;
 using HomeSpeaker.Server2;
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Services;
+using HomeSpeaker.Shared;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Runtime.InteropServices;
+using System.Xml.Linq;
 
 const string LocalCorsPolicy = nameof(LocalCorsPolicy);
 
@@ -35,19 +38,27 @@ if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
     builder.Services.AddSingleton<WindowsMusicPlayer>();
 }
+else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+{
+    builder.Services.AddSingleton<MacMusicPlayer>();
+}
 else
 {
     builder.Services.AddSingleton<LinuxSoxMusicPlayer>();
 }
 
+
 builder.Services.AddSingleton<IMusicPlayer>(services =>
 {
     IMusicPlayer actualPlayer = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
         ? services.GetRequiredService<WindowsMusicPlayer>()
-        : services.GetRequiredService<LinuxSoxMusicPlayer>();
+        : RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+            ? services.GetRequiredService<MacMusicPlayer>()
+            : services.GetRequiredService<LinuxSoxMusicPlayer>();
 
     return new ChattyMusicPlayer(actualPlayer);
 });
+
 builder.Services.AddSingleton<Mp3Library>();
 builder.Services.AddHostedService<LifecycleEvents>();
 
@@ -77,6 +88,38 @@ app.MapRazorPages();
 app.MapGrpcService<GreeterService>();
 app.MapGrpcService<HomeSpeakerService>();
 app.MapGet("/ns", (IConfiguration config) => config["NIGHTSCOUT_URL"] ?? string.Empty);
+app.MapPost("/files/add", async (IFormFileCollection file, Mp3Library lib, IConfiguration config) =>
+{
+    var destinationPath = Path.Combine(config[ConfigKeys.MediaFolder]!, "Mp3Uploads");
+    if (!Directory.Exists(destinationPath))
+        Directory.CreateDirectory(destinationPath);
+    destinationPath = Path.Combine(destinationPath, file.First().Name + ".mp3");
+    using (var fileStream = File.Open(destinationPath, FileMode.Create))
+    {
+        file.First().CopyTo(fileStream);
+    }
+    Song s = new Song() { Name = file.First().Name, Path = $"/HomeSpeakerMedia/Mp3Uploads/{file.First().Name}.mp3" };
+    try
+    {
+        using var mediaFile = MediaFile.Create(destinationPath);
+        mediaFile.SetArtist("Custom Cache");
+        mediaFile.SetAlbum("Custom Cache");
+        mediaFile.SetTitle(file.First().Name);
+    }
+    catch
+    {
+        // Media tagging is not critical
+    }
+    app.Logger.LogInformation("Finished caching {title}.  Saved to {destination}", file.First().Name, destinationPath);
+    //song.Path = $"/HomeSpeakerMedia/Mp3Uploads/{file.Name}.mp3";
+    //lib.Songs.Append(s);
+
+    // Sync MP3 Library to pull the new songs from disk
+    lib.SyncLibrary();
+    return Results.Ok();
+
+}).DisableAntiforgery();
+
 
 app.MapFallbackToFile("index.html");
 

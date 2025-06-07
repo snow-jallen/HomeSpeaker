@@ -4,6 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <DockerComposeProjectPath>..\docker-compose.dcproj</DockerComposeProjectPath>
+    <UserSecretsId>e470b24d-47db-4eb5-82e6-971c8a45a694</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Grpc.Net.Client.Web" Version="2.71.0" />

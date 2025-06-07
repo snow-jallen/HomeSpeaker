@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pageModels="clr-namespace:HomeSpeaker.Maui.ViewModels"
+             x:Class="HomeSpeaker.Maui.Views.MusicController"
+             x:DataType="pageModels:MusicControllerViewModel"
+             Title="MusicController"
+             BackgroundColor="#1B1A55">
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="10" MaximumWidthRequest="700">
+
+            <!-- music controls (stop, volume) -->
+            <Border Margin="10,0,10,0">
+                <VerticalStackLayout Spacing="10" Padding="10,0,10,10">
+                    <Label Text="{Binding Device.Name}" 
+                           FontSize="22"
+                           TextColor="White"
+                           FontAttributes="Bold" />
+
+                    <Label HorizontalOptions="Center" FontSize="18">
+                        <Label.FormattedText>
+                            <FormattedString>
+                                <Span Text="{StaticResource VolumeIcon}" 
+                                      FontFamily="FontAwesomeSolid"
+                                      TextColor="White"/>
+                                <Span Text="  "/>
+                                <Span Text="{Binding Volume}"
+                                        TextColor="White"/>
+                            </FormattedString>
+                        </Label.FormattedText>
+                    </Label>
+
+                    <Slider Maximum="100"
+                            Minimum="0"
+                            Value="{Binding VolumeInput, Mode=TwoWay}"
+                            MaximumTrackColor="#615fa3"
+                            DragCompletedCommand="{Binding SetVolumeCommand}"
+                            MinimumTrackColor="#4599a8"
+                            ThumbColor="#4599a8"/>
+
+                    <Button Text="Stop" 
+                            Command="{Binding StopPlayingCommand}"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Margin="10,0,10,0">
+                <VerticalStackLayout>
+                    <Button Text="Queue" Command="{Binding NavigateToQueueCommand}" 
+                            Margin="5"/>
+                    <Button Text="Upload From Home" Command="{Binding CreateNewCommand}"
+                            Margin="5"/>
+                    <Button Text="Search Youtube" Command="{Binding NavigateToYoutubeCommand}"
+                            Margin="5"/>
+                    <Button Text="See Playlists" Command="{Binding NavigateToPlaylistsCommand}" 
+                            Margin="5"/>
+                </VerticalStackLayout>
+            </Border>
+            <!-- list of songs from the YouTube cache -->
+            <Border Margin="10,0,10,0">
+                <VerticalStackLayout>
+                     <SearchBar Placeholder="Filter by song name or artist"
+                                Text="{Binding FilterInput, Mode=TwoWay}"
+                                TextColor="Black"
+                                TextChanged="OnSearchBarTextChanged"
+                                BackgroundColor="White" />
+                                <!-- SearchCommand="{Binding LoadFilteredSongsCommand}" -->
+                    <CollectionView ItemsSource="{Binding Songs}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="pageModels:SongViewModel">
+                                <VerticalStackLayout Padding="15,20,15,20">
+                                    <Label Text="{Binding SongId, StringFormat='Id: {0}'}" FontSize="15" TextColor="Gray"/>
+                                    <Label Text="{Binding Name, StringFormat='{0}'}" FontSize="22" FontAttributes="Bold" TextColor="White"/>
+                                    <Label Text="{Binding Artist, StringFormat='Artist: {0}'}" FontSize="19" TextColor="DarkGray"/>
+                                    <Label Text="{Binding Album, StringFormat='Album: {0}'}" FontSize="19" TextColor="DarkGray"/>
+
+                                    <Grid ColumnDefinitions="3*,1*,1*" ColumnSpacing="10">
+                                        <Button Text="Play" Command="{Binding PlaySongCommand}" 
+                                            Grid.Column="0" 
+                                            Margin="0,10,0,10" 
+                                            BackgroundColor="#4599a8"/>
+                                        <Button Text="Edit" 
+                                            Command="{Binding ToggleEditCommand}" 
+                                            Grid.Column="1" 
+                                            Margin="0,10,0,10"/>
+                                        <Button Text="Add to Playlist" 
+                                                Command="{Binding TogglePlaylistsCommand}"
+                                                Grid.Column="2"
+                                                Margin="0,10,0,10"/>
+                                    </Grid>
+
+                                    <!-- editable fields -->
+                                    <VerticalStackLayout
+                                        IsVisible="{Binding IsEditing}"
+                                        Padding="5"
+                                        Spacing="10">
+                                        <Entry Text="{Binding UpdatedSongName}" Placeholder="Song Name" BackgroundColor="White" TextColor="Black"/>
+                                        <Entry Text="{Binding UpdatedSongArtist}" Placeholder="Artist" BackgroundColor="White" TextColor="Black"/>
+                                        <Entry Text="{Binding UpdatedSongAlbum}" Placeholder="Album" BackgroundColor="White" TextColor="Black"/>
+
+                                        <Grid ColumnDefinitions="3*,1*" ColumnSpacing="10">
+                                            <Button Text="Save" 
+                                                Command="{Binding UpdateMetadataCommand}" 
+                                                Grid.Column="0" 
+                                                Margin="0,10,0,10"
+                                                BackgroundColor="#8280bf"/>
+                                            <Button Text="Cancel" 
+                                                Command="{Binding ToggleEditCommand}" 
+                                                Grid.Column="1" 
+                                                Margin="0,10,0,10"
+                                                BackgroundColor="#7a3c41"/>
+                                        </Grid>
+                                    </VerticalStackLayout>
+                                    <VerticalStackLayout
+                                        IsVisible="{Binding PlaylistMenuOpen}"
+                                        Padding="5"
+                                        Spacing="10">
+                                        <Label Text="To add a new playlist, use the text box and enter a new name" TextColor="White" />
+                                        <Entry Placeholder="Playlist name here" Text="{Binding PlaylistName}" />
+                                        <Picker Title="Playlist"
+                                                ItemsSource="{Binding Playlists}"
+                                                SelectedItem="{Binding PlaylistName}" 
+                                                TitleColor="White"
+                                                BackgroundColor="White"/>
+                                        <Button Text="Add Song" Command="{Binding AddToPlaylistCommand}" />
+                                    </VerticalStackLayout>
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

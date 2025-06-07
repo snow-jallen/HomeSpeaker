@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="HomeSpeaker.Maui.Views.YouTubeView"
+             Title="YouTubeView"
+             >
+    <ScrollView>
+
+        <VerticalStackLayout Spacing="20" Padding="10" Margin="10" MaximumWidthRequest="800">
+
+            <HorizontalStackLayout>
+                <Button Text="Back To Music Controller" 
+                        FontSize="13"
+                        BackgroundColor="#343275"
+                        Opacity="0.9"
+                        Command="{Binding Device.ControlCommand}"/>
+            </HorizontalStackLayout>
+
+            <Border Padding="15,15,15,0">
+                <VerticalStackLayout Spacing="15">
+                    <Label Text="Search Youtube"
+                           TextColor="White"/>
+                    <Entry Text="{Binding SearchTerm}"
+                   Placeholder="At least you can see this search box..."/>
+                    <Button Text="Search" Command="{Binding SearchCommand}"/>
+                    <VerticalStackLayout>
+                        <CollectionView ItemsSource="{Binding Videos}">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border>
+                                        <VerticalStackLayout>
+                                            <HorizontalStackLayout>
+                                                <Button HeightRequest="20" 
+                                                        WidthRequest="20" 
+                                                        Padding="0"
+                                                        Margin="10"
+                                                        Text="{StaticResource DownloadIcon}"
+                                                        FontFamily="FontAwesomeSolid"
+                                                        FontSize="14"
+                                                        Command="{Binding CacheVideoAsyncCommand}"
+                                                        HorizontalOptions="End"
+                                                        BackgroundColor="#4599a8"/>
+
+                                                <ScrollView Orientation="Horizontal">
+                                                    <HorizontalStackLayout>
+                                                        <Label Text="{Binding Name}" 
+                                                       VerticalOptions="Center"/>
+                                                        <Label Text="  |  " VerticalOptions="Center"/>
+                                                        <Label Text="{Binding Author, StringFormat='  {0}'}"
+                                                       VerticalOptions="Center"/>
+                                                    </HorizontalStackLayout>
+                                                </ScrollView>
+                                            </HorizontalStackLayout>
+                                            <ProgressBar Progress="{Binding ProgressValue}" IsVisible="{Binding IsnComplete}"/>
+                                        </VerticalStackLayout>
+                                    </Border>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -152,12 +152,15 @@ public class HomeSpeakerService : HomeSpeakerBase
         logger.LogInformation("PlaySong request for {songid}", request.SongId);
 
         var song = library.Songs.FirstOrDefault(s => s.SongId == request.SongId);
+        float x=0;
+        if(request.StartTime != null)
+            x=(float)request.StartTime.Seconds;
 
         var reply = new PlaySongReply { Ok = false };
         if (song != null)
         {
             _ = Task.Run(() =>
-                musicPlayer.PlaySong(song)
+                musicPlayer.PlaySong(song, x)
             );
             reply.Ok = true;
         }
@@ -327,5 +330,39 @@ public class HomeSpeakerService : HomeSpeakerBase
         logger.LogInformation("response: {response}", response);
 
         return new Empty();
+    }
+    public override async Task<UpdateSongMetadataReply> UpdateSongMetadata(UpdateSongMetadataRequest request, ServerCallContext context)
+    {
+        var song = library.Songs.FirstOrDefault(s => s.SongId == request.SongId);
+
+        if (musicPlayer.StillPlaying)
+        {
+            return new UpdateSongMetadataReply { Success = false };
+        }
+
+        if (song != null)
+        {
+            string filePath = song.Path;
+            if (!File.Exists(filePath))
+            {
+                logger.LogError("File not found: {FilePath}", filePath);
+                return new UpdateSongMetadataReply { Success = false };
+            }
+
+            using var mediaFile = MediaFile.Create(filePath);
+            mediaFile.SetTitle(request.SongName);
+            mediaFile.SetArtist(request.Artist);
+            mediaFile.SetAlbum(request.Album);
+
+            song.Name = request.SongName;
+            song.Artist = request.Artist;
+            song.Album = request.Album;
+
+            library.IsDirty = true;
+            logger.LogInformation("Updated metadata for {FilePath}", filePath);
+
+            return new UpdateSongMetadataReply { Success = true };
+        }
+        return new UpdateSongMetadataReply { Success = false };
     }
 }

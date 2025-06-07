@@ -25,6 +25,7 @@ public class HomeSpeakerService
         client = new HomeSpeakerClient(channel);
         this.logger = logger;
         _ = listenForEvents();
+        
     }
 
     public HomeSpeakerClient HomeSpeakerClient => client;

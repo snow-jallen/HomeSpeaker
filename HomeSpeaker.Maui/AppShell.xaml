@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="HomeSpeaker.Maui.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:local="clr-namespace:HomeSpeaker.Maui.Views"
+    Shell.FlyoutBehavior="Flyout"
+    Title="HomeSpeaker.Maui">
+
+    <ShellContent
+        Title="Devices"
+        ContentTemplate="{DataTemplate local:ManageDevicesView}"
+        Route="Devices" />
+    
+    <ShellContent
+        Title="Musica"
+        ContentTemplate="{DataTemplate local:MusicController}"
+        Route="Music" />
+
+    <ShellContent
+        Title="FileUpload"
+        ContentTemplate="{DataTemplate local:AddCustom}"
+        Route="Custom"/>
+    <ShellContent
+        Title="YouTubeCache"
+        ContentTemplate="{DataTemplate local:YouTubeView}"
+        Route="YouTube"/>
+</Shell>

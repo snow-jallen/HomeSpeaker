@@ -1,6 +1,7 @@
 ﻿using HomeSpeaker.Shared;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -12,8 +13,14 @@ public class WindowsMusicPlayer : IMusicPlayer
     {
         this.logger = logger;
         this.library = library;
+        x = new Process();
+        x.StartInfo.FileName = vlc;
+        x.StartInfo.Arguments = "-I rc --rc-host=localhost:4212 --rc-quiet";
+        x.StartInfo.UseShellExecute = true;
+        x.StartInfo.CreateNoWindow = true;
+        x.Start();
     }
-
+    DateTime? startTime;
     const string vlc = @"c:\program files\videolan\vlc\vlc.exe";
     private readonly ILogger<WindowsMusicPlayer> logger;
     private readonly Mp3Library library;
@@ -21,11 +28,13 @@ public class WindowsMusicPlayer : IMusicPlayer
     private PlayerStatus status = new();
     private Song? currentSong;
     private Song? stoppedSong;
+    private Process x;
     public PlayerStatus Status => (status ?? new PlayerStatus()) with { CurrentSong = currentSong };
 
     private bool startedPlaying = false;
 
-    public void PlaySong(Song song)
+
+    public void PlaySong(Song song, float startTime = 0)
     {
         currentSong = song;
         startedPlaying = true;
@@ -34,7 +43,7 @@ public class WindowsMusicPlayer : IMusicPlayer
 
         playerProcess = new Process();
         playerProcess.StartInfo.FileName = vlc;
-        playerProcess.StartInfo.Arguments = $"--play-and-exit \"{song.Path}\" --qt-start-minimized";
+        playerProcess.StartInfo.Arguments = $"--play-and-exit \"{song.Path}\" --qt-start-minimized --verbose=3 --start-time={startTime}";
         playerProcess.StartInfo.UseShellExecute = false;
         playerProcess.StartInfo.RedirectStandardOutput = true;
         playerProcess.StartInfo.RedirectStandardError = true;

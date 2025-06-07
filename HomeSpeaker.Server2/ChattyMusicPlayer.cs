@@ -37,9 +37,9 @@ public class ChattyMusicPlayer : IMusicPlayer
         return actualPlayer.GetVolume();
     }
 
-    public void PlaySong(Song song)
+    public void PlaySong(Song song, float startTime = 0)
     {
-        actualPlayer.PlaySong(song);
+        actualPlayer.PlaySong(song, startTime);
         PlayerEvent?.Invoke(this, "Played: " + song.Name);
     }
 
