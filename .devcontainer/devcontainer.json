@@ -1,0 +1,14 @@
+{
+  "name": "HomeSpeaker .NET 9 Codespace",
+  "image": "mcr.microsoft.com/devcontainers/dotnet:9.0",
+  "features": {},
+  "customizations": {
+    "vscode": {
+      "settings": {},
+      "extensions": [
+        "ms-dotnettools.csharp"
+      ]
+    }
+  },
+  "postCreateCommand": "dotnet --version"
+}
