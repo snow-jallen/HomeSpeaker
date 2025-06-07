@@ -347,3 +347,8 @@ healthchecksdb
 /HomeSpeaker.Server2/HomeSpeaker.db
 /HomeSpeaker.Server2/HomeSpeaker.db-shm
 /HomeSpeaker.Server2/HomeSpeaker.db-wal
+
+# Environment files with secrets
+.env
+.env.local
+.env.production
