@@ -1,6 +1,10 @@
 using System.Text.Json.Serialization;
 
-namespace HomeSpeaker.WebAssembly.Models.Temperature;
+using System.Collections.Generic;
+
+namespace HomeSpeaker.Shared.Temperature;
+
+#nullable enable
 
 public record Device
 {

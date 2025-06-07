@@ -1,4 +1,8 @@
-namespace HomeSpeaker.WebAssembly.Models.Temperature;
+using System;
+
+namespace HomeSpeaker.Shared.Temperature;
+
+#nullable enable
 
 public sealed class TemperatureStatus
 {

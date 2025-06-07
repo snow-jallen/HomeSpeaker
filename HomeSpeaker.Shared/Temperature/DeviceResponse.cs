@@ -1,7 +1,10 @@
 using System.Text.Json.Serialization;
-using HomeSpeaker.WebAssembly.Models.Temperature;
 
-namespace HomeSpeaker.WebAssembly.Models.Temperature;
+using System.Collections.Generic;
+
+namespace HomeSpeaker.Shared.Temperature;
+
+#nullable enable
 
 public sealed record DeviceResponse
 {

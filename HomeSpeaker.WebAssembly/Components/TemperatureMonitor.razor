@@ -1,4 +1,4 @@
-@using HomeSpeaker.WebAssembly.Models.Temperature
+@using HomeSpeaker.Shared.Temperature
 @using HomeSpeaker.WebAssembly.Services
 @inject ITemperatureService TemperatureService
 @inject ILogger<TemperatureMonitor> Logger
@@ -12,29 +12,58 @@
                 Temperature Monitor
             </h5>
         </div>
-        <div class="card-body">
-            @if (temperatureStatus != null)
-            {
-                <div class="row">
-                    <div class="col-md-4 mb-3">
+        <div class="card-body">            @if (temperatureStatus != null)
+            {                <div class="row">                    <div class="col-lg-3 col-md-6 mb-3">
                         <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-cloud-sun fa-2x" style="color: @GetTemperatureColor(temperatureStatus.OutsideTemperature)"></i>
+                            </div>
                             <h6 class="text-muted">Outside</h6>
                             <div class="temperature-display">
-                                <span class="h4 text-info">@FormatTemperature(temperatureStatus.OutsideTemperature)</span>
+                                <span class="h4" style="color: @GetTemperatureColor(temperatureStatus.OutsideTemperature)">@FormatTemperature(temperatureStatus.OutsideTemperature)</span>
                             </div>
                             <small class="text-muted">Current temperature</small>
                         </div>
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-lg-3 col-md-6 mb-3">
                         <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-female fa-2x" style="color: @GetTemperatureColor(temperatureStatus.YoungerGirlsRoomTemperature)"></i>
+                            </div>
                             <h6 class="text-muted">Girl's Room</h6>
                             <div class="temperature-display">
-                                <span class="h4 text-success">@FormatTemperature(temperatureStatus.YoungerGirlsRoomTemperature)</span>
+                                <span class="h4" style="color: @GetTemperatureColor(temperatureStatus.YoungerGirlsRoomTemperature)">@FormatTemperature(temperatureStatus.YoungerGirlsRoomTemperature)</span>
                             </div>
                             <small class="text-muted">Indoor temperature</small>
                         </div>
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-male fa-2x" style="color: @GetTemperatureColor(temperatureStatus.BoysRoomTemperature)"></i>
+                            </div>
+                            <h6 class="text-muted">Boy's Room</h6>
+                            <div class="temperature-display">
+                                <span class="h4" style="color: @GetTemperatureColor(temperatureStatus.BoysRoomTemperature)">@FormatTemperature(temperatureStatus.BoysRoomTemperature)</span>
+                            </div>
+                            <small class="text-muted">Indoor temperature</small>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-seedling fa-2x" style="color: @GetTemperatureColor(temperatureStatus.GreenhouseTemperature)"></i>
+                            </div>
+                            <h6 class="text-muted">Greenhouse</h6>
+                            <div class="temperature-display">
+                                <span class="h4" style="color: @GetTemperatureColor(temperatureStatus.GreenhouseTemperature)">@FormatTemperature(temperatureStatus.GreenhouseTemperature)</span>
+                            </div>
+                            <small class="text-muted">Greenhouse temperature</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
                         <div class="text-center">
                             <h6 class="text-muted">Window Recommendation</h6>
                             <div class="recommendation-display">
@@ -119,24 +148,37 @@
     .temperature-card .badge {
         white-space: nowrap;
     }
+    
+    .temperature-card .fas {
+        margin-bottom: 8px;
+        opacity: 0.8;
+    }
+    
+    .temperature-card .fas:hover {
+        opacity: 1;
+        transform: scale(1.1);
+        transition: all 0.2s ease-in-out;
+    }
 </style>
 
 @code {
     private TemperatureStatus? temperatureStatus;
     private DateTime lastUpdated = DateTime.Now;
     private Timer? refreshTimer;
-    private bool isLoading = true;
-
-    protected override async Task OnInitializedAsync()
+    private bool isLoading = true;    protected override async Task OnInitializedAsync()
     {
+        Logger.LogInformation("Initializing TemperatureMonitor component...");
+        
         await RefreshTemperatureData();
         
         // Set up auto-refresh every 5 minutes
         refreshTimer = new Timer(async _ => await InvokeAsync(RefreshTemperatureData), null, TimeSpan.Zero, TimeSpan.FromMinutes(5));
-    }
-
+    }    
+    
     private async Task RefreshTemperatureData()
     {
+        Logger.LogInformation("Refreshing temperature data...");
+
         try
         {
             isLoading = true;
@@ -150,14 +192,74 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to refresh temperature data");
+            Console.WriteLine($"Failed to refresh temperature data: {ex.Message}"); // Temporary - shows immediately
             isLoading = false;
             StateHasChanged();
         }
-    }
-
-    private string FormatTemperature(double? temperature)
+    }    private string FormatTemperature(double? temperature)
     {
         return temperature.HasValue ? $"{temperature.Value:F1}°F" : "N/A";
+    }
+
+    private string GetTemperatureColor(double? temperature)
+    {
+        if (!temperature.HasValue)
+            return "#6c757d"; // Gray for no data
+        
+        var temp = temperature.Value;
+        
+        // Temperature ranges and color mapping
+        // Cold: ≤ 40°F - Blue
+        // Cool: 41-60°F - Light Blue to Green 
+        // Comfortable: 61-75°F - Green
+        // Warm: 76-85°F - Yellow to Orange
+        // Hot: ≥ 86°F - Red to Dark Red
+        
+        if (temp <= 40)
+        {
+            // Very cold - Blue
+            return "#0066cc";
+        }
+        else if (temp <= 50)
+        {
+            // Cold - Light Blue
+            return "#3399ff";
+        }
+        else if (temp <= 60)
+        {
+            // Cool - Blue to Green
+            return "#00cccc";
+        }
+        else if (temp <= 70)
+        {
+            // Comfortable - Green
+            return "#00cc66";
+        }
+        else if (temp <= 75)
+        {
+            // Comfortable - Light Green
+            return "#66cc00";
+        }
+        else if (temp <= 80)
+        {
+            // Warm - Yellow-Green
+            return "#cccc00";
+        }
+        else if (temp <= 85)
+        {
+            // Warm - Orange
+            return "#ff9900";
+        }
+        else if (temp <= 95)
+        {
+            // Hot - Red-Orange
+            return "#ff6600";
+        }
+        else
+        {
+            // Very hot - Dark Red
+            return "#cc0000";
+        }
     }
 
     public void Dispose()

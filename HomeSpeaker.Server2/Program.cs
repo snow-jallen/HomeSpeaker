@@ -51,6 +51,9 @@ builder.Services.AddSingleton<IMusicPlayer>(services =>
 builder.Services.AddSingleton<Mp3Library>();
 builder.Services.AddHostedService<LifecycleEvents>();
 
+// Add temperature service
+builder.Services.AddHttpClient<TemperatureService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -77,6 +80,20 @@ app.MapRazorPages();
 app.MapGrpcService<GreeterService>();
 app.MapGrpcService<HomeSpeakerService>();
 app.MapGet("/ns", (IConfiguration config) => config["NIGHTSCOUT_URL"] ?? string.Empty);
+
+// Temperature API endpoint
+app.MapGet("/api/temperature", async (TemperatureService temperatureService, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var temperatureStatus = await temperatureService.GetTemperatureStatusAsync(cancellationToken);
+        return Results.Ok(temperatureStatus);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to get temperature data: {ex.Message}");
+    }
+});
 
 app.MapFallbackToFile("index.html");
 

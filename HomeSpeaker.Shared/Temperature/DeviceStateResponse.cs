@@ -1,7 +1,11 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace HomeSpeaker.WebAssembly.Models.Temperature;
+using System.Linq;
+
+namespace HomeSpeaker.Shared.Temperature;
+
+#nullable enable
 
 public sealed record DeviceStateResponse(
     [property: JsonPropertyName("payload")] DeviceStatePayload Payload

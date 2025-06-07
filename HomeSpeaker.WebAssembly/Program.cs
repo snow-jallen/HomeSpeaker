@@ -11,6 +11,10 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
+// Configure logging to show in browser console
+builder.Logging.SetMinimumLevel(LogLevel.Information);
+builder.Logging.AddFilter("Microsoft.AspNetCore.Components.WebAssembly", LogLevel.Warning);
+
 builder.Services.AddScoped((_) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 builder.Services.AddSingleton<HomeSpeakerService>();
 
@@ -22,7 +26,7 @@ builder.Services.AddMudServices();
 
 try
 {
-    var endpoint = "http://localhost:4318";// builder.Configuration["OtlpExporter"];
+    var endpoint = builder.Configuration["OtlpExporter"] ?? "http://localhost:4318";
     Console.WriteLine($"Trying to setup otel tracing @ {endpoint}");
     builder.Services.AddOpenTelemetry();
     builder.Services.ConfigureOpenTelemetryTracerProvider(tracerProviderBuilder =>

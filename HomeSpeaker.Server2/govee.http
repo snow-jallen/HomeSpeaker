@@ -1,0 +1,18 @@
+### Get the list of devices
+GET https://openapi.api.govee.com/router/api/v1/user/devices 
+Content-Type: application/json
+Govee-API-Key: f22b455c-f300-4079-82b8-2dc7cdafe651
+
+### Get values for a specific device
+
+POST https://openapi.api.govee.com/router/api/v1/device/state
+Content-Type: application/json
+Govee-API-Key: f22b455c-f300-4079-82b8-2dc7cdafe651
+
+{
+    "requestId": "uuid",
+    "payload": {
+        "sku": "H5100",
+        "device": "1C:17:34:30:38:C9:42:22"
+    }
+}
