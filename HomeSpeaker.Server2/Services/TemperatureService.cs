@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using HomeSpeaker.Shared.Temperature;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace HomeSpeaker.Server2.Services;
 
@@ -9,12 +10,16 @@ public sealed class TemperatureService
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
     private readonly ILogger<TemperatureService> _logger;
+    private readonly IMemoryCache _cache;
+    
+    private const string CacheKey = "temperature-status";
+    private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(2);
 
-    public TemperatureService(HttpClient httpClient, IConfiguration configuration, ILogger<TemperatureService> logger)
-    {
+    public TemperatureService(HttpClient httpClient, IConfiguration configuration, ILogger<TemperatureService> logger, IMemoryCache cache)    {
         _httpClient = httpClient;
         _configuration = configuration;
         _logger = logger;
+        _cache = cache;
 
         // Configure the HttpClient for Govee API
         var apiBaseUrl = _configuration["Temperature:ApiBaseUrl"];
@@ -78,9 +83,33 @@ public sealed class TemperatureService
             // Return a default temperature if device is not available
             return 70.0; // Default room temperature
         }
+    }    public async Task<TemperatureStatus> GetTemperatureStatusAsync(CancellationToken cancellationToken = default)
+    {
+        // Try to get cached value
+        if (_cache.TryGetValue(CacheKey, out TemperatureStatus? cachedValue))
+        {
+            _logger.LogInformation("Returning cached temperature status");
+            return cachedValue!;
+        }
+
+        // Cache miss, fetch new data
+        _logger.LogInformation("Temperature cache miss, fetching fresh data...");
+        var temperatureStatus = await GetTemperatureStatusInternalAsync(cancellationToken);
+        
+        // Cache the result with absolute expiration
+        var cacheOptions = new MemoryCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = CacheExpiration,
+            Priority = CacheItemPriority.Normal
+        };
+        
+        _cache.Set(CacheKey, temperatureStatus, cacheOptions);
+        _logger.LogInformation("Temperature data cached for {Minutes} minutes", CacheExpiration.TotalMinutes);
+        
+        return temperatureStatus;
     }
 
-    public async Task<TemperatureStatus> GetTemperatureStatusAsync(CancellationToken cancellationToken = default)
+    private async Task<TemperatureStatus> GetTemperatureStatusInternalAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Getting temperature status...");
         var threshold = _configuration.GetValue<double>("TemperatureThreshold", 2.0);

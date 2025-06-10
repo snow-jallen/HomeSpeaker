@@ -130,9 +130,8 @@
         Logger.LogInformation("Initializing BloodSugarMonitor component...");
         
         await RefreshBloodSugarData();
-        
-        // Set up auto-refresh every 5 minutes
-        refreshTimer = new Timer(async _ => await InvokeAsync(RefreshBloodSugarData), null, TimeSpan.Zero, TimeSpan.FromMinutes(5));
+          // Set up auto-refresh every 1 minute (server has smart cache based on reading age)
+        refreshTimer = new Timer(async _ => await InvokeAsync(RefreshBloodSugarData), null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
     }
     
     private async Task RefreshBloodSugarData()

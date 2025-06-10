@@ -170,9 +170,8 @@
         Logger.LogInformation("Initializing TemperatureMonitor component...");
         
         await RefreshTemperatureData();
-        
-        // Set up auto-refresh every 5 minutes
-        refreshTimer = new Timer(async _ => await InvokeAsync(RefreshTemperatureData), null, TimeSpan.Zero, TimeSpan.FromMinutes(5));
+          // Set up auto-refresh every 1 minute (server has 2-minute cache)
+        refreshTimer = new Timer(async _ => await InvokeAsync(RefreshTemperatureData), null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
     }    
     
     private async Task RefreshTemperatureData()

@@ -51,11 +51,16 @@ builder.Services.AddSingleton<IMusicPlayer>(services =>
 builder.Services.AddSingleton<Mp3Library>();
 builder.Services.AddHostedService<LifecycleEvents>();
 
-// Add temperature service
-builder.Services.AddHttpClient<TemperatureService>();
+// Add memory cache for caching services
+builder.Services.AddMemoryCache();
 
-// Add blood sugar service
+// Add temperature service with caching
+builder.Services.AddHttpClient<TemperatureService>();
+builder.Services.AddSingleton<TemperatureService>();
+
+// Add blood sugar service with smart caching
 builder.Services.AddHttpClient<BloodSugarService>();
+builder.Services.AddSingleton<BloodSugarService>();
 
 var app = builder.Build();
 
