@@ -5,13 +5,9 @@
 @inject IConfiguration config
 
 <div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <div class="navbar-brand">
+    <div class="container-fluid">        <div class="navbar-brand">
             <a class="navbar-brand" href="">Home Speaker</a>
-            @if (nightscoutUrl?.Length > 0)
-            {
-                <NavLink href="nightscout"><img src="/OIP.png" width="24" alt="nightscout" /></NavLink>
-            }            @if (showLogs ?? false)
+            @if (showLogs ?? false)
             {
                 <NavLink href="aspire"><img src="/aspire-dashboard.png" width="24" alt="aspire" /></NavLink>
             }
@@ -55,12 +51,19 @@
             <NavLink class="nav-link" href="youtube">
                 <span class="oi oi-video" aria-hidden="true"></span> YouTube
             </NavLink>
-        </div>
-        <div class="nav-item px-3">
+        </div>        <div class="nav-item px-3">
             <NavLink class="nav-link" href="playlists">
                 <span class="oi oi-list-rich" aria-hidden="true"></span> Playlists
             </NavLink>
         </div>
+        @if (nightscoutUrl?.Length > 0)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="nightscout">
+                    <span class="oi oi-pulse" aria-hidden="true"></span> NightScout
+                </NavLink>
+            </div>
+        }
     </nav>
 </div>
 
