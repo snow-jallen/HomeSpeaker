@@ -21,6 +21,9 @@ builder.Services.AddSingleton<HomeSpeakerService>();
 // Register temperature service
 builder.Services.AddScoped<ITemperatureService, TemperatureService>();
 
+// Register blood sugar service
+builder.Services.AddScoped<IBloodSugarService, BloodSugarService>();
+
 builder.Services.AddFluentUIComponents();
 builder.Services.AddMudServices();
 

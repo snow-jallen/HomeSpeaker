@@ -3,7 +3,14 @@
 @inject ILogger<Index> logger
 @using Microsoft.Fast.Components.FluentUI
 
-<TemperatureMonitor />
+<div class="row">
+    <div class="col-xl-6 col-lg-12">
+        <TemperatureMonitor />
+    </div>
+    <div class="col-xl-6 col-lg-12">
+        <BloodSugarMonitor />
+    </div>
+</div>
 
 <div class="row">
     <div class="col">

@@ -1,0 +1,189 @@
+@using HomeSpeaker.Shared.BloodSugar
+@using HomeSpeaker.WebAssembly.Services
+@inject IBloodSugarService BloodSugarService
+@inject ILogger<BloodSugarMonitor> Logger
+@implements IDisposable
+
+<div class="blood-sugar-card mb-4">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-tint me-2"></i>
+                Blood Sugar Monitor
+            </h5>
+        </div>
+        <div class="card-body">
+            @if (bloodSugarStatus?.CurrentReading != null)
+            {
+                <div class="row">
+                    <div class="col-lg-4 col-md-6 mb-3">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-tint fa-2x" style="color: @bloodSugarStatus.StatusColor"></i>
+                            </div>
+                            <h6 class="text-muted">Current</h6>
+                            <div class="blood-sugar-display">
+                                <span class="h4" style="color: @bloodSugarStatus.StatusColor">@bloodSugarStatus.CurrentReading.Sgv mg/dL</span>
+                            </div>
+                            <small class="text-muted">@bloodSugarStatus.StatusText</small>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-6 mb-3">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <span class="fa-2x" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">@bloodSugarStatus.CurrentReading.DirectionIcon</span>
+                            </div>
+                            <h6 class="text-muted">Trend</h6>
+                            <div class="trend-display">
+                                <span class="h6" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">@bloodSugarStatus.CurrentReading.DirectionDescription</span>
+                            </div>
+                            <small class="text-muted">Direction</small>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-6 mb-3">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-clock fa-2x" style="color: @(bloodSugarStatus.IsStale ? "#dc3545" : "#28a745")"></i>
+                            </div>
+                            <h6 class="text-muted">Last Reading</h6>
+                            <div class="time-display">
+                                <span class="h6" style="color: @(bloodSugarStatus.IsStale ? "#dc3545" : "#6c757d")">@FormatTimeSince(bloodSugarStatus.TimeSinceLastReading)</span>
+                            </div>
+                            <small class="text-muted">@(bloodSugarStatus.IsStale ? "Stale Data" : "Recent")</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center">
+                    <small class="text-muted">
+                        Last updated: @lastUpdated.ToString("HH:mm:ss")
+                        @if (bloodSugarStatus.IsStale)
+                        {
+                            <span class="badge bg-warning ms-2">⚠️ Stale Data</span>
+                        }
+                    </small>
+                </div>
+            }
+            else if (isLoading)
+            {
+                <div class="text-center p-4">
+                    <div class="spinner-border text-info" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div class="mt-2">Loading blood sugar data...</div>
+                </div>
+            }
+            else
+            {
+                <div class="text-center p-4">
+                    <div class="text-muted">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Unable to load blood sugar data
+                    </div>
+                    <button class="btn btn-outline-info btn-sm mt-2" @onclick="RefreshBloodSugarData">
+                        <i class="fas fa-sync-alt me-1"></i>
+                        Retry
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .blood-sugar-card .blood-sugar-display {
+        margin: 0.5rem 0;
+    }
+    
+    .blood-sugar-card .trend-display {
+        margin: 0.5rem 0;
+    }
+    
+    .blood-sugar-card .time-display {
+        margin: 0.5rem 0;
+    }
+    
+    .blood-sugar-card .badge {
+        white-space: nowrap;
+    }
+    
+    .blood-sugar-card .fas {
+        margin-bottom: 8px;
+        opacity: 0.8;
+    }
+    
+    .blood-sugar-card .fas:hover {
+        opacity: 1;
+        transform: scale(1.1);
+        transition: all 0.2s ease-in-out;
+    }
+</style>
+
+@code {
+    private BloodSugarStatus? bloodSugarStatus;
+    private DateTime lastUpdated = DateTime.Now;
+    private Timer? refreshTimer;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Logger.LogInformation("Initializing BloodSugarMonitor component...");
+        
+        await RefreshBloodSugarData();
+        
+        // Set up auto-refresh every 5 minutes
+        refreshTimer = new Timer(async _ => await InvokeAsync(RefreshBloodSugarData), null, TimeSpan.Zero, TimeSpan.FromMinutes(5));
+    }
+    
+    private async Task RefreshBloodSugarData()
+    {
+        Logger.LogInformation("Refreshing blood sugar data...");
+
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+            
+            bloodSugarStatus = await BloodSugarService.GetBloodSugarStatusAsync();
+            lastUpdated = DateTime.Now;
+            isLoading = false;
+            
+            Logger.LogInformation("Blood sugar data refreshed successfully");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh blood sugar data");
+            Console.WriteLine($"Failed to refresh blood sugar data: {ex.Message}"); // Temporary - shows immediately
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string FormatTimeSince(TimeSpan timeSince)
+    {
+        if (timeSince.TotalMinutes < 1)
+            return "< 1 min ago";
+        else if (timeSince.TotalMinutes < 60)
+            return $"{(int)timeSince.TotalMinutes} min ago";
+        else if (timeSince.TotalHours < 24)
+            return $"{(int)timeSince.TotalHours}h {(int)(timeSince.TotalMinutes % 60)}m ago";
+        else
+            return $"{(int)timeSince.TotalDays}d ago";
+    }
+    
+    private string GetTrendColor(string direction) => direction switch
+    {
+        "DoubleUp" or "SingleUp" => "#007bff", // Blue for rising
+        "Flat" => "#28a745", // Green for stable
+        "SingleDown" or "DoubleDown" => "#dc3545", // Red for falling
+        "FortyFiveUp" => "#17a2b8", // Teal for rising moderately
+        "FortyFiveDown" => "#fd7e14", // Orange for falling moderately
+        _ => "#6c757d" // Gray for unknown
+    };
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}

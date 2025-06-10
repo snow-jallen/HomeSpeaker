@@ -54,6 +54,9 @@ builder.Services.AddHostedService<LifecycleEvents>();
 // Add temperature service
 builder.Services.AddHttpClient<TemperatureService>();
 
+// Add blood sugar service
+builder.Services.AddHttpClient<BloodSugarService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -92,6 +95,20 @@ app.MapGet("/api/temperature", async (TemperatureService temperatureService, Can
     catch (Exception ex)
     {
         return Results.Problem($"Failed to get temperature data: {ex.Message}");
+    }
+});
+
+// Blood Sugar API endpoint
+app.MapGet("/api/bloodsugar", async (BloodSugarService bloodSugarService, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var bloodSugarStatus = await bloodSugarService.GetBloodSugarStatusAsync(cancellationToken);
+        return Results.Ok(bloodSugarStatus);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to get blood sugar data: {ex.Message}");
     }
 });
 
