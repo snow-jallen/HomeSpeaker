@@ -83,29 +83,31 @@ public sealed class TemperatureService
             // Return a default temperature if device is not available
             return 70.0; // Default room temperature
         }
-    }    public async Task<TemperatureStatus> GetTemperatureStatusAsync(CancellationToken cancellationToken = default)
+    }
+
+    public async Task<TemperatureStatus> GetTemperatureStatusAsync(CancellationToken cancellationToken = default)
     {
         // Try to get cached value
         if (_cache.TryGetValue(CacheKey, out TemperatureStatus? cachedValue))
         {
-            _logger.LogInformation("Returning cached temperature status");
+            _logger.LogInformation("Returning cached temperature status {temperatureData}", cachedValue);
             return cachedValue!;
         }
 
         // Cache miss, fetch new data
         _logger.LogInformation("Temperature cache miss, fetching fresh data...");
         var temperatureStatus = await GetTemperatureStatusInternalAsync(cancellationToken);
-        
+
         // Cache the result with absolute expiration
         var cacheOptions = new MemoryCacheEntryOptions
         {
             AbsoluteExpirationRelativeToNow = CacheExpiration,
             Priority = CacheItemPriority.Normal
         };
-        
+
         _cache.Set(CacheKey, temperatureStatus, cacheOptions);
         _logger.LogInformation("Temperature data cached for {Minutes} minutes", CacheExpiration.TotalMinutes);
-        
+
         return temperatureStatus;
     }
 
