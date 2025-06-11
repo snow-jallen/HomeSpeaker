@@ -4,83 +4,80 @@
 @inject ILogger<BloodSugarMonitor> Logger
 @implements IDisposable
 
-<div class="blood-sugar-card mb-4">
+<div class="blood-sugar-card mb-2">
     <div class="card border-0 shadow-sm">
-        <div class="card-header bg-info text-white">
-            <h5 class="mb-0">
-                <i class="fas fa-tint me-2"></i>
+        <div class="card-header bg-info text-white py-2">
+            <h6 class="mb-0">
+                <i class="fas fa-tint me-1"></i>
                 Blood Sugar Monitor
-            </h5>
+            </h6>
         </div>
-        <div class="card-body">
+        <div class="card-body py-2">
             @if (bloodSugarStatus?.CurrentReading != null)
             {
-                <div class="row">
-                    <div class="col-lg-4 col-md-6 mb-3">
+                <div class="row g-2">
+                    <div class="col-4">
                         <div class="text-center">
-                            <div class="mb-2">
-                                <i class="fas fa-tint fa-2x" style="color: @bloodSugarStatus.StatusColor"></i>
+                            <div class="mb-1">
+                                <i class="fas fa-tint fa-lg" style="color: @bloodSugarStatus.StatusColor"></i>
                             </div>
-                            <h6 class="text-muted">Current</h6>
+                            <div class="small text-muted">Current</div>
                             <div class="blood-sugar-display">
-                                <span class="h4" style="color: @bloodSugarStatus.StatusColor">@bloodSugarStatus.CurrentReading.Sgv mg/dL</span>
+                                <span class="h6" style="color: @bloodSugarStatus.StatusColor">@bloodSugarStatus.CurrentReading.Sgv</span>
                             </div>
-                            <small class="text-muted">@bloodSugarStatus.StatusText</small>
+                            <div class="small text-muted">@bloodSugarStatus.StatusText</div>
                         </div>
                     </div>
-                    <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="col-4">
                         <div class="text-center">
-                            <div class="mb-2">
-                                <span class="fa-2x" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">@bloodSugarStatus.CurrentReading.DirectionIcon</span>
+                            <div class="mb-1">
+                                <span class="fa-lg" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">@bloodSugarStatus.CurrentReading.DirectionIcon</span>
                             </div>
-                            <h6 class="text-muted">Trend</h6>
+                            <div class="small text-muted">Trend</div>
                             <div class="trend-display">
-                                <span class="h6" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">@bloodSugarStatus.CurrentReading.DirectionDescription</span>
+                                <span class="small" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">@bloodSugarStatus.CurrentReading.DirectionDescription</span>
                             </div>
-                            <small class="text-muted">Direction</small>
                         </div>
                     </div>
-                    <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="col-4">
                         <div class="text-center">
-                            <div class="mb-2">
-                                <i class="fas fa-clock fa-2x" style="color: @(bloodSugarStatus.IsStale ? "#dc3545" : "#28a745")"></i>
+                            <div class="mb-1">
+                                <i class="fas fa-clock fa-lg" style="color: @(bloodSugarStatus.IsStale ? "#dc3545" : "#28a745")"></i>
                             </div>
-                            <h6 class="text-muted">Last Reading</h6>
+                            <div class="small text-muted">Last Reading</div>
                             <div class="time-display">
-                                <span class="h6" style="color: @(bloodSugarStatus.IsStale ? "#dc3545" : "#6c757d")">@FormatTimeSince(bloodSugarStatus.TimeSinceLastReading)</span>
+                                <span class="small" style="color: @(bloodSugarStatus.IsStale ? "#dc3545" : "#6c757d")">@FormatTimeSince(bloodSugarStatus.TimeSinceLastReading)</span>
                             </div>
-                            <small class="text-muted">@(bloodSugarStatus.IsStale ? "Stale Data" : "Recent")</small>
                         </div>
                     </div>
                 </div>
                 
-                <div class="text-center">
+                <div class="text-center mt-1">
                     <small class="text-muted">
-                        Last updated: @lastUpdated.ToString("HH:mm:ss")
+                        Updated: @lastUpdated.ToString("HH:mm:ss")
                         @if (bloodSugarStatus.IsStale)
                         {
-                            <span class="badge bg-warning ms-2">⚠️ Stale Data</span>
+                            <span class="badge bg-warning ms-1 p-1">⚠️ Stale</span>
                         }
                     </small>
-                </div>
-            }
+                </div>            }
             else if (isLoading)
             {
-                <div class="text-center p-4">
-                    <div class="spinner-border text-info" role="status">
+                <div class="text-center py-2">
+                    <div class="spinner-border spinner-border-sm text-info" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
-                    <div class="mt-2">Loading blood sugar data...</div>
+                    <div class="mt-1 small">Loading...</div>
                 </div>
             }
             else
             {
-                <div class="text-center p-4">
-                    <div class="text-muted">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        Unable to load blood sugar data
+                <div class="text-center py-2">
+                    <div class="text-muted small">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        Unable to load data
                     </div>
-                    <button class="btn btn-outline-info btn-sm mt-2" @onclick="RefreshBloodSugarData">
+                    <button class="btn btn-outline-info btn-sm mt-1" @onclick="RefreshBloodSugarData">
                         <i class="fas fa-sync-alt me-1"></i>
                         Retry
                     </button>
@@ -92,30 +89,39 @@
 
 <style>
     .blood-sugar-card .blood-sugar-display {
-        margin: 0.5rem 0;
+        margin: 0.25rem 0;
     }
     
     .blood-sugar-card .trend-display {
-        margin: 0.5rem 0;
+        margin: 0.25rem 0;
     }
     
     .blood-sugar-card .time-display {
-        margin: 0.5rem 0;
+        margin: 0.25rem 0;
     }
     
     .blood-sugar-card .badge {
         white-space: nowrap;
+        font-size: 0.7rem;
     }
     
     .blood-sugar-card .fas {
-        margin-bottom: 8px;
+        margin-bottom: 4px;
         opacity: 0.8;
     }
     
     .blood-sugar-card .fas:hover {
         opacity: 1;
-        transform: scale(1.1);
+        transform: scale(1.05);
         transition: all 0.2s ease-in-out;
+    }
+    
+    .blood-sugar-card .card-body {
+        padding: 0.5rem;
+    }
+    
+    .blood-sugar-card .small {
+        font-size: 0.8rem;
     }
 </style>
 

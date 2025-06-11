@@ -4,129 +4,106 @@
 @inject ILogger<TemperatureMonitor> Logger
 @implements IDisposable
 
-<div class="temperature-card mb-4">
+<div class="temperature-card mb-2">
     <div class="card border-0 shadow-sm">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">
-                <i class="fas fa-thermometer-half me-2"></i>
+        <div class="card-header bg-primary text-white py-2">
+            <h6 class="mb-0">
+                <i class="fas fa-thermometer-half me-1"></i>
                 Temperature Monitor
-            </h5>
-        </div>
-        <div class="card-body">            @if (temperatureStatus != null)
-            {                <div class="row">                    <div class="col-lg-3 col-md-6 mb-3">
-                        <div class="text-center">
-                            <div class="mb-2">
-                                <i class="fas fa-cloud-sun fa-2x" style="color: @GetTemperatureColor(temperatureStatus.OutsideTemperature)"></i>
-                            </div>
-                            <h6 class="text-muted">Outside</h6>
-                            <div class="temperature-display">
-                                <span class="h4" style="color: @GetTemperatureColor(temperatureStatus.OutsideTemperature)">@FormatTemperature(temperatureStatus.OutsideTemperature)</span>
-                            </div>
-                            <small class="text-muted">Current temperature</small>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6 mb-3">
-                        <div class="text-center">
-                            <div class="mb-2">
-                                <i class="fas fa-female fa-2x" style="color: @GetTemperatureColor(temperatureStatus.YoungerGirlsRoomTemperature)"></i>
-                            </div>
-                            <h6 class="text-muted">Girl's Room</h6>
-                            <div class="temperature-display">
-                                <span class="h4" style="color: @GetTemperatureColor(temperatureStatus.YoungerGirlsRoomTemperature)">@FormatTemperature(temperatureStatus.YoungerGirlsRoomTemperature)</span>
-                            </div>
-                            <small class="text-muted">Indoor temperature</small>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6 mb-3">
-                        <div class="text-center">
-                            <div class="mb-2">
-                                <i class="fas fa-male fa-2x" style="color: @GetTemperatureColor(temperatureStatus.BoysRoomTemperature)"></i>
-                            </div>
-                            <h6 class="text-muted">Boy's Room</h6>
-                            <div class="temperature-display">
-                                <span class="h4" style="color: @GetTemperatureColor(temperatureStatus.BoysRoomTemperature)">@FormatTemperature(temperatureStatus.BoysRoomTemperature)</span>
-                            </div>
-                            <small class="text-muted">Indoor temperature</small>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6 mb-3">
-                        <div class="text-center">
-                            <div class="mb-2">
-                                <i class="fas fa-seedling fa-2x" style="color: @GetTemperatureColor(temperatureStatus.GreenhouseTemperature)"></i>
-                            </div>
-                            <h6 class="text-muted">Greenhouse</h6>
-                            <div class="temperature-display">
-                                <span class="h4" style="color: @GetTemperatureColor(temperatureStatus.GreenhouseTemperature)">@FormatTemperature(temperatureStatus.GreenhouseTemperature)</span>
-                            </div>
-                            <small class="text-muted">Greenhouse temperature</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-12 mb-3">
-                        <div class="text-center">
-                            <h6 class="text-muted">Window Recommendation</h6>
-                            <div class="recommendation-display">
-                                @if (temperatureStatus.OutsideTemperature.HasValue && temperatureStatus.YoungerGirlsRoomTemperature.HasValue)
-                                {
-                                    @if (temperatureStatus.ShouldWindowsBeClosed)
-                                    {
-                                        <span class="badge bg-warning fs-6 p-2">
-                                            <i class="fas fa-window-close me-1"></i>
-                                            Keep Closed
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-success fs-6 p-2">
-                                            <i class="fas fa-window-restore me-1"></i>
-                                            Open Window
-                                        </span>
-                                    }
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary fs-6 p-2">
-                                        <i class="fas fa-question me-1"></i>
-                                        No Data
-                                    </span>
-                                }
-                            </div>
-                            <small class="text-muted">Based on temperature difference</small>
-                        </div>
-                    </div>
-                </div>
-                @if (temperatureStatus.OutsideTemperature.HasValue && temperatureStatus.YoungerGirlsRoomTemperature.HasValue)
+
+            @if (temperatureStatus != null && temperatureStatus.OutsideTemperature.HasValue && temperatureStatus.YoungerGirlsRoomTemperature.HasValue)
+            {
+                @if (temperatureStatus.ShouldWindowsBeClosed)
                 {
-                    <div class="text-center mt-2">
-                        <small class="text-muted">
-                            Temperature difference: @temperatureStatus.TemperatureDifference.ToString("F1")°F
-                        </small>
-                    </div>
+                    <span class="badge bg-warning p-1">
+                        <i class="fas fa-window-close me-1"></i>
+                        Keep Closed
+                    </span>
                 }
-                <div class="text-center">
-                    <small class="text-muted">
-                        Last updated: @lastUpdated.ToString("HH:mm:ss")
-                    </small>
-                </div>
+                else
+                {
+                    <span class="badge bg-success p-1">
+                        <i class="fas fa-window-restore me-1"></i>
+                        Open Window
+                    </span>
+                }
+            }
+            else
+            {
+                <span class="badge bg-secondary p-1">
+                    <i class="fas fa-question me-1"></i>
+                    No Data
+                </span>
+            }
+            </h6>
+        </div>
+        <div class="card-body py-2">
+            @if (temperatureStatus != null)
+            {
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="mb-1">
+                                <i class="fas fa-cloud-sun fa-lg" style="color: @GetTemperatureColor(temperatureStatus.OutsideTemperature)"></i>
+                            </div>
+                            <div class="small text-muted">Outside</div>
+                            <div class="temperature-display">
+                                <span class="h6" style="color: @GetTemperatureColor(temperatureStatus.OutsideTemperature)">@FormatTemperature(temperatureStatus.OutsideTemperature)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="mb-1">
+                                <i class="fas fa-female fa-lg" style="color: @GetTemperatureColor(temperatureStatus.YoungerGirlsRoomTemperature)"></i>
+                            </div>
+                            <div class="small text-muted">Girl's Room</div>
+                            <div class="temperature-display">
+                                <span class="h6" style="color: @GetTemperatureColor(temperatureStatus.YoungerGirlsRoomTemperature)">@FormatTemperature(temperatureStatus.YoungerGirlsRoomTemperature)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="mb-1">
+                                <i class="fas fa-male fa-lg" style="color: @GetTemperatureColor(temperatureStatus.BoysRoomTemperature)"></i>
+                            </div>
+                            <div class="small text-muted">Boy's Room</div>
+                            <div class="temperature-display">
+                                <span class="h6" style="color: @GetTemperatureColor(temperatureStatus.BoysRoomTemperature)">@FormatTemperature(temperatureStatus.BoysRoomTemperature)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="mb-1">
+                                <i class="fas fa-seedling fa-lg" style="color: @GetTemperatureColor(temperatureStatus.GreenhouseTemperature)"></i>
+                            </div>
+                            <div class="small text-muted">Greenhouse</div>
+                            <div class="temperature-display">
+                                <span class="h6" style="color: @GetTemperatureColor(temperatureStatus.GreenhouseTemperature)">@FormatTemperature(temperatureStatus.GreenhouseTemperature)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>                
             }
             else if (isLoading)
             {
-                <div class="text-center p-4">
-                    <div class="spinner-border text-primary" role="status">
+                <div class="text-center py-2">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
-                    <div class="mt-2">Loading temperature data...</div>
+                    <div class="mt-1 small">Loading...</div>
                 </div>
             }
             else
             {
-                <div class="text-center p-4">
-                    <div class="text-muted">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        Unable to load temperature data
+                <div class="text-center py-2">
+                    <div class="text-muted small">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        Unable to load data
                     </div>
-                    <button class="btn btn-outline-primary btn-sm mt-2" @onclick="RefreshTemperatureData">
+                    <button class="btn btn-outline-primary btn-sm mt-1" @onclick="RefreshTemperatureData">
                         <i class="fas fa-sync-alt me-1"></i>
                         Retry
                     </button>
@@ -138,26 +115,35 @@
 
 <style>
     .temperature-card .temperature-display {
-        margin: 0.5rem 0;
+        margin: 0.25rem 0;
     }
     
     .temperature-card .recommendation-display {
-        margin: 0.5rem 0;
+        margin: 0.25rem 0;
     }
     
     .temperature-card .badge {
         white-space: nowrap;
+        font-size: 0.8rem;
     }
     
     .temperature-card .fas {
-        margin-bottom: 8px;
+        margin-bottom: 4px;
         opacity: 0.8;
     }
     
     .temperature-card .fas:hover {
         opacity: 1;
-        transform: scale(1.1);
+        transform: scale(1.05);
         transition: all 0.2s ease-in-out;
+    }
+    
+    .temperature-card .card-body {
+        padding: 0.5rem;
+    }
+    
+    .temperature-card .small {
+        font-size: 0.8rem;
     }
 </style>
 
