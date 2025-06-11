@@ -51,7 +51,7 @@ else
         </div>
     }
 
-    @foreach (var artist in artists.Skip(pageSize * pageNum).Take(pageSize))
+    @foreach (var artist in (artists?.Skip(pageSize * pageNum).Take(pageSize)) ?? Enumerable.Empty<IGrouping<string, SongViewModel>>())
     {
         <Artist Content="@artist" />
     }
@@ -62,8 +62,8 @@ else
     private int pageSize = 200;
     private int numPages = 0;
     private int artistCount;
-    private string filterValue;
-    public string FilterValue
+    private string? filterValue;
+    public string? FilterValue
     {
         get => filterValue;
         set
@@ -75,7 +75,7 @@ else
     }
 
     IEnumerable<SongViewModel>? songs;
-    IOrderedEnumerable<IGrouping<string, SongViewModel>> artists;
+    IOrderedEnumerable<IGrouping<string, SongViewModel>>? artists;
 
     protected override async Task OnInitializedAsync()
     {
@@ -102,16 +102,17 @@ else
             logger.LogInformation("Filtering artists, albums and songs like {filterValue}", filterValue);
 
             filteredSongs = songs.Where(a =>
-                a.Artist.Contains(FilterValue, StringComparison.OrdinalIgnoreCase) ||
-                a.Album.Contains(FilterValue, StringComparison.OrdinalIgnoreCase) ||
-                a.Name.Contains(FilterValue, StringComparison.OrdinalIgnoreCase)
+                (a.Artist?.Contains(FilterValue, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (a.Album?.Contains(FilterValue, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (a.Name?.Contains(FilterValue, StringComparison.OrdinalIgnoreCase) ?? false)
             );
         }
+
         artists = from s in filteredSongs
                   group s by s.Artist into artists
                   orderby artists.Key
                   select artists;
-        artistCount = artists.Count();
+        artistCount = artists?.Count() ?? 0;
         numPages = (artistCount + pageSize - 1) / pageSize;
     }
 }

@@ -9,7 +9,7 @@ public class HomeSpeakerService
     private HomeSpeakerClient client;
     private List<SongMessage> songs = new();
     public IEnumerable<SongMessage> Songs => songs;
-    public event EventHandler QueueChanged;
+    public event EventHandler? QueueChanged;
 
     public HomeSpeakerService(IConfiguration config, ILogger<HomeSpeakerService> logger, IWebAssemblyHostEnvironment hostEnvironment)
     {
@@ -28,13 +28,21 @@ public class HomeSpeakerService
     }
 
     public HomeSpeakerClient HomeSpeakerClient => client;
-
+    
     private async Task listenForEvents()
     {
-        var eventReply = client.SendEvent(new Google.Protobuf.WellKnownTypes.Empty());
-        await foreach (var eventInstance in eventReply.ResponseStream.ReadAllAsync())
+        try
         {
-            StatusChanged?.Invoke(this, eventInstance.Message);
+            var eventReply = client.SendEvent(new Google.Protobuf.WellKnownTypes.Empty());
+            await foreach (var eventInstance in eventReply.ResponseStream.ReadAllAsync())
+            {
+                StatusChanged?.Invoke(this, eventInstance.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error listening for events from server");
+            // Could implement reconnection logic here
         }
     }
 

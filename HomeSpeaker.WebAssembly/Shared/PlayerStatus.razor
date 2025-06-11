@@ -10,8 +10,15 @@
     {
         svc.StatusChanged += (_, msg) =>
         {
-            serverMessage = msg;
-            StateHasChanged();
+            try
+            {
+                serverMessage = msg;
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error handling status change: {message}", msg);
+            }
         };
     }
     string? serverMessage;

@@ -74,29 +74,36 @@
     private bool nightMode = false;
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
     private static string? nightscoutUrl = null;
-
+    
     protected override async Task OnInitializedAsync()
     {
-        if (nightscoutUrl is null)
+        try
         {
-            var httpClient = new HttpClient();
-            nightscoutUrl = await httpClient.GetStringAsync($"{hostEnv.BaseAddress}ns") ?? string.Empty;
-        }
-
-        if (aspireUrl is null)
-        {
-            UriBuilder uriBuilder = new UriBuilder(hostEnv.BaseAddress)
+            if (nightscoutUrl is null)
             {
-                Port = 18888
-            };
-            aspireUrl = uriBuilder.Uri;
-        }
+                var httpClient = new HttpClient();
+                nightscoutUrl = await httpClient.GetStringAsync($"{hostEnv.BaseAddress}ns") ?? string.Empty;
+            }
 
-        if (showLogs is null)
+            if (aspireUrl is null)
+            {
+                UriBuilder uriBuilder = new UriBuilder(hostEnv.BaseAddress.Replace("https","http"))
+                {
+                    Port = 18888
+                };
+                aspireUrl = uriBuilder.Uri;
+            }
+
+            if (showLogs is null)
+            {
+                var httpClient = new HttpClient() { BaseAddress = aspireUrl };
+                var req = await httpClient.GetAsync("");
+                showLogs = req.IsSuccessStatusCode;
+            }
+        }
+        catch (Exception ex)
         {
-            var httpClient = new HttpClient() { BaseAddress = aspireUrl };
-            var req = await httpClient.GetAsync("");
-            showLogs = req.IsSuccessStatusCode;
+            logger.LogError(ex, "Error initializing navigation menu");
         }
     }
 

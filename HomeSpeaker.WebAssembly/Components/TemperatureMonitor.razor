@@ -165,14 +165,30 @@
     private TemperatureStatus? temperatureStatus;
     private DateTime lastUpdated = DateTime.Now;
     private Timer? refreshTimer;
-    private bool isLoading = true;    protected override async Task OnInitializedAsync()
+    private bool isLoading = true;
+    
+    protected override async Task OnInitializedAsync()
     {
         Logger.LogInformation("Initializing TemperatureMonitor component...");
         
         await RefreshTemperatureData();
           // Set up auto-refresh every 1 minute (server has 2-minute cache)
-        refreshTimer = new Timer(async _ => await InvokeAsync(RefreshTemperatureData), null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
-    }    
+        refreshTimer = new Timer(async _ => 
+        {
+            try
+            {
+                await InvokeAsync(RefreshTemperatureData);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Component was disposed, ignore
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error in temperature refresh timer");
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+    }
     
     private async Task RefreshTemperatureData()
     {

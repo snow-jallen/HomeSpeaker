@@ -124,14 +124,27 @@
     private DateTime lastUpdated = DateTime.Now;
     private Timer? refreshTimer;
     private bool isLoading = true;
-
     protected override async Task OnInitializedAsync()
     {
         Logger.LogInformation("Initializing BloodSugarMonitor component...");
         
         await RefreshBloodSugarData();
           // Set up auto-refresh every 1 minute (server has smart cache based on reading age)
-        refreshTimer = new Timer(async _ => await InvokeAsync(RefreshBloodSugarData), null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+        refreshTimer = new Timer(async _ => 
+        {
+            try
+            {
+                await InvokeAsync(RefreshBloodSugarData);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Component was disposed, ignore
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error in blood sugar refresh timer");
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
     }
     
     private async Task RefreshBloodSugarData()

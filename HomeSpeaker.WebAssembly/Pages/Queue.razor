@@ -35,7 +35,7 @@
     <button @onclick=saveQueueAsPlaylist title="Save queue as playlist" class="btn btn-link me-2">Save as Playlist</button>
 </div>
 
-@if (queue.Any())
+@if (queue?.Any() == true)
 {
     @*    <ul ondragover="event.preventDefault();">
         @foreach (var song in queue)
@@ -73,6 +73,9 @@
 @code {
     private async Task ItemUpdated(MudItemDropInfo<SongViewModel> dropItem)
     {
+        if (dropItem?.Item == null || dropItem.IndexInZone < 0 || dropItem.IndexInZone >= queue.Count)
+            return;
+
         queue.Remove(dropItem.Item);
         queue.Insert(dropItem.IndexInZone, dropItem.Item);
         await svc.UpdateQueueAsync(queue);
@@ -94,17 +97,30 @@
     List<SongViewModel> queue = new();
     string currentSong;
     int currentIndex;
-
     protected override async Task OnInitializedAsync()
     {
         await refresh();
         svc.QueueChanged += async (_, _) =>
         {
-            logger.LogInformation("The QueueChanged event was raised.  Refreshing.");
-            await refresh();
+            try
+            {
+                logger.LogInformation("The QueueChanged event was raised.  Refreshing.");
+                await refresh();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error handling queue change event");
+            }
         };
 
-        VolumeLevel = await svc.GetVolumeAsync();
+        try
+        {
+            VolumeLevel = await svc.GetVolumeAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to get initial volume level");
+        }
     }
 
     async Task volumeChanged(int volume)
@@ -119,7 +135,17 @@
         var newPlaylistName = String.Format("From Queue {0:ddd d MMM hh:mm tt}", DateTime.Now);
         foreach (var song in queue)
         {
-            await svc.AddToPlaylistAsync(newPlaylistName, song.Path);
+            if (!string.IsNullOrEmpty(song.Path))
+            {
+                try
+                {
+                    await svc.AddToPlaylistAsync(newPlaylistName, song.Path);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to add song {songPath} to playlist {playlistName}", song.Path, newPlaylistName);
+                }
+            }
         }
     }
 
@@ -143,21 +169,35 @@
         currentIndex = getIndex(song);
     }
 
-    int getIndex(SongViewModel song) => queue.FindIndex(s => s.SongId == song.SongId);
-
-    async Task Drop(SongViewModel song)
+    int getIndex(SongViewModel song) => queue.FindIndex(s => s.SongId == song.SongId);    async Task Drop(SongViewModel song)
     {
-        if (song == null)
+        if (song == null || currentIndex < 0 || currentIndex >= queue.Count)
             return;
+            
         var newIndex = getIndex(song);
+        if (newIndex < 0 || newIndex >= queue.Count)
+            return;
+
         var current = queue[currentIndex];
         queue.RemoveAt(currentIndex);
+        
+        // Adjust newIndex if needed after removal
+        if (newIndex > currentIndex)
+            newIndex--;
+            
         queue.Insert(newIndex, current);
-
         currentIndex = newIndex;
-
         StateHasChanged();
 
-        await svc.UpdateQueueAsync(queue);
+        try
+        {
+            await svc.UpdateQueueAsync(queue);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to update queue on server");
+            // Optionally refresh the queue from server on error
+            await refresh();
+        }
     }
 }
