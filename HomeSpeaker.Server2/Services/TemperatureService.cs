@@ -81,6 +81,7 @@ public sealed class TemperatureService
         {
             _logger.LogError(ex, "Failed to get temperature for device {DeviceName}", device.DeviceName);
             // Return a default temperature if device is not available
+            
             return 70.0; // Default room temperature
         }
     }
@@ -90,7 +91,7 @@ public sealed class TemperatureService
         // Try to get cached value
         if (_cache.TryGetValue(CacheKey, out TemperatureStatus? cachedValue))
         {
-            _logger.LogInformation("Returning cached temperature status {temperatureData}", cachedValue);
+            _logger.LogInformation("Returning cached temperature status: {TemperatureData}", JsonSerializer.Serialize(cachedValue));
             return cachedValue!;
         }
 
