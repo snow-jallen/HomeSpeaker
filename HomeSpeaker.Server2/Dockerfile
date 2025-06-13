@@ -2,7 +2,8 @@
 
 # This stage is used when running from VS in fast mode (Default for Debug configuration)
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
-RUN apt update && apt install --yes sox libsox-fmt-mp3 alsa-utils vlc ffmpeg shairport-sync pulseaudio-utils avahi-daemon
+RUN apt update && apt install --yes sox libsox-fmt-mp3 alsa-utils vlc ffmpeg 
+RUN apt install --yes shairport-sync pulseaudio-utils avahi-daemon
 # Disable system shairport-sync service to prevent conflicts
 RUN systemctl disable shairport-sync 2>/dev/null || true
 # Configure ALSA for better audio support
