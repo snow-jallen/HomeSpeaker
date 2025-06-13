@@ -2,7 +2,16 @@
 
 # This stage is used when running from VS in fast mode (Default for Debug configuration)
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
-RUN apt update && apt install --yes sox libsox-fmt-mp3 alsa-utils vlc ffmpeg shairport-sync
+RUN apt update && apt install --yes sox libsox-fmt-mp3 alsa-utils vlc ffmpeg shairport-sync pulseaudio-utils avahi-daemon
+# Disable system shairport-sync service to prevent conflicts
+RUN systemctl disable shairport-sync 2>/dev/null || true
+# Configure ALSA for better audio support
+RUN echo "pcm.!default { type pulse }" > /etc/asound.conf && \
+    echo "ctl.!default { type pulse }" >> /etc/asound.conf
+# Create audio group and add user
+RUN groupadd -g 1000 mygroup 2>/dev/null || true
+RUN useradd -u 1000 -g mygroup -s /bin/bash -m homespeakeruser 2>/dev/null || true
+RUN usermod -aG audio homespeakeruser
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
@@ -27,10 +36,12 @@ RUN dotnet publish "./HomeSpeaker.Server2.csproj" -c $BUILD_CONFIGURATION -o /ap
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final
 RUN apt-get install -y curl iputils-ping
-RUN groupadd -g 1000 mygroup
-RUN useradd -u 1000 -g mygroup -s /bin/bash -m homespeakeruser
+RUN groupadd -g 1000 mygroup 2>/dev/null || true
+RUN useradd -u 1000 -g mygroup -s /bin/bash -m homespeakeruser 2>/dev/null || true
 #RUN useradd -ms /bin/bash homespeakeruser
 RUN usermod -aG audio homespeakeruser
+COPY container-diagnostics.sh /usr/local/bin/container-diagnostics.sh
+RUN chmod +x /usr/local/bin/container-diagnostics.sh
 USER homespeakeruser
 WORKDIR /app
 COPY --from=publish /app/publish .

@@ -1,5 +1,5 @@
 version: '3.4'
-services:  
+services:
   homespeaker.server2:
     container_name: homespeaker
     image: homespeakerserver2
@@ -7,20 +7,13 @@ services:
       context: .
       dockerfile: HomeSpeaker.Server2/Dockerfile
     restart: unless-stopped
+    network_mode: host
     devices:
     - /dev/snd:/dev/snd
-    ports:
-    - 80:80
-    - 443:443
-    - 5025:5025/tcp
-    - 5025:5025/udp
     volumes:
     - "/home/piuser/music:/music"
     - "/home/piuser/cert:/certs"
     - "/sys/class/backlight/10-0045:/sys/class/backlight/10-0045"
-    - "/run/udev:/run/udev:ro"
-    depends_on:
-    - aspire    
     environment:
     - MediaFolder=/music
     - ALSA_CARD=Headphones
@@ -29,17 +22,13 @@ services:
     - ASPNETCORE_Kestrel__Certificates__Default__Path=/certs/certificate.pfx
     - FFMpegLocation=/usr/bin/ffmpeg
     - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-    - OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire:18889
+    - OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:18889
     - OTEL_SERVICE_NAME=HomeSpeaker
     - NIGHTSCOUT_URL=https://janedoe.azurewebsites.net
     - Temperature__ApiKey=${GOVEE_API_KEY}
     - AirPlay__DeviceName=HomeSpeaker
     - AirPlay__Port=5025
     privileged: true
-    group_add:
-    - audio
-    networks:
-      speakernet:
 
   aspire:
     container_name: aspire
@@ -48,9 +37,4 @@ services:
     - DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true
     ports:
     - 18888:18888 # web
-    - 4317:18889  # OTLP
-    networks:
-      speakernet:
-
-networks:
- speakernet:
+    - 18889:18889  # OTLP

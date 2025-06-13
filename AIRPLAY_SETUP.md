@@ -76,6 +76,100 @@ git push --tags
 
 ## Troubleshooting
 
+### Device Name Issues
+If your device shows up as the hostname (e.g., "raspberrypi") instead of your configured name:
+
+1. **Stop system shairport-sync service:**
+   ```bash
+   sudo systemctl stop shairport-sync
+   sudo systemctl disable shairport-sync
+   ```
+
+2. **Kill any existing shairport-sync processes:**
+   ```bash
+   sudo pkill -f shairport-sync
+   ```
+
+3. **Restart HomeSpeaker container:**
+   ```bash
+   docker-compose restart homespeaker.server2
+   ```
+
+4. **Check the logs for conflicts:**
+   ```bash
+   docker logs homespeaker | grep -i "already in use"
+   ```
+
+### Audio Output Issues
+If AirPlay connects but no sound comes out:
+
+1. **Check audio device access:**
+   ```bash
+   docker exec homespeaker aplay -l
+   docker exec homespeaker amixer scontrols
+   ```
+
+2. **Verify ALSA_CARD environment variable:**
+   Make sure the ALSA_CARD in docker-compose.yml matches your audio device.
+
+3. **Test audio in container:**
+   ```bash
+   docker exec homespeaker speaker-test -t sine -f 1000 -l 1
+   ```
+
+4. **Try the host network configuration:**
+   ```bash
+   docker-compose -f docker-compose.airplay.yml up -d --build
+   ```
+
+### Discovery Issues
+If the device doesn't appear in AirPlay lists:
+
+1. **Check Avahi/mDNS service:**
+   ```bash
+   sudo systemctl status avahi-daemon
+   # If not running:
+   sudo systemctl enable --now avahi-daemon
+   ```
+
+2. **Verify multicast networking:**
+   Use the host network configuration for better multicast support.
+
+3. **Check firewall settings:**
+   Ensure ports 5025 (TCP/UDP) and multicast traffic are allowed.
+
+### Debugging Script
+Run the troubleshooting script for comprehensive diagnostics:
+```bash
+chmod +x troubleshoot-airplay.sh
+./troubleshoot-airplay.sh
+```
+
+### Container Diagnostics
+If running in Docker, use the container diagnostic script:
+```bash
+docker exec homespeaker /usr/local/bin/container-diagnostics.sh
+```
+
+### Process Exit Issues
+If shairport-sync starts but exits immediately:
+
+1. **Check the enhanced logs for exit codes:**
+   ```bash
+   docker logs homespeaker | grep -i "exit"
+   ```
+
+2. **Common exit codes and solutions:**
+   - Exit code 1: Audio configuration issues - check ALSA setup
+   - Exit code 2: Permission denied - verify audio group membership
+   - Exit code 3: Port already in use - check for conflicts
+
+3. **Test audio access in container:**
+   ```bash
+   docker exec homespeaker aplay -l
+   docker exec homespeaker groups
+   ```
+
 ### General Issues
 - Make sure `shairport-sync` is installed and in your PATH
 - Check that port 5025 (or your configured port) is not being used by another service

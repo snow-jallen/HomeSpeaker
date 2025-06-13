@@ -51,9 +51,7 @@ public class AirPlayService : IAirPlayService, IDisposable
         }
     }
 
-    public event EventHandler<AirPlayStatus>? StatusChanged;
-
-    public async Task StartAsync(CancellationToken cancellationToken = default)
+    public event EventHandler<AirPlayStatus>? StatusChanged;    public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting AirPlay service...");
         
@@ -66,6 +64,9 @@ public class AirPlayService : IAirPlayService, IDisposable
             return;
         }
 
+        // Log audio devices for debugging
+        await LogAudioDevices();
+        
         await StartShairportSync(_cancellationTokenSource.Token);
         _logger.LogInformation("AirPlay service started successfully.");
     }
@@ -97,39 +98,97 @@ public class AirPlayService : IAirPlayService, IDisposable
         {
             return false;
         }
-    }
-
-    private async Task StartShairportSync(CancellationToken cancellationToken)
+    }    private async Task StartShairportSync(CancellationToken cancellationToken)
     {
         var deviceName = _configuration["AirPlay:DeviceName"] ?? "HomeSpeaker";
         var port = _configuration.GetValue<int>("AirPlay:Port", 5025);
         
-        _shairportProcess = new Process
+        // Stop any existing shairport-sync instances to prevent conflicts
+        await StopExistingShairportInstances();
+        
+        // First attempt: Try with ALSA backend
+        if (await TryStartShairportWithConfig(deviceName, port, "alsa", cancellationToken))
         {
-            StartInfo = new ProcessStartInfo
+            return;
+        }
+        
+        _logger.LogWarning("Failed to start shairport-sync with ALSA backend, trying alternative configurations...");
+        
+        // Second attempt: Try without explicit backend (let shairport-sync auto-detect)
+        if (await TryStartShairportWithConfig(deviceName, port, null, cancellationToken))
+        {
+            return;
+        }
+        
+        _logger.LogError("Failed to start shairport-sync with any configuration. AirPlay functionality will be disabled.");
+        throw new InvalidOperationException("Unable to start shairport-sync process");
+    }
+    
+    private async Task<bool> TryStartShairportWithConfig(string deviceName, int port, string? audioBackend, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Build arguments based on available backend
+            var arguments = $"--name \"{deviceName}\" --port {port} --verbose --metadata-pipename /tmp/shairport-sync-metadata";
+            
+            if (!string.IsNullOrEmpty(audioBackend))
             {
-                FileName = "shairport-sync",
-                Arguments = $"--name \"{deviceName}\" --port {port} --metadata-pipename /tmp/shairport-sync-metadata --verbose",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
+                arguments += $" --output {audioBackend}";
+                if (audioBackend == "alsa")
+                {
+                    arguments += " -- -d default";
+                }
             }
-        };
+            
+            _logger.LogInformation("Attempting to start shairport-sync with arguments: {Arguments}", arguments);
+            
+            _shairportProcess = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "shairport-sync",
+                    Arguments = arguments,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                }
+            };
 
-        _shairportProcess.OutputDataReceived += OnShairportOutput;
-        _shairportProcess.ErrorDataReceived += OnShairportError;
-        _shairportProcess.Exited += OnShairportExited;
-        _shairportProcess.EnableRaisingEvents = true;
+            _shairportProcess.OutputDataReceived += OnShairportOutput;
+            _shairportProcess.ErrorDataReceived += OnShairportError;
+            _shairportProcess.Exited += OnShairportExited;
+            _shairportProcess.EnableRaisingEvents = true;
 
-        _shairportProcess.Start();
-        _shairportProcess.BeginOutputReadLine();
-        _shairportProcess.BeginErrorReadLine();
+            _shairportProcess.Start();
+            _shairportProcess.BeginOutputReadLine();
+            _shairportProcess.BeginErrorReadLine();
 
-        _logger.LogInformation("Started shairport-sync with device name '{DeviceName}' on port {Port}", deviceName, port);
+            // Wait a moment to see if the process exits immediately
+            await Task.Delay(2000, cancellationToken);
+            
+            if (_shairportProcess.HasExited)
+            {
+                _logger.LogWarning("Shairport-sync process exited immediately with exit code: {ExitCode}", _shairportProcess.ExitCode);
+                _shairportProcess.Dispose();
+                _shairportProcess = null;
+                return false;
+            }
 
-        // Start monitoring metadata
-        _ = Task.Run(() => MonitorMetadata(cancellationToken), cancellationToken);
+            _logger.LogInformation("Started shairport-sync with device name '{DeviceName}' on port {Port} using {Backend} backend", 
+                deviceName, port, audioBackend ?? "auto-detected");
+
+            // Start monitoring metadata
+            _ = Task.Run(() => MonitorMetadata(cancellationToken), cancellationToken);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to start shairport-sync with {Backend} backend", audioBackend ?? "auto-detected");
+            _shairportProcess?.Dispose();
+            _shairportProcess = null;
+            return false;
+        }
     }
 
     private void OnShairportOutput(object sender, DataReceivedEventArgs e)
@@ -138,13 +197,30 @@ public class AirPlayService : IAirPlayService, IDisposable
         {
             _logger.LogDebug("Shairport output: {Output}", e.Data);
         }
-    }
-
-    private void OnShairportError(object sender, DataReceivedEventArgs e)
+    }    private void OnShairportError(object sender, DataReceivedEventArgs e)
     {
         if (!string.IsNullOrEmpty(e.Data))
         {
-            _logger.LogDebug("Shairport error: {Error}", e.Data);
+            // Log all error output for debugging
+            _logger.LogWarning("Shairport error: {Error}", e.Data);
+            
+            // Check for specific error patterns
+            if (e.Data.Contains("the name") && e.Data.Contains("already in use"))
+            {
+                _logger.LogError("AirPlay device name conflict detected: {Error}", e.Data);
+            }
+            else if (e.Data.Contains("audio") && e.Data.Contains("error"))
+            {
+                _logger.LogError("Audio configuration error detected: {Error}", e.Data);
+            }
+            else if (e.Data.Contains("permission") || e.Data.Contains("denied"))
+            {
+                _logger.LogError("Permission error detected: {Error}", e.Data);
+            }
+            else if (e.Data.Contains("bind") || e.Data.Contains("port"))
+            {
+                _logger.LogError("Port binding error detected: {Error}", e.Data);
+            }
             
             // Parse connection events from stderr
             ParseConnectionEvents(e.Data);
@@ -153,7 +229,27 @@ public class AirPlayService : IAirPlayService, IDisposable
 
     private void OnShairportExited(object? sender, EventArgs e)
     {
-        _logger.LogWarning("Shairport-sync process exited unexpectedly");
+        if (_shairportProcess != null)
+        {
+            _logger.LogWarning("Shairport-sync process exited with exit code: {ExitCode}", _shairportProcess.ExitCode);
+
+            // Log common exit codes and their meanings
+            var exitCodeMeaning = _shairportProcess.ExitCode switch
+            {
+                1 => "General error (often audio configuration issues)",
+                2 => "Permission denied or audio device access issues",
+                3 => "Port already in use",
+                127 => "Command not found",
+                _ => "Unknown error"
+            };
+
+            _logger.LogError("Shairport-sync exit reason: {ExitCodeMeaning}", exitCodeMeaning);
+        }
+        else
+        {
+            _logger.LogWarning("Shairport-sync process exited unexpectedly (process was null)");
+        }
+
         CurrentStatus = new AirPlayStatus();
     }
 
@@ -267,6 +363,74 @@ public class AirPlayService : IAirPlayService, IDisposable
         await process.WaitForExitAsync();
 
         return (process.ExitCode, output);
+    }
+
+    private async Task StopExistingShairportInstances()
+    {
+        try
+        {
+            // Kill any existing shairport-sync processes to prevent conflicts
+            await RunCommand("pkill", "-f shairport-sync");
+            _logger.LogInformation("Stopped existing shairport-sync instances");
+
+            // Wait a moment for processes to clean up
+            await Task.Delay(1000);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to stop existing shairport-sync instances (this is normal if none were running)");
+        }
+    }
+
+    private async Task LogAudioDevices()
+    {
+        try
+        {
+            // Check ALSA devices
+            var (exitCode, output) = await RunCommand("aplay", "-l");
+            if (exitCode == 0)
+            {
+                _logger.LogInformation("Available audio playback devices:\n{Output}", output);
+            }
+            else
+            {
+                _logger.LogWarning("Failed to list audio playback devices (exit code: {ExitCode})", exitCode);
+            }
+
+            // Check mixer controls
+            var (exitCode2, output2) = await RunCommand("amixer", "scontrols");
+            if (exitCode2 == 0)
+            {
+                _logger.LogInformation("Available mixer controls:\n{Output}", output2);
+            }
+            else
+            {
+                _logger.LogWarning("Failed to list mixer controls (exit code: {ExitCode})", exitCode2);
+            }
+
+            // Check if audio group membership exists
+            var (exitCode3, output3) = await RunCommand("groups", "");
+            if (exitCode3 == 0)
+            {
+                _logger.LogInformation("Current user groups: {Groups}", output3.Trim());
+                if (!output3.Contains("audio"))
+                {
+                    _logger.LogWarning("Current user is not in 'audio' group. This may cause audio access issues.");
+                }
+            }
+
+            // Test basic audio access
+            var (exitCode4, output4) = await RunCommand("test", "-w /dev/snd");
+            if (exitCode4 != 0)
+            {
+                _logger.LogWarning("Audio devices may not be writable. This could cause shairport-sync to fail.");
+            }
+
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to log audio device information");
+        }
     }
 
     public void Dispose()
