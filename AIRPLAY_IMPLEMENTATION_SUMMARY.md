@@ -74,7 +74,7 @@ The system supports configuration through appsettings.json:
 {
   "AirPlay": {
     "DeviceName": "HomeSpeaker",
-    "Port": 5000
+    "Port": 5025
   }
 }
 ```

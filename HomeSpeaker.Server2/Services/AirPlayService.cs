@@ -102,7 +102,7 @@ public class AirPlayService : IAirPlayService, IDisposable
     private async Task StartShairportSync(CancellationToken cancellationToken)
     {
         var deviceName = _configuration["AirPlay:DeviceName"] ?? "HomeSpeaker";
-        var port = _configuration.GetValue<int>("AirPlay:Port", 5000);
+        var port = _configuration.GetValue<int>("AirPlay:Port", 5025);
         
         _shairportProcess = new Process
         {
@@ -215,7 +215,7 @@ public class AirPlayService : IAirPlayService, IDisposable
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
                 _logger.LogError(ex, "Error monitoring AirPlay metadata");
-                await Task.Delay(5000, cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
             }
         }
     }

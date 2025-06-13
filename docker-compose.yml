@@ -12,8 +12,8 @@ services:
     ports:
     - 80:80
     - 443:443
-    - 5000:5000/tcp
-    - 5000:5000/udp
+    - 5025:5025/tcp
+    - 5025:5025/udp
     volumes:
     - "/home/piuser/music:/music"
     - "/home/piuser/cert:/certs"

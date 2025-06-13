@@ -45,7 +45,7 @@ Add the following configuration to your `appsettings.json`:
 {
   "AirPlay": {
     "DeviceName": "HomeSpeaker",
-    "Port": 5000
+    "Port": 5025
   }
 }
 ```
@@ -55,7 +55,7 @@ Add the following configuration to your `appsettings.json`:
 The GitHub Actions workflow has been updated to support AirPlay:
 
 1. **Automatic Installation**: The Dockerfile now installs shairport-sync
-2. **Port Exposure**: docker-compose.yml exposes AirPlay ports (5000 TCP/UDP)
+2. **Port Exposure**: docker-compose.yml exposes AirPlay ports (5025 TCP/UDP)
 3. **Environment Variables**: AirPlay configuration is set via environment variables
 4. **Tag-based Deployment**: Deployment is triggered by creating and pushing tags
 
@@ -78,7 +78,7 @@ git push --tags
 
 ### General Issues
 - Make sure `shairport-sync` is installed and in your PATH
-- Check that port 5000 (or your configured port) is not being used by another service
+- Check that port 5025 (or your configured port) is not being used by another service
 - Ensure your iOS device and HomeSpeaker server are on the same network
 - Check the server logs for any AirPlay-related errors
 
