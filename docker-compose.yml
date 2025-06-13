@@ -32,12 +32,10 @@ services:
     - OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire:18889
     - OTEL_SERVICE_NAME=HomeSpeaker
     - NIGHTSCOUT_URL=https://janedoe.azurewebsites.net
-    - Temperature__ApiKey=${GOVEE_API_KEY}
+    - Temperature__ApiKey=${GOVEE_API_KEY}    
     - AirPlay__DeviceName=HomeSpeaker
     - AirPlay__Port=5025
     privileged: true
-    group_add:
-    - audio
     networks:
       speakernet:
 
