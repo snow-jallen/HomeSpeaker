@@ -82,20 +82,19 @@
     }
 
     int volumeLevel = 40;
-    public int VolumeLevel
-    {
+    public int VolumeLevel    {
         get => volumeLevel;
         set
         {
             volumeLevel = value;
             logger.LogInformation("Setting volume to {volume}", volumeLevel);
-            svc.SetVolumeAsync(volumeLevel);
-        }
+            _ = svc.SetVolumeAsync(volumeLevel);        }
     }
-
+#pragma warning disable CS0414 // Field is assigned but its value is never used - it's used in the @key directive
     int listKey = 0;
+#pragma warning restore CS0414
     List<SongViewModel> queue = new();
-    string currentSong;
+    string currentSong = string.Empty;
     int currentIndex;
     protected override async Task OnInitializedAsync()
     {

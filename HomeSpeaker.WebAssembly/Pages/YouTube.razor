@@ -32,8 +32,8 @@ else
 
 @code {
     bool isSearching = false;
-    IEnumerable<Video> videos;
-    string searchTerm;
+    IEnumerable<Video> videos = Enumerable.Empty<Video>();
+    string searchTerm = string.Empty;
     async Task searchAsync()
     {
         isSearching = true;

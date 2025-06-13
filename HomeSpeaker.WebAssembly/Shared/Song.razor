@@ -53,7 +53,7 @@ else
 
 @code {
     [Parameter]
-    public SongViewModel SongViewModel { get; set; }
+    public required SongViewModel SongViewModel { get; set; }
 
     [Parameter]
     public bool ShowFolder { get; set; }
@@ -67,10 +67,7 @@ else
     private bool showDetails { get; set; }
     private bool isPlaylistModalHidden = true;
 
-    private void toggleDetailsView() => showDetails = !showDetails;
-    private string toggleIcon => showDetails ? "oi oi-chevron-top" : "oi oi-chevron-bottom";
-
-    private bool isDeleteConfirmationOpen = false;
+    private void toggleDetailsView() => showDetails = !showDetails;    private string toggleIcon => showDetails ? "oi oi-chevron-top" : "oi oi-chevron-bottom";
 
     async Task Play() => await svc.PlaySongAsync(SongViewModel.SongId);
     async Task Queue() => await svc.EnqueueSongAsync(SongViewModel.SongId);

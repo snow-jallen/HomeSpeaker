@@ -16,7 +16,7 @@ else
 }
 
 @code {
-    IEnumerable<Playlist> playlists;
+    IEnumerable<Playlist> playlists = Enumerable.Empty<Playlist>();
 
     protected override async Task OnInitializedAsync()
     {

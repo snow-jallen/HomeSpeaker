@@ -312,16 +312,15 @@ interface IMMDeviceEnumerator
 }
 [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumeratorComObject { }
 public class Audio
-{
-    static IAudioEndpointVolume Vol()
+{    static IAudioEndpointVolume Vol()
     {
         var enumerator = new MMDeviceEnumeratorComObject() as IMMDeviceEnumerator;
-        IMMDevice dev = null;
-        Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(/*eRender*/ 0, /*eMultimedia*/ 1, out dev));
-        IAudioEndpointVolume epv = null;
+        IMMDevice? dev = null;
+        Marshal.ThrowExceptionForHR(enumerator!.GetDefaultAudioEndpoint(/*eRender*/ 0, /*eMultimedia*/ 1, out dev));
+        IAudioEndpointVolume? epv = null;
         var epvid = typeof(IAudioEndpointVolume).GUID;
-        Marshal.ThrowExceptionForHR(dev.Activate(ref epvid, /*CLSCTX_ALL*/ 23, 0, out epv));
-        return epv;
+        Marshal.ThrowExceptionForHR(dev!.Activate(ref epvid, /*CLSCTX_ALL*/ 23, 0, out epv));
+        return epv!;
     }
     public static float Volume
     {

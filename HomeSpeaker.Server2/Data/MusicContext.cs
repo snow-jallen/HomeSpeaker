@@ -17,15 +17,15 @@ public class MusicContext : DbContext
 public class Thumbnail
 {
     public int Id { get; set; }
-    public string Artist { get; set; }
-    public string Album { get; set; }
-    public string ThumbnailUrl { get; set; }
+    public required string Artist { get; set; }
+    public required string Album { get; set; }
+    public required string ThumbnailUrl { get; set; }
 }
 
 public class Playlist
 {
     public int Id { get; set; }
-    public string Name { get; set; }
+    public required string Name { get; set; }
     public List<PlaylistItem> Songs { get; set; } = new();
 }
 
@@ -33,14 +33,14 @@ public class PlaylistItem
 {
     public int Id { get; set; }
     public int PlaylistId { get; set; }
-    public string SongPath { get; set; }
+    public required string SongPath { get; set; }
     public int Order { get; set; }
 }
 
 public class Impression
 {
     public int Id { get; set; }
-    public string SongPath { get; set; }
+    public required string SongPath { get; set; }
     public DateTime Timestamp { get; set; }
-    public string PlayedBy { get; set; }
+    public required string PlayedBy { get; set; }
 }

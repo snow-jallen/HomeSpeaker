@@ -18,9 +18,7 @@
 
 @code
 {
-    private Uri? aspireUrl = null;
-
-    protected override async Task OnInitializedAsync()
+    private Uri? aspireUrl = null;    protected override Task OnInitializedAsync()
     {
         if (aspireUrl is null)
         {
@@ -30,5 +28,7 @@
                 };
             aspireUrl = uriBuilder.Uri;
         }
+        
+        return Task.CompletedTask;
     }
 }
