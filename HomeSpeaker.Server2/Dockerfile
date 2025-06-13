@@ -2,7 +2,7 @@
 
 # This stage is used when running from VS in fast mode (Default for Debug configuration)
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
-RUN apt update && apt install --yes sox libsox-fmt-mp3 alsa-utils vlc ffmpeg
+RUN apt update && apt install --yes sox libsox-fmt-mp3 alsa-utils vlc ffmpeg shairport-sync
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
