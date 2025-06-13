@@ -9,5 +9,6 @@ namespace HomeSpeaker.Shared
         public TimeSpan Remaining { get; init; }
         public bool StillPlaying { get; init; }
         public Song CurrentSong { get; init; }
+        public AirPlayStatus AirPlayStatus { get; init; } = new();
     }
 }

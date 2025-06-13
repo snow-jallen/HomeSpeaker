@@ -193,12 +193,23 @@ public class HomeSpeakerService : HomeSpeakerBase
         }
 
         return Task.FromResult(reply);
-    }
-
-    public override async Task<GetStatusReply> GetPlayerStatus(GetStatusRequest request, ServerCallContext context)
+    }    public override async Task<GetStatusReply> GetPlayerStatus(GetStatusRequest request, ServerCallContext context)
     {
         var status = musicPlayer.Status ?? new Shared.PlayerStatus();
         var currentVolume = await musicPlayer.GetVolume();
+        
+        var airPlayMessage = new AirPlayStatusMessage
+        {
+            IsConnected = status.AirPlayStatus.IsConnected,
+            DeviceName = status.AirPlayStatus.DeviceName,
+            ClientIpAddress = status.AirPlayStatus.ClientIpAddress
+        };
+        
+        if (status.AirPlayStatus.ConnectedAt != default)
+        {
+            airPlayMessage.ConnectedAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(status.AirPlayStatus.ConnectedAt.ToUniversalTime());
+        }
+        
         return new GetStatusReply
         {
             Elapsed = Duration.FromTimeSpan(status.Elapsed),
@@ -206,7 +217,8 @@ public class HomeSpeakerService : HomeSpeakerBase
             Remaining = Duration.FromTimeSpan(status.Remaining),
             StilPlaying = status.StillPlaying,
             CurrentSong = status.CurrentSong != null ? translateSong(status.CurrentSong) : null,
-            Volume = currentVolume
+            Volume = currentVolume,
+            AirPlayStatus = airPlayMessage
         };
     }
 

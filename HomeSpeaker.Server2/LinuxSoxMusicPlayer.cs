@@ -20,7 +20,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer
 
     private PlayerStatus status = new();
     private Song? currentSong;
-    public PlayerStatus Status => (status ?? new PlayerStatus()) with { CurrentSong = currentSong };
+    public PlayerStatus Status => (status ?? new PlayerStatus()) with { CurrentSong = currentSong, AirPlayStatus = new AirPlayStatus() };
 
     private bool startedPlaying = false;
     private Song? stoppedSong;

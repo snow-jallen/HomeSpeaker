@@ -46,8 +46,16 @@ builder.Services.AddSingleton<IMusicPlayer>(services =>
         ? services.GetRequiredService<WindowsMusicPlayer>()
         : services.GetRequiredService<LinuxSoxMusicPlayer>();
 
-    return new ChattyMusicPlayer(actualPlayer);
+    var airPlayService = services.GetRequiredService<IAirPlayService>();
+    var logger = services.GetRequiredService<ILogger<AirPlayAwareMusicPlayer>>();
+    var airPlayAware = new AirPlayAwareMusicPlayer(actualPlayer, airPlayService, logger);
+
+    return new ChattyMusicPlayer(airPlayAware);
 });
+
+// Add AirPlay service
+builder.Services.AddSingleton<IAirPlayService, AirPlayService>();
+builder.Services.AddHostedService<AirPlayHostedService>();
 builder.Services.AddSingleton<Mp3Library>();
 builder.Services.AddHostedService<LifecycleEvents>();
 

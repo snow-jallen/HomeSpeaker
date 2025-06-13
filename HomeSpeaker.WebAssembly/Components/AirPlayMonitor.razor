@@ -1,0 +1,179 @@
+@using HomeSpeaker.Shared
+@using HomeSpeaker.WebAssembly.Services
+@inject HomeSpeakerService HomeSpeakerService
+@inject ILogger<AirPlayMonitor> Logger
+@implements IDisposable
+
+<div class="airplay-card mb-2">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header @GetHeaderClass() text-white py-2">
+            <h6 class="mb-0">
+                <i class="fas fa-wireless-alt me-1"></i>
+                AirPlay Status
+
+                @if (airPlayStatus?.IsConnected == true)
+                {
+                    <span class="badge bg-light text-dark p-1 ms-2">
+                        <i class="fas fa-mobile-alt me-1"></i>
+                        Connected
+                    </span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary p-1 ms-2">
+                        <i class="fas fa-times me-1"></i>
+                        Disconnected
+                    </span>
+                }
+            </h6>
+        </div>
+        <div class="card-body py-2">
+            @if (airPlayStatus?.IsConnected == true)
+            {
+                <div class="text-center">
+                    <div class="mb-2">
+                        <i class="fas fa-mobile-alt fa-2x text-success"></i>
+                    </div>
+                    <div class="h6 mb-1">@airPlayStatus.DeviceName</div>
+                    <div class="small text-muted mb-2">
+                        Connected from: @airPlayStatus.ClientIpAddress
+                    </div>
+                    <div class="small text-muted">
+                        Since: @FormatConnectionTime(airPlayStatus.ConnectedAt)
+                    </div>
+                </div>
+            }
+            else if (isLoading)
+            {
+                <div class="text-center py-2">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div class="mt-1 small">Loading...</div>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-2">
+                    <div class="mb-2">
+                        <i class="fas fa-wireless-alt fa-2x text-muted"></i>
+                    </div>
+                    <div class="text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        No AirPlay device connected
+                    </div>
+                    <div class="text-muted small mt-1">
+                        Stream audio from your iPhone or iPad
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .airplay-card .card-body {
+        padding: 0.75rem;
+    }
+    
+    .airplay-card .badge {
+        white-space: nowrap;
+        font-size: 0.8rem;
+    }
+    
+    .airplay-card .fas {
+        opacity: 0.9;
+    }
+    
+    .airplay-card .small {
+        font-size: 0.8rem;
+    }
+</style>
+
+@code {
+    private AirPlayStatus? airPlayStatus;
+    private DateTime lastUpdated = DateTime.Now;
+    private Timer? refreshTimer;
+    private bool isLoading = true;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        Logger.LogInformation("Initializing AirPlayMonitor component...");
+        
+        await RefreshAirPlayData();
+        
+        // Set up auto-refresh every 5 seconds for real-time status
+        refreshTimer = new Timer(async _ => 
+        {
+            try
+            {
+                await InvokeAsync(RefreshAirPlayData);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Component was disposed, ignore
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error in AirPlay refresh timer");
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+    }
+    
+    private async Task RefreshAirPlayData()
+    {
+        Logger.LogDebug("Refreshing AirPlay data...");
+
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+            
+            var status = await HomeSpeakerService.GetStatusAsync();
+            airPlayStatus = new AirPlayStatus
+            {
+                IsConnected = status.AirPlayStatus?.IsConnected ?? false,
+                DeviceName = status.AirPlayStatus?.DeviceName ?? string.Empty,
+                ClientIpAddress = status.AirPlayStatus?.ClientIpAddress ?? string.Empty,
+                ConnectedAt = status.AirPlayStatus?.ConnectedAt?.ToDateTime() ?? DateTime.MinValue
+            };
+            
+            lastUpdated = DateTime.Now;
+            isLoading = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh AirPlay data");
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+    
+    private string GetHeaderClass()
+    {
+        return airPlayStatus?.IsConnected == true ? "bg-success" : "bg-secondary";
+    }
+    
+    private string FormatConnectionTime(DateTime connectedAt)
+    {
+        if (connectedAt == DateTime.MinValue)
+            return "Unknown";
+            
+        var elapsed = DateTime.Now - connectedAt;
+        
+        if (elapsed.TotalMinutes < 1)
+            return "Just now";
+        else if (elapsed.TotalMinutes < 60)
+            return $"{(int)elapsed.TotalMinutes} min ago";
+        else if (elapsed.TotalHours < 24)
+            return $"{(int)elapsed.TotalHours}h {(int)(elapsed.TotalMinutes % 60)}m ago";
+        else
+            return connectedAt.ToString("MMM d, HH:mm");
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}

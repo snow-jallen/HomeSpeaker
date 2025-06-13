@@ -2,13 +2,44 @@
 @inject HomeSpeakerService svc;
 @inject ILogger<Index> logger
 @using Microsoft.Fast.Components.FluentUI
+@using HomeSpeaker.WebAssembly.Components
 
 <div class="row g-2 mb-2">
-    <div class="col-xl-6 col-6">
+    <div class="col-xl-4 col-12">
         <TemperatureMonitor />
     </div>
-    <div class="col-xl-6 col-6">
+    <div class="col-xl-4 col-12">
         <BloodSugarMonitor />
+    </div>
+    <div class="col-xl-4 col-12">
+        <div class="airplay-card mb-2">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-secondary text-white py-2">
+                    <h6 class="mb-0">
+                        <i class="fas fa-wireless-alt me-1"></i>
+                        AirPlay Status
+                        <span class="badge bg-secondary p-1 ms-2">
+                            <i class="fas fa-times me-1"></i>
+                            Disconnected
+                        </span>
+                    </h6>
+                </div>
+                <div class="card-body py-2">
+                    <div class="text-center py-2">
+                        <div class="mb-2">
+                            <i class="fas fa-wireless-alt fa-2x text-muted"></i>
+                        </div>
+                        <div class="text-muted small">
+                            <i class="fas fa-info-circle me-1"></i>
+                            No AirPlay device connected
+                        </div>
+                        <div class="text-muted small mt-1">
+                            Stream audio from your iPhone or iPad
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

@@ -2,6 +2,7 @@
 
 import "google/protobuf/empty.proto";
 import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
 
 option csharp_namespace = "HomeSpeaker.Shared";
 
@@ -76,6 +77,14 @@ message GetStatusReply {
 	double PercentComplete=4;
 	SongMessage CurrentSong=5;
 	int32 Volume=6;
+	AirPlayStatusMessage AirPlayStatus=7;
+}
+
+message AirPlayStatusMessage {
+	bool IsConnected=1;
+	string DeviceName=2;
+	google.protobuf.Timestamp ConnectedAt=3;
+	string ClientIpAddress=4;
 }
 message GetSongsRequest {
 	string Folder=1;

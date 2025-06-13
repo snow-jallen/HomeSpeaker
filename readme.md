@@ -1,5 +1,18 @@
 # HomeSpeaker
 
+A comprehensive home automation and music management system with AirPlay support.
+
+## New Feature: AirPlay Integration
+
+The HomeSpeaker now acts as an AirPlay receiver, allowing you to stream audio directly from your iPhone or iPad. When an AirPlay device connects:
+
+- The server automatically stops any currently playing music
+- The web interface shows the connected device name and connection details
+- Music playback is paused until the AirPlay session ends
+- Normal HomeSpeaker functionality resumes when the device disconnects
+
+See [AIRPLAY_SETUP.md](AIRPLAY_SETUP.md) for installation and configuration instructions.
+
 ## Running Locally
 - Install ffmpeg `winget install gyan.ffmpeg.shared`
 - Run the following command to run the Aspire Dashboard in a container

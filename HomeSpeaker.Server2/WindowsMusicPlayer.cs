@@ -21,7 +21,7 @@ public class WindowsMusicPlayer : IMusicPlayer
     private PlayerStatus status = new();
     private Song? currentSong;
     private Song? stoppedSong;
-    public PlayerStatus Status => (status ?? new PlayerStatus()) with { CurrentSong = currentSong };
+    public PlayerStatus Status => (status ?? new PlayerStatus()) with { CurrentSong = currentSong, AirPlayStatus = new AirPlayStatus() };
 
     private bool startedPlaying = false;
 
