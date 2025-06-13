@@ -67,8 +67,21 @@ public class AirPlayService : IAirPlayService, IDisposable
         // Log audio devices for debugging
         await LogAudioDevices();
         
-        await StartShairportSync(_cancellationTokenSource.Token);
-        _logger.LogInformation("AirPlay service started successfully.");
+        // Start AirPlay in background - don't block application startup
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await StartShairportSync(_cancellationTokenSource.Token);
+                _logger.LogInformation("AirPlay service started successfully.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to start AirPlay service. AirPlay functionality will be disabled, but the application will continue running.");
+            }
+        }, _cancellationTokenSource.Token);
+        
+        _logger.LogInformation("AirPlay service initialization completed (starting in background).");
     }
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
@@ -103,6 +116,9 @@ public class AirPlayService : IAirPlayService, IDisposable
         var deviceName = _configuration["AirPlay:DeviceName"] ?? "HomeSpeaker";
         var port = _configuration.GetValue<int>("AirPlay:Port", 5025);
         
+        // Ensure Avahi daemon is running (critical for mDNS)
+        await EnsureAvahiDaemonRunning();
+        
         // Stop any existing shairport-sync instances to prevent conflicts
         await StopExistingShairportInstances();
         
@@ -121,7 +137,7 @@ public class AirPlayService : IAirPlayService, IDisposable
         }
         
         _logger.LogError("Failed to start shairport-sync with any configuration. AirPlay functionality will be disabled.");
-        throw new InvalidOperationException("Unable to start shairport-sync process");
+        // Don't throw exception - let the application continue without AirPlay
     }
     
     private async Task<bool> TryStartShairportWithConfig(string deviceName, int port, string? audioBackend, CancellationToken cancellationToken)
@@ -202,28 +218,48 @@ public class AirPlayService : IAirPlayService, IDisposable
         if (!string.IsNullOrEmpty(e.Data))
         {
             // Log all error output for debugging
-            _logger.LogWarning("Shairport error: {Error}", e.Data);
+            _logger.LogWarning("Shairport stderr: {Error}", e.Data);
             
-            // Check for specific error patterns
-            if (e.Data.Contains("the name") && e.Data.Contains("already in use"))
+            // Check for critical error patterns that indicate real failures
+            if (e.Data.Contains("*fatal error:"))
             {
-                _logger.LogError("AirPlay device name conflict detected: {Error}", e.Data);
+                _logger.LogError("Fatal error detected: {Error}", e.Data);
             }
-            else if (e.Data.Contains("audio") && e.Data.Contains("error"))
+            else if (e.Data.Contains("couldn't create avahi client") || e.Data.Contains("Daemon not running"))
             {
-                _logger.LogError("Audio configuration error detected: {Error}", e.Data);
+                _logger.LogError("Avahi daemon error detected: {Error}", e.Data);
             }
-            else if (e.Data.Contains("permission") || e.Data.Contains("denied"))
+            else if (e.Data.Contains("Could not establish mDNS advertisement"))
+            {
+                _logger.LogError("mDNS advertisement error detected: {Error}", e.Data);
+            }
+            else if (e.Data.Contains("address already in use") || e.Data.Contains("bind: Address already in use"))
+            {
+                _logger.LogError("Port already in use error detected: {Error}", e.Data);
+            }
+            else if (e.Data.Contains("permission denied") || e.Data.Contains("Permission denied"))
             {
                 _logger.LogError("Permission error detected: {Error}", e.Data);
             }
-            else if (e.Data.Contains("bind") || e.Data.Contains("port"))
+            else if (e.Data.Contains("*error:"))
             {
-                _logger.LogError("Port binding error detected: {Error}", e.Data);
+                _logger.LogError("Shairport error detected: {Error}", e.Data);
+            }
+            else if (e.Data.Contains("*warning:"))
+            {
+                _logger.LogWarning("Shairport warning: {Error}", e.Data);
+            }
+            else
+            {
+                // Most stderr output from shairport-sync is just informational
+                _logger.LogDebug("Shairport info: {Error}", e.Data);
             }
             
-            // Parse connection events from stderr
-            ParseConnectionEvents(e.Data);
+            // Parse connection events from stderr (only for actual connection messages)
+            if (e.Data.Contains("Connection from") || e.Data.Contains("closed"))
+            {
+                ParseConnectionEvents(e.Data);
+            }
         }
     }
 
@@ -363,9 +399,7 @@ public class AirPlayService : IAirPlayService, IDisposable
         await process.WaitForExitAsync();
 
         return (process.ExitCode, output);
-    }
-
-    private async Task StopExistingShairportInstances()
+    }    private async Task StopExistingShairportInstances()
     {
         try
         {
@@ -379,6 +413,51 @@ public class AirPlayService : IAirPlayService, IDisposable
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "Failed to stop existing shairport-sync instances (this is normal if none were running)");
+        }
+    }
+
+    private async Task EnsureAvahiDaemonRunning()
+    {
+        try
+        {
+            // Check if avahi-daemon is running
+            var (exitCode, output) = await RunCommand("pgrep", "avahi-daemon");
+            if (exitCode == 0)
+            {
+                _logger.LogInformation("Avahi daemon is already running");
+                return;
+            }
+
+            _logger.LogWarning("Avahi daemon is not running. Attempting to start it...");
+
+            // Try to start avahi-daemon
+            var (startExitCode, startOutput) = await RunCommand("avahi-daemon", "--daemonize");
+            if (startExitCode == 0)
+            {
+                _logger.LogInformation("Successfully started Avahi daemon");
+                // Wait for daemon to initialize
+                await Task.Delay(2000);
+            }
+            else
+            {
+                _logger.LogError("Failed to start Avahi daemon. Exit code: {ExitCode}, Output: {Output}", startExitCode, startOutput);
+                
+                // Try alternative approach with systemctl if available
+                var (systemctlExitCode, systemctlOutput) = await RunCommand("systemctl", "start avahi-daemon");
+                if (systemctlExitCode == 0)
+                {
+                    _logger.LogInformation("Successfully started Avahi daemon via systemctl");
+                    await Task.Delay(2000);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to start Avahi daemon via systemctl as well. mDNS functionality may not work.");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error ensuring Avahi daemon is running. mDNS advertisement may fail.");
         }
     }
 

@@ -3,7 +3,7 @@
 # This stage is used when running from VS in fast mode (Default for Debug configuration)
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
 RUN apt update && apt install --yes sox libsox-fmt-mp3 alsa-utils vlc ffmpeg 
-RUN apt install --yes shairport-sync pulseaudio-utils avahi-daemon
+RUN apt install --yes shairport-sync pulseaudio-utils avahi-daemon sudo
 # Disable system shairport-sync service to prevent conflicts
 RUN systemctl disable shairport-sync 2>/dev/null || true
 # Configure ALSA for better audio support
@@ -13,6 +13,8 @@ RUN echo "pcm.!default { type pulse }" > /etc/asound.conf && \
 RUN groupadd -g 1000 mygroup 2>/dev/null || true
 RUN useradd -u 1000 -g mygroup -s /bin/bash -m homespeakeruser 2>/dev/null || true
 RUN usermod -aG audio homespeakeruser
+# Allow homespeakeruser to run avahi-daemon with sudo
+RUN echo "homespeakeruser ALL=(ALL) NOPASSWD: /usr/sbin/avahi-daemon, /bin/mkdir, /bin/chown" >> /etc/sudoers
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
@@ -41,9 +43,13 @@ RUN groupadd -g 1000 mygroup 2>/dev/null || true
 RUN useradd -u 1000 -g mygroup -s /bin/bash -m homespeakeruser 2>/dev/null || true
 #RUN useradd -ms /bin/bash homespeakeruser
 RUN usermod -aG audio homespeakeruser
+# Allow homespeakeruser to run avahi-daemon with sudo
+RUN echo "homespeakeruser ALL=(ALL) NOPASSWD: /usr/sbin/avahi-daemon, /bin/mkdir, /bin/chown" >> /etc/sudoers
 COPY container-diagnostics.sh /usr/local/bin/container-diagnostics.sh
 RUN chmod +x /usr/local/bin/container-diagnostics.sh
+COPY start-homespeaker.sh /usr/local/bin/start-homespeaker.sh
+RUN chmod +x /usr/local/bin/start-homespeaker.sh
 USER homespeakeruser
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "HomeSpeaker.Server2.dll"]
+ENTRYPOINT ["/usr/local/bin/start-homespeaker.sh"]
