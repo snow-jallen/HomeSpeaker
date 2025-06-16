@@ -117,6 +117,60 @@ app.MapGet("/api/bloodsugar", async (BloodSugarService bloodSugarService, Cancel
     }
 });
 
+// Temperature cache management endpoints
+app.MapDelete("/api/temperature/cache", (TemperatureService temperatureService) =>
+{
+    try
+    {
+        temperatureService.ClearCache();
+        return Results.Ok(new { message = "Temperature cache cleared successfully" });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to clear temperature cache: {ex.Message}");
+    }
+});
+
+app.MapPost("/api/temperature/refresh", async (TemperatureService temperatureService, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var temperatureStatus = await temperatureService.RefreshAsync(cancellationToken);
+        return Results.Ok(temperatureStatus);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to refresh temperature data: {ex.Message}");
+    }
+});
+
+// Blood Sugar cache management endpoints
+app.MapDelete("/api/bloodsugar/cache", (BloodSugarService bloodSugarService) =>
+{
+    try
+    {
+        bloodSugarService.ClearCache();
+        return Results.Ok(new { message = "Blood sugar cache cleared successfully" });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to clear blood sugar cache: {ex.Message}");
+    }
+});
+
+app.MapPost("/api/bloodsugar/refresh", async (BloodSugarService bloodSugarService, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var bloodSugarStatus = await bloodSugarService.RefreshAsync(cancellationToken);
+        return Results.Ok(bloodSugarStatus);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to refresh blood sugar data: {ex.Message}");
+    }
+});
+
 app.MapFallbackToFile("index.html");
 
 app.Run();

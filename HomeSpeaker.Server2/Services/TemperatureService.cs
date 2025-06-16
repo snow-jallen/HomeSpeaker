@@ -93,11 +93,12 @@ public sealed class TemperatureService
         {
             _logger.LogInformation("Returning cached temperature status: {TemperatureData}", JsonSerializer.Serialize(cachedValue));
             return cachedValue!;
-        }
-
-        // Cache miss, fetch new data
+        }        // Cache miss, fetch new data
         _logger.LogInformation("Temperature cache miss, fetching fresh data...");
         var temperatureStatus = await GetTemperatureStatusInternalAsync(cancellationToken);
+
+        // Set cache timestamp
+        temperatureStatus.LastCachedAt = DateTime.Now;
 
         // Cache the result with absolute expiration
         var cacheOptions = new MemoryCacheEntryOptions
@@ -110,6 +111,25 @@ public sealed class TemperatureService
         _logger.LogInformation("Temperature data cached for {Minutes} minutes", CacheExpiration.TotalMinutes);
 
         return temperatureStatus;
+    }
+
+    /// <summary>
+    /// Clears the temperature cache
+    /// </summary>
+    public void ClearCache()
+    {
+        _cache.Remove(CacheKey);
+        _logger.LogInformation("Temperature cache cleared");
+    }
+
+    /// <summary>
+    /// Clears the cache and fetches fresh data
+    /// </summary>
+    public async Task<TemperatureStatus> RefreshAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Refreshing temperature data (clearing cache and fetching fresh data)");
+        ClearCache();
+        return await GetTemperatureStatusAsync(cancellationToken);
     }
 
     private async Task<TemperatureStatus> GetTemperatureStatusInternalAsync(CancellationToken cancellationToken = default)

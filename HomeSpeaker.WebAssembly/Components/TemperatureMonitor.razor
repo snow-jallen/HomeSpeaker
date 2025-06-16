@@ -5,37 +5,42 @@
 @implements IDisposable
 
 <div class="temperature-card mb-2">
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-primary text-white py-2">
-            <h6 class="mb-0">
-                <i class="fas fa-thermometer-half me-1"></i>
-                Temperature Monitor
+    <div class="card border-0 shadow-sm">        <div class="card-header bg-primary text-white py-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-thermometer-half me-1"></i>
+                    Temperature Monitor
 
-            @if (temperatureStatus != null && temperatureStatus.OutsideTemperature.HasValue && temperatureStatus.YoungerGirlsRoomTemperature.HasValue)
-            {
-                @if (temperatureStatus.ShouldWindowsBeClosed)
+                @if (temperatureStatus != null && temperatureStatus.OutsideTemperature.HasValue && temperatureStatus.YoungerGirlsRoomTemperature.HasValue)
                 {
-                    <span class="badge bg-warning p-1">
-                        <i class="fas fa-window-close me-1"></i>
-                        Keep Closed
-                    </span>
+                    @if (temperatureStatus.ShouldWindowsBeClosed)
+                    {
+                        <span class="badge bg-warning p-1">
+                            <i class="fas fa-window-close me-1"></i>
+                            Keep Closed
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success p-1">
+                            <i class="fas fa-window-restore me-1"></i>
+                            Open Window
+                        </span>
+                    }
                 }
                 else
                 {
-                    <span class="badge bg-success p-1">
-                        <i class="fas fa-window-restore me-1"></i>
-                        Open Window
+                    <span class="badge bg-secondary p-1">
+                        <i class="fas fa-question me-1"></i>
+                        No Data
                     </span>
                 }
-            }
-            else
-            {
-                <span class="badge bg-secondary p-1">
-                    <i class="fas fa-question me-1"></i>
-                    No Data
-                </span>
-            }
-            </h6>
+                </h6>
+                <button class="btn btn-outline-light btn-sm" @onclick="ForceRefreshTemperatureData" disabled="@isLoading">
+                    <i class="fas fa-redo me-1"></i>
+                    @if (isLoading) { <span>Loading...</span> } else { <span>Force Refresh</span> }
+                </button>
+            </div>
         </div>
         <div class="card-body py-2">
             @if (temperatureStatus != null)
@@ -83,9 +88,17 @@
                             <div class="temperature-display">
                                 <span class="h6" style="color: @GetTemperatureColor(temperatureStatus.GreenhouseTemperature)">@FormatTemperature(temperatureStatus.GreenhouseTemperature)</span>
                             </div>
-                        </div>
-                    </div>
+                        </div>                    </div>
                 </div>                
+                  <div class="text-center mt-1">
+                    <small class="text-muted">
+                        Updated: @lastUpdated.ToString("HH:mm:ss")
+                        @if (temperatureStatus.LastCachedAt != default(DateTime))
+                        {
+                            <span class="ms-1">• Cached: @FormatTimeSince(DateTime.Now - temperatureStatus.LastCachedAt)</span>
+                        }
+                    </small>
+                </div>
             }
             else if (isLoading)
             {
@@ -105,9 +118,7 @@
                     </div>
                     <button class="btn btn-outline-primary btn-sm mt-1" @onclick="RefreshTemperatureData">
                         <i class="fas fa-sync-alt me-1"></i>
-                        Retry
-                    </button>
-                </div>
+                        Retry                    </button>                </div>
             }
         </div>
     </div>
@@ -261,6 +272,65 @@
             // Very hot - Dark Red
             return "#cc0000";
         }
+    }
+
+    private async Task ClearTemperatureCache()
+    {
+        Logger.LogInformation("Clearing temperature cache...");
+
+        try
+        {
+            var success = await TemperatureService.ClearCacheAsync();
+            if (success)
+            {
+                Logger.LogInformation("Temperature cache cleared successfully");
+            }
+            else
+            {
+                Logger.LogWarning("Failed to clear temperature cache");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error clearing temperature cache");
+        }
+    }
+
+    private async Task ForceRefreshTemperatureData()
+    {
+        Logger.LogInformation("Force refreshing temperature data...");
+
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+            
+            temperatureStatus = await TemperatureService.RefreshAsync();
+            lastUpdated = DateTime.Now;
+            isLoading = false;
+            StateHasChanged();
+            
+            Logger.LogInformation("Temperature data force refreshed successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to force refresh temperature data");
+            Console.WriteLine($"Failed to force refresh temperature data: {ex.Message}");
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string FormatTimeSince(TimeSpan timeSince)
+    {
+        if (timeSince.TotalMinutes < 1)
+            return "< 1 min";
+        else if (timeSince.TotalMinutes < 60)
+            return $"{(int)timeSince.TotalMinutes} min";
+        else if (timeSince.TotalHours < 24)
+            return $"{(int)timeSince.TotalHours}h {(int)(timeSince.TotalMinutes % 60)}m";
+        else
+            return $"{(int)timeSince.TotalDays}d";
     }
 
     public void Dispose()

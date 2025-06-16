@@ -172,4 +172,23 @@ public sealed class BloodSugarService
             };
         }
     }
+
+    /// <summary>
+    /// Clears the blood sugar cache
+    /// </summary>
+    public void ClearCache()
+    {
+        _cache.Remove(CacheKey);
+        _logger.LogInformation("Blood sugar cache cleared");
+    }
+
+    /// <summary>
+    /// Clears the cache and fetches fresh data
+    /// </summary>
+    public async Task<BloodSugarStatus> RefreshAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Refreshing blood sugar data (clearing cache and fetching fresh data)");
+        ClearCache();
+        return await GetBloodSugarStatusAsync(cancellationToken);
+    }
 }

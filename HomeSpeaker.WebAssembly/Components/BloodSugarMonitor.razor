@@ -5,12 +5,17 @@
 @implements IDisposable
 
 <div class="blood-sugar-card mb-2">
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-info text-white py-2">
-            <h6 class="mb-0">
-                <i class="fas fa-tint me-1"></i>
-                Blood Sugar Monitor
-            </h6>
+    <div class="card border-0 shadow-sm">        <div class="card-header bg-info text-white py-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-tint me-1"></i>
+                    Blood Sugar Monitor
+                </h6>
+                <button class="btn btn-outline-light btn-sm" @onclick="ForceRefreshBloodSugarData" disabled="@isLoading">
+                    <i class="fas fa-redo me-1"></i>
+                    @if (isLoading) { <span>Loading...</span> } else { <span>Force Refresh</span> }
+                </button>
+            </div>
         </div>
         <div class="card-body py-2">
             @if (bloodSugarStatus?.CurrentReading != null)
@@ -51,16 +56,19 @@
                         </div>
                     </div>
                 </div>
-                
-                <div class="text-center mt-1">
+                  <div class="text-center mt-1">
                     <small class="text-muted">
                         Updated: @lastUpdated.ToString("HH:mm:ss")
                         @if (bloodSugarStatus.IsStale)
                         {
                             <span class="badge bg-warning ms-1 p-1">⚠️ Stale</span>
                         }
-                    </small>
-                </div>            }
+                        @if (bloodSugarStatus.LastUpdated != default(DateTime))
+                        {
+                            <span class="ms-1">• Cached: @FormatTimeSince(DateTime.Now - bloodSugarStatus.LastUpdated)</span>
+                        }
+                    </small>                </div>
+            }
             else if (isLoading)
             {
                 <div class="text-center py-2">
@@ -173,6 +181,53 @@
         {
             Logger.LogError(ex, "Failed to refresh blood sugar data");
             Console.WriteLine($"Failed to refresh blood sugar data: {ex.Message}"); // Temporary - shows immediately
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClearBloodSugarCache()
+    {
+        Logger.LogInformation("Clearing blood sugar cache...");
+
+        try
+        {
+            var success = await BloodSugarService.ClearCacheAsync();
+            if (success)
+            {
+                Logger.LogInformation("Blood sugar cache cleared successfully");
+            }
+            else
+            {
+                Logger.LogWarning("Failed to clear blood sugar cache");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error clearing blood sugar cache");
+        }
+    }
+
+    private async Task ForceRefreshBloodSugarData()
+    {
+        Logger.LogInformation("Force refreshing blood sugar data...");
+
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+            
+            bloodSugarStatus = await BloodSugarService.RefreshAsync();
+            lastUpdated = DateTime.Now;
+            isLoading = false;
+            StateHasChanged();
+            
+            Logger.LogInformation("Blood sugar data force refreshed successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to force refresh blood sugar data");
+            Console.WriteLine($"Failed to force refresh blood sugar data: {ex.Message}");
             isLoading = false;
             StateHasChanged();
         }
