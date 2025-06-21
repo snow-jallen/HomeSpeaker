@@ -1,0 +1,190 @@
+@inject HomeSpeakerService svc
+@inject IJSRuntime JsRuntime
+
+<div class="dropdown-menu show" style="position: static; z-index: 10001; max-height: 250px; overflow-y: auto; min-width: 220px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); border: 1px solid #dee2e6;">
+    <h6 class="dropdown-header">Add to...</h6>
+    <button class="dropdown-item" @onclick="AddToQueue">
+        <span class="oi oi-list-rich me-2"></span>Queue
+    </button>
+    <div class="dropdown-divider"></div>
+    
+    @if (allPlaylists == null)
+    {
+        <div class="dropdown-item-text">Loading playlists...</div>
+    }
+    else if (!allPlaylists.Any())
+    {
+        <div class="dropdown-item-text text-muted">No playlists available</div>
+        <div class="dropdown-divider"></div>
+        <button class="dropdown-item" @onclick="CreateNewPlaylist">
+            <span class="oi oi-plus me-2"></span>Create new playlist...
+        </button>
+    }
+    else
+    {
+        <h6 class="dropdown-header">Playlists:</h6>
+        @foreach (var playlist in allPlaylists)
+        {
+            <button class="dropdown-item" @onclick="@(() => AddToPlaylist(playlist.Name))">
+                <span class="oi oi-list me-2"></span>@playlist.Name
+            </button>
+        }
+        <div class="dropdown-divider"></div>
+        <button class="dropdown-item" @onclick="CreateNewPlaylist">
+            <span class="oi oi-plus me-2"></span>Create new playlist...
+        </button>
+    }
+</div>
+
+@if (showCreatePlaylistModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.7); z-index: 10100; position: fixed; top: 0; left: 0; width: 100%; height: 100%;">
+        <div class="modal-dialog modal-sm" style="margin-top: 10%; margin-left: auto; margin-right: auto;">
+            <div class="modal-content" style="background: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                <div class="modal-header" style="padding: 1rem; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center;">
+                    <h5 class="modal-title" style="margin: 0; color: #333; font-weight: 500;">Create New Playlist</h5>
+                    <button type="button" class="btn-close" @onclick="CancelCreatePlaylist" style="background: none; border: none; font-size: 1.5rem; line-height: 1; cursor: pointer;">&times;</button>
+                </div>
+                <div class="modal-body" style="padding: 1rem;">
+                    <div class="mb-3">
+                        <label for="playlistName" class="form-label" style="display: block; margin-bottom: 0.5rem; color: #333; font-weight: 500;">Playlist Name</label>
+                        <input type="text" class="form-control" id="playlistName" @bind="newPlaylistName" @onkeypress="OnKeyPress" autofocus 
+                               style="width: 100%; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 0.25rem; font-size: 1rem;" 
+                               placeholder="Enter playlist name..." />
+                    </div>
+                </div>
+                <div class="modal-footer" style="padding: 1rem; border-top: 1px solid #dee2e6; display: flex; justify-content: flex-end; gap: 0.5rem;">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelCreatePlaylist" 
+                            style="padding: 0.5rem 1rem; border: 1px solid #6c757d; background-color: #6c757d; color: white; border-radius: 0.25rem; cursor: pointer;">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveNewPlaylist"
+                            style="padding: 0.5rem 1rem; border: 1px solid #007bff; background-color: #007bff; color: white; border-radius: 0.25rem; cursor: pointer;">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public List<SongViewModel>? Songs { get; set; }
+    [Parameter] public SongViewModel? Song { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private IEnumerable<Playlist>? allPlaylists;
+    private bool showCreatePlaylistModal = false;
+    private string newPlaylistName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            allPlaylists = await svc.GetPlaylistsAsync();
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("console.error", $"Error loading playlists: {ex.Message}");
+            allPlaylists = Enumerable.Empty<Playlist>();
+        }
+    }
+
+    private async Task AddToQueue()
+    {
+        try
+        {
+            if (Songs != null && Songs.Any())
+            {
+                foreach (var song in Songs)
+                {
+                    await svc.EnqueueSongAsync(song.SongId);
+                }
+            }
+            else if (Song != null)
+            {
+                await svc.EnqueueSongAsync(Song.SongId);
+            }
+            await OnClosed.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", $"Error adding to queue: {ex.Message}");
+        }
+    }
+
+    private async Task AddToPlaylist(string playlistName)
+    {
+        try
+        {            if (Songs != null && Songs.Any())
+            {
+                foreach (var song in Songs)
+                {
+                    if (!string.IsNullOrEmpty(song.Path))
+                        await svc.AddToPlaylistAsync(playlistName, song.Path);
+                }
+            }
+            else if (Song != null && !string.IsNullOrEmpty(Song.Path))
+            {
+                await svc.AddToPlaylistAsync(playlistName, Song.Path);
+            }
+            await OnClosed.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", $"Error adding to playlist: {ex.Message}");
+        }
+    }
+
+    private void CreateNewPlaylist()
+    {
+        newPlaylistName = "";
+        showCreatePlaylistModal = true;
+        StateHasChanged();
+    }
+
+    private void CancelCreatePlaylist()
+    {
+        showCreatePlaylistModal = false;
+        newPlaylistName = "";
+    }
+
+    private async Task SaveNewPlaylist()
+    {
+        if (string.IsNullOrWhiteSpace(newPlaylistName))
+        {
+            await JsRuntime.InvokeVoidAsync("alert", "Please enter a playlist name.");
+            return;
+        }
+
+        try
+        {            if (Songs != null && Songs.Any())
+            {
+                foreach (var song in Songs)
+                {
+                    if (!string.IsNullOrEmpty(song.Path))
+                        await svc.AddToPlaylistAsync(newPlaylistName.Trim(), song.Path);
+                }
+            }
+            else if (Song != null && !string.IsNullOrEmpty(Song.Path))
+            {
+                await svc.AddToPlaylistAsync(newPlaylistName.Trim(), Song.Path);
+            }
+            
+            showCreatePlaylistModal = false;
+            await OnClosed.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", $"Error creating playlist: {ex.Message}");
+        }
+    }
+
+    private async Task OnKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SaveNewPlaylist();
+        }
+        else if (e.Key == "Escape")
+        {
+            CancelCreatePlaylist();
+        }
+    }
+}

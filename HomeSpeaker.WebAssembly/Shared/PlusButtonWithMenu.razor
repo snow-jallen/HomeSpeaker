@@ -1,0 +1,57 @@
+@inject IJSRuntime JsRuntime
+
+<div class="position-relative d-inline-block">
+    <button @onclick="ToggleMenu" class="btn btn-outline-secondary" title="Add to queue or playlist">
+        <span class="oi oi-plus" />
+    </button>
+    
+    @if (showMenu)
+    {
+        <div style="position: absolute; top: 100%; right: 0; z-index: 10000;">
+            <AddToQueueOrPlaylistModal Songs="Songs" Song="Song" OnClosed="CloseMenu" />
+        </div>
+    }
+</div>
+
+@* Click outside to close *@
+@if (showMenu)
+{
+    <div class="position-fixed" style="top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999;" @onclick="CloseMenu"></div>
+}
+
+@code {
+    [Parameter] public List<SongViewModel>? Songs { get; set; }
+    [Parameter] public SongViewModel? Song { get; set; }
+
+    private bool showMenu = false;
+
+    private void ToggleMenu()
+    {
+        showMenu = !showMenu;
+        StateHasChanged();
+    }
+
+    private void CloseMenu()
+    {
+        showMenu = false;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (showMenu)
+        {
+            // Add event listener for escape key to close menu
+            await JsRuntime.InvokeVoidAsync("eval", @"
+                document.addEventListener('keydown', function escapeHandler(e) {
+                    if (e.key === 'Escape') {
+                        document.removeEventListener('keydown', escapeHandler);
+                        // Find and click the overlay to close the menu
+                        const overlay = document.querySelector('.position-fixed[style*=""z-index: 9999""]');
+                        if (overlay) overlay.click();
+                    }
+                });
+            ");
+        }
+    }
+}

@@ -4,10 +4,9 @@
     <div class="row mb-0 gx-1 ms-1">
         <div class="col">
             <div class="h5 mb-2" @onclick=toggleExpanded>@(Name ?? "Folder Unknown")</div>
-        </div>
-        <div class="col-auto">
+        </div>        <div class="col-auto">
             <button @onclick=play class="btn btn-outline-primary"><span class="oi oi-media-play" /></button>
-            <button @onclick=queue class="btn btn-outline-primary"><span class="oi oi-plus" /></button>
+            <PlusButtonWithMenu Songs="songs?.ToList()" />
         </div>
     </div>
     @if (isExpanded)
@@ -29,22 +28,12 @@
     [Parameter]
     public string? Name { get; set; }
 
-    private bool isExpanded = false;
-
-    async Task play()
+    private bool isExpanded = false;    async Task play()
     {
         if (Name == null)
             return;
 
         await svc.PlayFolderAsync(Name);
-    }
-
-    async Task queue()
-    {
-        if (Name == null)
-            return;
-
-        await svc.EnqueueFolderAsync(Name);
     }
 
     void toggleExpanded() => isExpanded = !isExpanded;
