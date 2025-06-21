@@ -74,6 +74,14 @@ public class HomeSpeakerService : HomeSpeakerBase
         return new DeletePlaylistReply();
     }
 
+    public override async Task<ReorderPlaylistSongsReply> ReorderPlaylistSongs(ReorderPlaylistSongsRequest request, ServerCallContext context)
+    {
+        logger.LogInformation("Received ReorderPlaylistSongs request for playlist: {playlistName}", request.PlaylistName);
+        await playlistService.ReorderPlaylistSongsAsync(request.PlaylistName, request.SongPaths.ToList());
+        logger.LogInformation("Successfully reordered songs in playlist: {playlistName}", request.PlaylistName);
+        return new ReorderPlaylistSongsReply();
+    }
+
     public override async Task<AddSongToPlaylistReply> AddSongToPlaylist(AddSongToPlaylistRequest request, ServerCallContext context)
     {
         await playlistService.AppendSongToPlaylistAsync(request.PlaylistName, request.SongPath);

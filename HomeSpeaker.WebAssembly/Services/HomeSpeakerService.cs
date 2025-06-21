@@ -131,7 +131,20 @@ public class HomeSpeakerService
     public async Task DeletePlaylistAsync(string playlistName)
     {
         await client.DeletePlaylistAsync(new DeletePlaylistRequest { PlaylistName = playlistName });
-    }    readonly char[] separators = new[] { '/', '\\' };
+    }
+
+    public async Task ReorderPlaylistSongsAsync(string playlistName, List<string> songPaths)
+    {
+        logger.LogInformation("Calling ReorderPlaylistSongs gRPC method for playlist: {playlistName}", playlistName);
+        await client.ReorderPlaylistSongsAsync(new ReorderPlaylistSongsRequest 
+        { 
+            PlaylistName = playlistName, 
+            SongPaths = { songPaths } 
+        });
+        logger.LogInformation("Successfully called ReorderPlaylistSongs gRPC method for playlist: {playlistName}", playlistName);
+    }
+
+    readonly char[] separators = new[] { '/', '\\' };
 
     public async Task<IEnumerable<string>> GetFolders()
     {

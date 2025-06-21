@@ -137,4 +137,31 @@ public class PlaylistService
         
         await dbContext.SaveChangesAsync();
     }
+
+    public async Task ReorderPlaylistSongsAsync(string playlistName, IEnumerable<string> songPathsInNewOrder)
+    {
+        var playlist = await dbContext.Playlists.Include(p => p.Songs).FirstOrDefaultAsync(p => p.Name == playlistName);
+        if (playlist == null)
+        {
+            logger.LogWarning("Asked to reorder songs in playlist {playlistName} but it doesn't exist.", playlistName);
+            return;
+        }
+
+        var songPathsList = songPathsInNewOrder.ToList();
+        logger.LogInformation("Reordering {songCount} songs in playlist {playlistName}", songPathsList.Count, playlistName);
+
+        // Update the order of existing songs
+        for (int i = 0; i < songPathsList.Count; i++)
+        {
+            var songPath = songPathsList[i];
+            var playlistItem = playlist.Songs.FirstOrDefault(s => s.SongPath == songPath);
+            if (playlistItem != null)
+            {
+                playlistItem.Order = i;
+            }
+        }
+
+        await dbContext.SaveChangesAsync();
+        logger.LogInformation("Successfully reordered songs in playlist {playlistName}", playlistName);
+    }
 }

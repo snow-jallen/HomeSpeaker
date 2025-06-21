@@ -23,10 +23,10 @@ service HomeSpeaker {
 	rpc CacheVideo(CacheVideoRequest) returns (stream CacheVideoReply);
 	rpc DeleteSong(DeleteSongRequest) returns (DeleteSongReply);
 	rpc AddSongToPlaylist(AddSongToPlaylistRequest) returns (AddSongToPlaylistReply);
-	rpc RemoveSongFromPlaylist(RemoveSongFromPlaylistRequest) returns (RemoveSongFromPlaylistReply);
-	rpc GetPlaylists(GetPlaylistsRequest) returns (GetPlaylistsReply);	rpc PlayPlaylist(PlayPlaylistRequest) returns (PlayPlaylistReply);
+	rpc RemoveSongFromPlaylist(RemoveSongFromPlaylistRequest) returns (RemoveSongFromPlaylistReply);	rpc GetPlaylists(GetPlaylistsRequest) returns (GetPlaylistsReply);	rpc PlayPlaylist(PlayPlaylistRequest) returns (PlayPlaylistReply);
 	rpc RenamePlaylist(RenamePlaylistRequest) returns (RenamePlaylistReply);
 	rpc DeletePlaylist(DeletePlaylistRequest) returns (DeletePlaylistReply);
+	rpc ReorderPlaylistSongs(ReorderPlaylistSongsRequest) returns (ReorderPlaylistSongsReply);
 	rpc UpdateQueue(UpdateQueueRequest) returns (UpdateQueueReply);
 	rpc ToggleBacklight(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
@@ -145,3 +145,8 @@ message DeletePlaylistRequest{
 	string PlaylistName=1;
 }
 message DeletePlaylistReply{}
+message ReorderPlaylistSongsRequest{
+	string PlaylistName=1;
+	repeated string SongPaths=2; // Songs in the new order
+}
+message ReorderPlaylistSongsReply{}

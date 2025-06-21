@@ -2,6 +2,22 @@
 @inject IJSRuntime JsRuntime
 @using HomeSpeaker.Shared
 
+<style>
+    .dragging {
+        opacity: 0.5;
+        background-color: #f8f9fa;
+    }
+    
+    .drop-target {
+        border-top: 3px solid #007bff;
+        background-color: #e7f1ff;
+    }
+    
+    .list-group-item[draggable="true"]:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+
 <div class="card mb-3">
     <div class="card-body">
         <div class="row align-items-center">
@@ -43,17 +59,33 @@
         {
             <div class="mt-3">
                 <hr />
-                <h6 class="text-muted">Songs in this playlist:</h6>
-                @if (Playlist.Songs.Any())
+                <h6 class="text-muted">Songs in this playlist:</h6>                @if (Playlist.Songs.Any())
                 {
                     <div class="list-group list-group-flush">
-                        @foreach (var song in Playlist.Songs)
+                        @foreach (var song in Playlist.Songs.Select((s, index) => new { Song = s, Index = index }))
                         {
-                            <div class="list-group-item d-flex justify-content-between align-items-center p-2">
-                                <div>
-                                    <div class="fw-bold">@song.Name</div>
-                                    <small class="text-muted">@song.Artist - @song.Album</small>
-                                </div>                                <button class="btn btn-outline-danger btn-sm" @onclick="@(async () => await RemoveSong(song.Path))" title="Remove from playlist">
+                            <div class="list-group-item d-flex justify-content-between align-items-center p-2 @(draggedIndex == song.Index ? "dragging" : "") @(dropTargetIndex == song.Index ? "drop-target" : "")"
+                                 draggable="true"
+                                 @ondragstart="@(e => HandleDragStart(e, song.Index))"
+                                 @ondragenter="@(e => HandleDragEnter(e, song.Index))"
+                                 @ondragenter:preventDefault="true"
+                                 @ondragover="@(e => HandleDragOver(e, song.Index))"
+                                 @ondragover:preventDefault="true"
+                                 @ondrop="@(e => HandleDrop(e, song.Index))"
+                                 @ondrop:preventDefault="true"
+                                 @ondragleave="HandleDragLeave"
+                                 @ondragend="HandleDragEnd"
+                                 style="cursor: move;">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2" style="cursor: grab;">
+                                        <span class="oi oi-menu"></span>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">@song.Song.Name</div>
+                                        <small class="text-muted">@song.Song.Artist - @song.Song.Album</small>
+                                    </div>
+                                </div>
+                                <button class="btn btn-outline-danger btn-sm" @onclick="@(async () => await RemoveSong(song.Song.Path))" title="Remove from playlist">
                                     <span class="oi oi-minus"></span>
                                 </button>
                             </div>
@@ -76,6 +108,10 @@
     private bool showDetails = false;
     private bool isEditing = false;
     private string editName = "";
+    
+    // Drag and drop state
+    private int? draggedIndex = null;
+    private int? dropTargetIndex = null;
 
     void ToggleShowDetails() => showDetails = !showDetails;
 
@@ -89,7 +125,92 @@
     {
         isEditing = false;
         editName = "";
-    }    async Task SaveEdit()
+    }    // Drag and drop event handlers
+    void HandleDragStart(DragEventArgs e, int index)
+    {
+        draggedIndex = index;
+        Console.WriteLine($"Drag started for index: {index}");
+    }
+
+    void HandleDragEnter(DragEventArgs e, int index)
+    {
+        if (draggedIndex.HasValue && draggedIndex != index)
+        {
+            dropTargetIndex = index;
+            Console.WriteLine($"Drag entered index: {index}");
+            StateHasChanged();
+        }
+    }    void HandleDragLeave(DragEventArgs e)
+    {
+        // Clear drop target when leaving an item
+        dropTargetIndex = null;
+        StateHasChanged();
+    }
+
+    void HandleDragOver(DragEventArgs e, int index)
+    {
+        e.DataTransfer.DropEffect = "move";
+        if (draggedIndex.HasValue && draggedIndex != index)
+        {
+            dropTargetIndex = index;
+        }
+    }
+
+    async Task HandleDrop(DragEventArgs e, int index)
+    {
+        Console.WriteLine($"Drop event: dragged={draggedIndex}, target={index}");
+        
+        if (draggedIndex.HasValue && draggedIndex != index)
+        {
+            await ReorderSongs(draggedIndex.Value, index);
+        }
+        
+        draggedIndex = null;
+        dropTargetIndex = null;
+        StateHasChanged();
+    }
+
+    void HandleDragEnd(DragEventArgs e)
+    {
+        Console.WriteLine("Drag ended");
+        draggedIndex = null;
+        dropTargetIndex = null;
+        StateHasChanged();
+    }    async Task ReorderSongs(int fromIndex, int toIndex)
+    {
+        try
+        {
+            Console.WriteLine($"Reordering: moving song from index {fromIndex} to {toIndex}");
+            
+            var songs = Playlist.Songs.ToList();
+            
+            // Validate indices
+            if (fromIndex < 0 || fromIndex >= songs.Count || toIndex < 0 || toIndex >= songs.Count)
+            {
+                Console.WriteLine($"Invalid indices: fromIndex={fromIndex}, toIndex={toIndex}, count={songs.Count}");
+                return;
+            }
+            
+            // Perform the reorder
+            var song = songs[fromIndex];
+            songs.RemoveAt(fromIndex);
+            songs.Insert(toIndex, song);
+            
+            // Create the new order list
+            var reorderedSongPaths = songs.Select(s => s.Path).ToList();
+            
+            Console.WriteLine($"Calling ReorderPlaylistSongsAsync with {reorderedSongPaths.Count} songs");
+            await svc.ReorderPlaylistSongsAsync(Playlist.Name, reorderedSongPaths);
+            
+            Console.WriteLine("Successfully reordered, calling OnPlaylistChanged");
+            await OnPlaylistChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error reordering songs: {ex.Message}");
+            await JsRuntime.InvokeVoidAsync("alert", $"Error reordering songs: {ex.Message}");
+        }
+    }async Task SaveEdit()
     {
         await JsRuntime.InvokeVoidAsync("console.log", $"SaveEdit called: editName='{editName}', Playlist.Name='{Playlist.Name}'");
         
