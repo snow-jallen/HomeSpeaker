@@ -1,25 +1,58 @@
 ﻿@page "/playlists"
 @inject HomeSpeakerService svc
+@inject IJSRuntime JsRuntime
 
-<h3>Playlists</h3>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Playlists</h3>
+    <button @onclick="RefreshPlaylists" class="btn btn-outline-secondary" title="Refresh playlists">
+        <span class="oi oi-reload me-1"></span>Refresh
+    </button>
+</div>
 
 @if(playlists == null)
 {
-    <p>Loading...</p>
+    <div class="d-flex justify-content-center p-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else if (!playlists.Any())
+{
+    <div class="text-center text-muted p-4">
+        <h5>No playlists found</h5>
+        <p>Create your first playlist by adding songs from the library!</p>
+    </div>
 }
 else
 {
-    foreach(var playlist in playlists)
+    @foreach(var playlist in playlists)
     {
-        <PlaylistItem Playlist=@playlist />
+        <PlaylistItem @key="playlist.Name" Playlist=@playlist OnPlaylistChanged="RefreshPlaylists" />
     }
 }
 
 @code {
-    IEnumerable<Playlist> playlists;
+    IEnumerable<Playlist>? playlists;
 
     protected override async Task OnInitializedAsync()
     {
-        playlists = await svc.GetPlaylistsAsync();
+        await RefreshPlaylists();
+    }    async Task RefreshPlaylists()
+    {
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("console.log", "RefreshPlaylists: Starting to refresh playlists");
+            playlists = await svc.GetPlaylistsAsync();
+            await JsRuntime.InvokeVoidAsync("console.log", $"RefreshPlaylists: Got {playlists.Count()} playlists from server");
+            StateHasChanged();
+            await JsRuntime.InvokeVoidAsync("console.log", "RefreshPlaylists: StateHasChanged called");
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("console.error", $"RefreshPlaylists: Error refreshing playlists: {ex.Message}");
+            // Handle errors gracefully - could add logging or user notification here
+            playlists = Enumerable.Empty<Playlist>();
+        }
     }
 }

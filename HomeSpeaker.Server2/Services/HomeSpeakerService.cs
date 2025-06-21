@@ -60,6 +60,18 @@ public class HomeSpeakerService : HomeSpeakerBase
     {
         await playlistService.PlayPlaylistAsync(request.PlaylistName);
         return new PlayPlaylistReply();
+    }    public override async Task<RenamePlaylistReply> RenamePlaylist(RenamePlaylistRequest request, ServerCallContext context)
+    {
+        logger.LogInformation("Received RenamePlaylist request: {oldName} -> {newName}", request.OldName, request.NewName);
+        await playlistService.RenamePlaylistAsync(request.OldName, request.NewName);
+        logger.LogInformation("Successfully renamed playlist: {oldName} -> {newName}", request.OldName, request.NewName);
+        return new RenamePlaylistReply();
+    }
+
+    public override async Task<DeletePlaylistReply> DeletePlaylist(DeletePlaylistRequest request, ServerCallContext context)
+    {
+        await playlistService.DeletePlaylistAsync(request.PlaylistName);
+        return new DeletePlaylistReply();
     }
 
     public override async Task<AddSongToPlaylistReply> AddSongToPlaylist(AddSongToPlaylistRequest request, ServerCallContext context)

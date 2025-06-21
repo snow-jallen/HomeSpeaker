@@ -1,36 +1,172 @@
 ﻿@inject HomeSpeakerService svc
+@inject IJSRuntime JsRuntime
+@using HomeSpeaker.Shared
 
-<div class="row mb-2">
-    <div class="col" @onclick=toggleShowDetails>
-        <div class="fs-4">@Playlist.Name</div>
-    </div>
-    <div class="col-auto">
-        <button class="btn btn-outline-primary" @onclick=play><span class="oi oi-media-play"></span></button>
-    </div>
-</div>
-@if(showDetails)
-{
-    <div class="row ms-2">
-        @foreach(var song in Playlist.Songs)
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col">
+                @if (isEditing)
+                {                    <div class="input-group">
+                        <input @bind="editName" @onkeypress="OnKeyPress" class="form-control" placeholder="Playlist name" />
+                        <button class="btn btn-outline-success" @onclick="SaveEdit" title="Save"><span class="oi oi-check"></span></button>
+                        <button class="btn btn-outline-secondary" @onclick="CancelEdit" title="Cancel"><span class="oi oi-x"></span></button>
+                    </div>
+                }
+                else
+                {
+                    <div @onclick="ToggleShowDetails" style="cursor: pointer;">
+                        <h5 class="card-title mb-1">@Playlist.Name</h5>
+                        <small class="text-muted">@Playlist.Songs.Count() songs</small>
+                    </div>
+                }
+            </div>
+            <div class="col-auto">
+                @if (!isEditing)
+                {
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-outline-primary" @onclick="Play" title="Play playlist">
+                            <span class="oi oi-media-play"></span>
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="StartEdit" title="Rename playlist">
+                            <span class="oi oi-pencil"></span>
+                        </button>
+                        <button class="btn btn-outline-danger" @onclick="ConfirmDelete" title="Delete playlist">
+                            <span class="oi oi-trash"></span>
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (showDetails && !isEditing)
         {
-            <p>@song.Name</p>
+            <div class="mt-3">
+                <hr />
+                <h6 class="text-muted">Songs in this playlist:</h6>
+                @if (Playlist.Songs.Any())
+                {
+                    <div class="list-group list-group-flush">
+                        @foreach (var song in Playlist.Songs)
+                        {
+                            <div class="list-group-item d-flex justify-content-between align-items-center p-2">
+                                <div>
+                                    <div class="fw-bold">@song.Name</div>
+                                    <small class="text-muted">@song.Artist - @song.Album</small>
+                                </div>                                <button class="btn btn-outline-danger btn-sm" @onclick="@(async () => await RemoveSong(song.Path))" title="Remove from playlist">
+                                    <span class="oi oi-minus"></span>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted">This playlist is empty.</p>
+                }
+            </div>
         }
     </div>
-}
+</div>
 
 @code {
-    [Parameter] public Playlist Playlist { get; set; }
-    bool showDetails = false;
+    [Parameter] public required Playlist Playlist { get; set; }
+    [Parameter] public EventCallback OnPlaylistChanged { get; set; }
+    
+    private bool showDetails = false;
+    private bool isEditing = false;
+    private string editName = "";
 
-    protected override void OnParametersSet()
+    void ToggleShowDetails() => showDetails = !showDetails;
+
+    void StartEdit()
     {
-        base.OnParametersSet();
+        isEditing = true;
+        editName = Playlist.Name;
     }
 
-    void toggleShowDetails() => showDetails = !showDetails;
-
-    async Task play()
+    void CancelEdit()
     {
-        await svc.PlayPlaylistAsync(Playlist.Name);
+        isEditing = false;
+        editName = "";
+    }    async Task SaveEdit()
+    {
+        await JsRuntime.InvokeVoidAsync("console.log", $"SaveEdit called: editName='{editName}', Playlist.Name='{Playlist.Name}'");
+        
+        if (string.IsNullOrWhiteSpace(editName) || editName == Playlist.Name)
+        {
+            await JsRuntime.InvokeVoidAsync("console.log", $"SaveEdit: Canceling edit because name is empty or unchanged");
+            CancelEdit();
+            return;
+        }
+
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("console.log", $"About to rename playlist from '{Playlist.Name}' to '{editName.Trim()}'");
+            await svc.RenamePlaylistAsync(Playlist.Name, editName.Trim());
+            await JsRuntime.InvokeVoidAsync("console.log", $"Successfully renamed playlist, now calling OnPlaylistChanged");
+            isEditing = false;
+            editName = "";
+            await OnPlaylistChanged.InvokeAsync();
+            await JsRuntime.InvokeVoidAsync("console.log", $"OnPlaylistChanged invoked successfully");
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("console.error", $"Error renaming playlist: {ex.Message}");
+            await JsRuntime.InvokeVoidAsync("alert", $"Error renaming playlist: {ex.Message}");
+            CancelEdit();
+        }
+    }
+
+    async Task OnKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SaveEdit();
+        }
+        else if (e.Key == "Escape")
+        {
+            CancelEdit();
+        }
+    }
+
+    async Task Play()
+    {
+        try
+        {
+            await svc.PlayPlaylistAsync(Playlist.Name);
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", $"Error playing playlist: {ex.Message}");
+        }
+    }
+
+    async Task ConfirmDelete()
+    {
+        bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete the playlist '{Playlist.Name}'? This action cannot be undone.");
+        if (confirmed)
+        {
+            try
+            {
+                await svc.DeletePlaylistAsync(Playlist.Name);
+                await OnPlaylistChanged.InvokeAsync();
+            }
+            catch (Exception ex)
+            {
+                await JsRuntime.InvokeVoidAsync("alert", $"Error deleting playlist: {ex.Message}");
+            }
+        }
+    }    async Task RemoveSong(string songPath)
+    {
+        try
+        {
+            await svc.RemoveFromPlaylistAsync(Playlist.Name, songPath);
+            await OnPlaylistChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", $"Error removing song: {ex.Message}");
+        }
     }
 }

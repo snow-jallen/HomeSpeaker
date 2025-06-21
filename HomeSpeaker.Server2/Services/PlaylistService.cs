@@ -89,4 +89,52 @@ public class PlaylistService
             player.EnqueueSong(song);
         }
     }
+
+    public async Task RenamePlaylistAsync(string oldName, string newName)
+    {
+        if (string.IsNullOrWhiteSpace(newName))
+        {
+            logger.LogWarning("Attempted to rename playlist {oldName} to an empty name.", oldName);
+            return;
+        }
+
+        var playlist = await dbContext.Playlists.FirstOrDefaultAsync(p => p.Name == oldName);
+        if (playlist == null)
+        {
+            logger.LogWarning("Asked to rename playlist {oldName} but it doesn't exist.", oldName);
+            return;
+        }
+
+        // Check if a playlist with the new name already exists
+        var existingPlaylist = await dbContext.Playlists.FirstOrDefaultAsync(p => p.Name == newName);
+        if (existingPlaylist != null)
+        {
+            logger.LogWarning("Cannot rename playlist {oldName} to {newName} because a playlist with that name already exists.", oldName, newName);
+            return;
+        }
+
+        logger.LogInformation("Renaming playlist from {oldName} to {newName}", oldName, newName);
+        playlist.Name = newName;
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task DeletePlaylistAsync(string playlistName)
+    {
+        var playlist = await dbContext.Playlists.Include(p => p.Songs).FirstOrDefaultAsync(p => p.Name == playlistName);
+        if (playlist == null)
+        {
+            logger.LogWarning("Asked to delete playlist {playlistName} but it doesn't exist.", playlistName);
+            return;
+        }
+
+        logger.LogInformation("Deleting playlist {playlistName} with {songCount} songs", playlistName, playlist.Songs.Count);
+        
+        // Remove all songs from the playlist first
+        dbContext.PlaylistItems.RemoveRange(playlist.Songs);
+        
+        // Remove the playlist itself
+        dbContext.Playlists.Remove(playlist);
+        
+        await dbContext.SaveChangesAsync();
+    }
 }

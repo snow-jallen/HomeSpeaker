@@ -24,8 +24,9 @@ service HomeSpeaker {
 	rpc DeleteSong(DeleteSongRequest) returns (DeleteSongReply);
 	rpc AddSongToPlaylist(AddSongToPlaylistRequest) returns (AddSongToPlaylistReply);
 	rpc RemoveSongFromPlaylist(RemoveSongFromPlaylistRequest) returns (RemoveSongFromPlaylistReply);
-	rpc GetPlaylists(GetPlaylistsRequest) returns (GetPlaylistsReply);
-	rpc PlayPlaylist(PlayPlaylistRequest) returns (PlayPlaylistReply);
+	rpc GetPlaylists(GetPlaylistsRequest) returns (GetPlaylistsReply);	rpc PlayPlaylist(PlayPlaylistRequest) returns (PlayPlaylistReply);
+	rpc RenamePlaylist(RenamePlaylistRequest) returns (RenamePlaylistReply);
+	rpc DeletePlaylist(DeletePlaylistRequest) returns (DeletePlaylistReply);
 	rpc UpdateQueue(UpdateQueueRequest) returns (UpdateQueueReply);
 	rpc ToggleBacklight(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
@@ -135,3 +136,12 @@ message DeleteSongRequest{
 	int32 SongId=1;
 }
 message DeleteSongReply{}
+message RenamePlaylistRequest{
+	string OldName=1;
+	string NewName=2;
+}
+message RenamePlaylistReply{}
+message DeletePlaylistRequest{
+	string PlaylistName=1;
+}
+message DeletePlaylistReply{}

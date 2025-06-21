@@ -8,6 +8,7 @@ public class HomeSpeakerService
 {
     private HomeSpeakerClient client;
     private List<SongMessage> songs = new();
+    private readonly ILogger<HomeSpeakerService> logger;
     public IEnumerable<SongMessage> Songs => songs;
     public event EventHandler? QueueChanged;
 
@@ -112,10 +113,25 @@ public class HomeSpeakerService
     public async Task PlayPlaylistAsync(string playlistName)
     {
         await client.PlayPlaylistAsync(new PlayPlaylistRequest { PlaylistName = playlistName });
+    }    public async Task RenamePlaylistAsync(string oldName, string newName)
+    {
+        try
+        {
+            logger.LogInformation("Calling RenamePlaylist gRPC method: {oldName} -> {newName}", oldName, newName);
+            await client.RenamePlaylistAsync(new RenamePlaylistRequest { OldName = oldName, NewName = newName });
+            logger.LogInformation("Successfully called RenamePlaylist gRPC method: {oldName} -> {newName}", oldName, newName);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error calling RenamePlaylist gRPC method: {oldName} -> {newName}", oldName, newName);
+            throw;
+        }
     }
 
-    readonly char[] separators = new[] { '/', '\\' };
-    private readonly ILogger<HomeSpeakerService> logger;
+    public async Task DeletePlaylistAsync(string playlistName)
+    {
+        await client.DeletePlaylistAsync(new DeletePlaylistRequest { PlaylistName = playlistName });
+    }    readonly char[] separators = new[] { '/', '\\' };
 
     public async Task<IEnumerable<string>> GetFolders()
     {
