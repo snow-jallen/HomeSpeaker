@@ -24,6 +24,9 @@ builder.Services.AddScoped<ITemperatureService, TemperatureService>();
 // Register blood sugar service
 builder.Services.AddScoped<IBloodSugarService, BloodSugarService>();
 
+// Register anchor service
+builder.Services.AddScoped<IAnchorService, AnchorService>();
+
 builder.Services.AddFluentUIComponents();
 builder.Services.AddMudServices();
 

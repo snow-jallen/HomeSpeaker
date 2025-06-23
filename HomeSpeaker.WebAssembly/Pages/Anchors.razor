@@ -1,0 +1,449 @@
+@page "/anchors"
+@inject IAnchorService anchorService
+@inject IJSRuntime JsRuntime
+@inject NavigationManager Navigation
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>All User Anchors</h3>
+    <div>
+        <button @onclick="RefreshData" class="btn btn-outline-secondary me-2" title="Refresh data">
+            <span class="oi oi-reload me-1"></span>Refresh
+        </button>
+        <button @onclick="NavigateToEdit" class="btn btn-primary" title="Edit anchors">
+            <span class="oi oi-pencil me-1"></span>Edit Anchors
+        </button>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <label class="form-label">Days of History:</label>
+        <select value="@daysToShow" @onchange="OnDaysToShowChanged" class="form-control">
+            <option value="7">Last 7 days</option>
+            <option value="14">Last 14 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="60">Last 60 days</option>
+        </select>
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+        <button @onclick="EnsureTodayAnchorsForAll" class="btn btn-outline-primary" title="Ensure today's anchors exist for all users">
+            <span class="oi oi-plus me-1"></span>Create Today for All
+        </button>
+    </div>    <div class="col-md-4 d-flex align-items-end justify-content-end">
+        <small class="text-muted me-2">Showing @(GetVisibleDates().Count) of @daysToShow days (no scroll)</small>
+        <button @onclick="RecalculateLayout" class="btn btn-outline-secondary btn-sm" title="Recalculate layout for current window size">
+            <span class="oi oi-resize-width"></span>
+        </button>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="d-flex justify-content-center p-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else if (!allUserAnchors.Any())
+{
+    <div class="alert alert-info">
+        <h5>No Active Anchors Found</h5>
+        <p>No users have active anchors set up yet.</p>
+        <p>Click the "Edit Anchors" button to create anchor definitions and assign them to users!</p>
+    </div>
+}
+else
+{
+    <!-- Display all users and their anchors -->
+    @foreach (var userGroup in allUserAnchors.OrderBy(u => u.Key))
+    {
+        var userId = userGroup.Key;
+        var userDailyAnchors = userGroup.Value;
+        var dates = GetVisibleDates();
+          <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">@userId</h5>
+                    <small class="text-muted completion-status">
+                        @GetCompletionSummary(userDailyAnchors, dates)
+                    </small>
+                </div>
+                <div class="user-summary">
+                    <span class="badge bg-primary">@GetUniqueAnchorCount(userDailyAnchors) anchors</span>
+                    <span class="badge bg-success">@GetTotalCompletions(userDailyAnchors, dates)/@GetTotalPossible(userDailyAnchors, dates) completed</span>
+                </div>
+            </div>            <div class="card-body p-0">
+                <div class="table-container">
+                    <table class="table table-hover mb-0 anchor-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="anchor-name-col">Anchor</th>
+                                @foreach (var date in dates)
+                                {
+                                    <th class="date-col">
+                                        <div class="small">@date.ToString("MMM")</div>
+                                        <div class="fw-bold">@date.Day</div>
+                                        <div class="small text-muted">@date.ToString("ddd")</div>
+                                    </th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                var uniqueAnchors = GetUniqueAnchorsForUser(userDailyAnchors);
+                            }                            @foreach (var anchorName in uniqueAnchors.OrderBy(a => a))
+                            {
+                                <tr>
+                                    <td class="anchor-name-col">
+                                        <strong>@anchorName</strong>
+                                        @{
+                                            var description = GetAnchorDescription(userDailyAnchors, anchorName);
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(description))
+                                        {
+                                            <br><small class="text-muted">@description</small>
+                                        }
+                                    </td>                                    @foreach (var date in dates)
+                                    {
+                                        <td class="date-col">
+                                            @{
+                                                var dailyAnchor = GetDailyAnchor(userDailyAnchors, date, anchorName);
+                                            }
+                                            @if (dailyAnchor != null)
+                                            {
+                                                <input type="checkbox" 
+                                                       class="form-check-input"
+                                                       checked="@dailyAnchor.IsCompleted"
+                                                       @onchange="@(async (e) => await ToggleCompletion(dailyAnchor, (bool)e.Value!))"
+                                                       title="@(dailyAnchor.IsCompleted ? $"Completed at {dailyAnchor.CompletedAt:h:mm tt}" : "Click to mark as completed")" />
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+<style>
+    .table-container {
+        width: 100%;
+        overflow: hidden;
+    }
+    
+    .anchor-table {
+        width: 100%;
+        table-layout: fixed;
+    }
+    
+    .anchor-name-col {
+        width: 250px;
+        min-width: 250px;
+        max-width: 250px;
+        vertical-align: top;
+        border-right: 2px solid var(--bs-border-color);
+        background: var(--bs-body-bg);
+        word-wrap: break-word;
+    }
+    
+    .date-col {
+        width: auto;
+        padding: 8px 4px;
+        vertical-align: middle;
+        text-align: center;
+        min-width: 80px;
+    }
+    
+    .form-check-input {
+        margin: 0 auto;
+    }
+    
+    .card-header {
+        background: var(--bs-body-bg);
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+    
+    .completion-status {
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .user-summary {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    /* Mobile adjustments */
+    @@media (max-width: 768px) {
+        .anchor-name-col {
+            width: 180px;
+            min-width: 180px;
+            max-width: 180px;
+        }
+        
+        .date-col {
+            min-width: 60px;
+            font-size: 0.8rem;
+            padding: 6px 2px;
+        }
+        
+        .card-header {
+            padding: 0.75rem;
+        }
+        
+        .card-header h5 {
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .user-summary {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.25rem;
+        }
+        
+        .badge {
+            font-size: 0.7rem;
+        }
+    }
+    
+    @@media (max-width: 576px) {
+        .anchor-name-col {
+            width: 150px;
+            min-width: 150px;
+            max-width: 150px;
+        }
+        
+        .date-col {
+            min-width: 50px;
+            font-size: 0.75rem;
+        }
+    }
+</style>
+
+@code {    private int daysToShow = 14;
+    private bool isLoading = false;
+    private Dictionary<string, List<DailyAnchor>> allUserAnchors = new();
+    private int maxVisibleDays = 14;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshData();
+        await CalculateMaxVisibleDays();
+    }    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await CalculateMaxVisibleDays();
+            StateHasChanged();
+            
+            // Add window resize listener
+            await JsRuntime.InvokeVoidAsync("eval", @"
+                window.resizeHandler = function() {
+                    DotNet.invokeMethodAsync('HomeSpeaker.WebAssembly', 'OnWindowResize');
+                };
+                window.addEventListener('resize', window.resizeHandler);
+            ");
+        }
+    }    [JSInvokable]
+    public static async Task OnWindowResize()
+    {
+        // This would need to be handled differently in a real implementation
+        // For now, we'll trigger recalculation on component refresh
+        await Task.CompletedTask;
+    }
+
+    private async Task RecalculateLayout()
+    {
+        await CalculateMaxVisibleDays();
+        StateHasChanged();
+    }
+
+    private async Task CalculateMaxVisibleDays()
+    {
+        try
+        {
+            // Calculate how many day columns can fit based on viewport width
+            var viewportWidth = await JsRuntime.InvokeAsync<int>("eval", "window.innerWidth");
+            
+            // Check if we're on mobile or desktop to adjust anchor column width
+            var isMobile = viewportWidth <= 768;
+            var isSmallMobile = viewportWidth <= 576;
+            
+            int anchorNameWidth = isSmallMobile ? 150 : (isMobile ? 180 : 250);
+            int dateColumnWidth = isSmallMobile ? 50 : (isMobile ? 60 : 80);
+            int paddingMargins = 40; // Account for card padding, margins, scrollbars
+            
+            var availableWidth = viewportWidth - anchorNameWidth - paddingMargins;
+            var maxColumns = Math.Max(3, availableWidth / dateColumnWidth); // At least 3 days visible
+            
+            maxVisibleDays = Math.Min(daysToShow, (int)maxColumns);
+            
+            await JsRuntime.InvokeVoidAsync("console.log", $"Viewport: {viewportWidth}px, Anchor width: {anchorNameWidth}px, Date width: {dateColumnWidth}px, Max days: {maxVisibleDays}");
+        }
+        catch
+        {
+            // Fallback based on screen size estimates
+            maxVisibleDays = Math.Min(daysToShow, 10); // Conservative default
+        }
+    }private async Task RefreshData()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var endDate = DateOnly.FromDateTime(DateTime.Today);
+            var startDate = endDate.AddDays(-daysToShow + 1);
+            
+            // Get all anchors for all users in the date range using the new API
+            allUserAnchors = await anchorService.GetAllUsersDailyAnchorsAsync(startDate, endDate);
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("console.error", $"Failed to load anchors: {ex.Message}");
+            allUserAnchors.Clear();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }    private async Task OnDaysToShowChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var days))
+        {
+            daysToShow = days;
+            await CalculateMaxVisibleDays();
+            await RefreshData();
+        }
+    }    private List<DateOnly> GetVisibleDates()
+    {
+        var dates = new List<DateOnly>();
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var visibleDays = Math.Min(daysToShow, maxVisibleDays);
+        
+        // Start from today (leftmost) and go backwards in time (rightward)
+        for (int i = 0; i < visibleDays; i++)
+        {
+            dates.Add(today.AddDays(-i));
+        }
+        
+        return dates;
+    }
+
+    private string GetCompletionSummary(List<DailyAnchor> userAnchors, List<DateOnly> dates)
+    {
+        var completed = 0;
+        var total = 0;
+        
+        foreach (var date in dates)
+        {
+            var dayAnchors = userAnchors.Where(a => a.Date == date).ToList();
+            total += dayAnchors.Count;
+            completed += dayAnchors.Count(a => a.IsCompleted);
+        }
+        
+        if (total == 0) return "No anchors in this period";
+        
+        var percentage = (int)Math.Round((double)completed / total * 100);
+        return $"{completed}/{total} completed ({percentage}%)";
+    }
+
+    private int GetUniqueAnchorCount(List<DailyAnchor> userAnchors)
+    {
+        return userAnchors.Select(a => a.AnchorName).Distinct().Count();
+    }
+
+    private int GetTotalCompletions(List<DailyAnchor> userAnchors, List<DateOnly> dates)
+    {
+        return userAnchors.Where(a => dates.Contains(a.Date) && a.IsCompleted).Count();
+    }
+
+    private int GetTotalPossible(List<DailyAnchor> userAnchors, List<DateOnly> dates)
+    {
+        return userAnchors.Where(a => dates.Contains(a.Date)).Count();
+    }
+
+    private List<string> GetUniqueAnchorsForUser(List<DailyAnchor> userAnchors)
+    {
+        return userAnchors.Select(a => a.AnchorName).Distinct().ToList();
+    }
+
+    private string GetAnchorDescription(List<DailyAnchor> userAnchors, string anchorName)
+    {
+        return userAnchors.FirstOrDefault(a => a.AnchorName == anchorName)?.AnchorDescription ?? "";
+    }
+
+    private DailyAnchor? GetDailyAnchor(List<DailyAnchor> userAnchors, DateOnly date, string anchorName)
+    {
+        return userAnchors.FirstOrDefault(a => a.Date == date && a.AnchorName == anchorName);
+    }
+
+    private async Task ToggleCompletion(DailyAnchor anchor, bool isCompleted)
+    {
+        try
+        {
+            var request = new UpdateAnchorCompletionRequest(anchor.Id, isCompleted);
+            var success = await anchorService.UpdateAnchorCompletionAsync(request);
+            
+            if (success)
+            {
+                // Update the local state
+                if (allUserAnchors.TryGetValue(anchor.UserId, out var userAnchors))
+                {
+                    var index = userAnchors.FindIndex(a => a.Id == anchor.Id);
+                    if (index >= 0)
+                    {
+                        var updatedAnchor = anchor with 
+                        { 
+                            IsCompleted = isCompleted,
+                            CompletedAt = isCompleted ? DateTime.Now : DateTime.MinValue
+                        };
+                        userAnchors[index] = updatedAnchor;
+                        StateHasChanged();
+                    }
+                }
+            }
+            else
+            {
+                await JsRuntime.InvokeVoidAsync("alert", "Failed to update anchor completion status");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("console.error", $"Failed to toggle completion: {ex.Message}");
+        }
+    }
+
+    private async Task EnsureTodayAnchorsForAll()
+    {
+        try
+        {
+            await anchorService.EnsureTodayAnchorsAsync();
+            await RefreshData();
+            await JsRuntime.InvokeVoidAsync("console.log", "Today's anchors created successfully for all users");
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("console.error", $"Failed to create today's anchors: {ex.Message}");
+            await JsRuntime.InvokeVoidAsync("alert", "Failed to create today's anchors. Make sure anchor definitions are set up.");
+        }
+    }
+
+    private void NavigateToEdit()
+    {
+        Navigation.NavigateTo("/anchors/edit");
+    }
+}

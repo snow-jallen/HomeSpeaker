@@ -1,0 +1,594 @@
+@page "/anchors/edit"
+@inject IAnchorService anchorService
+@inject IJSRuntime JsRuntime
+@inject NavigationManager Navigation
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Edit Anchors</h3>
+    <div>
+        <button @onclick="NavigateToHistory" class="btn btn-outline-secondary me-2" title="View history">
+            <span class="oi oi-calendar me-1"></span>View History
+        </button>
+        <button @onclick="SaveChanges" class="btn btn-success" title="Save all changes" disabled="@isSaving">
+            @if (isSaving)
+            {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+            }
+            else
+            {
+                <span class="oi oi-check me-1"></span>
+            }
+            Save Changes
+        </button>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="d-flex justify-content-center p-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row">
+        <!-- Anchor Definitions Management -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Anchor Definitions</h5>
+                    <button @onclick="ShowCreateDefinitionModal" class="btn btn-sm btn-primary">
+                        <span class="oi oi-plus me-1"></span>New Definition
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (!anchorDefinitions.Any())
+                    {
+                        <p class="text-muted text-center p-3">
+                            No anchor definitions found.<br />
+                            Click "New Definition" to create your first anchor!
+                        </p>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var definition in anchorDefinitions.OrderBy(d => d.Name))
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">@definition.Name</h6>
+                                        @if (!string.IsNullOrWhiteSpace(definition.Description))
+                                        {
+                                            <p class="mb-1 text-muted small">@definition.Description</p>
+                                        }
+                                    </div>
+                                    <div class="btn-group-vertical btn-group-sm ms-2">
+                                        <button @onclick="() => EditDefinition(definition)" class="btn btn-outline-secondary btn-sm" title="Edit">
+                                            <span class="oi oi-pencil"></span>
+                                        </button>
+                                        <button @onclick="() => DeleteDefinition(definition)" class="btn btn-outline-danger btn-sm" title="Delete">
+                                            <span class="oi oi-trash"></span>
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>        <!-- User Anchor Assignments -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex align-items-center flex-wrap">
+                        <span class="me-2">Active Anchors for</span>
+                        <div class="user-input-container position-relative">
+                            <input @bind="currentUserId" 
+                                   @onkeypress="OnUserIdKeyPress"
+                                   @oninput="OnUserIdInput"
+                                   @onfocusin="OnUserInputFocus"
+                                   @onfocusout="OnUserInputBlur"
+                                   class="form-control form-control-sm user-input" 
+                                   placeholder="Enter user ID" 
+                                   style="min-width: 200px;" />                            @if (showUserSuggestions && filteredUsers.Any())
+                            {
+                                <div class="user-suggestions">
+                                    @foreach (var user in filteredUsers.Take(10))
+                                    {
+                                        <div class="user-suggestion-item" @onclick="() => SelectUser(user)">
+                                            @user
+                                        </div>
+                                    }
+                                    @if (filteredUsers.Count > 10)
+                                    {
+                                        <div class="user-suggestion-item text-muted small">
+                                            ... and @(filteredUsers.Count - 10) more
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (string.IsNullOrWhiteSpace(currentUserId))
+                    {
+                        <p class="text-muted text-center p-3">
+                            Enter a User ID above to manage your anchor assignments.
+                        </p>
+                    }
+                    else if (!userAnchors.Any())
+                    {
+                        <p class="text-muted text-center p-3">
+                            No anchors assigned to this user.<br />
+                            Select anchors from the definitions below to activate them.
+                        </p>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush mb-3">
+                            @foreach (var userAnchor in userAnchors)
+                            {
+                                var definition = anchorDefinitions.FirstOrDefault(d => d.Id == userAnchor.AnchorDefinitionId);
+                                if (definition != null)
+                                {
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">@definition.Name</h6>
+                                            @if (!string.IsNullOrWhiteSpace(definition.Description))
+                                            {
+                                                <small class="text-muted">@definition.Description</small>
+                                            }
+                                        </div>
+                                        <button @onclick="() => RemoveUserAnchor(userAnchor)" class="btn btn-sm btn-outline-danger" title="Remove">
+                                            <span class="oi oi-trash"></span>
+                                        </button>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(currentUserId) && availableDefinitions.Any())
+                    {
+                        <hr />
+                        <h6>Available Anchors to Add:</h6>
+                        <div class="list-group list-group-flush">
+                            @foreach (var definition in availableDefinitions.OrderBy(d => d.Name))
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1 text-muted">@definition.Name</h6>
+                                        @if (!string.IsNullOrWhiteSpace(definition.Description))
+                                        {
+                                            <small class="text-muted">@definition.Description</small>
+                                        }
+                                    </div>
+                                    <button @onclick="() => AddUserAnchor(definition)" class="btn btn-sm btn-outline-primary" title="Add">
+                                        <span class="oi oi-plus"></span>
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Create/Edit Definition Modal -->
+@if (showDefinitionModal)
+{
+    <div class="modal show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(editingDefinition == null ? "Create New Anchor Definition" : "Edit Anchor Definition")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDefinitionModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Name *</label>
+                        <input @bind="definitionName" class="form-control" placeholder="e.g., Drink 8 glasses of water" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea @bind="definitionDescription" class="form-control" rows="3" placeholder="Optional description or notes about this anchor"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDefinitionModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveDefinition" disabled="@(string.IsNullOrWhiteSpace(definitionName))">
+                        @(editingDefinition == null ? "Create" : "Update")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string currentUserId = "default-user";
+    private bool isLoading = false;
+    private bool isSaving = false;
+    private bool showDefinitionModal = false;
+      private List<AnchorDefinition> anchorDefinitions = new();
+    private List<UserAnchor> userAnchors = new();
+
+    // Modal state
+    private AnchorDefinition? editingDefinition = null;
+    private string definitionName = string.Empty;
+    private string definitionDescription = string.Empty;
+
+    // User autocomplete state
+    private List<string> existingUsers = new();
+    private List<string> filteredUsers = new();
+    private bool showUserSuggestions = false;
+
+    private IEnumerable<AnchorDefinition> availableDefinitions =>
+        anchorDefinitions.Where(d => !userAnchors.Any(ua => ua.AnchorDefinitionId == d.Id));    protected override async Task OnInitializedAsync()
+    {
+        await RefreshData();
+        await LoadExistingUsers();
+    }
+
+    private async Task RefreshData()
+    {
+        isLoading = true;
+        StateHasChanged();        try
+        {
+            // Load anchor definitions
+            var definitions = await anchorService.GetAnchorDefinitionsAsync();
+            anchorDefinitions = definitions.ToList();
+
+            // Load existing users for autocomplete
+            await LoadExistingUsers();
+
+            // Load user anchors if user ID is provided
+            if (!string.IsNullOrWhiteSpace(currentUserId))
+            {
+                var userAnchorsList = await anchorService.GetUserAnchorsAsync(currentUserId);
+                userAnchors = userAnchorsList.ToList();
+            }
+            else
+            {
+                userAnchors.Clear();
+            }
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("console.error", $"Failed to load data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnUserIdKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await RefreshUserAnchors();
+        }
+    }
+
+    private async Task RefreshUserAnchors()
+    {
+        if (!string.IsNullOrWhiteSpace(currentUserId))
+        {
+            try
+            {
+                var userAnchorsList = await anchorService.GetUserAnchorsAsync(currentUserId);
+                userAnchors = userAnchorsList.ToList();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                await JsRuntime.InvokeVoidAsync("console.error", $"Failed to load user anchors: {ex.Message}");
+            }
+        }
+        else
+        {
+            userAnchors.Clear();
+            StateHasChanged();
+        }
+    }
+
+    // Definition Management
+    private void ShowCreateDefinitionModal()
+    {
+        editingDefinition = null;
+        definitionName = string.Empty;
+        definitionDescription = string.Empty;
+        showDefinitionModal = true;
+    }
+
+    private void EditDefinition(AnchorDefinition definition)
+    {
+        editingDefinition = definition;
+        definitionName = definition.Name;
+        definitionDescription = definition.Description;
+        showDefinitionModal = true;
+    }
+
+    private void CloseDefinitionModal()
+    {
+        showDefinitionModal = false;
+        editingDefinition = null;
+        definitionName = string.Empty;
+        definitionDescription = string.Empty;
+    }
+
+    private async Task SaveDefinition()
+    {
+        if (string.IsNullOrWhiteSpace(definitionName))
+            return;
+
+        try
+        {
+            var request = new CreateAnchorDefinitionRequest(definitionName.Trim(), definitionDescription.Trim());
+
+            if (editingDefinition == null)
+            {
+                // Create new
+                var newDefinition = await anchorService.CreateAnchorDefinitionAsync(request);
+                anchorDefinitions.Add(newDefinition);
+            }
+            else
+            {
+                // Update existing
+                var updatedDefinition = await anchorService.UpdateAnchorDefinitionAsync(editingDefinition.Id, request);
+                if (updatedDefinition != null)
+                {
+                    var index = anchorDefinitions.FindIndex(d => d.Id == editingDefinition.Id);
+                    if (index >= 0)
+                    {
+                        anchorDefinitions[index] = updatedDefinition;
+                    }
+                }
+            }
+
+            CloseDefinitionModal();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("console.error", $"Failed to save definition: {ex.Message}");
+            await JsRuntime.InvokeVoidAsync("alert", "Failed to save anchor definition");
+        }
+    }
+
+    private async Task DeleteDefinition(AnchorDefinition definition)
+    {
+        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete '{definition.Name}'? This will deactivate it and remove it from all users.");
+        if (confirmed)
+        {
+            try
+            {
+                var success = await anchorService.DeactivateAnchorDefinitionAsync(definition.Id);
+                if (success)
+                {
+                    anchorDefinitions.RemoveAll(d => d.Id == definition.Id);
+                    userAnchors.RemoveAll(ua => ua.AnchorDefinitionId == definition.Id);
+                    StateHasChanged();
+                }
+                else
+                {
+                    await JsRuntime.InvokeVoidAsync("alert", "Failed to delete anchor definition");
+                }
+            }
+            catch (Exception ex)
+            {
+                await JsRuntime.InvokeVoidAsync("console.error", $"Failed to delete definition: {ex.Message}");
+            }
+        }
+    }
+
+    // User Anchor Management
+    private async Task AddUserAnchor(AnchorDefinition definition)
+    {
+        if (string.IsNullOrWhiteSpace(currentUserId))
+        {
+            await JsRuntime.InvokeVoidAsync("alert", "Please enter a User ID first");
+            return;
+        }
+
+        try
+        {
+            var request = new AssignAnchorToUserRequest(currentUserId, definition.Id);
+            var userAnchor = await anchorService.AssignAnchorToUserAsync(request);
+            userAnchors.Add(userAnchor);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("console.error", $"Failed to add user anchor: {ex.Message}");
+        }
+    }
+
+    private async Task RemoveUserAnchor(UserAnchor userAnchor)
+    {
+        var definition = anchorDefinitions.FirstOrDefault(d => d.Id == userAnchor.AnchorDefinitionId);
+        var definitionName = definition?.Name ?? "this anchor";
+        
+        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", $"Remove '{definitionName}' from your active anchors?");
+        if (confirmed)
+        {
+            try
+            {
+                var success = await anchorService.RemoveAnchorFromUserAsync(currentUserId, userAnchor.AnchorDefinitionId);
+                if (success)
+                {
+                    userAnchors.RemoveAll(ua => ua.Id == userAnchor.Id);
+                    StateHasChanged();
+                }
+                else
+                {
+                    await JsRuntime.InvokeVoidAsync("alert", "Failed to remove anchor");
+                }
+            }
+            catch (Exception ex)
+            {
+                await JsRuntime.InvokeVoidAsync("console.error", $"Failed to remove user anchor: {ex.Message}");
+            }        }
+    }
+
+    // User autocomplete methods
+    private async Task LoadExistingUsers()
+    {
+        try
+        {
+            var users = await anchorService.GetUsersWithAnchorsAsync();
+            existingUsers = users.ToList();
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("console.error", $"Failed to load existing users: {ex.Message}");
+            existingUsers.Clear();
+        }
+    }    private async Task OnUserIdInput(ChangeEventArgs e)
+    {
+        var input = e.Value?.ToString() ?? "";
+        currentUserId = input;
+        
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            // Show all users when input is empty
+            filteredUsers = existingUsers.ToList();
+            showUserSuggestions = existingUsers.Any();
+        }
+        else
+        {
+            filteredUsers = existingUsers
+                .Where(u => u.Contains(input, StringComparison.OrdinalIgnoreCase))
+                .Where(u => !u.Equals(input, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            showUserSuggestions = filteredUsers.Any();
+        }
+        
+        StateHasChanged();
+    }private void OnUserInputFocus()
+    {
+        // Show all existing users when input is focused
+        if (string.IsNullOrWhiteSpace(currentUserId))
+        {
+            filteredUsers = existingUsers.ToList();
+        }
+        else
+        {
+            // Show filtered results if there's already text
+            filteredUsers = existingUsers
+                .Where(u => u.Contains(currentUserId, StringComparison.OrdinalIgnoreCase))
+                .Where(u => !u.Equals(currentUserId, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+        
+        showUserSuggestions = filteredUsers.Any();
+        StateHasChanged();
+    }
+
+    private async Task OnUserInputBlur()
+    {
+        // Delay hiding suggestions to allow for click events
+        await Task.Delay(200);
+        showUserSuggestions = false;
+        StateHasChanged();
+    }
+
+    private async Task SelectUser(string user)
+    {
+        currentUserId = user;
+        showUserSuggestions = false;
+        StateHasChanged();
+        await RefreshUserAnchors();
+    }
+
+    private async Task SaveChanges()
+    {
+        isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            // For now, changes are saved immediately, so this is just a placeholder
+            // In the future, we could batch changes and save them here
+            await Task.Delay(500); // Simulate save operation
+            await JsRuntime.InvokeVoidAsync("alert", "Changes saved successfully!");
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("console.error", $"Failed to save changes: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }    private void NavigateToHistory()
+    {
+        Navigation.NavigateTo("/anchors");
+    }
+}
+
+<style>
+    .user-input-container {
+        position: relative;
+        display: inline-block;
+    }
+
+    .user-input {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 0.375rem;
+    }
+
+    .user-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid var(--bs-border-color);
+        border-top: none;
+        border-radius: 0 0 0.375rem 0.375rem;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .user-suggestion-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--bs-border-color-translucent);
+    }
+
+    .user-suggestion-item:hover {
+        background-color: var(--bs-light);
+    }
+
+    .user-suggestion-item:last-child {
+        border-bottom: none;
+    }
+
+    .card-header .d-flex {
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    @@media (max-width: 768px) {
+        .card-header .d-flex {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        
+        .user-input {
+            min-width: 100% !important;
+        }
+    }
+</style>
