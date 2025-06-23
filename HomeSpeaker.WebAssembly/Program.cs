@@ -30,6 +30,9 @@ builder.Services.AddScoped<IAnchorService, AnchorService>();
 // Register browser audio service
 builder.Services.AddScoped<IBrowserAudioService, BrowserAudioService>();
 
+// Register local queue service
+builder.Services.AddScoped<ILocalQueueService, LocalQueueService>();
+
 // Register playback mode service
 builder.Services.AddScoped<IPlaybackModeService, PlaybackModeService>();
 

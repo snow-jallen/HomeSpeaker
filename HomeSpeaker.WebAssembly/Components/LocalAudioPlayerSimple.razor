@@ -1,5 +1,4 @@
 @using HomeSpeaker.WebAssembly.Services
-@using HomeSpeaker.WebAssembly.Models
 @inject IBrowserAudioService BrowserAudioService
 @inject ILocalQueueService LocalQueueService
 @inject ILogger<LocalAudioPlayer> Logger
@@ -73,7 +72,7 @@
     private string durationDisplay = "0:00";
     private double progressPercent = 0;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         LocalQueueService.QueueChanged += OnQueueChanged;
         LocalQueueService.CurrentSongChanged += OnCurrentSongChanged;

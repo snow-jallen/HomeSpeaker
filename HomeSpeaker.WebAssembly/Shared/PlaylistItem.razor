@@ -39,11 +39,8 @@
             </div>
             <div class="col-auto">
                 @if (!isEditing)
-                {
-                    <div class="btn-group" role="group">
-                        <button class="btn btn-outline-primary" @onclick="Play" title="Play playlist">
-                            <span class="oi oi-media-play"></span>
-                        </button>
+                {                    <div class="btn-group" role="group">
+                        <PlayButtonWithDropdown PlaylistName="@Playlist.Name" />
                         <button class="btn btn-outline-secondary" @onclick="StartEdit" title="Rename playlist">
                             <span class="oi oi-pencil"></span>
                         </button>
@@ -248,20 +245,7 @@
         else if (e.Key == "Escape")
         {
             CancelEdit();
-        }
-    }
-
-    async Task Play()
-    {
-        try
-        {
-            await svc.PlayPlaylistAsync(Playlist.Name);
-        }
-        catch (Exception ex)
-        {
-            await JsRuntime.InvokeVoidAsync("alert", $"Error playing playlist: {ex.Message}");
-        }
-    }
+        }    }
 
     async Task ConfirmDelete()
     {

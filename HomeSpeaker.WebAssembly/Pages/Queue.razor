@@ -2,86 +2,117 @@
 @inject HomeSpeakerService svc
 @inject IJSRuntime JSRuntime
 @inject ILogger<Queue> logger
+@inject ILocalQueueService localQueueService
+@implements IDisposable
 
 <button @onclick=refresh title="Refresh queue" class="btn btn-secondary position-absolute top-10 end-0 mx-3"><span class="oi oi-reload"></span></button>
 
 <div class="row">
-    <div class="col-auto fs-6 fw-light">
-        Now Playing:
-    </div>
-    <div class="col-12 col-lg h3 fw-bold">
-        @currentSong
+    <div class="col-12">
+        <h2>Playback Queues</h2>
     </div>
 </div>
 
+<!-- Bootstrap Tabs -->
+<ul class="nav nav-tabs" id="queueTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="server-tab" data-bs-toggle="tab" data-bs-target="#server-queue" type="button" role="tab" aria-controls="server-queue" aria-selected="true">
+            Server Queue (@(queue?.Count.ToString("n0") ?? "0"))
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="local-tab" data-bs-toggle="tab" data-bs-target="#local-queue" type="button" role="tab" aria-controls="local-queue" aria-selected="false">
+            Local Queue (@(localQueueService.Queue.Count.ToString("n0")))
+        </button>
+    </li>
+</ul>
 
-<div class="d-flex flex-wrap align-items-start my-3 justify-content-center">
-    <div>
-        <PlayControls />
-    </div>
-</div>
-
-<div class="align-content-center w-100">
-    <div class="mb-2">Volume Level: @volumeLevel</div>
-    @*<FluentSlider Min="0" Max="100" ValueExpression=@(()=>volumeLevel) ValueChanged=volumeChanged />*@
-        <input type="range" @bind-value="@VolumeLevel" class="w-100" />
-</div>
-
-<div class="d-flex align-items-start">
-    <div class="flex-grow-1">
-        <h4 class="mb-0">Queue (drag & drop to reorder)</h4>
-        <div class="fs-6 mt-0">(@queue?.Count().ToString("n0") songs in queue)</div>
-    </div>
-    <button @onclick=saveQueueAsPlaylist title="Save queue as playlist" class="btn btn-link me-2">Save as Playlist</button>
-</div>
-
-@if (queue?.Any() == true)
-{
-    @*    <ul ondragover="event.preventDefault();">
-        @foreach (var song in queue)
-        {
-            <li draggable="true"
-                style="list-style-type: none; touch-action: none;"
-                tabindex="1"
-                @key=(++listKey)
-                @ondrag=@(()=>StartDrag(song))
-                @ondrop=@(()=>Drop(song))>
-                <QueueItem SongViewModel=song Removed="removeFromQueue" />
-            </li>
-        }
-    </ul>*@
-    <MudDropContainer T="SongViewModel"
-                  Items="queue"
-                  ItemsSelector="@((_,_) => true)"
-                  ItemDropped="ItemUpdated"
-                  Class="d-flex flex-wrap flex-grow-1">
-        <ChildContent>
-            <div class="flex-grow-1">
-                <MudList Clickable="true" T="SongViewModel" Class="d-flex flex-column mud-height-full">
-                    <MudDropZone T="SongViewModel" Class="flex-grow-1" AllowReorder="true" />
-                </MudList>
+<div class="tab-content" id="queueTabContent">
+    <!-- Server Queue Tab -->
+    <div class="tab-pane fade show active" id="server-queue" role="tabpanel" aria-labelledby="server-tab">
+        <div class="p-3">
+            <div class="row mb-3">
+                <div class="col-auto fs-6 fw-light">
+                    Now Playing:
+                </div>
+                <div class="col-12 col-lg h3 fw-bold">
+                    @currentSong
+                </div>
             </div>
-        </ChildContent>
-        <ItemRenderer>
-            <MudPaper Class="my-3">
-                <QueueItem SongViewModel="context" Removed="removeFromQueue" />
-            </MudPaper>
-        </ItemRenderer>
-    </MudDropContainer>
-}
 
-<LocalAudioPlayer />
+            <div class="d-flex flex-wrap align-items-start my-3 justify-content-center">
+                <div>
+                    <PlayControls />
+                </div>
+            </div>
+
+            <div class="align-content-center w-100 mb-3">
+                <div class="mb-2">Volume Level: @volumeLevel</div>
+                <input type="range" @bind-value="@VolumeLevel" class="w-100" />
+            </div>            <div class="d-flex align-items-start mb-3">
+                <div class="flex-grow-1">
+                    <h4 class="mb-0">Server Queue</h4>
+                    <div class="fs-6 mt-0 text-muted">(@queue?.Count().ToString("n0") songs • drag to reorder)</div>
+                </div>
+                <button @onclick=saveQueueAsPlaylist 
+                        title="Save server queue as playlist" 
+                        class="btn btn-outline-primary btn-sm"
+                        disabled="@(queue?.Count == 0)">
+                    <i class="fas fa-save me-1"></i>Save as Playlist
+                </button>
+            </div>            @if (queue?.Any() == true)
+            {
+                <div class="unified-queue-list">
+                    @for (int i = 0; i < queue.Count; i++)
+                    {
+                        var song = queue[i];
+                        var index = i;
+                        var isCurrentSong = currentSong != null && song.Name == currentSong;
+                        
+                        <div class="queue-item-wrapper @(serverDraggedIndex == index ? "dragging" : "") @(serverDropTargetIndex == index ? "drop-target" : "")" 
+                             data-index="@index"
+                             draggable="true"
+                             @ondragstart="@(() => StartServerDrag(index))"
+                             @ondragover="@((e) => HandleServerDragOver(e, index))"
+                             @ondragover:preventDefault="true"
+                             @ondrop="@(() => DropServer(index))"
+                             @ondragenter="@(() => HandleServerDragEnter(index))"
+                             @ondragleave="@(() => HandleServerDragLeave(index))"
+                             @ondragend="@(() => HandleServerDragEnd())">
+                            <QueueItem SongViewModel="song" 
+                                     Removed="removeFromQueue"
+                                     QueuePosition="@(index + 1)"
+                                     IsCurrentSong="@isCurrentSong" />
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-center text-muted p-4">
+                    <div class="empty-queue-icon mb-3">
+                        <i class="fas fa-music fa-3x opacity-25"></i>
+                    </div>
+                    <h5 class="text-muted">No songs in server queue</h5>
+                    <p class="mb-0">Use "Play on Server" from any play button to add songs here</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Local Queue Tab -->
+    <div class="tab-pane fade" id="local-queue" role="tabpanel" aria-labelledby="local-tab">
+        <div class="p-3">
+            <LocalAudioPlayer />
+            <LocalQueueDisplay />
+        </div>
+    </div>
+</div>
 
 @code {
-    private async Task ItemUpdated(MudItemDropInfo<SongViewModel> dropItem)
-    {
-        if (dropItem?.Item == null || dropItem.IndexInZone < 0 || dropItem.IndexInZone >= queue.Count)
-            return;
-
-        queue.Remove(dropItem.Item);
-        queue.Insert(dropItem.IndexInZone, dropItem.Item);
-        await svc.UpdateQueueAsync(queue);
-    }
+    // Server drag and drop variables
+    private int serverDraggedIndex = -1;
+    private int? serverDropTargetIndex = null;
 
     int volumeLevel = 40;
     public int VolumeLevel
@@ -98,8 +129,7 @@
     int listKey = 0;
     List<SongViewModel> queue = new();
     string currentSong;
-    int currentIndex;
-    protected override async Task OnInitializedAsync()
+    int currentIndex;protected override async Task OnInitializedAsync()
     {
         await refresh();
         svc.QueueChanged += async (_, _) =>
@@ -115,6 +145,12 @@
             }
         };
 
+        // Subscribe to local queue changes to update tab counts
+        localQueueService.QueueChanged += (_, _) =>
+        {
+            InvokeAsync(StateHasChanged);
+        };
+
         try
         {
             VolumeLevel = await svc.GetVolumeAsync();
@@ -122,6 +158,15 @@
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to get initial volume level");
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize Bootstrap tabs
+            await JSRuntime.InvokeVoidAsync("initializeTabs");
         }
     }
 
@@ -155,9 +200,7 @@
     {
         queue.Remove(song);
         await svc.UpdateQueueAsync(queue);
-    }
-
-    async Task refresh()
+    }    async Task refresh()
     {
         queue.Clear();
         queue.AddRange(await svc.GetPlayQueueAsync());
@@ -166,40 +209,148 @@
         StateHasChanged();
     }
 
-    void StartDrag(SongViewModel song)
+    // Server queue drag and drop methods
+    private void StartServerDrag(int index)
     {
-        currentIndex = getIndex(song);
+        serverDraggedIndex = index;
+        logger.LogInformation("Started dragging server queue item at index {index}", index);
     }
 
-    int getIndex(SongViewModel song) => queue.FindIndex(s => s.SongId == song.SongId);    async Task Drop(SongViewModel song)
+    private void HandleServerDragOver(DragEventArgs e, int index)
     {
-        if (song == null || currentIndex < 0 || currentIndex >= queue.Count)
-            return;
-            
-        var newIndex = getIndex(song);
-        if (newIndex < 0 || newIndex >= queue.Count)
-            return;
+        if (serverDraggedIndex >= 0 && serverDraggedIndex != index)
+        {
+            serverDropTargetIndex = index;
+            e.DataTransfer.DropEffect = "move";
+        }
+    }
 
-        var current = queue[currentIndex];
-        queue.RemoveAt(currentIndex);
-        
-        // Adjust newIndex if needed after removal
-        if (newIndex > currentIndex)
-            newIndex--;
-            
-        queue.Insert(newIndex, current);
-        currentIndex = newIndex;
+    private void HandleServerDragEnter(int index)
+    {
+        if (serverDraggedIndex >= 0 && serverDraggedIndex != index)
+        {
+            serverDropTargetIndex = index;
+        }
+    }
+
+    private void HandleServerDragLeave(int index)
+    {
+        if (serverDropTargetIndex == index)
+        {
+            serverDropTargetIndex = null;
+        }
+    }
+
+    private void HandleServerDragEnd()
+    {
+        serverDraggedIndex = -1;
+        serverDropTargetIndex = null;
         StateHasChanged();
+    }
+
+    private async Task DropServer(int targetIndex)
+    {
+        logger.LogInformation("Server drop called: draggedIndex={draggedIndex}, targetIndex={targetIndex}", serverDraggedIndex, targetIndex);
+        
+        if (serverDraggedIndex < 0 || serverDraggedIndex >= queue.Count || 
+            targetIndex < 0 || targetIndex >= queue.Count ||
+            serverDraggedIndex == targetIndex)
+        {
+            logger.LogWarning("Invalid server drop operation: draggedIndex={draggedIndex}, targetIndex={targetIndex}, queueCount={count}", 
+                serverDraggedIndex, targetIndex, queue.Count);
+            HandleServerDragEnd();
+            return;
+        }
 
         try
         {
+            logger.LogInformation("Moving server queue song from index {fromIndex} to {toIndex}", serverDraggedIndex, targetIndex);
+            
+            // Update the local queue order
+            var song = queue[serverDraggedIndex];
+            queue.RemoveAt(serverDraggedIndex);
+            queue.Insert(targetIndex, song);
+            
+            // Update the server with the new queue order
             await svc.UpdateQueueAsync(queue);
+            
+            logger.LogInformation("Successfully moved server queue song from index {fromIndex} to {toIndex}", serverDraggedIndex, targetIndex);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to update queue on server");
-            // Optionally refresh the queue from server on error
+            logger.LogError(ex, "Error reordering server queue from index {draggedIndex} to {targetIndex}", serverDraggedIndex, targetIndex);
+            // Refresh the queue from server on error
             await refresh();
         }
+        finally
+        {
+            HandleServerDragEnd();        }
+    }
+
+    public void Dispose()
+    {
+        localQueueService.QueueChanged -= (_, _) => InvokeAsync(StateHasChanged);
     }
 }
+
+<style>
+    .unified-queue-list {
+        margin-top: 1rem;
+    }
+    
+    .queue-item-wrapper {
+        margin-bottom: 0.5rem;
+        transition: all 0.2s ease;
+        cursor: grab;
+    }
+    
+    .queue-item-wrapper:active {
+        cursor: grabbing;
+    }
+    
+    .queue-item-wrapper.dragging {
+        opacity: 0.5;
+        transform: scale(0.95);
+    }
+    
+    .queue-item-wrapper.drop-target {
+        border: 2px dashed #007bff;
+        background-color: rgba(0, 123, 255, 0.1);
+        transform: translateY(-2px);
+        border-radius: 0.375rem;
+    }
+    
+    .queue-item-wrapper.drop-target::before {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background-color: #007bff;
+        border-radius: 1px;
+        z-index: 1;
+    }
+    
+    .empty-queue-icon {
+        opacity: 0.3;
+    }
+    
+    /* Tab content padding */
+    .tab-pane {
+        min-height: 400px;
+    }
+    
+    /* Consistent spacing for both queue types */
+    .tab-pane .p-3 h5 {
+        color: #495057;
+        font-weight: 600;
+    }
+    
+    /* Make queue headers consistent */
+    .d-flex.align-items-start h4 {
+        color: #495057;
+        font-weight: 600;
+        font-size: 1.25rem;
+    }
+</style>

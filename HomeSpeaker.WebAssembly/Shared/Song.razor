@@ -1,7 +1,6 @@
 ﻿@using HomeSpeaker.WebAssembly.Services
 @using Microsoft.JSInterop
 @inject HomeSpeakerService svc
-@inject IPlaybackModeService playbackModeService
 @inject ILogger<Song> logger
 @inject IJSRuntime JsRuntime
 
@@ -25,7 +24,7 @@ else
             }
         </div>        <div class="col-auto">
             <button @onclick=toggleDetailsView class="btn btn-outline"><span class=@toggleIcon></span></button>
-            <button @onclick=Play class="btn btn-outline-secondary"><span class="oi oi-media-play" /></button>
+            <PlayButtonWithDropdown Song="SongViewModel" />
             <PlusButtonWithMenu Song="SongViewModel" />
         </div>
         @if (showDetails)
@@ -67,12 +66,11 @@ else
     public EventCallback<int> OnDeleted { get; set; }
 
     private bool showDetails { get; set; }
-    private bool isPlaylistModalHidden = true;
-
-    private void toggleDetailsView() => showDetails = !showDetails;
+    private bool isPlaylistModalHidden = true;    private void toggleDetailsView() => showDetails = !showDetails;
     private string toggleIcon => showDetails ? "oi oi-chevron-top" : "oi oi-chevron-bottom";
 
-    private bool isDeleteConfirmationOpen = false;    async Task Play() => await playbackModeService.PlaySongAsync(SongViewModel);
+    private bool isDeleteConfirmationOpen = false;
+
     async Task delete()
     {
         bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");

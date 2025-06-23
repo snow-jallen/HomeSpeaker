@@ -1,10 +1,8 @@
-﻿@inject HomeSpeakerService svc
-
-<div class="row gx-1 p-1">    <div class="d-flex align-items-center mb-1 gx-1 mx-1 py-1 bg-primary text-white rounded">
+﻿<div class="row gx-1 p-1"><div class="d-flex align-items-center mb-1 gx-1 mx-1 py-1 bg-primary text-white rounded">
         <div class="flex-grow-1 fs-5 ms-1" @onclick=toggleExpanded>
             @(String.IsNullOrWhiteSpace(Content.Key) ? "[ No Artist ]" : Content.Key)
         </div>
-        <button @onclick=play class="btn btn-secondary mx-1"><span class="oi oi-media-play" /></button>
+        <PlayButtonWithDropdown Songs="Content.ToList()" />
         <PlusButtonWithMenu Songs="Content.ToList()" />
     </div>
     @if (isExpanded)
@@ -16,7 +14,7 @@
                 <div class="flex-grow-1 ms-1 fs-6">
                     @(String.IsNullOrWhiteSpace(album.Key) ? "[ No Album ]" : album.Key)
                 </div>
-                <button @onclick=@(()=>playAlbum(album)) class="btn btn-primary mx-1"><span class="oi oi-media-play" /></button>
+                <PlayButtonWithDropdown Songs="album.ToList()" />
                 <PlusButtonWithMenu Songs="album.ToList()" />
             </div>
             <FolderDetails Name="@album.Key" Songs="@album" />
@@ -29,25 +27,6 @@
     public IGrouping<string, SongViewModel> Content { get; set; }
 
     private bool isExpanded = false;
-
-    async Task play()
-    {
-        if (Content == null || !Content.Any())
-            return;
-
-        await svc.StopPlayingAsync();
-        foreach (var song in Content)
-        {
-            await svc.EnqueueSongAsync(song.SongId);
-        }
-    }    async Task playAlbum(IEnumerable<SongViewModel> songs)
-    {
-        await svc.StopPlayingAsync();
-        foreach (var song in songs)
-        {
-            await svc.EnqueueSongAsync(song.SongId);
-        }
-    }
 
     void toggleExpanded() => isExpanded = !isExpanded;
 }

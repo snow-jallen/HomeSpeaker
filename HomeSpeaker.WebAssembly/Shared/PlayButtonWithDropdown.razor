@@ -1,0 +1,170 @@
+@using HomeSpeaker.WebAssembly.Services
+@inject IPlaybackModeService playbackModeService
+@inject HomeSpeakerService homeSpeakerService
+@inject ILocalQueueService localQueueService
+@inject IJSRuntime JsRuntime
+
+<div class="position-relative d-inline-block">
+    <button @onclick="ToggleMenu" class="btn btn-outline-primary" title="Play">
+        <span class="oi oi-media-play" />
+    </button>
+    
+    @if (showMenu)
+    {
+        <div class="dropdown-menu show position-absolute" style="top: 100%; left: 0; z-index: 10000;">
+            <button class="dropdown-item" @onclick="PlayOnServer">
+                <i class="fas fa-server me-2"></i>Play on Server
+            </button>
+            <button class="dropdown-item" @onclick="PlayLocally">
+                <i class="fas fa-headphones me-2"></i>Stream to Device
+            </button>
+        </div>
+    }
+</div>
+
+@* Click outside to close *@
+@if (showMenu)
+{
+    <div class="position-fixed" style="top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999;" @onclick="CloseMenu"></div>
+}
+
+@code {
+    [Parameter] public SongViewModel? Song { get; set; }
+    [Parameter] public string? PlaylistName { get; set; }
+    [Parameter] public string? FolderName { get; set; }
+    [Parameter] public IEnumerable<SongViewModel>? Songs { get; set; }
+    [Parameter] public EventCallback OnPlayStarted { get; set; }
+
+    private bool showMenu = false;
+
+    private void ToggleMenu()
+    {
+        showMenu = !showMenu;
+        StateHasChanged();
+    }
+
+    private void CloseMenu()
+    {
+        showMenu = false;
+        StateHasChanged();    }
+
+    private async Task PlayOnServer()
+    {
+        showMenu = false;
+        StateHasChanged();
+        
+        if (Song != null)
+        {
+            await homeSpeakerService.PlaySongAsync(Song.SongId);
+        }
+        else if (!string.IsNullOrEmpty(PlaylistName))
+        {
+            await homeSpeakerService.PlayPlaylistAsync(PlaylistName);
+        }
+        else if (!string.IsNullOrEmpty(FolderName))
+        {
+            await homeSpeakerService.PlayFolderAsync(FolderName);
+        }
+        else if (Songs != null)
+        {
+            await homeSpeakerService.StopPlayingAsync();
+            foreach (var song in Songs)
+            {
+                await homeSpeakerService.EnqueueSongAsync(song.SongId);
+            }
+        }
+        
+        await OnPlayStarted.InvokeAsync();
+    }    private async Task PlayLocally()
+    {
+        showMenu = false;
+        StateHasChanged();
+        
+        try
+        {
+            if (Song != null)
+            {
+                await localQueueService.PlaySongAsync(Song);
+            }
+            else if (!string.IsNullOrEmpty(PlaylistName))
+            {
+                await PlayPlaylistLocallyAsync();
+            }
+            else if (!string.IsNullOrEmpty(FolderName))
+            {
+                await PlayFolderLocallyAsync();
+            }
+            else if (Songs != null)
+            {
+                await localQueueService.PlaySongsAsync(Songs);
+            }
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", $"Error playing locally: {ex.Message}");
+        }
+        
+        await OnPlayStarted.InvokeAsync();
+    }    private async Task PlayFolderLocallyAsync()
+    {
+        if (string.IsNullOrEmpty(FolderName)) return;
+        
+        // For now, show a message that this feature is not yet implemented
+        // TODO: Get folder songs from server and add to local queue
+        await JsRuntime.InvokeVoidAsync("alert", "Local folder playback not yet fully implemented. Please play individual songs instead.");
+    }
+
+    private async Task PlayPlaylistLocallyAsync()
+    {
+        if (string.IsNullOrEmpty(PlaylistName)) return;
+        
+        // For now, show a message that this feature is not yet implemented
+        // TODO: Get playlist songs from server and add to local queue
+        await JsRuntime.InvokeVoidAsync("alert", "Local playlist playback not yet fully implemented. Please play individual songs instead.");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (showMenu)
+        {
+            // Add event listener for escape key to close menu
+            await JsRuntime.InvokeVoidAsync("eval", @"
+                document.addEventListener('keydown', function escapeHandler(e) {
+                    if (e.key === 'Escape') {
+                        document.removeEventListener('keydown', escapeHandler);
+                        // Find and click the overlay to close the menu
+                        const overlay = document.querySelector('.position-fixed[style*=""z-index: 9999""]');
+                        if (overlay) overlay.click();
+                    }
+                });
+            ");
+        }
+    }
+}
+
+<style>
+    .dropdown-menu.show {
+        display: block;
+        min-width: 200px;
+    }
+    
+    .dropdown-item {
+        padding: 0.5rem 1rem;
+        border: none;
+        background: none;
+        width: 100%;
+        text-align: left;
+        color: #212529;
+    }
+    
+    .dropdown-item:hover {
+        background-color: #f8f9fa;
+        color: #1e2125;
+    }
+    
+    .dropdown-item:focus {
+        background-color: #e9ecef;
+        color: #1e2125;
+        outline: none;
+    }
+</style>
