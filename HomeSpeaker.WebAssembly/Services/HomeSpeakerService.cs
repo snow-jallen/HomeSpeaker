@@ -10,9 +10,7 @@ public class HomeSpeakerService
     private List<SongMessage> songs = new();
     private readonly ILogger<HomeSpeakerService> logger;
     public IEnumerable<SongMessage> Songs => songs;
-    public event EventHandler? QueueChanged;
-
-    public HomeSpeakerService(IConfiguration config, ILogger<HomeSpeakerService> logger, IWebAssemblyHostEnvironment hostEnvironment)
+    public event EventHandler? QueueChanged; public HomeSpeakerService(IConfiguration config, ILogger<HomeSpeakerService> logger, IWebAssemblyHostEnvironment hostEnvironment)
     {
         string address = config["ServerAddress"] ?? throw new MissingConfigException("ServerAddress");
         logger.LogInformation($"I was about to use {address}");
@@ -29,7 +27,7 @@ public class HomeSpeakerService
     }
 
     public HomeSpeakerClient HomeSpeakerClient => client;
-    
+
     private async Task listenForEvents()
     {
         try
@@ -113,7 +111,8 @@ public class HomeSpeakerService
     public async Task PlayPlaylistAsync(string playlistName)
     {
         await client.PlayPlaylistAsync(new PlayPlaylistRequest { PlaylistName = playlistName });
-    }    public async Task RenamePlaylistAsync(string oldName, string newName)
+    }
+    public async Task RenamePlaylistAsync(string oldName, string newName)
     {
         try
         {
@@ -136,10 +135,10 @@ public class HomeSpeakerService
     public async Task ReorderPlaylistSongsAsync(string playlistName, List<string> songPaths)
     {
         logger.LogInformation("Calling ReorderPlaylistSongs gRPC method for playlist: {playlistName}", playlistName);
-        await client.ReorderPlaylistSongsAsync(new ReorderPlaylistSongsRequest 
-        { 
-            PlaylistName = playlistName, 
-            SongPaths = { songPaths } 
+        await client.ReorderPlaylistSongsAsync(new ReorderPlaylistSongsRequest
+        {
+            PlaylistName = playlistName,
+            SongPaths = { songPaths }
         });
         logger.LogInformation("Successfully called ReorderPlaylistSongs gRPC method for playlist: {playlistName}", playlistName);
     }

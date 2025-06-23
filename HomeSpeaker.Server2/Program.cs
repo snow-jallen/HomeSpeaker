@@ -360,6 +360,81 @@ app.MapGet("/api/anchors/daily", async (AnchorService anchorService, DateOnly? s
     }
 });
 
+// Music streaming endpoint for browser playback
+app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, HttpContext context, ILogger<Program> logger) =>
+{
+    logger.LogInformation("Streaming endpoint called for song ID: {songId}", songId);
+    var song = library.Songs.FirstOrDefault(s => s.SongId == songId);
+    if (song == null)
+    {
+        logger.LogWarning("Song with ID {songId} not found in library", songId);
+        return Results.NotFound($"Song with ID {songId} not found");
+    }
+
+    logger.LogInformation("Found song: {songName} at path: {path}", song.Name, song.Path);
+
+    if (!File.Exists(song.Path))
+    {
+        logger.LogWarning("Music file not found on disk: {path}", song.Path);
+        return Results.NotFound($"Music file not found: {song.Path}");
+    }
+
+    var fileInfo = new FileInfo(song.Path);
+    var mimeType = fileInfo.Extension.ToLower() switch
+    {
+        ".mp3" => "audio/mpeg",
+        ".wav" => "audio/wav",
+        ".flac" => "audio/flac",
+        ".m4a" => "audio/mp4",
+        _ => "application/octet-stream"
+    };
+
+    // Set headers for audio streaming
+    context.Response.Headers.Append("Accept-Ranges", "bytes");
+    context.Response.Headers.Append("Content-Type", mimeType);
+    context.Response.Headers.Append("Content-Length", fileInfo.Length.ToString());
+
+    // Handle range requests for audio seeking
+    var rangeHeader = context.Request.Headers["Range"].FirstOrDefault();
+    if (!string.IsNullOrEmpty(rangeHeader) && rangeHeader.StartsWith("bytes="))
+    {
+        var range = rangeHeader.Substring(6).Split('-');
+        if (long.TryParse(range[0], out var start))
+        {
+            var end = range.Length > 1 && long.TryParse(range[1], out var endValue) 
+                ? endValue 
+                : fileInfo.Length - 1;
+
+            context.Response.StatusCode = 206; // Partial Content
+            context.Response.Headers.Append("Content-Range", $"bytes {start}-{end}/{fileInfo.Length}");
+            context.Response.Headers["Content-Length"] = (end - start + 1).ToString();
+
+            using var fileStream = new FileStream(song.Path, FileMode.Open, FileAccess.Read);
+            fileStream.Seek(start, SeekOrigin.Begin);
+            
+            var buffer = new byte[8192];
+            long remaining = end - start + 1;
+            
+            while (remaining > 0)
+            {
+                var bytesToRead = (int)Math.Min(buffer.Length, remaining);
+                var bytesRead = await fileStream.ReadAsync(buffer, 0, bytesToRead);
+                if (bytesRead == 0) break;
+                
+                await context.Response.Body.WriteAsync(buffer, 0, bytesRead);
+                remaining -= bytesRead;
+            }
+        }
+    }
+    else
+    {
+        // Serve entire file
+        return Results.File(song.Path, mimeType, enableRangeProcessing: true);
+    }
+
+    return Results.Empty;
+});
+
 app.MapFallbackToFile("index.html");
 
 app.Run();

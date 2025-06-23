@@ -27,6 +27,12 @@ builder.Services.AddScoped<IBloodSugarService, BloodSugarService>();
 // Register anchor service
 builder.Services.AddScoped<IAnchorService, AnchorService>();
 
+// Register browser audio service
+builder.Services.AddScoped<IBrowserAudioService, BrowserAudioService>();
+
+// Register playback mode service
+builder.Services.AddScoped<IPlaybackModeService, PlaybackModeService>();
+
 builder.Services.AddFluentUIComponents();
 builder.Services.AddMudServices();
 

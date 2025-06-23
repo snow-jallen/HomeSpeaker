@@ -1,4 +1,7 @@
-﻿@inject HomeSpeakerService svc
+﻿@using HomeSpeaker.WebAssembly.Services
+@using Microsoft.JSInterop
+@inject HomeSpeakerService svc
+@inject IPlaybackModeService playbackModeService
 @inject ILogger<Song> logger
 @inject IJSRuntime JsRuntime
 
@@ -69,7 +72,7 @@ else
     private void toggleDetailsView() => showDetails = !showDetails;
     private string toggleIcon => showDetails ? "oi oi-chevron-top" : "oi oi-chevron-bottom";
 
-    private bool isDeleteConfirmationOpen = false;    async Task Play() => await svc.PlaySongAsync(SongViewModel.SongId);
+    private bool isDeleteConfirmationOpen = false;    async Task Play() => await playbackModeService.PlaySongAsync(SongViewModel);
     async Task delete()
     {
         bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
