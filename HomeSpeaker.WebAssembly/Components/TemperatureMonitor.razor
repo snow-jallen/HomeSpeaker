@@ -46,49 +46,45 @@
             @if (temperatureStatus != null)
             {
                 <div class="row g-2">
-                    <div class="col-6">
-                        <div class="text-center">
-                            <div class="mb-1">
-                                <i class="fas fa-cloud-sun fa-lg" style="color: @GetTemperatureColor(temperatureStatus.OutsideTemperature)"></i>
+                    <div class="col-6">                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-cloud-sun fa-2x" style="color: @GetTemperatureColor(temperatureStatus.OutsideTemperature)"></i>
                             </div>
-                            <div class="small text-muted">Outside</div>
+                            <div class="h6 text-muted mb-2">Outside</div>
                             <div class="temperature-display">
-                                <span class="h6" style="color: @GetTemperatureColor(temperatureStatus.OutsideTemperature)">@FormatTemperature(temperatureStatus.OutsideTemperature)</span>
+                                <span class="display-1 fw-bold" style="color: @GetTemperatureColor(temperatureStatus.OutsideTemperature)">@FormatTemperature(temperatureStatus.OutsideTemperature)</span>
                             </div>
                         </div>
                     </div>
-                    <div class="col-6">
-                        <div class="text-center">
-                            <div class="mb-1">
-                                <i class="fas fa-female fa-lg" style="color: @GetTemperatureColor(temperatureStatus.YoungerGirlsRoomTemperature)"></i>
+                    <div class="col-6">                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-female fa-2x" style="color: @GetTemperatureColor(temperatureStatus.YoungerGirlsRoomTemperature)"></i>
                             </div>
-                            <div class="small text-muted">Girl's Room</div>
+                            <div class="h6 text-muted mb-2">Girl's Room</div>
                             <div class="temperature-display">
-                                <span class="h6" style="color: @GetTemperatureColor(temperatureStatus.YoungerGirlsRoomTemperature)">@FormatTemperature(temperatureStatus.YoungerGirlsRoomTemperature)</span>
+                                <span class="display-1 fw-bold" style="color: @GetTemperatureColor(temperatureStatus.YoungerGirlsRoomTemperature)">@FormatTemperature(temperatureStatus.YoungerGirlsRoomTemperature)</span>
                             </div>
                         </div>
                     </div>
-                    <div class="col-6">
-                        <div class="text-center">
-                            <div class="mb-1">
-                                <i class="fas fa-male fa-lg" style="color: @GetTemperatureColor(temperatureStatus.BoysRoomTemperature)"></i>
+                    <div class="col-6">                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-male fa-2x" style="color: @GetTemperatureColor(temperatureStatus.BoysRoomTemperature)"></i>
                             </div>
-                            <div class="small text-muted">Boy's Room</div>
+                            <div class="h6 text-muted mb-2">Boy's Room</div>
                             <div class="temperature-display">
-                                <span class="h6" style="color: @GetTemperatureColor(temperatureStatus.BoysRoomTemperature)">@FormatTemperature(temperatureStatus.BoysRoomTemperature)</span>
+                                <span class="display-1 fw-bold" style="color: @GetTemperatureColor(temperatureStatus.BoysRoomTemperature)">@FormatTemperature(temperatureStatus.BoysRoomTemperature)</span>
                             </div>
                         </div>
                     </div>
-                    <div class="col-6">
-                        <div class="text-center">
-                            <div class="mb-1">
-                                <i class="fas fa-seedling fa-lg" style="color: @GetTemperatureColor(temperatureStatus.GreenhouseTemperature)"></i>
+                    <div class="col-6">                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-seedling fa-2x" style="color: @GetTemperatureColor(temperatureStatus.GreenhouseTemperature)"></i>
                             </div>
-                            <div class="small text-muted">Greenhouse</div>
+                            <div class="h6 text-muted mb-2">Greenhouse</div>
                             <div class="temperature-display">
-                                <span class="h6" style="color: @GetTemperatureColor(temperatureStatus.GreenhouseTemperature)">@FormatTemperature(temperatureStatus.GreenhouseTemperature)</span>
+                                <span class="display-1 fw-bold" style="color: @GetTemperatureColor(temperatureStatus.GreenhouseTemperature)">@FormatTemperature(temperatureStatus.GreenhouseTemperature)</span>
                             </div>
-                        </div>                    </div>
+                        </div></div>
                 </div>                
                   <div class="text-center mt-1">
                     <small class="text-muted">
@@ -124,9 +120,19 @@
     </div>
 </div>
 
-<style>
-    .temperature-card .temperature-display {
+<style>    .temperature-card .temperature-display {
         margin: 0.25rem 0;
+        line-height: 0.9;
+    }.temperature-card .temperature-display .display-1 {
+        font-size: 4rem !important;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
+    
+    /* Extra large on smaller screens for better visibility */
+    @@media (max-width: 1024px) {
+        .temperature-card .temperature-display .display-1 {
+            font-size: 5rem !important;
+        }
     }
     
     .temperature-card .recommendation-display {
@@ -147,10 +153,8 @@
         opacity: 1;
         transform: scale(1.05);
         transition: all 0.2s ease-in-out;
-    }
-    
-    .temperature-card .card-body {
-        padding: 0.5rem;
+    }    .temperature-card .card-body {
+        padding: 1rem;
     }
     
     .temperature-card .small {
@@ -210,7 +214,7 @@
         }
     }    private string FormatTemperature(double? temperature)
     {
-        return temperature.HasValue ? $"{temperature.Value:F1}°F" : "N/A";
+        return temperature.HasValue ? $"{temperature.Value:F1}°" : "N/A";
     }
 
     private string GetTemperatureColor(double? temperature)

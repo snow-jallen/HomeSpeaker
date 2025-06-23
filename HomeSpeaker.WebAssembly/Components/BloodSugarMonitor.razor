@@ -21,35 +21,32 @@
             @if (bloodSugarStatus?.CurrentReading != null)
             {
                 <div class="row g-2">
-                    <div class="col-4">
-                        <div class="text-center">
-                            <div class="mb-1">
-                                <i class="fas fa-tint fa-lg" style="color: @bloodSugarStatus.StatusColor"></i>
+                    <div class="col-4">                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-tint fa-2x" style="color: @bloodSugarStatus.StatusColor"></i>
                             </div>
-                            <div class="small text-muted">Current</div>
+                            <div class="h6 text-muted mb-2">Current</div>
                             <div class="blood-sugar-display">
-                                <span class="h6" style="color: @bloodSugarStatus.StatusColor">@bloodSugarStatus.CurrentReading.Sgv</span>
+                                <span class="display-1 fw-bold" style="color: @bloodSugarStatus.StatusColor">@bloodSugarStatus.CurrentReading.Sgv</span>
                             </div>
                             <div class="small text-muted">@bloodSugarStatus.StatusText</div>
                         </div>
                     </div>
-                    <div class="col-4">
-                        <div class="text-center">
-                            <div class="mb-1">
-                                <span class="fa-lg" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">@bloodSugarStatus.CurrentReading.DirectionIcon</span>
+                    <div class="col-4">                        <div class="text-center">
+                            <div class="mb-2">
+                                <span class="fa-2x" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">@bloodSugarStatus.CurrentReading.DirectionIcon</span>
                             </div>
-                            <div class="small text-muted">Trend</div>
+                            <div class="h6 text-muted mb-2">Trend</div>
                             <div class="trend-display">
-                                <span class="small" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">@bloodSugarStatus.CurrentReading.DirectionDescription</span>
+                                <span class="h3 fw-semibold" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">@bloodSugarStatus.CurrentReading.DirectionDescription</span>
                             </div>
                         </div>
                     </div>
-                    <div class="col-4">
-                        <div class="text-center">
-                            <div class="mb-1">
-                                <i class="fas fa-clock fa-lg" style="color: @(bloodSugarStatus.IsStale ? "#dc3545" : "#28a745")"></i>
+                    <div class="col-4">                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-clock fa-2x" style="color: @(bloodSugarStatus.IsStale ? "#dc3545" : "#28a745")"></i>
                             </div>
-                            <div class="small text-muted">Last Reading</div>
+                            <div class="h6 text-muted mb-2">Last Reading</div>
                             <div class="time-display">
                                 <span class="small" style="color: @(bloodSugarStatus.IsStale ? "#dc3545" : "#6c757d")">@FormatTimeSince(bloodSugarStatus.TimeSinceLastReading)</span>
                             </div>
@@ -95,13 +92,23 @@
     </div>
 </div>
 
-<style>
-    .blood-sugar-card .blood-sugar-display {
+<style>    .blood-sugar-card .blood-sugar-display {
         margin: 0.25rem 0;
+        line-height: 0.9;
+    }
+      .blood-sugar-card .blood-sugar-display .display-1 {
+        font-size: 4rem !important;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
     }
     
-    .blood-sugar-card .trend-display {
+    /* Extra large on smaller screens for better visibility */
+    @@media (max-width: 1024px) {
+        .blood-sugar-card .blood-sugar-display .display-1 {
+            font-size: 5rem !important;
+        }
+    }    .blood-sugar-card .trend-display {
         margin: 0.25rem 0;
+        line-height: 1.1;
     }
     
     .blood-sugar-card .time-display {
@@ -122,10 +129,8 @@
         opacity: 1;
         transform: scale(1.05);
         transition: all 0.2s ease-in-out;
-    }
-    
-    .blood-sugar-card .card-body {
-        padding: 0.5rem;
+    }    .blood-sugar-card .card-body {
+        padding: 1rem;
     }
     
     .blood-sugar-card .small {
