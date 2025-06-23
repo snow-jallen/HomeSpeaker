@@ -2,7 +2,10 @@ version: '3.4'
 services:
   homespeaker.server2:
     container_name: homespeaker
-    image: homespeakerserver2:latest
+    image: homespeakerserver2
+    build:
+      context: .
+      dockerfile: HomeSpeaker.Server2/Dockerfile
     restart: unless-stopped
     devices:
     - /dev/snd:/dev/snd
@@ -42,4 +45,4 @@ services:
       speakernet:
 
 networks:
-  speakernet:
+ speakernet:
