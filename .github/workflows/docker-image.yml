@@ -32,4 +32,12 @@ jobs:
         DOCKER_BUILDKIT: 1
         GOVEE_API_KEY: ${{ secrets.GOVEE_API_KEY }}
       run: docker-compose up -d --build --remove-orphans
-     
+
+    - name: Wait for services to be ready
+      run: sleep 10
+
+    - name: Refresh browser on touchscreen
+      run: |
+        export DISPLAY=:0
+        xdotool key F5
+      continue-on-error: true
