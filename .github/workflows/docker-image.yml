@@ -34,7 +34,7 @@ jobs:
       run: docker-compose up -d --build --remove-orphans
 
     - name: Wait for services to be ready
-      run: sleep 10
+      run: sleep 25
 
     - name: Refresh browser on touchscreen
       run: |
