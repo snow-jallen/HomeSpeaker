@@ -1,13 +1,14 @@
+@using Microsoft.JSInterop
 @inject IJSRuntime JsRuntime
 
-<div class="position-relative d-inline-block">
+<div class="position-relative d-inline-block" @ref="containerRef">
     <button @onclick="ToggleMenu" class="btn btn-outline-secondary" title="Add to queue or playlist">
         <span class="oi oi-plus" />
     </button>
     
     @if (showMenu)
     {
-        <div style="position: absolute; top: 100%; right: 0; z-index: 10000;">
+        <div class="dropdown-menu-container" style="position: absolute; top: 100%; @dropdownPositionStyle z-index: 10000;">
             <AddToQueueOrPlaylistModal Songs="Songs" Song="Song" OnClosed="CloseMenu" />
         </div>
     }
@@ -24,10 +25,16 @@
     [Parameter] public SongViewModel? Song { get; set; }
 
     private bool showMenu = false;
+    private ElementReference containerRef;
+    private string dropdownPositionStyle = "right: 0;";
 
-    private void ToggleMenu()
+    private async void ToggleMenu()
     {
         showMenu = !showMenu;
+        if (showMenu)
+        {
+            await UpdateDropdownPosition();
+        }
         StateHasChanged();
     }
 
@@ -35,6 +42,31 @@
     {
         showMenu = false;
         StateHasChanged();
+    }    private async Task UpdateDropdownPosition()
+    {
+        try
+        {
+            // Use JavaScript to check positioning and return the appropriate style
+            var positionStyle = await JsRuntime.InvokeAsync<string>("eval", $@"
+                (function(element) {{
+                    var rect = element.getBoundingClientRect();
+                    var viewportWidth = window.innerWidth;
+                    var dropdownWidth = 220; // Approximate width of dropdown
+                    
+                    if (rect.right + dropdownWidth > viewportWidth) {{
+                        return 'right: 0;';
+                    }} else {{
+                        return 'left: 0;';
+                    }}
+                }})(arguments[0])", containerRef);
+            
+            dropdownPositionStyle = positionStyle;
+        }
+        catch
+        {
+            // Fallback to default positioning if JS call fails
+            dropdownPositionStyle = "right: 0;";
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -50,8 +82,7 @@
                         const overlay = document.querySelector('.position-fixed[style*=""z-index: 9999""]');
                         if (overlay) overlay.click();
                     }
-                });
-            ");
+                });            ");
         }
     }
 }
