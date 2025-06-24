@@ -3,7 +3,7 @@
 public class SongViewModel
 {
     public int SongId { get; set; }
-    public required string Name { get; init; }
+    public required string Name { get; set; }
     private string? path;
     public string? Path
     {
@@ -17,8 +17,8 @@ public class SongViewModel
                 Folder = System.IO.Path.GetDirectoryName(path);
         }
     }
-    public required string Album { get; init; }
-    public required string Artist { get; init; }
+    public required string Album { get; set; }
+    public required string Artist { get; set; }
     public string? Folder { get; private set; }
 }
 

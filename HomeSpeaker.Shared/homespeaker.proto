@@ -20,8 +20,8 @@ service HomeSpeaker {
 	rpc ShuffleQueue(ShuffleQueueRequest) returns (ShuffleQueueReply);
 	rpc SendEvent(google.protobuf.Empty) returns (stream StreamServerEvent);
 	rpc SearchViedo(SearchVideoRequest) returns (SearchVideoReply);
-	rpc CacheVideo(CacheVideoRequest) returns (stream CacheVideoReply);
-	rpc DeleteSong(DeleteSongRequest) returns (DeleteSongReply);
+	rpc CacheVideo(CacheVideoRequest) returns (stream CacheVideoReply);	rpc DeleteSong(DeleteSongRequest) returns (DeleteSongReply);
+	rpc UpdateSong(UpdateSongRequest) returns (UpdateSongReply);
 	rpc AddSongToPlaylist(AddSongToPlaylistRequest) returns (AddSongToPlaylistReply);
 	rpc RemoveSongFromPlaylist(RemoveSongFromPlaylistRequest) returns (RemoveSongFromPlaylistReply);	rpc GetPlaylists(GetPlaylistsRequest) returns (GetPlaylistsReply);	rpc PlayPlaylist(PlayPlaylistRequest) returns (PlayPlaylistReply);
 	rpc RenamePlaylist(RenamePlaylistRequest) returns (RenamePlaylistReply);
@@ -136,6 +136,16 @@ message DeleteSongRequest{
 	int32 SongId=1;
 }
 message DeleteSongReply{}
+
+message UpdateSongRequest{
+	int32 SongId=1;
+	string Name=2;
+	string Artist=3;
+	string Album=4;
+}
+
+message UpdateSongReply{}
+
 message RenamePlaylistRequest{
 	string OldName=1;
 	string NewName=2;

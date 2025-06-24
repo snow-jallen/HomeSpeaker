@@ -121,6 +121,12 @@ public class HomeSpeakerService : HomeSpeakerBase
         return Task.FromResult(new DeleteSongReply());
     }
 
+    public override Task<UpdateSongReply> UpdateSong(UpdateSongRequest request, ServerCallContext context)
+    {
+        library.UpdateSong(request.SongId, request.Name, request.Artist, request.Album);
+        return Task.FromResult(new UpdateSongReply());
+    }
+
     public override async Task<SearchVideoReply> SearchViedo(SearchVideoRequest request, ServerCallContext context)
     {
         var videos = await youtubeService.SearchAsync(request.SearchTerm);

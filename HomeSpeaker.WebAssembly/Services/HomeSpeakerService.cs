@@ -143,6 +143,19 @@ public class HomeSpeakerService
         logger.LogInformation("Successfully called ReorderPlaylistSongs gRPC method for playlist: {playlistName}", playlistName);
     }
 
+    public async Task UpdateSongAsync(int songId, string name, string artist, string album)
+    {
+        logger.LogInformation("Calling UpdateSong gRPC method for song: {songId}", songId);
+        await client.UpdateSongAsync(new UpdateSongRequest
+        {
+            SongId = songId,
+            Name = name,
+            Artist = artist,
+            Album = album
+        });
+        logger.LogInformation("Successfully called UpdateSong gRPC method for song: {songId}", songId);
+    }
+
     readonly char[] separators = new[] { '/', '\\' };
 
     public async Task<IEnumerable<string>> GetFolders()

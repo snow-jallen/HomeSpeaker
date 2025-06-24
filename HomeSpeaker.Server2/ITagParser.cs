@@ -6,6 +6,7 @@ namespace HomeSpeaker.Server
     public interface ITagParser
     {
         Song CreateSong(string fullPath);
+        void UpdateSongTags(string fullPath, string name, string artist, string album);
     }
 
     public class DefaultTagParser : ITagParser
@@ -27,6 +28,7 @@ namespace HomeSpeaker.Server
             {
                 title = fileName.Replace(".mp3", string.Empty);
             }
+
             return new Song
             {
                 Album = tag.Album.Value?.Replace("\0", string.Empty),
@@ -34,6 +36,42 @@ namespace HomeSpeaker.Server
                 Name = title,
                 Path = fullPath
             };
+        }
+
+        public void UpdateSongTags(string fullPath, string name, string artist, string album)
+        {
+            try
+            {
+                logger.LogInformation("Updating MP3 tags for file: {fullPath}", fullPath);
+
+                using var mp3 = new Mp3(fullPath, Mp3Permissions.ReadWrite);
+
+                // Get or create a tag
+                var tag = mp3.GetTag(Id3TagFamily.Version2X) ?? mp3.GetTag(Id3TagFamily.Version1X);
+
+                if (tag != null)
+                {
+                    // Update the tag values
+                    tag.Title.Value = name;
+                    tag.Album.Value = album;
+                    tag.Artists.Value.Clear();
+                    tag.Artists.Value.Add(artist);
+
+                    // Write the changes back to the file
+                    mp3.WriteTag(tag, WriteConflictAction.Replace);
+
+                    logger.LogInformation("Successfully updated MP3 tags for file: {fullPath}", fullPath);
+                }
+                else
+                {
+                    logger.LogWarning("No existing tags found and unable to create new tags for file: {fullPath}", fullPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error updating MP3 tags for file: {fullPath}", fullPath);
+                throw;
+            }
         }
     }
 }

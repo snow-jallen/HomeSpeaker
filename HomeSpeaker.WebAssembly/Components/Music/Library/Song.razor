@@ -26,28 +26,48 @@ else
             <button @onclick=toggleDetailsView class="btn btn-outline"><span class=@toggleIcon></span></button>
             <PlayButtonWithDropdown Song="SongViewModel" />
             <PlusButtonWithMenu Song="SongViewModel" />
-        </div>
-        @if (showDetails)
+        </div>        @if (showDetails)
         {
             <div class="d-flex justify-content-between mb-2 pt-2 ps-2 g-0">
                 <div class="">
                     <button class="btn btn-outline-danger" @onclick=delete><span class="oi oi-delete me-1"></span>Delete</button>
                 </div>
                 <div class="">
-                    <button class="btn btn-outline-success" @onclick=togglePlaylistModalVisibility><span class="oi oi-list me-1"></span>Playlists</button>
-                </div>
-                <div class="">
-                    <button class="btn btn-outline-info" disabled><span class="oi oi-pencil me-1"></span>Edit</button>
+                    <button class="btn btn-outline-info" @onclick=toggleEditModalVisibility><span class="oi oi-pencil me-1"></span>Edit</button>
                 </div>
             </div>
         }
     </div>
 }
 
-@if (!isPlaylistModalHidden)
+@if (!isEditModalHidden)
 {
-    <FluentDialog Hidden=@isPlaylistModalHidden>
-        <AddToPlaylistModal Song=SongViewModel Closed=@togglePlaylistModalVisibility />
+    <FluentDialog Hidden=@isEditModalHidden>
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Song</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="songName" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="songName" @bind="editedName" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="songArtist" class="form-label">Artist</label>
+                        <input type="text" class="form-control" id="songArtist" @bind="editedArtist" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="songAlbum" class="form-label">Album</label>
+                        <input type="text" class="form-control" id="songAlbum" @bind="editedAlbum" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick=cancelEdit>Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick=saveEdit>Save</button>
+                </div>
+            </div>
+        </div>
     </FluentDialog>
 }
 
@@ -65,8 +85,16 @@ else
     [Parameter]
     public EventCallback<int> OnDeleted { get; set; }
 
+    [Parameter]
+    public EventCallback OnUpdated { get; set; }
+
     private bool showDetails { get; set; }
-    private bool isPlaylistModalHidden = true;    private void toggleDetailsView() => showDetails = !showDetails;
+    private bool isEditModalHidden = true;
+    private string editedName = string.Empty;
+    private string editedArtist = string.Empty;
+    private string editedAlbum = string.Empty;
+
+    private void toggleDetailsView() => showDetails = !showDetails;
     private string toggleIcon => showDetails ? "oi oi-chevron-top" : "oi oi-chevron-bottom";
 
     private bool isDeleteConfirmationOpen = false;
@@ -82,5 +110,41 @@ else
         }
     }
 
-    void togglePlaylistModalVisibility() => isPlaylistModalHidden = !isPlaylistModalHidden;
+    void toggleEditModalVisibility()
+    {
+        if (isEditModalHidden)
+        {
+            // Opening modal - populate with current values
+            editedName = SongViewModel.Name;
+            editedArtist = SongViewModel.Artist;
+            editedAlbum = SongViewModel.Album;
+        }
+        isEditModalHidden = !isEditModalHidden;
+    }
+
+    void cancelEdit()
+    {
+        isEditModalHidden = true;
+    }
+
+    async Task saveEdit()
+    {
+        try
+        {
+            await svc.UpdateSongAsync(SongViewModel.SongId, editedName, editedArtist, editedAlbum);
+            
+            // Update the local model
+            SongViewModel.Name = editedName;
+            SongViewModel.Artist = editedArtist;
+            SongViewModel.Album = editedAlbum;
+            
+            isEditModalHidden = true;
+            await OnUpdated.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating song");
+            // You could show an error message here
+        }
+    }
 }

@@ -11,12 +11,21 @@ public class OnDiskDataStore : IDataStore
         songs = new();
     }
 
-    private List<Song> songs;
-
-    public void Add(Song song)
+    private List<Song> songs;    public void Add(Song song)
     {
         song.SongId = songs.Count;
         songs.Add(song);
+    }
+
+    public void UpdateSong(int songId, string name, string artist, string album)
+    {
+        var song = songs.FirstOrDefault(s => s.SongId == songId);
+        if (song != null)
+        {
+            song.Name = name;
+            song.Artist = artist;
+            song.Album = album;
+        }
     }
 
     public IEnumerable<Album> GetAlbums()

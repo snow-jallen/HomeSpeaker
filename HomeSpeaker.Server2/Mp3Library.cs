@@ -78,4 +78,27 @@ public class Mp3Library
         IsDirty = true;
     }
 
+    internal void UpdateSong(int songId, string name, string artist, string album)
+    {
+        lock (lockObject)
+        {
+            logger.LogInformation("Updating song# {songId} with name: {name}, artist: {artist}, album: {album}", songId, name, artist, album);
+
+            // Find the song to get its file path
+            var song = Songs.Where(s => s.SongId == songId).FirstOrDefault();
+            if (song == null)
+            {
+                logger.LogWarning("Song with ID {songId} not found", songId);
+                return;
+            }
+
+            // Update the MP3 file tags
+            tagParser.UpdateSongTags(song.Path, name, artist, album);
+
+            // Update the in-memory data store
+            dataStore.UpdateSong(songId, name, artist, album);
+
+            logger.LogInformation("Successfully updated song# {songId} both in file and in memory", songId);
+        }
+    }
 }
