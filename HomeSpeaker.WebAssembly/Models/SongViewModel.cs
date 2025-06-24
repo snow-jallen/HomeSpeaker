@@ -48,6 +48,18 @@ public static class ViewModelExtensions
             Path = song?.Path?.Trim()
         };
     }
+
+    public static SongViewModel ToSongViewModel(this HomeSpeaker.Shared.Song song)
+    {
+        return new SongViewModel
+        {
+            SongId = song?.SongId ?? -1,
+            Name = song?.Name?.Trim() ?? "[ Null Song Response ??? ]",
+            Album = song?.Album?.Trim() ?? "[ No Album ]",
+            Artist = song?.Artist?.Trim() ?? "[ No Artist ]",
+            Path = song?.Path?.Trim()
+        };
+    }
     //public async static IAsyncEnumerable<T> ReadAllAsync<T>(this IAsyncStreamReader<T> streamReader, CancellationToken cancellationToken = default)
     //{
     //    if (streamReader == null)

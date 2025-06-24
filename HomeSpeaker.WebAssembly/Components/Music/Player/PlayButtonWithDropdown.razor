@@ -1,5 +1,7 @@
 @using HomeSpeaker.WebAssembly.Services
+@using HomeSpeaker.WebAssembly.Models
 @using Microsoft.JSInterop
+@using System.Linq
 @inject IPlaybackModeService playbackModeService
 @inject HomeSpeakerService homeSpeakerService
 @inject ILocalQueueService localQueueService
@@ -138,18 +140,57 @@
     {
         if (string.IsNullOrEmpty(FolderName)) return;
         
-        // For now, show a message that this feature is not yet implemented
-        // TODO: Get folder songs from server and add to local queue
-        await JsRuntime.InvokeVoidAsync("alert", "Local folder playback not yet fully implemented. Please play individual songs instead.");
-    }
-
-    private async Task PlayPlaylistLocallyAsync()
+        try
+        {
+            // Get folder songs from server
+            var folderSongs = await homeSpeakerService.GetSongsInFolder(FolderName);
+            var songViewModels = folderSongs.ToList();
+            
+            if (songViewModels.Any())
+            {
+                await localQueueService.PlaySongsAsync(songViewModels);
+            }
+            else
+            {
+                await JsRuntime.InvokeVoidAsync("alert", $"Folder '{FolderName}' contains no songs.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", $"Error playing folder locally: {ex.Message}");
+        }
+    }private async Task PlayPlaylistLocallyAsync()
     {
         if (string.IsNullOrEmpty(PlaylistName)) return;
         
-        // For now, show a message that this feature is not yet implemented
-        // TODO: Get playlist songs from server and add to local queue
-        await JsRuntime.InvokeVoidAsync("alert", "Local playlist playback not yet fully implemented. Please play individual songs instead.");
+        try
+        {
+            // Get playlist data from server
+            var playlists = await homeSpeakerService.GetPlaylistsAsync();
+            var playlist = playlists.FirstOrDefault(p => p.Name == PlaylistName);
+            
+            if (playlist == null)
+            {
+                await JsRuntime.InvokeVoidAsync("alert", $"Playlist '{PlaylistName}' not found.");
+                return;
+            }
+            
+            // Convert playlist songs to SongViewModels and play them locally
+            var songViewModels = playlist.Songs.Select(s => s.ToSongViewModel()).ToList();
+            
+            if (songViewModels.Any())
+            {
+                await localQueueService.PlaySongsAsync(songViewModels);
+            }
+            else
+            {
+                await JsRuntime.InvokeVoidAsync("alert", $"Playlist '{PlaylistName}' is empty.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", $"Error playing playlist locally: {ex.Message}");
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
