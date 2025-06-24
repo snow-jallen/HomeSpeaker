@@ -6,9 +6,9 @@
 @inject IJSRuntime JsRuntime
 
 <div class="position-relative d-inline-block" @ref="containerRef">
-    <button @onclick="ToggleMenu" class="btn btn-outline-primary" title="Play">
+    <button @onclick="ToggleMenu" class="btn btn-adaptive-contrast" title="Play">
         <span class="oi oi-media-play" />
-    </button>    @if (showMenu)
+    </button>@if (showMenu)
     {
         <div class="dropdown-menu show position-absolute" style="top: 100%; @dropdownPositionStyle z-index: 10000; min-width: 220px;">
             <button class="dropdown-item" @onclick="PlayOnServer">
