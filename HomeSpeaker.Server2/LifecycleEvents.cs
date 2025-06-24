@@ -43,23 +43,50 @@ namespace HomeSpeaker.Server
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             logger.LogInformation("Application Stopping event raised!");
-            if (player.Status.StillPlaying)
+            try
             {
-                logger.LogInformation("Still playing music...saving current song and queue");
-                var lastState = new LastState
+                if (player.Status.StillPlaying)
                 {
-                    CurrentSong = player.Status.CurrentSong,
-                    Queue = player.SongQueue
-                };
-                var json = JsonSerializer.Serialize(lastState);
-                await File.WriteAllTextAsync(LastStatePath, json);
-                logger.LogInformation("Saved {LastStatePath} with {LastState}", LastStatePath, lastState);
+                    logger.LogInformation("Still playing music...saving current song and queue");
+                    var lastState = new LastState
+                    {
+                        CurrentSong = player.Status.CurrentSong,
+                        Queue = player.SongQueue
+                    };
+                    var json = JsonSerializer.Serialize(lastState);
+                    await File.WriteAllTextAsync(LastStatePath, json, cancellationToken);
+                    logger.LogInformation("Saved {LastStatePath} with {LastState}", LastStatePath, lastState);
+                }
+                else //if we're not playing anything right now
+                {
+                    logger.LogInformation("Not playing anything, no state to save.");
+                    if (File.Exists(LastStatePath)) //don't leave behind a file as if we were.
+                        File.Delete(LastStatePath);
+                }
             }
-            else //if we're not playing anything right now
+            catch (OperationCanceledException)
             {
-                logger.LogInformation("Not playing anything, no state to save.");
-                if (File.Exists(LastStatePath)) //don't leave behind a file as if we were.
-                    File.Delete(LastStatePath);
+                logger.LogWarning("Shutdown was cancelled before state could be saved");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error saving application state during shutdown");
+            }
+            finally
+            {
+                // Ensure music player is properly disposed
+                if (player is IDisposable disposablePlayer)
+                {
+                    try
+                    {
+                        disposablePlayer.Dispose();
+                        logger.LogInformation("Music player disposed successfully");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Error disposing music player");
+                    }
+                }
             }
         }
 

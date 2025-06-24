@@ -6,7 +6,7 @@ using System.Text;
 
 namespace HomeSpeaker.Server;
 
-public class WindowsMusicPlayer : IMusicPlayer
+public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 {
     public WindowsMusicPlayer(ILogger<WindowsMusicPlayer> logger, Mp3Library library)
     {
@@ -21,6 +21,7 @@ public class WindowsMusicPlayer : IMusicPlayer
     private PlayerStatus status = new();
     private Song? currentSong;
     private Song? stoppedSong;
+    private bool disposed = false;
     public PlayerStatus Status => (status ?? new PlayerStatus()) with { CurrentSong = currentSong };
 
     private bool startedPlaying = false;
@@ -84,17 +85,65 @@ public class WindowsMusicPlayer : IMusicPlayer
         playerProcess.BeginOutputReadLine();
         playerProcess.BeginErrorReadLine();
         startedPlaying = false;
-    }
-    private void stopPlaying()
+    }    private void stopPlaying()
     {
-        if (playerProcess != null && playerProcess.HasExited is false)
+        if (playerProcess != null)
         {
-            playerProcess.Exited -= PlayerProcess_Exited;//stop listening to when the process ends.
+            try
+            {
+                if (!playerProcess.HasExited)
+                {
+                    playerProcess.Exited -= PlayerProcess_Exited; // Stop listening to when the process ends
+                    playerProcess.Kill();
+                    playerProcess.WaitForExit(5000); // Wait up to 5 seconds for clean exit
+                }
+                playerProcess.Dispose();
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Error stopping player process");
+            }
+            finally
+            {
+                playerProcess = null;
+            }
         }
 
-        foreach (var proc in Process.GetProcessesByName("vlc"))
+        // Fallback: kill any remaining VLC processes that might be hanging around
+        try
         {
-            proc.Kill();
+            foreach (var proc in Process.GetProcessesByName("vlc"))
+            {
+                if (!proc.HasExited)
+                {
+                    proc.Kill();
+                    proc.WaitForExit(2000);
+                }
+                proc.Dispose();
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Error cleaning up VLC processes");
+        }
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposed)
+        {
+            if (disposing)
+            {
+                logger.LogInformation("Disposing WindowsMusicPlayer");
+                stopPlaying();
+            }
+            disposed = true;
         }
     }
 

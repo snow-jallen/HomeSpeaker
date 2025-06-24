@@ -2,7 +2,7 @@
 
 namespace HomeSpeaker.Server;
 
-public interface IMusicPlayer
+public interface IMusicPlayer : IDisposable
 {
     void PlaySong(Song song);
     void PlayStream(string streamUrl);

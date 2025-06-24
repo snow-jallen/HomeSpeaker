@@ -2,9 +2,10 @@
 
 namespace HomeSpeaker.Server;
 
-public class ChattyMusicPlayer : IMusicPlayer
+public class ChattyMusicPlayer : IMusicPlayer, IDisposable
 {
     private readonly IMusicPlayer actualPlayer;
+    private bool disposed = false;
 
     public ChattyMusicPlayer(IMusicPlayer actualPlayer)
     {
@@ -73,11 +74,27 @@ public class ChattyMusicPlayer : IMusicPlayer
     {
         actualPlayer.Stop();
         PlayerEvent?.Invoke(this, "Stopped playing.");
-    }
-
-    public void UpdateQueue(IEnumerable<string> songs)
+    }    public void UpdateQueue(IEnumerable<string> songs)
     {
         actualPlayer.UpdateQueue(songs);
         PlayerEvent?.Invoke(this, "Updated queue.");
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposed)
+        {
+            if (disposing)
+            {
+                actualPlayer?.Dispose();
+            }
+            disposed = true;
+        }
     }
 }

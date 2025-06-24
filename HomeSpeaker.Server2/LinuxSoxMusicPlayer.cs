@@ -6,11 +6,12 @@ using System.Text;
 
 namespace HomeSpeaker.Server;
 
-public class LinuxSoxMusicPlayer : IMusicPlayer
+public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
 {
     private readonly ILogger<LinuxSoxMusicPlayer> logger;
     private readonly Mp3Library library;
     private Process? playerProcess;
+    private bool disposed = false;
 
     public LinuxSoxMusicPlayer(ILogger<LinuxSoxMusicPlayer> logger, Mp3Library library)
     {
@@ -124,18 +125,65 @@ public class LinuxSoxMusicPlayer : IMusicPlayer
         playerProcess.BeginOutputReadLine();
         playerProcess.BeginErrorReadLine();
         startedPlaying = false;
-    }
-
-    private void stopPlaying()
+    }    private void stopPlaying()
     {
-        if (playerProcess != null && playerProcess.HasExited is false)
+        if (playerProcess != null)
         {
-            playerProcess.Exited -= PlayerProcess_Exited;//stop listening to when the process ends.
+            try
+            {
+                if (!playerProcess.HasExited)
+                {
+                    playerProcess.Exited -= PlayerProcess_Exited; // Stop listening to when the process ends
+                    playerProcess.Kill();
+                    playerProcess.WaitForExit(5000); // Wait up to 5 seconds for clean exit
+                }
+                playerProcess.Dispose();
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Error stopping player process");
+            }
+            finally
+            {
+                playerProcess = null;
+            }
         }
 
-        foreach (var proc in Process.GetProcessesByName("play").Union(Process.GetProcessesByName("vlc")))
+        // Fallback: kill any remaining processes that might be hanging around
+        try
         {
-            proc.Kill();
+            foreach (var proc in Process.GetProcessesByName("play").Union(Process.GetProcessesByName("vlc")))
+            {
+                if (!proc.HasExited)
+                {
+                    proc.Kill();
+                    proc.WaitForExit(2000);
+                }
+                proc.Dispose();
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Error cleaning up audio processes");
+        }
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposed)
+        {
+            if (disposing)
+            {
+                logger.LogInformation("Disposing LinuxSoxMusicPlayer");
+                stopPlaying();
+            }
+            disposed = true;
         }
     }
 

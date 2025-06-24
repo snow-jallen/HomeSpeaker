@@ -11,7 +11,7 @@ using TagFile = TagLib.File;
 
 namespace HomeSpeaker.Server2.Services;
 
-public class YoutubeService
+public class YoutubeService : IDisposable
 {
     public YoutubeService(IConfiguration config, ILogger<YoutubeService> logger, Mp3Library library)
     {
@@ -24,6 +24,7 @@ public class YoutubeService
     private readonly IConfiguration config;
     private readonly ILogger<YoutubeService> logger;
     private readonly Mp3Library library;
+    private bool disposed = false;
 
     public async Task<IEnumerable<VideoDto>> SearchAsync(string searchTerm, int maxItems = 50)
     {
@@ -79,6 +80,23 @@ public class YoutubeService
         }
 
         logger.LogInformation("Finished caching {title}.  Saved to {destination}", title, destinationPath);
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposed)
+        {
+            if (disposing)
+            {
+                // YoutubeClient doesn't implement IDisposable, but we set it to null
+                client = null!;
+            }
+            disposed = true;
+        }
     }
 }
 

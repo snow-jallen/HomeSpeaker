@@ -11,6 +11,12 @@ const string LocalCorsPolicy = nameof(LocalCorsPolicy);
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure host shutdown timeout
+builder.Host.ConfigureHostOptions(options =>
+{
+    options.ShutdownTimeout = TimeSpan.FromSeconds(30); // 30 second timeout for graceful shutdown
+});
+
 builder.AddServiceDefaults();
 
 builder.Services.AddResponseCompression(o => o.EnableForHttps = true);
