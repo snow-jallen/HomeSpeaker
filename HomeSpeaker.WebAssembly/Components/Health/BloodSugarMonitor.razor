@@ -5,55 +5,72 @@
 @implements IDisposable
 
 <div class="blood-sugar-card mb-2">
-    <div class="card border-0 shadow-sm">        <div class="card-header bg-info text-white py-2">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-info text-white py-2">
             <div class="d-flex justify-content-between align-items-center">
                 <h6 class="mb-0">
                     <i class="fas fa-tint me-1"></i>
                     Blood Sugar Monitor
                 </h6>
-                <button class="btn btn-outline-light btn-sm" @onclick="ForceRefreshBloodSugarData" disabled="@isLoading">
+                <button class="btn btn-outline-light btn-sm" @onclick="ForceRefreshBloodSugarData"
+                    disabled="@isLoading">
                     <i class="fas fa-redo me-1"></i>
-                    @if (isLoading) { <span>Loading...</span> } else { <span>Force Refresh</span> }
+                    @if (isLoading)
+                    {
+                        <span>Loading...</span>
+                    }
+                    else
+                    {
+
+                        <span>Force Refresh</span>
+                    }
                 </button>
             </div>
         </div>
         <div class="card-body py-2">
             @if (bloodSugarStatus?.CurrentReading != null)
-            {
-                <div class="row g-2">
-                    <div class="col-4">                        <div class="text-center">
-                            <div class="mb-2">
+            {                <div class="row g-2">
+                    <div class="col-4">
+                        <div class="text-center">
+                            <div class="mb-2 icon-container">
                                 <i class="fas fa-tint fa-2x" style="color: @bloodSugarStatus.StatusColor"></i>
                             </div>
                             <div class="h6 text-muted mb-2">Current</div>
                             <div class="blood-sugar-display">
-                                <span class="display-1 fw-bold" style="color: @bloodSugarStatus.StatusColor">@bloodSugarStatus.CurrentReading.Sgv</span>
+                                <span class="display-1 fw-bold"
+                                    style="color: @bloodSugarStatus.StatusColor">@bloodSugarStatus.CurrentReading.Sgv</span>
                             </div>
                             <div class="small text-muted">@bloodSugarStatus.StatusText</div>
                         </div>
                     </div>
-                    <div class="col-4">                        <div class="text-center">
-                            <div class="mb-2">
-                                <span class="fa-2x" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">@bloodSugarStatus.CurrentReading.DirectionIcon</span>
+                    <div class="col-4">
+                        <div class="text-center">
+                            <div class="mb-2 icon-container">
+                                <span class="trend-icon fw-bold"
+                                    style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction); text-shadow: 2px 2px 4px rgba(0,0,0,0.3); filter: drop-shadow(0 0 8px @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)50);">@bloodSugarStatus.CurrentReading.DirectionIcon</span>
                             </div>
                             <div class="h6 text-muted mb-2">Trend</div>
                             <div class="trend-display">
-                                <span class="h3 fw-semibold" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">@bloodSugarStatus.CurrentReading.DirectionDescription</span>
+                                <span class="h3 fw-semibold"
+                                    style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">@bloodSugarStatus.CurrentReading.DirectionDescription</span>
                             </div>
                         </div>
                     </div>
-                    <div class="col-4">                        <div class="text-center">
-                            <div class="mb-2">
-                                <i class="fas fa-clock fa-2x" style="color: @(bloodSugarStatus.IsStale ? "#dc3545" : "#28a745")"></i>
+                    <div class="col-4">
+                        <div class="text-center">
+                            <div class="mb-2 icon-container">
+                                <i class="fas fa-clock fa-2x"
+                                    style="color: @(bloodSugarStatus.IsStale ? "#dc3545" : "#28a745")"></i>
                             </div>
                             <div class="h6 text-muted mb-2">Last Reading</div>
                             <div class="time-display">
-                                <span class="small" style="color: @(bloodSugarStatus.IsStale ? "#dc3545" : "#6c757d")">@FormatTimeSince(bloodSugarStatus.TimeSinceLastReading)</span>
+                                <span class="small"
+                                    style="color: @(bloodSugarStatus.IsStale ? "#dc3545" : "#6c757d")">@FormatTimeSince(bloodSugarStatus.TimeSinceLastReading)</span>
                             </div>
                         </div>
                     </div>
                 </div>
-                  <div class="text-center mt-1">
+                <div class="text-center mt-1">
                     <small class="text-muted">
                         Updated: @lastUpdated.ToString("HH:mm:ss")
                         @if (bloodSugarStatus.IsStale)
@@ -64,7 +81,8 @@
                         {
                             <span class="ms-1">• Cached: @FormatTimeSince(DateTime.Now - bloodSugarStatus.LastUpdated)</span>
                         }
-                    </small>                </div>
+                    </small>
+                </div>
             }
             else if (isLoading)
             {
@@ -92,48 +110,67 @@
     </div>
 </div>
 
-<style>    .blood-sugar-card .blood-sugar-display {
+<style>
+    .blood-sugar-card .blood-sugar-display {
         margin: 0.25rem 0;
         line-height: 0.9;
-    }    .blood-sugar-card .blood-sugar-display .display-1 {
-        font-size: 3.0rem !important;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
     }
-    
-    /* Extra large on smaller screens for better visibility */
+
+    .blood-sugar-card .blood-sugar-display .display-1 {
+        font-size: 3.0rem !important;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    }    /* Extra large on smaller screens for better visibility */
     @@media (max-width: 1024px) {
         .blood-sugar-card .blood-sugar-display .display-1 {
             font-size: 3.6rem !important;
         }
-    }.blood-sugar-card .trend-display {
+    }
+
+    .blood-sugar-card .trend-display {
         margin: 0.25rem 0;
         line-height: 1.1;
     }
-    
+
     .blood-sugar-card .time-display {
         margin: 0.25rem 0;
     }
-    
+
     .blood-sugar-card .badge {
         white-space: nowrap;
         font-size: 0.7rem;
     }
-    
+
     .blood-sugar-card .fas {
         margin-bottom: 4px;
         opacity: 0.8;
     }
-    
+
     .blood-sugar-card .fas:hover {
         opacity: 1;
         transform: scale(1.05);
         transition: all 0.2s ease-in-out;
-    }    .blood-sugar-card .card-body {
+    }
+
+    .blood-sugar-card .card-body {
         padding: 1rem;
     }
-    
+
     .blood-sugar-card .small {
         font-size: 0.8rem;
+    }    /* Icon alignment containers */
+    .blood-sugar-card .icon-container {
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Custom sizing for trend icon to match fa-3x */
+    .blood-sugar-card .trend-icon {
+        font-size: 4.5rem;
+        line-height: 1;
+        display: inline-block;
+        vertical-align: middle;
     }
 </style>
 
@@ -145,10 +182,10 @@
     protected override async Task OnInitializedAsync()
     {
         Logger.LogInformation("Initializing BloodSugarMonitor component...");
-        
+
         await RefreshBloodSugarData();
-          // Set up auto-refresh every 1 minute (server has smart cache based on reading age)
-        refreshTimer = new Timer(async _ => 
+        // Set up auto-refresh every 1 minute (server has smart cache based on reading age)
+        refreshTimer = new Timer(async _ =>
         {
             try
             {
@@ -164,7 +201,7 @@
             }
         }, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
     }
-    
+
     private async Task RefreshBloodSugarData()
     {
         Logger.LogInformation("Refreshing blood sugar data...");
@@ -173,11 +210,11 @@
         {
             isLoading = true;
             StateHasChanged();
-            
+
             bloodSugarStatus = await BloodSugarService.GetBloodSugarStatusAsync();
             lastUpdated = DateTime.Now;
             isLoading = false;
-            
+
             Logger.LogInformation("Blood sugar data refreshed successfully");
             StateHasChanged();
         }
@@ -220,12 +257,12 @@
         {
             isLoading = true;
             StateHasChanged();
-            
+
             bloodSugarStatus = await BloodSugarService.RefreshAsync();
             lastUpdated = DateTime.Now;
             isLoading = false;
             StateHasChanged();
-            
+
             Logger.LogInformation("Blood sugar data force refreshed successfully");
         }
         catch (Exception ex)
@@ -248,7 +285,7 @@
         else
             return $"{(int)timeSince.TotalDays}d ago";
     }
-    
+
     private string GetTrendColor(string direction) => direction switch
     {
         "DoubleUp" or "SingleUp" => "#007bff", // Blue for rising

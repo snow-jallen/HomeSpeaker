@@ -28,13 +28,9 @@ else
             <PlusButtonWithMenu Song="SongViewModel" />
         </div>        @if (showDetails)
         {
-            <div class="d-flex justify-content-between mb-2 pt-2 ps-2 g-0">
-                <div class="">
-                    <button class="btn btn-outline-danger" @onclick=delete><span class="oi oi-delete me-1"></span>Delete</button>
-                </div>
-                <div class="">
-                    <button class="btn btn-outline-info" @onclick=toggleEditModalVisibility><span class="oi oi-pencil me-1"></span>Edit</button>
-                </div>
+            <div class="d-flex justify-content-center mb-2 pt-2 ps-2 g-0 gap-2">
+                <button class="btn btn-outline-danger" @onclick=delete><span class="oi oi-delete me-1"></span>Delete</button>
+                <button class="btn btn-outline-info" @onclick=toggleEditModalVisibility><span class="oi oi-pencil me-1"></span>Edit</button>
             </div>
         }
     </div>
