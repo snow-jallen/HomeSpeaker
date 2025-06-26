@@ -44,6 +44,5 @@ jobs:
     - name: Refresh browser on touchscreen
       run: |
         export DISPLAY=:0
-        xdotool key F5      
-      continue-on-error: 
-        true
+        xdotool key F5
+      continue-on-error: true

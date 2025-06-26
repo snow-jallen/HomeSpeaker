@@ -1,0 +1,4 @@
+#!/bin/bash
+# Script called when AirPlay session starts
+echo "$(date): AirPlay session started" > /tmp/airplay-status
+echo "ACTIVE" > /tmp/airplay-state

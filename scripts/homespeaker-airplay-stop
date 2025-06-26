@@ -1,0 +1,4 @@
+#!/bin/bash
+# Script called when AirPlay session ends
+echo "$(date): AirPlay session ended" > /tmp/airplay-status
+echo "INACTIVE" > /tmp/airplay-state

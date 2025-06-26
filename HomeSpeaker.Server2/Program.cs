@@ -33,6 +33,7 @@ builder.Services.AddRazorPages();
 builder.Services.AddGrpc();
 builder.Services.AddHostedService<MigrationApplier>();
 builder.Services.AddHostedService<DailyAnchorWorker>();
+builder.Services.AddHostedService<AirPlayReceiverService>();
 builder.Services.AddScoped<PlaylistService>();
 builder.Services.AddScoped<AnchorService>();
 builder.Services.AddDbContext<MusicContext>(options => options.UseSqlite(builder.Configuration["SqliteConnectionString"]));
