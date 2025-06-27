@@ -60,8 +60,8 @@ services:
       - AIRPLAY_NAME=${AIRPLAY_NAME:-HomeSpeaker}
     command: |
       sh -c "
-        # Set AirPlay name from environment variable
-        AIRPLAY_NAME=\"$${AIRPLAY_NAME:-HomeSpeaker}\"
+        # Debug: Show what name we're using
+        echo \"Using AirPlay name: \$$AIRPLAY_NAME\"
         
         # Create state management scripts inside container
         cat > /usr/local/bin/airplay-start.sh << 'EOF'
@@ -78,9 +78,12 @@ services:
         
         chmod +x /usr/local/bin/airplay-start.sh
         chmod +x /usr/local/bin/airplay-stop.sh
+          # Update the config file with the correct name
+        sed -i \"s/AIRPLAY_NAME_PLACEHOLDER/\$$AIRPLAY_NAME/g\" /etc/shairport-sync.conf
         
-        # Update the config file with the correct name
-        sed -i \"s/name = \\\"HomeSpeaker\\\"/name = \\\"$$AIRPLAY_NAME\\\"/g\" /etc/shairport-sync.conf
+        # Debug: Show the updated config
+        echo \"Updated config:\"
+        grep 'name =' /etc/shairport-sync.conf
         
         # Start shairport-sync
         exec shairport-sync -c /etc/shairport-sync.conf
