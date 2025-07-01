@@ -93,12 +93,20 @@ services:
         echo "Updated config:"
         grep 'name =' /etc/shairport-sync.conf
         
+        # Debug: Check PulseAudio access
+        echo "Checking PulseAudio connection..."
+        export PULSE_SERVER=$${PULSE_SERVER}
+        echo "PULSE_SERVER is: $${PULSE_SERVER}"
+        
+        # Test if we can connect to pulse
+        pactl info || echo "Warning: Could not connect to PulseAudio"
+        
         # Wait a moment for system to be ready
-        sleep 2
+        sleep 5
         
         # Start shairport-sync directly with verbose output
-        echo "Starting shairport-sync directly..."
-        exec shairport-sync -c /etc/shairport-sync.conf -v -d
+        echo "Starting shairport-sync..."
+        exec shairport-sync -c /etc/shairport-sync.conf -v
     depends_on:
       - homespeaker.server2
 
