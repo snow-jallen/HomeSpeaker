@@ -63,7 +63,7 @@ services:
       - PULSE_SERVER=unix:/run/user/1000/pulse/native
       - PULSE_RUNTIME_PATH=/run/user/1000/pulse
       - AIRPLAY_NAME=${AIRPLAY_NAME:-HomeSpeaker}
-    entrypoint: ["/bin/bash", "-c"]
+    entrypoint: ["/bin/sh", "-c"]
     command: >
       set -e &&
       echo "=== Bypassing s6 init and starting manually ===" &&
