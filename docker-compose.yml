@@ -53,60 +53,61 @@ services:
     restart: unless-stopped
     network_mode: host
     hostname: kitchen-homespeaker  # Set a specific hostname for this container
+    devices:
+      - /dev/snd:/dev/snd  # Add direct ALSA device access
     volumes:
       - ./shairport-sync.conf:/tmp/shairport-sync-template.conf:ro
       - airplay-shared:/tmp/airplay-shared  # Shared volume for state files
+      - /run/user/1000/pulse:/run/user/1000/pulse:rw  # PulseAudio socket
     environment:
       - PULSE_SERVER=unix:/run/user/1000/pulse/native
+      - PULSE_RUNTIME_PATH=/run/user/1000/pulse
       - AIRPLAY_NAME=${AIRPLAY_NAME:-HomeSpeaker}
+    entrypoint: ["/bin/bash"]
     command: 
-      - sh
       - -c
       - |
-        # Debug: Show what name we're using
+        set -e
+        echo "=== Bypassing s6 init and starting manually ==="
         echo "Using AirPlay name: $${AIRPLAY_NAME}"
+        echo "Hostname: $(hostname)"
         
-        # Set hostname for this session
-        hostname "$${AIRPLAY_NAME// /-}" || true
-        
-        # Create state management scripts inside container
-        cat > /usr/local/bin/airplay-start.sh << 'EOF'
-        #!/bin/sh
-        echo 'ACTIVE' > /tmp/airplay-shared/state
-        echo 'AirPlay session started' > /tmp/airplay-shared/log
-        EOF
-        
-        cat > /usr/local/bin/airplay-stop.sh << 'EOF'
-        #!/bin/sh
-        echo 'INACTIVE' > /tmp/airplay-shared/state
-        echo 'AirPlay session ended' > /tmp/airplay-shared/log
-        EOF
-        
-        chmod +x /usr/local/bin/airplay-start.sh
-        chmod +x /usr/local/bin/airplay-stop.sh
+        # Kill any existing s6 processes to ensure clean start
+        pkill -f s6 || true
         
         # Copy template and replace placeholder with actual name
         cp /tmp/shairport-sync-template.conf /etc/shairport-sync.conf
         sed -i "s/AIRPLAY_NAME_PLACEHOLDER/$${AIRPLAY_NAME}/g" /etc/shairport-sync.conf
         
-        # Debug: Show the updated config
-        echo "Updated config:"
-        grep 'name =' /etc/shairport-sync.conf
+        echo "=== Config file generated ==="
+        cat /etc/shairport-sync.conf
         
-        # Debug: Check PulseAudio access
-        echo "Checking PulseAudio connection..."
-        export PULSE_SERVER=$${PULSE_SERVER}
-        echo "PULSE_SERVER is: $${PULSE_SERVER}"
+        echo ""
+        echo "=== Starting required services manually ==="
         
-        # Test if we can connect to pulse
-        pactl info || echo "Warning: Could not connect to PulseAudio"
+        # Start D-Bus system daemon
+        echo "Starting D-Bus..."
+        mkdir -p /var/run/dbus
+        dbus-daemon --system --fork --print-pid > /var/run/dbus.pid || true
+        sleep 2
         
-        # Wait a moment for system to be ready
-        sleep 5
+        # Start Avahi daemon for mDNS
+        echo "Starting Avahi daemon..."
+        avahi-daemon --daemonize --no-drop-root || true
+        sleep 3
         
-        # Start shairport-sync directly with verbose output
-        echo "Starting shairport-sync..."
-        exec shairport-sync -c /etc/shairport-sync.conf -v
+        echo ""
+        echo "=== Audio setup debugging ==="
+        echo "PULSE_SERVER: $${PULSE_SERVER}"
+        echo "PULSE_RUNTIME_PATH: $${PULSE_RUNTIME_PATH}"
+        ls -la /run/user/1000/pulse/ || echo "PulseAudio socket not found"
+        
+        # Test PulseAudio connection
+        which pactl && pactl info || echo "PulseAudio not accessible, will fall back to ALSA"
+        
+        echo ""
+        echo "=== Starting shairport-sync ==="
+        exec /usr/local/bin/shairport-sync -c /etc/shairport-sync.conf -v
     depends_on:
       - homespeaker.server2
 
