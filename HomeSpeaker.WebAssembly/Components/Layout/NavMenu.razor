@@ -5,15 +5,17 @@
 @inject IConfiguration config
 
 <div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">        <div class="navbar-brand">
+    <div class="container-fluid">
+        <div class="navbar-brand">
             <a class="navbar-brand" href="">Home Speaker</a>
             @if (showLogs ?? false)
             {
                 <NavLink href="aspire"><img src="/aspire-dashboard.png" width="24" alt="aspire" /></NavLink>
             }
         </div>
-        <button class="btn btn-dark d-block d-sm-none" @onclick=stopAsync><span class="oi oi-media-stop top-0"></span></button>
-        <button class="btn btn-dark d-block d-sm-none" @onclick=skipAsync><span class="oi oi-media-skip-forward top-0"></span></button>
+        <div class="playback-controls d-flex align-items-center">
+            <PlayControls />
+        </div>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>

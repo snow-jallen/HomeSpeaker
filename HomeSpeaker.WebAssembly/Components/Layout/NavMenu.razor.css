@@ -50,6 +50,74 @@
     color: white;
 }
 
+/* Playback controls styling */
+.playback-controls {
+    flex: 1;
+    justify-content: center;
+    gap: 0.25rem;
+    overflow: hidden; /* Prevent buttons from breaking the layout */
+}
+
+.playback-controls ::deep .btn {
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+    min-width: 2.25rem;
+    height: 2.5rem;
+    flex-shrink: 0; /* Prevent buttons from shrinking too much */
+}
+
+.playback-controls ::deep .btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.playback-controls ::deep .btn:focus {
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+}
+
+/* Responsive design for playback controls */
+@media (max-width: 991.98px) {
+    .playback-controls {
+        gap: 0.125rem;
+    }
+    
+    .playback-controls ::deep .btn {
+        padding: 0.25rem 0.375rem;
+        font-size: 0.75rem;
+        min-width: 2rem;
+        height: 2rem;
+    }
+}
+
+/* Hide buttons only when there's really not enough space */
+@media (max-width: 540px) {
+    /* Hide Clear and Shuffle buttons on smaller screens */
+    .playback-controls ::deep .btn:nth-child(4),
+    .playback-controls ::deep .btn:nth-child(5) {
+        display: none;
+    }
+}
+
+@media (max-width: 420px) {
+    /* Hide Skip button on very small screens */
+    .playback-controls ::deep .btn:nth-child(3) {
+        display: none;
+    }
+}
+
+/* For medium-sized screens like tablets, show all buttons but smaller */
+@media (min-width: 541px) and (max-width: 991.98px) {
+    .playback-controls ::deep .btn {
+        padding: 0.3rem 0.4rem;
+        font-size: 0.8rem;
+        min-width: 2.1rem;
+        height: 2.2rem;
+    }
+}
+
 @media (min-width: 1024px) {
     .navbar-toggler {
         display: none;
