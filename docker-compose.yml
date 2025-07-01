@@ -52,18 +52,22 @@ services:
     container_name: homespeaker-airplay
     restart: unless-stopped
     network_mode: host
+    hostname: kitchen-homespeaker  # Set a specific hostname for this container
     volumes:
       - ./shairport-sync.conf:/tmp/shairport-sync-template.conf:ro
       - airplay-shared:/tmp/airplay-shared  # Shared volume for state files
     environment:
       - PULSE_SERVER=unix:/run/user/1000/pulse/native
       - AIRPLAY_NAME=${AIRPLAY_NAME:-HomeSpeaker}
-    entrypoint: 
+    command: 
       - sh
       - -c
       - |
         # Debug: Show what name we're using
         echo "Using AirPlay name: $${AIRPLAY_NAME}"
+        
+        # Set hostname for this session
+        hostname "$${AIRPLAY_NAME// /-}" || true
         
         # Create state management scripts inside container
         cat > /usr/local/bin/airplay-start.sh << 'EOF'
@@ -89,8 +93,12 @@ services:
         echo "Updated config:"
         grep 'name =' /etc/shairport-sync.conf
         
-        # Start the original entrypoint
-        exec /init
+        # Wait a moment for system to be ready
+        sleep 2
+        
+        # Start shairport-sync directly with verbose output
+        echo "Starting shairport-sync directly..."
+        exec shairport-sync -c /etc/shairport-sync.conf -v -d
     depends_on:
       - homespeaker.server2
 
