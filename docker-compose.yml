@@ -53,12 +53,12 @@ services:
     restart: unless-stopped
     network_mode: host
     volumes:
-      - ./shairport-sync.conf:/etc/shairport-sync.conf:ro
+      - ./shairport-sync.conf:/tmp/shairport-sync-template.conf:ro
       - airplay-shared:/tmp/airplay-shared  # Shared volume for state files
     environment:
       - PULSE_SERVER=unix:/run/user/1000/pulse/native
       - AIRPLAY_NAME=${AIRPLAY_NAME:-HomeSpeaker}
-    command: |
+    entrypoint: |
       sh -c "
         # Debug: Show what name we're using
         echo \"Using AirPlay name: \$$AIRPLAY_NAME\"
@@ -78,15 +78,17 @@ services:
         
         chmod +x /usr/local/bin/airplay-start.sh
         chmod +x /usr/local/bin/airplay-stop.sh
-          # Update the config file with the correct name
+        
+        # Copy template and replace placeholder with actual name
+        cp /tmp/shairport-sync-template.conf /etc/shairport-sync.conf
         sed -i \"s/AIRPLAY_NAME_PLACEHOLDER/\$$AIRPLAY_NAME/g\" /etc/shairport-sync.conf
         
         # Debug: Show the updated config
         echo \"Updated config:\"
         grep 'name =' /etc/shairport-sync.conf
         
-        # Start shairport-sync
-        exec shairport-sync -c /etc/shairport-sync.conf
+        # Start the original entrypoint
+        exec /init
       "
     depends_on:
       - homespeaker.server2
