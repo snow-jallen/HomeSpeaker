@@ -8,6 +8,12 @@
             <div class="fs-6 mt-0 text-muted">(@LocalQueueService.Queue.Count songs • drag to reorder)</div>
         </div>
         <div>
+            <button @onclick="ShuffleQueue" 
+                    class="btn btn-outline-secondary btn-sm me-2" 
+                    disabled="@(LocalQueueService.Queue.Count <= 1)"
+                    title="Shuffle queue">
+                <i class="fas fa-random me-1"></i>Shuffle
+            </button>
             <button @onclick="ClearQueue" 
                     class="btn btn-outline-danger btn-sm" 
                     disabled="@(LocalQueueService.Queue.Count == 0)">
@@ -164,6 +170,18 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error clearing local queue");
+        }
+    }
+
+    private async Task ShuffleQueue()
+    {
+        try
+        {
+            await LocalQueueService.ShuffleQueueAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error shuffling local queue");
         }
     }
 

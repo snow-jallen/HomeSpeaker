@@ -21,6 +21,7 @@ public interface ILocalQueueService
     Task PlayNextAsync();
     Task PlayPreviousAsync();
     Task PlaySongAtIndexAsync(int index);
+    Task ShuffleQueueAsync();
 }
 
 public class LocalQueueService : ILocalQueueService
@@ -203,5 +204,33 @@ public class LocalQueueService : ILocalQueueService
             logger.LogInformation("Song ended, automatically playing next song in local queue");
             await PlayNextAsync();
         }
+    }
+
+    public Task ShuffleQueueAsync()
+    {
+        if (queue.Count <= 1)
+            return Task.CompletedTask;
+
+        var currentSong = CurrentSong;
+        var random = new Random();
+        
+        // Shuffle the queue using Fisher-Yates algorithm
+        for (int i = queue.Count - 1; i > 0; i--)
+        {
+            int j = random.Next(i + 1);
+            var temp = queue[i];
+            queue[i] = queue[j];
+            queue[j] = temp;
+        }
+
+        // Update current index to point to the currently playing song if there is one
+        if (currentSong != null)
+        {
+            currentIndex = queue.FindIndex(s => s.SongId == currentSong.SongId);
+        }
+
+        logger.LogInformation("Shuffled local queue with {count} songs", queue.Count);
+        QueueChanged?.Invoke(this, EventArgs.Empty);
+        return Task.CompletedTask;
     }
 }

@@ -35,17 +35,6 @@
                     <i class="fas fa-step-forward"></i>
                 </button>
             </div>
-            
-            <div class="flex-grow-1 me-3">
-                <div class="d-flex align-items-center">
-                    <small class="text-muted me-2">Vol:</small>
-                    <input type="range" class="form-range" 
-                           min="0" max="100" 
-                           value="@volumeLevel"
-                           @onchange="OnVolumeChange" />
-                    <small class="text-muted ms-2">@volumeLevel%</small>
-                </div>
-            </div>
         </div>
         
         <div class="current-song-info mb-2">
@@ -64,7 +53,6 @@
 }
 
 @code {
-    private int volumeLevel = 50;
     private Timer? statusTimer;
     private bool isPlaying = false;
     private double currentTime = 0;
@@ -100,7 +88,6 @@
             isPlaying = status.IsPlaying;
             currentTime = status.CurrentTime;
             duration = status.Duration;
-            volumeLevel = (int)(status.Volume * 100);
             
             currentTimeDisplay = TimeSpan.FromSeconds(currentTime).ToString(@"mm\:ss");
             durationDisplay = TimeSpan.FromSeconds(duration).ToString(@"mm\:ss");
@@ -171,22 +158,6 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error playing next track");
-        }
-    }
-
-    private async Task OnVolumeChange(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out var newVolume))
-        {
-            volumeLevel = newVolume;
-            try
-            {
-                await BrowserAudioService.SetVolumeAsync(newVolume / 100.0f);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error setting volume");
-            }
         }
     }
 
