@@ -2,6 +2,7 @@ using HomeSpeaker.Server;
 using HomeSpeaker.Server.Data;
 using HomeSpeaker.Server2;
 using HomeSpeaker.Server2.Data;
+using HomeSpeaker.Server2.Endpoints;
 using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Shared;
 using Microsoft.EntityFrameworkCore;
@@ -441,6 +442,9 @@ app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, Htt
 
     return Results.Empty;
 });
+
+// Map HomeSpeaker REST API endpoints
+app.MapHomeSpeakerApi();
 
 app.MapFallbackToFile("index.html");
 
