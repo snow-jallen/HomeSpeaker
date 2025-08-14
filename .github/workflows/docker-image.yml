@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - runner: rpi4
+          - runner: kitchen
             airplay_name: "Kitchen HomeSpeaker"
           - runner: rpi42
             airplay_name: "Upstairs HomeSpeaker"
