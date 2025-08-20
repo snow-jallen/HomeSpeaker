@@ -16,6 +16,10 @@
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.12.0" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.12.0" />
     <PackageReference Include="System.Text.Json" Version="9.0.5" />
+    <PackageReference Include="Workleap.DotNet.CodingStandards" Version="1.1.23">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\HomeSpeaker.Shared\HomeSpeaker.Shared.csproj" />

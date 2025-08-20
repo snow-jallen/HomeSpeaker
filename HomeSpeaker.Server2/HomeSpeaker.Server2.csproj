@@ -38,6 +38,10 @@
     <PackageReference Include="Serilog.Exceptions" Version="8.4.0" />
     <PackageReference Include="Serilog.Sinks.Seq" Version="9.0.0" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
+    <PackageReference Include="Workleap.DotNet.CodingStandards" Version="1.1.23">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="YoutubeExplode" Version="6.5.4" />
     <PackageReference Include="YoutubeExplode.Converter" Version="6.5.4" />
   </ItemGroup>
