@@ -2,4 +2,4 @@
 
 namespace HomeSpeaker.Shared;
 
-public record Playlist(string Name, IEnumerable<Song> Songs);
+public record Playlist(string Name, bool AlwaysShuffle, IEnumerable<Song> Songs);
