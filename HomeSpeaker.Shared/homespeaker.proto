@@ -27,6 +27,8 @@ service HomeSpeaker {
 	rpc RenamePlaylist(RenamePlaylistRequest) returns (RenamePlaylistReply);
 	rpc DeletePlaylist(DeletePlaylistRequest) returns (DeletePlaylistReply);
 	rpc ReorderPlaylistSongs(ReorderPlaylistSongsRequest) returns (ReorderPlaylistSongsReply);
+	rpc ShufflePlaylist(ShufflePlaylistRequest) returns (ShufflePlaylistReply);
+	rpc SetPlaylistAlwaysShuffle(SetPlaylistAlwaysShuffleRequest) returns (SetPlaylistAlwaysShuffleReply);
 	rpc UpdateQueue(UpdateQueueRequest) returns (UpdateQueueReply);
 	rpc ToggleBacklight(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
@@ -55,6 +57,7 @@ message GetPlaylistsReply{
 }
 message PlaylistMessage{
 	string PlaylistName=1;
+	bool AlwaysShuffle=2;
 	repeated SongMessage Songs=3;
 }
 message ShuffleQueueRequest {}
@@ -160,3 +163,14 @@ message ReorderPlaylistSongsRequest{
 	repeated string SongPaths=2; // Songs in the new order
 }
 message ReorderPlaylistSongsReply{}
+message ShufflePlaylistRequest{
+	string PlaylistName=1;
+}
+message ShufflePlaylistReply{
+	repeated string ShuffledSongPaths=1; // Songs in the new shuffled order
+}
+message SetPlaylistAlwaysShuffleRequest{
+	string PlaylistName=1;
+	bool AlwaysShuffle=2;
+}
+message SetPlaylistAlwaysShuffleReply{}

@@ -82,6 +82,26 @@ public class HomeSpeakerService : HomeSpeakerBase
         return new ReorderPlaylistSongsReply();
     }
 
+    public override async Task<ShufflePlaylistReply> ShufflePlaylist(ShufflePlaylistRequest request, ServerCallContext context)
+    {
+        logger.LogInformation("Received ShufflePlaylist request for playlist: {playlistName}", request.PlaylistName);
+        var shuffledPaths = await playlistService.ShufflePlaylistAsync(request.PlaylistName);
+        logger.LogInformation("Successfully shuffled playlist: {playlistName}", request.PlaylistName);
+        
+        var reply = new ShufflePlaylistReply();
+        reply.ShuffledSongPaths.AddRange(shuffledPaths);
+        return reply;
+    }
+
+    public override async Task<SetPlaylistAlwaysShuffleReply> SetPlaylistAlwaysShuffle(SetPlaylistAlwaysShuffleRequest request, ServerCallContext context)
+    {
+        logger.LogInformation("Received SetPlaylistAlwaysShuffle request for playlist: {playlistName}, alwaysShuffle: {alwaysShuffle}", 
+            request.PlaylistName, request.AlwaysShuffle);
+        await playlistService.SetPlaylistAlwaysShuffleAsync(request.PlaylistName, request.AlwaysShuffle);
+        logger.LogInformation("Successfully set AlwaysShuffle for playlist: {playlistName}", request.PlaylistName);
+        return new SetPlaylistAlwaysShuffleReply();
+    }
+
     public override async Task<AddSongToPlaylistReply> AddSongToPlaylist(AddSongToPlaylistRequest request, ServerCallContext context)
     {
         await playlistService.AppendSongToPlaylistAsync(request.PlaylistName, request.SongPath);
@@ -102,7 +122,8 @@ public class HomeSpeakerService : HomeSpeakerBase
         {
             var playlistMessage = new PlaylistMessage
             {
-                PlaylistName = playlist.Name
+                PlaylistName = playlist.Name,
+                AlwaysShuffle = playlist.AlwaysShuffle
             };
             var songs = playlist.Songs.Where(s => s != null);
             if (songs.Any())
