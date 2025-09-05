@@ -8,11 +8,13 @@ public class AnchorService
 {
     private readonly MusicContext _dbContext;
     private readonly ILogger<AnchorService> _logger;
+    private readonly IAnchorNotificationService _notificationService;
 
-    public AnchorService(MusicContext dbContext, ILogger<AnchorService> logger)
+    public AnchorService(MusicContext dbContext, ILogger<AnchorService> logger, IAnchorNotificationService notificationService)
     {
         _dbContext = dbContext;
         _logger = logger;
+        _notificationService = notificationService;
     }
 
     // Anchor Definition Management
@@ -41,7 +43,9 @@ public class AnchorService
         await _dbContext.AnchorDefinitions.AddAsync(entity);
         await _dbContext.SaveChangesAsync();
 
-        return new AnchorDefinition(entity.Id, entity.Name, entity.Description, entity.IsActive);
+        var result = new AnchorDefinition(entity.Id, entity.Name, entity.Description, entity.IsActive);
+        await _notificationService.NotifyAnchorDefinitionCreated(result);
+        return result;
     }
 
     public async Task<AnchorDefinition?> UpdateAnchorDefinitionAsync(int id, CreateAnchorDefinitionRequest request)
@@ -58,7 +62,9 @@ public class AnchorService
         await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation("Updated anchor definition {id}: {name}", id, request.Name);
-        return new AnchorDefinition(entity.Id, entity.Name, entity.Description, entity.IsActive);
+        var result = new AnchorDefinition(entity.Id, entity.Name, entity.Description, entity.IsActive);
+        await _notificationService.NotifyAnchorDefinitionUpdated(result);
+        return result;
     }
 
     public async Task<bool> DeactivateAnchorDefinitionAsync(int id)
@@ -75,6 +81,7 @@ public class AnchorService
         await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation("Deactivated anchor definition {id}: {name}", id, entity.Name);
+        await _notificationService.NotifyAnchorDefinitionDeactivated(id);
         return true;
     }
 
@@ -113,7 +120,9 @@ public class AnchorService
         await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation("Assigned anchor {anchorId} to user {userId}", request.AnchorDefinitionId, request.UserId);
-        return new UserAnchor(entity.Id, entity.UserId, entity.AnchorDefinitionId, entity.CreatedAt);
+        var result = new UserAnchor(entity.Id, entity.UserId, entity.AnchorDefinitionId, entity.CreatedAt);
+        await _notificationService.NotifyUserAnchorAssigned(result);
+        return result;
     }
 
     public async Task<bool> RemoveAnchorFromUserAsync(string userId, int anchorDefinitionId)
@@ -131,6 +140,7 @@ public class AnchorService
         await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation("Removed anchor {anchorId} from user {userId}", anchorDefinitionId, userId);
+        await _notificationService.NotifyUserAnchorRemoved(userId, anchorDefinitionId);
         return true;
     }
 
@@ -216,6 +226,7 @@ public class AnchorService
         await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation("Updated daily anchor {id} completion to {completed}", request.DailyAnchorId, request.IsCompleted);
+        await _notificationService.NotifyDailyAnchorCompletionUpdated(request.DailyAnchorId, request.IsCompleted, entity.CompletedAt);
         return true;
     }
 

@@ -24,8 +24,16 @@ builder.Services.AddScoped<ITemperatureService, TemperatureService>();
 // Register blood sugar service
 builder.Services.AddScoped<IBloodSugarService, BloodSugarService>();
 
-// Register anchor service
-builder.Services.AddScoped<IAnchorService, AnchorService>();
+// Register anchor service with dedicated HTTP client
+builder.Services.AddHttpClient<IAnchorService, AnchorService>((serviceProvider, client) =>
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    var anchorsApiAddress = configuration["AnchorsApiAddress"] ?? builder.HostEnvironment.BaseAddress;
+    client.BaseAddress = new Uri(anchorsApiAddress);
+});
+
+// Register anchor sync service for real-time updates
+builder.Services.AddScoped<IAnchorSyncService, AnchorSyncService>();
 
 // Register browser audio service
 builder.Services.AddScoped<IBrowserAudioService, BrowserAudioService>();
@@ -62,4 +70,17 @@ catch (Exception ex)
     Console.WriteLine("!!! Trouble contacting jaeger: " + ex.ToString());
 }
 
-await builder.Build().RunAsync();
+var app = builder.Build();
+
+// Start anchor sync service for real-time updates
+try 
+{
+    var anchorSync = app.Services.GetRequiredService<IAnchorSyncService>();
+    await anchorSync.StartAsync();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Failed to start anchor sync: {ex.Message}");
+}
+
+await app.RunAsync();

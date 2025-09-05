@@ -20,29 +20,29 @@ public interface IBrowserAudioService
 
 public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
 {
-    private readonly IJSRuntime jsRuntime;
-    private readonly ILogger<BrowserAudioService> logger;
-    private readonly IConfiguration configuration;
-    private IJSObjectReference? audioModule;
-    private DotNetObjectReference<BrowserAudioService>? dotNetRef;
+    private readonly IJSRuntime _jsRuntime;
+    private readonly ILogger<BrowserAudioService> _logger;
+    private readonly IConfiguration _configuration;
+    private IJSObjectReference? _audioModule;
+    private DotNetObjectReference<BrowserAudioService>? _dotNetRef;
 
     public event EventHandler<BrowserPlayerStatus>? StatusChanged;
     public event EventHandler<string>? ErrorOccurred;
 
     public BrowserAudioService(IJSRuntime jsRuntime, ILogger<BrowserAudioService> logger, IConfiguration configuration)
     {
-        this.jsRuntime = jsRuntime;
-        this.logger = logger;
-        this.configuration = configuration;
+        _jsRuntime = jsRuntime;
+        _logger = logger;
+        _configuration = configuration;
     }
 
     private async Task EnsureInitializedAsync()
     {
-        if (audioModule == null)
+        if (_audioModule == null)
         {
-            audioModule = await jsRuntime.InvokeAsync<IJSObjectReference>("import", "./js/audioPlayer.js");
-            dotNetRef = DotNetObjectReference.Create(this);
-            await audioModule.InvokeVoidAsync("initialize", dotNetRef);
+            _audioModule = await _jsRuntime.InvokeAsync<IJSObjectReference>("import", "./js/audioPlayer.js");
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await _audioModule.InvokeVoidAsync("initialize", _dotNetRef);
         }
     }
 
@@ -52,17 +52,17 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
             Console.WriteLine($"BrowserAudioService.PlaySongAsync called with song: {song.Name}");
             await EnsureInitializedAsync();
             // Get the current base address from the browser
-            var baseUri = await jsRuntime.InvokeAsync<string>("eval", "window.location.origin");
+            var baseUri = await _jsRuntime.InvokeAsync<string>("eval", "window.location.origin");
             var audioUrl = $"{baseUri}/api/music/{song.SongId}";
             
             Console.WriteLine($"Playing song {song.Name} from {audioUrl}");
-            logger.LogInformation("Playing song {songName} from {url}", song.Name, audioUrl);
-            await audioModule!.InvokeVoidAsync("playSong", audioUrl, song.Name);
+            _logger.LogInformation("Playing song {SongName} from {Url}", song.Name, audioUrl);
+            await _audioModule!.InvokeVoidAsync("playSong", audioUrl, song.Name);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error in BrowserAudioService.PlaySongAsync: {ex}");
-            logger.LogError(ex, "Error playing song {songName}", song.Name);
+            _logger.LogError(ex, "Error playing song {SongName}", song.Name);
             ErrorOccurred?.Invoke(this, $"Failed to play {song.Name}: {ex.Message}");
         }
     }
@@ -72,11 +72,11 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
         try
         {
             await EnsureInitializedAsync();
-            await audioModule!.InvokeVoidAsync("pause");
+            await _audioModule!.InvokeVoidAsync("pause");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error pausing audio");
+            _logger.LogError(ex, "Error pausing audio");
             ErrorOccurred?.Invoke(this, $"Failed to pause: {ex.Message}");
         }
     }
@@ -86,11 +86,11 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
         try
         {
             await EnsureInitializedAsync();
-            await audioModule!.InvokeVoidAsync("resume");
+            await _audioModule!.InvokeVoidAsync("resume");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error resuming audio");
+            _logger.LogError(ex, "Error resuming audio");
             ErrorOccurred?.Invoke(this, $"Failed to resume: {ex.Message}");
         }
     }
@@ -100,11 +100,11 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
         try
         {
             await EnsureInitializedAsync();
-            await audioModule!.InvokeVoidAsync("stop");
+            await _audioModule!.InvokeVoidAsync("stop");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error stopping audio");
+            _logger.LogError(ex, "Error stopping audio");
             ErrorOccurred?.Invoke(this, $"Failed to stop: {ex.Message}");
         }
     }
@@ -114,11 +114,11 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
         try
         {
             await EnsureInitializedAsync();
-            await audioModule!.InvokeVoidAsync("setVolume", Math.Max(0, Math.Min(1, volume)));
+            await _audioModule!.InvokeVoidAsync("setVolume", Math.Max(0, Math.Min(1, volume)));
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error setting volume");
+            _logger.LogError(ex, "Error setting volume");
             ErrorOccurred?.Invoke(this, $"Failed to set volume: {ex.Message}");
         }
     }
@@ -128,11 +128,11 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
         try
         {
             await EnsureInitializedAsync();
-            return await audioModule!.InvokeAsync<float>("getVolume");
+            return await _audioModule!.InvokeAsync<float>("getVolume");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error getting volume");
+            _logger.LogError(ex, "Error getting volume");
             ErrorOccurred?.Invoke(this, $"Failed to get volume: {ex.Message}");
             return 0.5f;
         }
@@ -143,11 +143,11 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
         try
         {
             await EnsureInitializedAsync();
-            await audioModule!.InvokeVoidAsync("seekTo", seconds);
+            await _audioModule!.InvokeVoidAsync("seekTo", seconds);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error seeking audio");
+            _logger.LogError(ex, "Error seeking audio");
             ErrorOccurred?.Invoke(this, $"Failed to seek: {ex.Message}");
         }
     }
@@ -157,11 +157,11 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
         try
         {
             await EnsureInitializedAsync();
-            return await audioModule!.InvokeAsync<BrowserPlayerStatus>("getStatus");
+            return await _audioModule!.InvokeAsync<BrowserPlayerStatus>("getStatus");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error getting status");
+            _logger.LogError(ex, "Error getting status");
             ErrorOccurred?.Invoke(this, $"Failed to get status: {ex.Message}");
             return new BrowserPlayerStatus();
         }
@@ -176,19 +176,19 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
     [JSInvokable]
     public void OnError(string error)
     {
-        logger.LogError("Browser audio error: {error}", error);
+    _logger.LogError("Browser audio error: {Error}", error);
         ErrorOccurred?.Invoke(this, error);
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (audioModule != null)
+        if (_audioModule != null)
         {
-            await audioModule.InvokeVoidAsync("dispose");
-            await audioModule.DisposeAsync();
+            await _audioModule.InvokeVoidAsync("dispose");
+            await _audioModule.DisposeAsync();
         }
         
-        dotNetRef?.Dispose();
+        _dotNetRef?.Dispose();
     }
 }
 

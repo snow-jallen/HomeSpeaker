@@ -34,6 +34,8 @@ builder.Services.AddHostedService<DailyAnchorWorker>();
 builder.Services.AddHostedService<AirPlayReceiverService>();
 builder.Services.AddScoped<PlaylistService>();
 builder.Services.AddScoped<AnchorService>();
+builder.Services.AddScoped<IAnchorNotificationService, AnchorNotificationService>();
+builder.Services.AddSignalR();
 builder.Services.AddDbContext<MusicContext>(options => options.UseSqlite(builder.Configuration["SqliteConnectionString"]));
 builder.Services.AddSingleton<IDataStore, OnDiskDataStore>();
 builder.Services.AddSingleton<IFileSource>(_ => new DefaultFileSource(builder.Configuration[ConfigKeys.MediaFolder] ?? throw new MissingConfigException(ConfigKeys.MediaFolder)));
@@ -91,6 +93,7 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseCors(LocalCorsPolicy);
 app.MapRazorPages();
+app.MapHub<HomeSpeaker.Server2.Hubs.AnchorHub>("/anchorHub");
 
 // Configure the HTTP request pipeline.
 app.MapGrpcService<GreeterService>();

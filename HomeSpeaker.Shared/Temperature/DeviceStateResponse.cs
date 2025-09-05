@@ -16,13 +16,13 @@ public sealed record DeviceStatePayload(
 )
 {
     [JsonIgnore]
-    public bool? State => Capabilities?.FirstOrDefault(c => c.Instance == "online")?.State?.ValueAsBool;
+    public bool? State => this.Capabilities?.FirstOrDefault(c => c.Instance == "online")?.State?.ValueAsBool;
 
     [JsonIgnore]
-    public double? SensorTemperature => Capabilities?.FirstOrDefault(c => c.Instance == "sensorTemperature")?.State?.ValueAsDouble;
+    public double? SensorTemperature => this.Capabilities?.FirstOrDefault(c => c.Instance == "sensorTemperature")?.State?.ValueAsDouble;
 
     [JsonIgnore]
-    public double? SensorHumidity => Capabilities?.FirstOrDefault(c => c.Instance == "sensorHumidity")?.State?.ValueAsDouble;
+    public double? SensorHumidity => this.Capabilities?.FirstOrDefault(c => c.Instance == "sensorHumidity")?.State?.ValueAsDouble;
 }
 
 public sealed record DeviceCapability(
@@ -36,10 +36,10 @@ public sealed record DeviceCapabilityState(
 )
 {
     [JsonIgnore]
-    public double? ValueAsDouble => Value.ValueKind == JsonValueKind.Number && Value.TryGetDouble(out var d) ? d : null;
+    public double? ValueAsDouble => this.Value.ValueKind == JsonValueKind.Number && this.Value.TryGetDouble(out var d) ? d : null;
 
     [JsonIgnore]
-    public bool? ValueAsBool => Value.ValueKind switch
+    public bool? ValueAsBool => this.Value.ValueKind switch
     {
         JsonValueKind.True => true,
         JsonValueKind.False => false,
