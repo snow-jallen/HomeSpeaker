@@ -4,33 +4,33 @@ namespace HomeSpeaker.Server2;
 
 public class DailyAnchorWorker : BackgroundService
 {
-    private readonly IServiceProvider serviceProvider;
-    private readonly ILogger<DailyAnchorWorker> logger;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<DailyAnchorWorker> _logger;
 
     public DailyAnchorWorker(IServiceProvider serviceProvider, ILogger<DailyAnchorWorker> logger)
     {
-        this.serviceProvider = serviceProvider;
-        this.logger = logger;
+        _serviceProvider = serviceProvider;
+        _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("Daily Anchor Worker started");
+        _logger.LogInformation("Daily Anchor Worker started");
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                using (var scope = serviceProvider.CreateScope())
+                using (var scope = _serviceProvider.CreateScope())
                 {
                     var anchorService = scope.ServiceProvider.GetRequiredService<AnchorService>();
                     await anchorService.EnsureTodayAnchorsForAllUsersAsync();
-                    logger.LogInformation("Daily anchors ensured for all users");
+                    _logger.LogInformation("Daily anchors ensured for all users");
                 }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error ensuring daily anchors");
+                _logger.LogError(ex, "Error ensuring daily anchors");
             }
 
             // Wait until the next day at midnight
@@ -44,7 +44,7 @@ public class DailyAnchorWorker : BackgroundService
                 delay = delay.Add(TimeSpan.FromDays(1));
             }
 
-            logger.LogInformation("Next daily anchor creation scheduled for {time} (in {hours} hours)", 
+            _logger.LogInformation("Next daily anchor creation scheduled for {time} (in {hours} hours)", 
                 now.Add(delay), delay.TotalHours);
 
             try
@@ -58,6 +58,6 @@ public class DailyAnchorWorker : BackgroundService
             }
         }
 
-        logger.LogInformation("Daily Anchor Worker stopped");
+        _logger.LogInformation("Daily Anchor Worker stopped");
     }
 }

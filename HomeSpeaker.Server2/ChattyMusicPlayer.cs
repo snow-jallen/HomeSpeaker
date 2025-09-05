@@ -1,11 +1,11 @@
 ﻿using HomeSpeaker.Shared;
 
-namespace HomeSpeaker.Server;
+namespace HomeSpeaker.Server2;
 
 public class ChattyMusicPlayer : IMusicPlayer, IDisposable
 {
     private readonly IMusicPlayer actualPlayer;
-    private bool disposed = false;
+    private bool _disposed;
 
     public ChattyMusicPlayer(IMusicPlayer actualPlayer)
     {
@@ -88,13 +88,13 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!disposed)
+        if (!_disposed)
         {
             if (disposing)
             {
                 actualPlayer?.Dispose();
             }
-            disposed = true;
+            _disposed = true;
         }
     }
 }

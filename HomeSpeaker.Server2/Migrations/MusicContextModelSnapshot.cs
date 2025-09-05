@@ -7,10 +7,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace HomeSpeaker.Server2.Migrations
-{
-    [DbContext(typeof(MusicContext))]
-    partial class MusicContextModelSnapshot : ModelSnapshot
+namespace HomeSpeaker.Server2.Migrations;
+
+[DbContext(typeof(MusicContext))]
+partial class MusicContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
@@ -215,5 +215,4 @@ namespace HomeSpeaker.Server2.Migrations
                 });
 #pragma warning restore 612, 618
         }
-    }
 }

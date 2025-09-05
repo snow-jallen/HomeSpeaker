@@ -2,10 +2,10 @@
 
 #nullable disable
 
-namespace HomeSpeaker.Server2.Migrations
-{
-    /// <inheritdoc />
-    public partial class MakePlaylistDescriptionNullable : Migration
+namespace HomeSpeaker.Server2.Migrations;
+
+/// <inheritdoc />
+public partial class MakePlaylistDescriptionNullable : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -32,5 +32,4 @@ namespace HomeSpeaker.Server2.Migrations
                 oldType: "TEXT",
                 oldNullable: true);
         }
-    }
 }

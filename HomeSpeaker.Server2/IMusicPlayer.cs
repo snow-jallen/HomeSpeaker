@@ -1,6 +1,6 @@
 ﻿using HomeSpeaker.Shared;
 
-namespace HomeSpeaker.Server;
+namespace HomeSpeaker.Server2;
 
 public interface IMusicPlayer : IDisposable
 {

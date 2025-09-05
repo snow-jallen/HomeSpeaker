@@ -1,26 +1,28 @@
 using System.IO.Pipes;
-using HomeSpeaker.Server;
+using HomeSpeaker.Server2;
 using System.Diagnostics;
 
 namespace HomeSpeaker.Server2.Services;
 
 public class AirPlayReceiverService : BackgroundService
 {
-    private readonly ILogger<AirPlayReceiverService> logger;
-    private readonly IMusicPlayer musicPlayer;    private const string MetadataPipePath = "/tmp/airplay-shared/metadata";
+    private readonly ILogger<AirPlayReceiverService> _logger;
+    private readonly IMusicPlayer _musicPlayer;
+
+    private const string MetadataPipePath = "/tmp/airplay-shared/metadata";
     private const string AirPlayStatePath = "/tmp/airplay-shared/state";
     private const string AirPlayLogPath = "/tmp/airplay-shared/log";
-    private bool airplayActive = false;
+    private bool _airplayActive;
 
     public AirPlayReceiverService(ILogger<AirPlayReceiverService> logger, IMusicPlayer musicPlayer)
     {
-        this.logger = logger;
-        this.musicPlayer = musicPlayer;
+        _logger = logger;
+        _musicPlayer = musicPlayer;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("AirPlay Receiver Service starting...");
+        _logger.LogInformation("AirPlay Receiver Service starting...");
 
         // Monitor for AirPlay session events via shared state file
         _ = Task.Run(() => MonitorAirPlayEvents(stoppingToken), stoppingToken);
@@ -44,16 +46,16 @@ public class AirPlayReceiverService : BackgroundService
                     var stateContent = await File.ReadAllTextAsync(AirPlayStatePath, cancellationToken);
                     bool currentlyActive = stateContent.Trim().Equals("ACTIVE", StringComparison.OrdinalIgnoreCase);
                     
-                    if (currentlyActive && !airplayActive)
+                    if (currentlyActive && !_airplayActive)
                     {
-                        logger.LogInformation("AirPlay session started - pausing local playback");
-                        musicPlayer.Stop(); // Pause local music when AirPlay starts
-                        airplayActive = true;
+                        _logger.LogInformation("AirPlay session started - pausing local playback");
+                        _musicPlayer.Stop(); // Pause local music when AirPlay starts
+                        _airplayActive = true;
                     }
-                    else if (!currentlyActive && airplayActive)
+                    else if (!currentlyActive && _airplayActive)
                     {
-                        logger.LogInformation("AirPlay session ended - can resume local playback");
-                        airplayActive = false;
+                        _logger.LogInformation("AirPlay session ended - can resume local playback");
+                        _airplayActive = false;
                         // Optionally auto-resume: musicPlayer.ResumePlay();
                     }
                 }
@@ -62,7 +64,7 @@ public class AirPlayReceiverService : BackgroundService
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error monitoring AirPlay state file");
+                _logger.LogError(ex, "Error monitoring AirPlay state file");
                 await Task.Delay(5000, cancellationToken);
             }
         }
@@ -81,7 +83,7 @@ public class AirPlayReceiverService : BackgroundService
                     
                     if (!string.IsNullOrEmpty(metadata))
                     {
-                        logger.LogInformation("AirPlay metadata: {metadata}", metadata);
+                        _logger.LogInformation("AirPlay metadata: {metadata}", metadata);
                         // Parse metadata and update UI if needed
                         // Could send events through your existing SendEvent mechanism
                     }
@@ -91,7 +93,7 @@ public class AirPlayReceiverService : BackgroundService
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error reading AirPlay metadata");
+                _logger.LogError(ex, "Error reading AirPlay metadata");
                 await Task.Delay(2000, cancellationToken);
             }
         }

@@ -31,15 +31,27 @@ public sealed class TemperatureService
             _httpClient.BaseAddress = new Uri(apiBaseUrl);
         }
         
-        _logger.LogInformation("Using Govee API Key: {ApiKey}", apiKey ?? "Not Set");
         if (!string.IsNullOrEmpty(apiKey))
         {
             _httpClient.DefaultRequestHeaders.Add("Govee-API-Key", apiKey);
+            _logger.LogInformation("Govee API Key configured successfully");
+        }
+        else
+        {
+            _logger.LogWarning("Govee API Key not configured. Temperature monitoring will use default values. To enable real temperature monitoring, add 'Temperature:ApiKey' to your configuration.");
         }
     }
 
     public async Task<List<Device>> GetDevicesAsync(CancellationToken cancellationToken = default)
     {
+        // Check if API key is configured
+        var apiKey = _configuration["Temperature:ApiKey"];
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            _logger.LogWarning("Govee API key not configured. Temperature monitoring will use default values.");
+            return [];
+        }
+
         try
         {
             _logger.LogInformation("Fetching devices from Govee API...");
@@ -60,6 +72,14 @@ public sealed class TemperatureService
 
     public async Task<double> GetDeviceTemperatureAsync(Device device, CancellationToken cancellationToken = default)
     {
+        // Check if API key is configured
+        var apiKey = _configuration["Temperature:ApiKey"];
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            _logger.LogWarning("Govee API key not configured. Using default temperature for device {DeviceName}.", device.DeviceName);
+            return 70.0; // Default room temperature
+        }
+
         try
         {
             _logger.LogInformation("Fetching temperature for device: {DeviceName} ({DeviceId})", device.DeviceName, device.DeviceId);
@@ -81,7 +101,6 @@ public sealed class TemperatureService
         {
             _logger.LogError(ex, "Failed to get temperature for device {DeviceName}", device.DeviceName);
             // Return a default temperature if device is not available
-            
             return 70.0; // Default room temperature
         }
     }
@@ -93,7 +112,9 @@ public sealed class TemperatureService
         {
             _logger.LogInformation("Returning cached temperature status: {TemperatureData}", JsonSerializer.Serialize(cachedValue));
             return cachedValue!;
-        }        // Cache miss, fetch new data
+        }
+        
+        // Cache miss, fetch new data
         _logger.LogInformation("Temperature cache miss, fetching fresh data...");
         var temperatureStatus = await GetTemperatureStatusInternalAsync(cancellationToken);
 

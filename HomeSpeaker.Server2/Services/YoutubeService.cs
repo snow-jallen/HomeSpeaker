@@ -1,4 +1,4 @@
-﻿using HomeSpeaker.Server;
+﻿using HomeSpeaker.Server2;
 using System.Diagnostics.CodeAnalysis;
 using TagLib;
 using YoutubeExplode;
@@ -15,21 +15,21 @@ public class YoutubeService : IDisposable
 {
     public YoutubeService(IConfiguration config, ILogger<YoutubeService> logger, Mp3Library library)
     {
-        this.config = config;
-        this.logger = logger;
-        this.library = library;
+        _config = config;
+        _logger = logger;
+        _library = library;
     }
 
-    YoutubeClient client = new();
-    private readonly IConfiguration config;
-    private readonly ILogger<YoutubeService> logger;
-    private readonly Mp3Library library;
-    private bool disposed = false;
+    private readonly YoutubeClient _client = new();
+    private readonly IConfiguration _config;
+    private readonly ILogger<YoutubeService> _logger;
+    private readonly Mp3Library _library;
+    private bool _disposed;
 
     public async Task<IEnumerable<VideoDto>> SearchAsync(string searchTerm, int maxItems = 50)
     {
         List<VideoDto> results = new();
-        await foreach (var batch in client.Search.GetResultBatchesAsync(searchTerm))
+        await foreach (var batch in _client.Search.GetResultBatchesAsync(searchTerm))
         {
             foreach (var result in batch.Items)
             {
@@ -57,15 +57,15 @@ public class YoutubeService : IDisposable
     public async Task CacheVideoAsync(string id, string title, IProgress<double> progress)
     {
         var fileName = string.Join("_", $"{title}.mp3".Split(Path.GetInvalidFileNameChars()));
-        var destinationPath = Path.Combine(config[ConfigKeys.MediaFolder]!, "YouTube Cache");
+        var destinationPath = Path.Combine(_config[ConfigKeys.MediaFolder]!, "YouTube Cache");
         if (!Directory.Exists(destinationPath))
             Directory.CreateDirectory(destinationPath);
         destinationPath = Path.Combine(destinationPath, fileName);
-        var ffmpegLocation = config[ConfigKeys.FFMpegLocation] ?? throw new Exception("Missing ffmeg path in config: " + ConfigKeys.FFMpegLocation);
+        var ffmpegLocation = _config[ConfigKeys.FFMpegLocation] ?? throw new Exception("Missing ffmeg path in config: " + ConfigKeys.FFMpegLocation);
 
-        logger.LogInformation("Beginning to cache {title}", title);
+        _logger.LogInformation("Beginning to cache {title}", title);
 
-        await client.Videos.DownloadAsync(VideoId.Parse(id), new ConversionRequest(ffmpegLocation, destinationPath, Container.Mp3, ConversionPreset.Medium), progress);
+        await _client.Videos.DownloadAsync(VideoId.Parse(id), new ConversionRequest(ffmpegLocation, destinationPath, Container.Mp3, ConversionPreset.Medium), progress);
 
         try
         {
@@ -79,23 +79,25 @@ public class YoutubeService : IDisposable
             // Media tagging is not critical
         }
 
-        logger.LogInformation("Finished caching {title}.  Saved to {destination}", title, destinationPath);
+        _logger.LogInformation("Finished caching {title}.  Saved to {destination}", title, destinationPath);
     }
 
     public void Dispose()
     {
         Dispose(true);
         GC.SuppressFinalize(this);
-    }    protected virtual void Dispose(bool disposing)
+    }
+
+    protected virtual void Dispose(bool disposing)
     {
-        if (!disposed)
+        if (!_disposed)
         {
             if (disposing)
             {
-                // YoutubeClient doesn't implement IDisposable, but we set it to null
-                client = null!;
+                // YoutubeClient doesn't implement IDisposable, so no cleanup needed
+                // Note: _client is readonly and cannot be reassigned
             }
-            disposed = true;
+            _disposed = true;
         }
     }
 }

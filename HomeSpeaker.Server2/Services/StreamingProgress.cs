@@ -1,30 +1,29 @@
 ﻿using Grpc.Core;
 using HomeSpeaker.Shared;
 
-namespace HomeSpeaker.Server
+namespace HomeSpeaker.Server2.Services;
+
+internal class StreamingProgress : IProgress<double>
 {
-    internal class StreamingProgress : IProgress<double>
+    private readonly IServerStreamWriter<CacheVideoReply> _responseStream;
+    private readonly string _title;
+    private readonly ILogger _logger;
+    private double _lastProgress;
+
+    public StreamingProgress(IServerStreamWriter<CacheVideoReply> responseStream, string title, ILogger logger)
     {
-        private IServerStreamWriter<CacheVideoReply> responseStream;
-        private string title;
-        private readonly ILogger logger;
-        private double lastProgress = 0;
+        _responseStream = responseStream;
+        _title = title;
+        _logger = logger;
+    }
 
-        public StreamingProgress(IServerStreamWriter<CacheVideoReply> responseStream, string title, ILogger logger)
+    public async void Report(double value)
+    {
+        _logger.LogInformation("Progress of {title} is {value}", _title, value);
+        if (value > _lastProgress + .01)
         {
-            this.responseStream = responseStream;
-            this.title = title;
-            this.logger = logger;
-        }
-
-        public async void Report(double value)
-        {
-            logger.LogInformation("Progress of {title} is {value}", title, value);
-            if (value > lastProgress + .01)
-            {
-                await responseStream.WriteAsync(new CacheVideoReply { PercentComplete = value, Title = title });
-                lastProgress = value;
-            }
+            await _responseStream.WriteAsync(new CacheVideoReply { PercentComplete = value, Title = _title });
+            _lastProgress = value;
         }
     }
 }

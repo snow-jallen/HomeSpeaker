@@ -1,45 +1,44 @@
-﻿namespace HomeSpeaker.Server
-{
-    public interface IFileSource
-    {
-        IEnumerable<string> GetAllMp3s();
-        void SoftDelete(string path);
+﻿namespace HomeSpeaker.Server2;
 
-        string RootFolder { get; }
+public interface IFileSource
+{
+    IEnumerable<string> GetAllMp3s();
+    void SoftDelete(string path);
+
+    string RootFolder { get; }
+}
+
+public class DefaultFileSource : IFileSource
+{
+    private readonly string _rootFolder;
+    private readonly string _userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+    public DefaultFileSource(string rootFolder)
+    {
+        _rootFolder = rootFolder;
     }
 
-    public class DefaultFileSource : IFileSource
+    public string RootFolder => _rootFolder;
+
+    public IEnumerable<string> GetAllMp3s()
     {
-        private readonly string rootFolder;
-        string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var musicFolder = _rootFolder.Replace("~", _userProfile);
 
-        public DefaultFileSource(string rootFolder)
+        if (!Directory.Exists(musicFolder))
         {
-            this.rootFolder = rootFolder;
+            Directory.CreateDirectory(musicFolder);
         }
 
-        public string RootFolder => rootFolder;
+        return Directory.GetFiles(musicFolder, "*.mp3", SearchOption.AllDirectories);
+    }
 
-        public IEnumerable<string> GetAllMp3s()
+    public void SoftDelete(string path)
+    {
+        var destFolder = Path.Combine(_userProfile, "DeletedMusic");
+        if (!Directory.Exists(destFolder))
         {
-            var musicFolder = rootFolder.Replace("~", userProfile);
-
-            if (!Directory.Exists(musicFolder))
-            {
-                Directory.CreateDirectory(musicFolder);
-            }
-
-            return Directory.GetFiles(musicFolder, "*.mp3", SearchOption.AllDirectories);
+            Directory.CreateDirectory(destFolder);
         }
-
-        public void SoftDelete(string path)
-        {
-            var destFolder = Path.Combine(userProfile, "DeletedMusic");
-            if (!Directory.Exists(destFolder))
-            {
-                Directory.CreateDirectory(destFolder);
-            }
-            File.Move(path, Path.Combine(destFolder, Path.GetFileName(path)));
-        }
+        File.Move(path, Path.Combine(destFolder, Path.GetFileName(path)));
     }
 }

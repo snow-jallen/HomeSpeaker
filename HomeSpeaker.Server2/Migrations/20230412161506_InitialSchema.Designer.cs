@@ -8,11 +8,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace HomeSpeaker.Server2.Migrations
-{
-    [DbContext(typeof(MusicContext))]
-    [Migration("20230412161506_InitialSchema")]
-    partial class InitialSchema
+namespace HomeSpeaker.Server2.Migrations;
+
+[DbContext(typeof(MusicContext))]
+[Migration("20230412161506_InitialSchema")]
+partial class InitialSchema
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -122,5 +122,4 @@ namespace HomeSpeaker.Server2.Migrations
                 });
 #pragma warning restore 612, 618
         }
-    }
 }

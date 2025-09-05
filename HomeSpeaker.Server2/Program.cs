@@ -1,5 +1,3 @@
-using HomeSpeaker.Server;
-using HomeSpeaker.Server.Data;
 using HomeSpeaker.Server2;
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Services;

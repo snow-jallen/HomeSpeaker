@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HomeSpeaker.Server2", "HomeSpeaker.Server2.csproj", "{8CD5FDA9-36D7-0712-91E5-9EA6FE53D1AF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8CD5FDA9-36D7-0712-91E5-9EA6FE53D1AF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8CD5FDA9-36D7-0712-91E5-9EA6FE53D1AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8CD5FDA9-36D7-0712-91E5-9EA6FE53D1AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8CD5FDA9-36D7-0712-91E5-9EA6FE53D1AF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {483C07A0-A1BC-4E7B-AC9D-20598F00709E}
+	EndGlobalSection
+EndGlobal

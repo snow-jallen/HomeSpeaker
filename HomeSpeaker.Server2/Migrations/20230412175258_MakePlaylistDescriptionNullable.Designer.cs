@@ -8,11 +8,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace HomeSpeaker.Server2.Migrations
-{
-    [DbContext(typeof(MusicContext))]
-    [Migration("20230412175258_MakePlaylistDescriptionNullable")]
-    partial class MakePlaylistDescriptionNullable
+namespace HomeSpeaker.Server2.Migrations;
+
+[DbContext(typeof(MusicContext))]
+[Migration("20230412175258_MakePlaylistDescriptionNullable")]
+partial class MakePlaylistDescriptionNullable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -121,5 +121,4 @@ namespace HomeSpeaker.Server2.Migrations
                 });
 #pragma warning restore 612, 618
         }
-    }
 }

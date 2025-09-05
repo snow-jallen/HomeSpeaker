@@ -4,42 +4,42 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace HomeSpeaker.Server;
+namespace HomeSpeaker.Server2;
 
 public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 {
     public WindowsMusicPlayer(ILogger<WindowsMusicPlayer> logger, Mp3Library library)
     {
-        this.logger = logger;
-        this.library = library;
+        _logger = logger;
+        _library = library;
     }
 
-    const string vlc = @"c:\program files\videolan\vlc\vlc.exe";
-    private readonly ILogger<WindowsMusicPlayer> logger;
-    private readonly Mp3Library library;
+    private const string _vlc = @"c:\program files\videolan\vlc\vlc.exe";
+    private readonly ILogger<WindowsMusicPlayer> _logger;
+    private readonly Mp3Library _library;
     private Process? playerProcess;
     private PlayerStatus status = new();
     private Song? currentSong;
     private Song? stoppedSong;
-    private bool disposed = false;
+    private bool _disposed;
     public PlayerStatus Status => (status ?? new PlayerStatus()) with { CurrentSong = currentSong };
 
-    private bool startedPlaying = false;
+    private bool _startedPlaying;
 
     public void PlaySong(Song song)
     {
         currentSong = song;
-        startedPlaying = true;
+        _startedPlaying = true;
         stopPlaying();
         stoppedSong = null;
 
         playerProcess = new Process();
-        playerProcess.StartInfo.FileName = vlc;
+        playerProcess.StartInfo.FileName = _vlc;
         playerProcess.StartInfo.Arguments = $"--play-and-exit \"{song.Path}\" --qt-start-minimized";
         playerProcess.StartInfo.UseShellExecute = false;
         playerProcess.StartInfo.RedirectStandardOutput = true;
         playerProcess.StartInfo.RedirectStandardError = true;
-        playerProcess.OutputDataReceived += (sender, args) => logger.LogInformation("Vlc output data {data}", args.Data);
+        playerProcess.OutputDataReceived += (sender, args) => _logger.LogInformation("Vlc output data {data}", args.Data);
 
         playerProcess.OutputDataReceived += new DataReceivedEventHandler((s, e) =>
         {
@@ -76,7 +76,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 
         status = new PlayerStatus { CurrentSong = currentSong, StillPlaying = true };
 
-        logger.LogInformation($"Starting to play {song.Path}");
+        _logger.LogInformation($"Starting to play {song.Path}");
         PlayerEvent?.Invoke(this, "Playing " + song.Name);
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
@@ -84,7 +84,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 
         playerProcess.BeginOutputReadLine();
         playerProcess.BeginErrorReadLine();
-        startedPlaying = false;
+        _startedPlaying = false;
     }    private void stopPlaying()
     {
         if (playerProcess != null)
@@ -101,7 +101,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Error stopping player process");
+                _logger.LogWarning(ex, "Error stopping player process");
             }
             finally
             {
@@ -124,7 +124,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Error cleaning up VLC processes");
+            _logger.LogWarning(ex, "Error cleaning up VLC processes");
         }
     }
 
@@ -136,35 +136,35 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!disposed)
+        if (!_disposed)
         {
             if (disposing)
             {
-                logger.LogInformation("Disposing WindowsMusicPlayer");
+                _logger.LogInformation("Disposing WindowsMusicPlayer");
                 stopPlaying();
             }
-            disposed = true;
+            _disposed = true;
         }
     }
 
     private void PlayerProcess_Exited(object? sender, EventArgs e)
     {
-        logger.LogInformation("Finished playing a song.");
+        _logger.LogInformation("Finished playing a song.");
         currentSong = null;
-        if (songQueue.Count > 0)
+        if (_songQueue.Count > 0)
         {
             playNextSongInQueue();
         }
         else
         {
-            logger.LogInformation("Nothing in the queue, so Status is now empty.");
+            _logger.LogInformation("Nothing in the queue, so Status is now empty.");
             status = new PlayerStatus();
         }
     }
     private void playNextSongInQueue()
     {
-        logger.LogInformation($"There are still {songQueue.Count} songs in the queue, so I'll play the next one:");
-        if (songQueue.TryDequeue(out var nextSong))
+        _logger.LogInformation($"There are still {_songQueue.Count} songs in the queue, so I'll play the next one:");
+        if (_songQueue.TryDequeue(out var nextSong))
         {
             PlaySong(nextSong);
         }
@@ -202,20 +202,20 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         if (StillPlaying)
         {
             story.AppendLine("StillPlaying is true, so I'll add to queue.");
-            songQueue.Enqueue(song);
-            story.AppendLine($"Added song# {song.SongId} to queue, now contains {songQueue.Count} songs.");
+            _songQueue.Enqueue(song);
+            story.AppendLine($"Added song# {song.SongId} to queue, now contains {_songQueue.Count} songs.");
         }
         else
         {
             story.AppendLine("Nothing playing, so instead of queuing I'll just play it...");
             PlaySong(song);
         }
-        logger.LogInformation(story.ToString());
+        _logger.LogInformation(story.ToString());
     }
 
     public void ClearQueue()
     {
-        songQueue.Clear();
+        _songQueue.Clear();
     }
 
     public void ResumePlay()
@@ -224,7 +224,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         {
             PlaySong(stoppedSong);
         }
-        else if (songQueue.Any())
+        else if (_songQueue.Any())
         {
             playNextSongInQueue();
         }
@@ -249,12 +249,12 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 
     public void PlayStream(string streamPath)
     {
-        logger.LogInformation($"Asked to play stream: {streamPath}");
+        _logger.LogInformation($"Asked to play stream: {streamPath}");
 
         //make a Uri first...to make sure the argument is a valid URL.
         //...maybe that helps a bit with unsafe input??
         var url = new Uri(streamPath).ToString();
-        logger.LogInformation($"After converting to a Uri: {streamPath}");
+        _logger.LogInformation($"After converting to a Uri: {streamPath}");
 
         stopPlaying();
         status = new PlayerStatus
@@ -268,20 +268,20 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             }
         };
         playerProcess = new Process();
-        playerProcess.StartInfo.FileName = vlc;
+        playerProcess.StartInfo.FileName = _vlc;
         playerProcess.StartInfo.Arguments = $"\"{streamPath}\"";
         playerProcess.StartInfo.UseShellExecute = false;
         playerProcess.StartInfo.RedirectStandardOutput = true;
         playerProcess.StartInfo.RedirectStandardError = true;
         playerProcess.OutputDataReceived += new DataReceivedEventHandler((s, e) =>
         {
-            logger.LogInformation($"OutputDataReceived: {e.Data}");
+            _logger.LogInformation($"OutputDataReceived: {e.Data}");
         });
         playerProcess.ErrorDataReceived += new DataReceivedEventHandler((s, e) =>
         {
-            logger.LogInformation($"ErrorDataReceived: {e.Data}");
+            _logger.LogInformation($"ErrorDataReceived: {e.Data}");
         });
-        logger.LogInformation($"Starting vlc {streamPath}");
+        _logger.LogInformation($"Starting vlc {streamPath}");
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
         playerProcess.Exited += PlayerProcess_Exited;
@@ -293,20 +293,20 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 
     public void ShuffleQueue()
     {
-        var oldQueue = songQueue.ToList();
-        songQueue.Clear();
+        var oldQueue = _songQueue.ToList();
+        _songQueue.Clear();
         foreach (var s in oldQueue.OrderBy(i => Guid.NewGuid()))
         {
-            songQueue.Enqueue(s);
+            _songQueue.Enqueue(s);
         }
     }
 
     public void UpdateQueue(IEnumerable<string> songs)
     {
-        songQueue.Clear();
+        _songQueue.Clear();
         foreach (var song in songs)
         {
-            songQueue.Enqueue(library.Songs.Single(s => s.Path == song));
+            _songQueue.Enqueue(_library.Songs.Single(s => s.Path == song));
         }
     }
 
@@ -321,19 +321,19 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         {
             try
             {
-                var stillPlaying = startedPlaying || (playerProcess?.HasExited ?? true) == false;
-                logger.LogInformation("startedPlaying {startedPlaying}, playerProcess {playerProcess}, stillPlaying {stillPlaying}", startedPlaying, playerProcess, stillPlaying);
+                var stillPlaying = _startedPlaying || (playerProcess?.HasExited ?? true) == false;
+                _logger.LogInformation("startedPlaying {startedPlaying}, playerProcess {playerProcess}, stillPlaying {stillPlaying}", _startedPlaying, playerProcess, stillPlaying);
                 return stillPlaying;
             }
             catch { return false; }
         }
     }
 
-    private ConcurrentQueue<Song> songQueue = new ConcurrentQueue<Song>();
+    private readonly ConcurrentQueue<Song> _songQueue = new();
 
     public event EventHandler<string>? PlayerEvent;
 
-    public IEnumerable<Song> SongQueue => songQueue.ToArray();
+    public IEnumerable<Song> SongQueue => _songQueue.ToArray();
 }
 
 [Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -360,17 +360,25 @@ interface IMMDeviceEnumerator
     int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice endpoint);
 }
 [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumeratorComObject { }
-public class Audio
+public static class Audio
 {
     static IAudioEndpointVolume Vol()
     {
         var enumerator = new MMDeviceEnumeratorComObject() as IMMDeviceEnumerator;
-        IMMDevice dev = null;
+        if (enumerator == null)
+            throw new InvalidOperationException("Failed to create device enumerator");
+            
+        IMMDevice? dev = null;
         Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(/*eRender*/ 0, /*eMultimedia*/ 1, out dev));
-        IAudioEndpointVolume epv = null;
+        
+        if (dev == null)
+            throw new InvalidOperationException("Failed to get default audio endpoint");
+            
+        IAudioEndpointVolume? epv = null;
         var epvid = typeof(IAudioEndpointVolume).GUID;
         Marshal.ThrowExceptionForHR(dev.Activate(ref epvid, /*CLSCTX_ALL*/ 23, 0, out epv));
-        return epv;
+        
+        return epv ?? throw new InvalidOperationException("Failed to activate audio endpoint volume");
     }
     public static float Volume
     {

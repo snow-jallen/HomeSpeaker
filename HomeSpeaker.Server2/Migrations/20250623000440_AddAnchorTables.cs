@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace HomeSpeaker.Server2.Migrations
-{
-    /// <inheritdoc />
-    public partial class AddAnchorTables : Migration
+namespace HomeSpeaker.Server2.Migrations;
+
+/// <inheritdoc />
+public partial class AddAnchorTables : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -87,5 +87,4 @@ namespace HomeSpeaker.Server2.Migrations
             migrationBuilder.DropTable(
                 name: "AnchorDefinitions");
         }
-    }
 }

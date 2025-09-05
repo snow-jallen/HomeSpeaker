@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace HomeSpeaker.Server2.Migrations
-{
-    /// <inheritdoc />
-    public partial class InitialSchema : Migration
+namespace HomeSpeaker.Server2.Migrations;
+
+/// <inheritdoc />
+public partial class InitialSchema : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -97,5 +97,4 @@ namespace HomeSpeaker.Server2.Migrations
             migrationBuilder.DropTable(
                 name: "Playlists");
         }
-    }
 }

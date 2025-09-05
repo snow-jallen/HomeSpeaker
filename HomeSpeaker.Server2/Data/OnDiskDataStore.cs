@@ -1,25 +1,27 @@
 ﻿using HomeSpeaker.Server2;
 using HomeSpeaker.Shared;
 
-namespace HomeSpeaker.Server.Data;
+namespace HomeSpeaker.Server2.Data;
 
 
 public class OnDiskDataStore : IDataStore
 {
     public OnDiskDataStore()
     {
-        songs = new();
+        _songs = new();
     }
 
-    private List<Song> songs;    public void Add(Song song)
+    private List<Song> _songs;
+
+    public void Add(Song song)
     {
-        song.SongId = songs.Count;
-        songs.Add(song);
+        song.SongId = _songs.Count;
+        _songs.Add(song);
     }
 
     public void UpdateSong(int songId, string name, string artist, string album)
     {
-        var song = songs.FirstOrDefault(s => s.SongId == songId);
+        var song = _songs.FirstOrDefault(s => s.SongId == songId);
         if (song != null)
         {
             song.Name = name;
@@ -30,7 +32,7 @@ public class OnDiskDataStore : IDataStore
 
     public IEnumerable<Album> GetAlbums()
     {
-        foreach (var album in from s in songs
+        foreach (var album in from s in _songs
                               group s by s.Album into albums
                               orderby albums.Key
                               select new { AlbumName = albums.Key, Songs = albums })
@@ -45,7 +47,7 @@ public class OnDiskDataStore : IDataStore
 
     public IEnumerable<Artist> GetArtists()
     {
-        foreach (var artist in from s in songs
+        foreach (var artist in from s in _songs
                                group s by s.Artist into artists
                                orderby artists.Key
                                select new { ArtistName = artists.Key, Songs = artists })
@@ -58,7 +60,7 @@ public class OnDiskDataStore : IDataStore
         }
     }
 
-    public IEnumerable<Song> GetSongs() => songs.AsEnumerable();
+    public IEnumerable<Song> GetSongs() => _songs.AsEnumerable();
 
-    public void Clear() => songs.Clear();
+    public void Clear() => _songs.Clear();
 }
