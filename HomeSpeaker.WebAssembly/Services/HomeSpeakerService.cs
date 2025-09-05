@@ -15,7 +15,7 @@ public class HomeSpeakerService
         string address = config["ServerAddress"] ?? throw new MissingConfigException("ServerAddress");
         logger.LogInformation($"I was about to use {address}");
         address = hostEnvironment.BaseAddress;
-        logger.LogInformation("But instead I'll use {address}", address);
+    logger.LogInformation("But instead I'll use {Address}", address);
         var channel = GrpcChannel.ForAddress(address, new GrpcChannelOptions
         {
             HttpHandler = new GrpcWebHandler(new HttpClientHandler())
@@ -116,13 +116,13 @@ public class HomeSpeakerService
     {
         try
         {
-            logger.LogInformation("Calling RenamePlaylist gRPC method: {oldName} -> {newName}", oldName, newName);
+            logger.LogInformation("Calling RenamePlaylist gRPC method: {OldName} -> {NewName}", oldName, newName);
             await client.RenamePlaylistAsync(new RenamePlaylistRequest { OldName = oldName, NewName = newName });
-            logger.LogInformation("Successfully called RenamePlaylist gRPC method: {oldName} -> {newName}", oldName, newName);
+            logger.LogInformation("Successfully called RenamePlaylist gRPC method: {OldName} -> {NewName}", oldName, newName);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error calling RenamePlaylist gRPC method: {oldName} -> {newName}", oldName, newName);
+            logger.LogError(ex, "Error calling RenamePlaylist gRPC method: {OldName} -> {NewName}", oldName, newName);
             throw;
         }
     }
@@ -134,18 +134,18 @@ public class HomeSpeakerService
 
     public async Task ReorderPlaylistSongsAsync(string playlistName, List<string> songPaths)
     {
-        logger.LogInformation("Calling ReorderPlaylistSongs gRPC method for playlist: {playlistName}", playlistName);
+    logger.LogInformation("Calling ReorderPlaylistSongs gRPC method for playlist: {PlaylistName}", playlistName);
         await client.ReorderPlaylistSongsAsync(new ReorderPlaylistSongsRequest
         {
             PlaylistName = playlistName,
             SongPaths = { songPaths }
         });
-        logger.LogInformation("Successfully called ReorderPlaylistSongs gRPC method for playlist: {playlistName}", playlistName);
+    logger.LogInformation("Successfully called ReorderPlaylistSongs gRPC method for playlist: {PlaylistName}", playlistName);
     }
 
     public async Task UpdateSongAsync(int songId, string name, string artist, string album)
     {
-        logger.LogInformation("Calling UpdateSong gRPC method for song: {songId}", songId);
+    logger.LogInformation("Calling UpdateSong gRPC method for song: {SongId}", songId);
         await client.UpdateSongAsync(new UpdateSongRequest
         {
             SongId = songId,
@@ -153,7 +153,7 @@ public class HomeSpeakerService
             Artist = artist,
             Album = album
         });
-        logger.LogInformation("Successfully called UpdateSong gRPC method for song: {songId}", songId);
+    logger.LogInformation("Successfully called UpdateSong gRPC method for song: {SongId}", songId);
     }
 
     readonly char[] separators = new[] { '/', '\\' };
@@ -175,12 +175,12 @@ public class HomeSpeakerService
 
                 if (directory == "c:")
                 {
-                    logger.LogInformation("Directory: '{directory}' ({path})", directory, s.Path);
+                    logger.LogInformation("Directory: '{Directory}' ({Path})", directory, s.Path);
                 }
 
                 if (!folders.Contains(directory))
                 {
-                    logger.LogInformation("Directory: '{directory}' ({path})", directory, s.Path);
+                    logger.LogInformation("Directory: '{Directory}' ({Path})", directory, s.Path);
                     folders.Add(directory);
                 }
             }

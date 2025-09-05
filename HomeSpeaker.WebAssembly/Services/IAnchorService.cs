@@ -96,7 +96,7 @@ public class AnchorService : IAnchorService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to update anchor definition {id}", id);
+            logger.LogError(ex, "Failed to update anchor definition {Id}", id);
             throw;
         }
     }
@@ -110,7 +110,7 @@ public class AnchorService : IAnchorService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to deactivate anchor definition {id}", id);
+            logger.LogError(ex, "Failed to deactivate anchor definition {Id}", id);
             return false;
         }
     }
@@ -127,7 +127,7 @@ public class AnchorService : IAnchorService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to get user anchors for {userId}", userId);
+            logger.LogError(ex, "Failed to get user anchors for {UserId}", userId);
             return [];
         }
     }
@@ -159,7 +159,7 @@ public class AnchorService : IAnchorService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to remove anchor from user {userId}", userId);
+            logger.LogError(ex, "Failed to remove anchor from user {UserId}", userId);
             return false;
         }
     }
@@ -176,7 +176,7 @@ public class AnchorService : IAnchorService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to get daily anchors for {userId} on {date}", userId, date);
+            logger.LogError(ex, "Failed to get daily anchors for {UserId} on {Date}", userId, date);
             return [];
         }
     }
@@ -203,7 +203,7 @@ public class AnchorService : IAnchorService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to get daily anchors range for {userId}", userId);
+            logger.LogError(ex, "Failed to get daily anchors range for {UserId}", userId);
             return [];
         }
     }
@@ -217,7 +217,7 @@ public class AnchorService : IAnchorService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to create daily anchors for {userId} on {date}", userId, date);
+            logger.LogError(ex, "Failed to create daily anchors for {UserId} on {Date}", userId, date);
             throw;
         }
     }
