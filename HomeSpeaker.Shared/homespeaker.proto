@@ -29,6 +29,8 @@ service HomeSpeaker {
 	rpc ReorderPlaylistSongs(ReorderPlaylistSongsRequest) returns (ReorderPlaylistSongsReply);
 	rpc UpdateQueue(UpdateQueueRequest) returns (UpdateQueueReply);
 	rpc ToggleBacklight(google.protobuf.Empty) returns (google.protobuf.Empty);
+	rpc GetAmazonPlaylists(GetAmazonPlaylistsRequest) returns (GetAmazonPlaylistsReply);
+	rpc PlayAmazonPlaylist(PlayAmazonPlaylistRequest) returns (PlayAmazonPlaylistReply);
 }
 
 message UpdateQueueRequest {
@@ -160,3 +162,21 @@ message ReorderPlaylistSongsRequest{
 	repeated string SongPaths=2; // Songs in the new order
 }
 message ReorderPlaylistSongsReply{}
+
+message GetAmazonPlaylistsRequest{}
+
+message GetAmazonPlaylistsReply{
+	repeated AmazonPlaylistMessage Playlists=1;
+}
+
+message AmazonPlaylistMessage{
+	string PlaylistId=1;
+	string PlaylistName=2;
+	int32 TrackCount=3;
+}
+
+message PlayAmazonPlaylistRequest{
+	string PlaylistId=1;
+}
+
+message PlayAmazonPlaylistReply{}

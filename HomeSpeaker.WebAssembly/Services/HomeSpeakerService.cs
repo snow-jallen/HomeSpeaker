@@ -281,5 +281,24 @@ public class HomeSpeakerService
         QueueChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    public async Task<IEnumerable<AmazonPlaylistViewModel>> GetAmazonPlaylistsAsync()
+    {
+        this.logger.LogInformation("Getting Amazon Music playlists");
+        var reply = await this.client.GetAmazonPlaylistsAsync(new GetAmazonPlaylistsRequest());
+        return reply.Playlists.Select(p => new AmazonPlaylistViewModel
+        {
+            PlaylistId = p.PlaylistId,
+            PlaylistName = p.PlaylistName,
+            TrackCount = p.TrackCount
+        });
+    }
+
+    public async Task PlayAmazonPlaylistAsync(string playlistId)
+    {
+        this.logger.LogInformation("Playing Amazon Music playlist: {PlaylistId}", playlistId);
+        await this.client.PlayAmazonPlaylistAsync(new PlayAmazonPlaylistRequest { PlaylistId = playlistId });
+        this.QueueChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     public event EventHandler<string>? StatusChanged;
 }

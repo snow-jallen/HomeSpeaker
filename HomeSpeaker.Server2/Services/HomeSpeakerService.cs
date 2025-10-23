@@ -13,16 +13,18 @@ public class HomeSpeakerService : HomeSpeakerBase
     private readonly IMusicPlayer _musicPlayer;
     private readonly YoutubeService _youtubeService;
     private readonly PlaylistService _playlistService;
+    private readonly AmazonMusicService _amazonMusicService;
     private readonly List<IServerStreamWriter<StreamServerEvent>> _eventClients = new();
     private readonly List<IServerStreamWriter<StreamServerEvent>> _failedEvents = new();
 
-    public HomeSpeakerService(ILogger<HomeSpeakerService> logger, Mp3Library library, IMusicPlayer musicPlayer, YoutubeService youtubeService, PlaylistService playlistService)
+    public HomeSpeakerService(ILogger<HomeSpeakerService> logger, Mp3Library library, IMusicPlayer musicPlayer, YoutubeService youtubeService, PlaylistService playlistService, AmazonMusicService amazonMusicService)
     {
         _logger = logger ?? throw new System.ArgumentNullException(nameof(logger));
         _library = library ?? throw new System.ArgumentNullException(nameof(library));
         _musicPlayer = musicPlayer ?? throw new System.ArgumentNullException(nameof(musicPlayer));
         _youtubeService = youtubeService;
         _playlistService = playlistService;
+        _amazonMusicService = amazonMusicService;
         _musicPlayer.PlayerEvent += MusicPlayer_PlayerEvent;
     }
 
@@ -355,5 +357,32 @@ public class HomeSpeakerService : HomeSpeakerBase
         _logger.LogInformation("response: {response}", response);
 
         return new Empty();
+    }
+
+    public override async Task<GetAmazonPlaylistsReply> GetAmazonPlaylists(GetAmazonPlaylistsRequest request, ServerCallContext context)
+    {
+        _logger.LogInformation("GetAmazonPlaylists called");
+        
+        var playlists = await _amazonMusicService.GetAmazonPlaylistsAsync();
+        var reply = new GetAmazonPlaylistsReply();
+        
+        reply.Playlists.AddRange(playlists.Select(p => new AmazonPlaylistMessage
+        {
+            PlaylistId = p.PlaylistId,
+            PlaylistName = p.PlaylistName,
+            TrackCount = p.TrackCount
+        }));
+        
+        _logger.LogInformation("Returning {Count} Amazon playlists", reply.Playlists.Count);
+        return reply;
+    }
+
+    public override async Task<PlayAmazonPlaylistReply> PlayAmazonPlaylist(PlayAmazonPlaylistRequest request, ServerCallContext context)
+    {
+        _logger.LogInformation("PlayAmazonPlaylist called with PlaylistId: {PlaylistId}", request.PlaylistId);
+        
+        await _amazonMusicService.PlayAmazonPlaylistAsync(request.PlaylistId);
+        
+        return new PlayAmazonPlaylistReply();
     }
 }
