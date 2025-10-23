@@ -30,6 +30,10 @@ jobs:
     - name: Docker compose down
       run: docker-compose down
 
+    - name: Create .env file with secrets
+      run: |
+        echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" > .env
+
     - name: Docker compose up
       env:
         COMPOSE_DOCKER_CLI_BUILD: 1

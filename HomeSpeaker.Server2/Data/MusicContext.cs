@@ -14,6 +14,7 @@ public class MusicContext : DbContext
     public DbSet<AnchorDefinitionEntity> AnchorDefinitions { get; set; }
     public DbSet<UserAnchorEntity> UserAnchors { get; set; }
     public DbSet<DailyAnchorEntity> DailyAnchors { get; set; }
+    public DbSet<SongGenre> SongGenres { get; set; }
 }
 
 public class Thumbnail
@@ -86,4 +87,11 @@ public class DailyAnchorEntity
     public string AnchorName { get; set; } = string.Empty; // Snapshot of name at time of creation
     public string AnchorDescription { get; set; } = string.Empty; // Snapshot of description at time of creation
     public DateTime CreatedAt { get; set; }
+}
+
+public class SongGenre
+{
+    public int Id { get; set; }
+    public string SongPath { get; set; } = string.Empty;
+    public string Genre { get; set; } = string.Empty;
 }

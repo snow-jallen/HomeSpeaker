@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using System.Diagnostics;
+using System.Net.Http.Json;
 using static HomeSpeaker.Shared.HomeSpeaker;
 
 namespace HomeSpeaker.WebAssembly.Services;
@@ -9,13 +10,16 @@ public class HomeSpeakerService
     private HomeSpeakerClient client;
     private List<SongMessage> songs = new();
     private readonly ILogger<HomeSpeakerService> logger;
+    private readonly HttpClient httpClient;
     public IEnumerable<SongMessage> Songs => songs;
-    public event EventHandler? QueueChanged; public HomeSpeakerService(IConfiguration config, ILogger<HomeSpeakerService> logger, IWebAssemblyHostEnvironment hostEnvironment)
+    public event EventHandler? QueueChanged;
+
+    public HomeSpeakerService(IConfiguration config, ILogger<HomeSpeakerService> logger, IWebAssemblyHostEnvironment hostEnvironment, HttpClient httpClient)
     {
         string address = config["ServerAddress"] ?? throw new MissingConfigException("ServerAddress");
         logger.LogInformation($"I was about to use {address}");
         address = hostEnvironment.BaseAddress;
-    logger.LogInformation("But instead I'll use {Address}", address);
+        logger.LogInformation("But instead I'll use {Address}", address);
         var channel = GrpcChannel.ForAddress(address, new GrpcChannelOptions
         {
             HttpHandler = new GrpcWebHandler(new HttpClientHandler())
@@ -23,6 +27,7 @@ public class HomeSpeakerService
 
         client = new HomeSpeakerClient(channel);
         this.logger = logger;
+        this.httpClient = httpClient;
         _ = listenForEvents();
     }
 
@@ -279,6 +284,35 @@ public class HomeSpeakerService
     {
         await client.ShuffleQueueAsync(new ShuffleQueueRequest());
         QueueChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public async Task<IEnumerable<Playlist>> GetAIPlaylistsAsync()
+    {
+        try
+        {
+            var response = await httpClient.GetFromJsonAsync<IEnumerable<Playlist>>("/api/playlists/ai");
+            return response ?? Enumerable.Empty<Playlist>();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting AI playlists");
+            return Enumerable.Empty<Playlist>();
+        }
+    }
+
+    public async Task TriggerAIMusicAnalysisAsync()
+    {
+        try
+        {
+            var response = await httpClient.PostAsync("/api/playlists/ai/analyze", null);
+            response.EnsureSuccessStatusCode();
+            logger.LogInformation("AI music analysis triggered successfully");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error triggering AI music analysis");
+            throw;
+        }
     }
 
     public event EventHandler<string>? StatusChanged;

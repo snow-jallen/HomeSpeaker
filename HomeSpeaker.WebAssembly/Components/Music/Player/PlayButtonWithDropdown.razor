@@ -34,6 +34,7 @@
     [Parameter] public string? PlaylistName { get; set; }
     [Parameter] public string? FolderName { get; set; }
     [Parameter] public IEnumerable<SongViewModel>? Songs { get; set; }
+    [Parameter] public bool IsAIPlaylist { get; set; } = false;
     [Parameter] public EventCallback OnPlayStarted { get; set; }    private bool showMenu = false;
     private ElementReference containerRef;
     private string dropdownPositionStyle = "right: 0;";
@@ -159,14 +160,25 @@
         {
             await JsRuntime.InvokeVoidAsync("alert", $"Error playing folder locally: {ex.Message}");
         }
-    }private async Task PlayPlaylistLocallyAsync()
+    }
+
+    private async Task PlayPlaylistLocallyAsync()
     {
         if (string.IsNullOrEmpty(PlaylistName)) return;
         
         try
         {
-            // Get playlist data from server
-            var playlists = await homeSpeakerService.GetPlaylistsAsync();
+            // Get playlist data from server - check both regular and AI playlists
+            IEnumerable<Playlist> playlists;
+            if (IsAIPlaylist)
+            {
+                playlists = await homeSpeakerService.GetAIPlaylistsAsync();
+            }
+            else
+            {
+                playlists = await homeSpeakerService.GetPlaylistsAsync();
+            }
+            
             var playlist = playlists.FirstOrDefault(p => p.Name == PlaylistName);
             
             if (playlist == null)
