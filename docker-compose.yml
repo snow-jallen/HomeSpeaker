@@ -32,6 +32,7 @@ services:
     - OTEL_SERVICE_NAME=HomeSpeaker
     - NIGHTSCOUT_URL=https://janedoe.azurewebsites.net
     - Temperature__ApiKey=${GOVEE_API_KEY}
+    - OpenAI__ApiKey=${OPENAI_API_KEY}
     - PULSE_SERVER=unix:/run/user/1000/pulse/native
     networks:
       speakernet:

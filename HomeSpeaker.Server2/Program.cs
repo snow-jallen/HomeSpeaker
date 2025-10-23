@@ -33,6 +33,7 @@ builder.Services.AddHostedService<MigrationApplier>();
 builder.Services.AddHostedService<DailyAnchorWorker>();
 builder.Services.AddHostedService<AirPlayReceiverService>();
 builder.Services.AddScoped<PlaylistService>();
+builder.Services.AddScoped<AIPlaylistService>();
 builder.Services.AddScoped<AnchorService>();
 builder.Services.AddScoped<IAnchorNotificationService, AnchorNotificationService>();
 builder.Services.AddSignalR();
@@ -179,6 +180,33 @@ app.MapPost("/api/bloodsugar/refresh", async (BloodSugarService bloodSugarServic
     catch (Exception ex)
     {
         return Results.Problem($"Failed to refresh blood sugar data: {ex.Message}");
+    }
+});
+
+// AI Playlist endpoints
+app.MapPost("/api/playlists/ai/analyze", async (AIPlaylistService aiPlaylistService) =>
+{
+    try
+    {
+        await aiPlaylistService.AnalyzeMusicLibraryAsync();
+        return Results.Ok(new { message = "Music library analysis started successfully" });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to analyze music library: {ex.Message}");
+    }
+});
+
+app.MapGet("/api/playlists/ai", async (AIPlaylistService aiPlaylistService) =>
+{
+    try
+    {
+        var aiPlaylists = await aiPlaylistService.GetAIPlaylistsAsync();
+        return Results.Ok(aiPlaylists);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to get AI playlists: {ex.Message}");
     }
 });
 

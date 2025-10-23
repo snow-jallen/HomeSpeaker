@@ -9,6 +9,62 @@
     </button>
 </div>
 
+<!-- AI Playlists Section -->
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h4>AI Playlists</h4>
+        <button @onclick="TriggerAIAnalysis" class="btn btn-outline-primary btn-sm" title="Analyze music library with AI" disabled="@isAnalyzing">
+            @if (isAnalyzing)
+            {
+                <span class="spinner-border spinner-border-sm me-1"></span>
+            }
+            <span class="oi oi-cog me-1"></span>Analyze Library
+        </button>
+    </div>
+
+    @if(aiPlaylists == null)
+    {
+        <div class="d-flex justify-content-center p-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading AI playlists...</span>
+            </div>
+        </div>
+    }
+    else if (!aiPlaylists.Any())
+    {
+        <div class="alert alert-info">
+            <h6 class="alert-heading">No AI playlists yet</h6>
+            <p class="mb-0">Click "Analyze Library" to generate AI-powered playlists based on your music collection.</p>
+        </div>
+    }
+    else
+    {
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 mb-4">
+            @foreach(var playlist in aiPlaylists)
+            {
+                <div class="col" @key="playlist.Name">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">@playlist.Name</h5>
+                            <p class="card-text text-muted">@playlist.Songs.Count() songs</p>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <PlayButtonWithDropdown PlaylistName="@playlist.Name" IsAIPlaylist="true" />
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<hr class="my-4" />
+
+<!-- User Playlists Section -->
+<div class="mb-4">
+    <h4>My Playlists</h4>
+</div>
+
 @if(playlists == null)
 {
     <div class="d-flex justify-content-center p-4">
@@ -34,11 +90,16 @@ else
 
 @code {
     IEnumerable<Playlist>? playlists;
+    IEnumerable<Playlist>? aiPlaylists;
+    bool isAnalyzing = false;
 
     protected override async Task OnInitializedAsync()
     {
         await RefreshPlaylists();
-    }    async Task RefreshPlaylists()
+        await RefreshAIPlaylists();
+    }
+
+    async Task RefreshPlaylists()
     {
         try
         {
@@ -53,6 +114,40 @@ else
             await JsRuntime.InvokeVoidAsync("console.error", $"RefreshPlaylists: Error refreshing playlists: {ex.Message}");
             // Handle errors gracefully - could add logging or user notification here
             playlists = Enumerable.Empty<Playlist>();
+        }
+    }
+
+    async Task RefreshAIPlaylists()
+    {
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("console.log", "RefreshAIPlaylists: Starting to refresh AI playlists");
+            aiPlaylists = await svc.GetAIPlaylistsAsync();
+            await JsRuntime.InvokeVoidAsync("console.log", $"RefreshAIPlaylists: Got {aiPlaylists.Count()} AI playlists from server");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("console.error", $"RefreshAIPlaylists: Error refreshing AI playlists: {ex.Message}");
+            aiPlaylists = Enumerable.Empty<Playlist>();
+        }
+    }
+
+    async Task TriggerAIAnalysis()
+    {
+        isAnalyzing = true;
+        try
+        {
+            await svc.TriggerAIMusicAnalysisAsync();
+            await JsRuntime.InvokeVoidAsync("alert", "AI analysis started! This may take several minutes. Refresh the page to see updated playlists.");
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", $"Error starting AI analysis: {ex.Message}");
+        }
+        finally
+        {
+            isAnalyzing = false;
         }
     }
 }
