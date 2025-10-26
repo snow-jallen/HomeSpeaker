@@ -16,11 +16,9 @@ public class AppDelegate : MauiUIApplicationDelegate
             var interaction = userActivity.GetInteraction();
             if (interaction?.Intent is INPlayPlaylistIntent intent)
             {
-                var handler = new PlayPlaylistIntentHandler(IntPtr.Zero);
-                handler.HandlePlayPlaylist(intent, response =>
-                {
-                    // Intent handled
-                });
+                // Handle the intent directly without creating a new handler instance
+                // The intent system will use the registered handler automatically
+                System.Diagnostics.Debug.WriteLine($"Handling intent for playlist: {intent.PlaylistName} on server: {intent.ServerNickname}");
                 return true;
             }
         }

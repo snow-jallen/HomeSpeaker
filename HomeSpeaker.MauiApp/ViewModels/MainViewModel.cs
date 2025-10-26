@@ -139,7 +139,13 @@ public partial class MainViewModel : ObservableObject
     {
         if (value != null)
         {
-            _ = LoadPlaylistsAsync();
+            LoadPlaylistsAsync().ContinueWith(task =>
+            {
+                if (task.IsFaulted)
+                {
+                    StatusMessage = $"Error loading playlists: {task.Exception?.GetBaseException().Message}";
+                }
+            }, TaskScheduler.FromCurrentSynchronizationContext());
         }
     }
 }

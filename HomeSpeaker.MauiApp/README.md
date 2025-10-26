@@ -95,8 +95,17 @@ HomeSpeaker.MauiApp/
 
 ## Security Notes
 
-- The app allows insecure HTTPS connections for development. In production, ensure your HomeSpeaker servers use valid SSL certificates.
-- Server configurations are stored locally on the device.
+- **IMPORTANT**: The app is currently configured for development use with relaxed security settings:
+  - SSL certificate validation is bypassed to allow self-signed certificates
+  - App Transport Security (ATS) is disabled to allow HTTP connections
+  - These settings should be hardened for production use
+  
+- For production deployment:
+  1. Implement proper SSL certificate validation in `HomeSpeakerClientService.cs`
+  2. Configure specific ATS exception domains in `Info.plist` instead of `NSAllowsArbitraryLoads`
+  3. Use only HTTPS connections with valid SSL certificates
+  
+- Server configurations are stored locally on the device in JSON format
 
 ## Troubleshooting
 

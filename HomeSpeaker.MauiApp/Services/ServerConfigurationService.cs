@@ -29,16 +29,16 @@ public class ServerConfigurationService : IServerConfigurationService
     public ServerConfigurationService()
     {
         _configFilePath = Path.Combine(FileSystem.AppDataDirectory, "servers.json");
-        LoadServersAsync().Wait();
+        LoadServers();
     }
 
-    private async Task LoadServersAsync()
+    private void LoadServers()
     {
         try
         {
             if (File.Exists(_configFilePath))
             {
-                var json = await File.ReadAllTextAsync(_configFilePath);
+                var json = File.ReadAllText(_configFilePath);
                 _servers = System.Text.Json.JsonSerializer.Deserialize<List<ServerConfiguration>>(json) ?? new();
             }
         }

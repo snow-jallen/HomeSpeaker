@@ -28,6 +28,9 @@
     </array>
     <key>XSAppIconAssets</key>
     <string>Assets.xcassets/appicon.appiconset</string>
+    <!-- WARNING: NSAllowsArbitraryLoads is set to true for DEVELOPMENT ONLY -->
+    <!-- In production, remove this or configure specific exception domains -->
+    <!-- This allows HTTP connections and bypasses App Transport Security -->
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsArbitraryLoads</key>

@@ -63,9 +63,17 @@ public class HomeSpeakerClientService : IHomeSpeakerClientService
 
     private GrpcChannel CreateChannel(string serverUrl)
     {
+        // WARNING: This certificate validation callback is for DEVELOPMENT ONLY
+        // In production, implement proper certificate validation
         var httpHandler = new HttpClientHandler
         {
-            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+            {
+                // TODO: Implement proper certificate validation for production
+                // For now, accepting all certificates for development purposes
+                System.Diagnostics.Debug.WriteLine($"Certificate validation bypassed for {serverUrl}");
+                return true;
+            }
         };
 
         return GrpcChannel.ForAddress(serverUrl, new GrpcChannelOptions

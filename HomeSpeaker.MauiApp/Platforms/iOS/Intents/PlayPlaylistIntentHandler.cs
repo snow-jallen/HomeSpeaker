@@ -22,8 +22,16 @@ public class PlayPlaylistIntentHandler : INExtension, IINPlayPlaylistIntentHandl
             return;
         }
 
-        // Execute the intent
-        _ = ExecuteIntentAsync(playlistName, serverNickname, completion);
+        // Execute the intent with proper error handling
+        ExecuteIntentAsync(playlistName, serverNickname, completion).ContinueWith(task =>
+        {
+            if (task.IsFaulted)
+            {
+                System.Diagnostics.Debug.WriteLine($"Intent execution failed: {task.Exception?.GetBaseException().Message}");
+                var response = new INPlayPlaylistIntentResponse(INPlayPlaylistIntentResponseCode.Failure, null);
+                completion(response);
+            }
+        });
     }
 
     private async Task ExecuteIntentAsync(string playlistName, string serverNickname, Action<INPlayPlaylistIntentResponse> completion)
@@ -89,7 +97,13 @@ public class PlayPlaylistIntentHandler : INExtension, IINPlayPlaylistIntentHandl
 
     public void ProvidePlaylistNameOptions(INPlayPlaylistIntent intent, Action<INObjectCollection<NSString>, NSError> completion)
     {
-        _ = ProvidePlaylistNamesAsync(intent, completion);
+        ProvidePlaylistNamesAsync(intent, completion).ContinueWith(task =>
+        {
+            if (task.IsFaulted)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error providing playlist options: {task.Exception?.GetBaseException().Message}");
+            }
+        });
     }
 
     private async Task ProvidePlaylistNamesAsync(INPlayPlaylistIntent intent, Action<INObjectCollection<NSString>, NSError> completion)
@@ -120,7 +134,13 @@ public class PlayPlaylistIntentHandler : INExtension, IINPlayPlaylistIntentHandl
 
     public void ProvideServerNicknameOptions(INPlayPlaylistIntent intent, Action<INObjectCollection<NSString>, NSError> completion)
     {
-        _ = ProvideServerNicknamesAsync(intent, completion);
+        ProvideServerNicknamesAsync(intent, completion).ContinueWith(task =>
+        {
+            if (task.IsFaulted)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error providing server options: {task.Exception?.GetBaseException().Message}");
+            }
+        });
     }
 
     private async Task ProvideServerNicknamesAsync(INPlayPlaylistIntent intent, Action<INObjectCollection<NSString>, NSError> completion)
