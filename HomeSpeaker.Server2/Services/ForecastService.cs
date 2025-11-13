@@ -79,7 +79,7 @@ public sealed class ForecastService
         var latitude = _configuration.GetValue<double>("Forecast:Latitude", 40.7128); // Default to NYC
         var longitude = _configuration.GetValue<double>("Forecast:Longitude", -74.0060);
         
-        _logger.LogInformation("Fetching forecast for location: {Latitude}, {Longitude}", latitude, longitude);
+        _logger.LogInformation("Fetching forecast for configured location");
 
         try
         {
