@@ -28,8 +28,11 @@ RUN dotnet publish "./HomeSpeaker.Server2.csproj" -c $BUILD_CONFIGURATION -o /ap
 FROM base AS final
 RUN apt-get install -y curl iputils-ping
 # RUN groupadd -g 1000 mygroup
-RUN useradd -u 1000 -g mygroup -s /bin/bash -m homespeakeruser
-RUN usermod -aG audio homespeakeruser
+# RUN useradd -u 1000 -g mygroup -s /bin/bash -m homespeakeruser
+# RUN usermod -aG audio homespeakeruser
+RUN existing_group=$(getent group 1000 | cut -d: -f1) \
+    && useradd -u 1000 -g "$existing_group" -s /bin/bash -m homespeakeruser \
+    && usermod -aG audio homespeakeruser
 USER homespeakeruser
 WORKDIR /app
 COPY --from=publish /app/publish .
