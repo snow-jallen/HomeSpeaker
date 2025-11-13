@@ -72,6 +72,10 @@ builder.Services.AddSingleton<TemperatureService>();
 builder.Services.AddHttpClient<BloodSugarService>();
 builder.Services.AddSingleton<BloodSugarService>();
 
+// Add forecast service with caching
+builder.Services.AddHttpClient<ForecastService>();
+builder.Services.AddSingleton<ForecastService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -179,6 +183,47 @@ app.MapPost("/api/bloodsugar/refresh", async (BloodSugarService bloodSugarServic
     catch (Exception ex)
     {
         return Results.Problem($"Failed to refresh blood sugar data: {ex.Message}");
+    }
+});
+
+// Forecast API endpoint
+app.MapGet("/api/forecast", async (ForecastService forecastService, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var forecastStatus = await forecastService.GetForecastStatusAsync(cancellationToken);
+        return Results.Ok(forecastStatus);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to get forecast data: {ex.Message}");
+    }
+});
+
+// Forecast cache management endpoints
+app.MapDelete("/api/forecast/cache", (ForecastService forecastService) =>
+{
+    try
+    {
+        forecastService.ClearCache();
+        return Results.Ok(new { message = "Forecast cache cleared successfully" });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to clear forecast cache: {ex.Message}");
+    }
+});
+
+app.MapPost("/api/forecast/refresh", async (ForecastService forecastService, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var forecastStatus = await forecastService.RefreshAsync(cancellationToken);
+        return Results.Ok(forecastStatus);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to refresh forecast data: {ex.Message}");
     }
 });
 
