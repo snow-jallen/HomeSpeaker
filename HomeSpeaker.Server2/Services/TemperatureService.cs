@@ -197,7 +197,7 @@ public sealed class TemperatureService
         {
             temperatureStatus.TemperatureDifference = Math.Abs(outsideTemp - girlsRoomTemp);
             temperatureStatus.IsWithinThreshold = temperatureStatus.TemperatureDifference <= threshold;
-            temperatureStatus.ShouldWindowsBeClosed = outsideTemp >= girlsRoomTemp;
+            temperatureStatus.ShouldWindowsBeClosed = outsideTemp >= girlsRoomTemp || outsideTemp < 50;
         }
 
         return temperatureStatus;
