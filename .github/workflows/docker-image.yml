@@ -19,7 +19,7 @@ jobs:
         include:
           - runner: kitchen
             airplay_name: "Kitchen HomeSpeaker"
-          - runner: rpi42
+          - runner: upstairs
             airplay_name: "Upstairs HomeSpeaker"
 
     steps:
