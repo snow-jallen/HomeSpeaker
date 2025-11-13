@@ -24,6 +24,9 @@ builder.Services.AddScoped<ITemperatureService, TemperatureService>();
 // Register blood sugar service
 builder.Services.AddScoped<IBloodSugarService, BloodSugarService>();
 
+// Register forecast service
+builder.Services.AddScoped<IForecastService, ForecastService>();
+
 // Register anchor service with dedicated HTTP client
 builder.Services.AddHttpClient<IAnchorService, AnchorService>((serviceProvider, client) =>
 {
