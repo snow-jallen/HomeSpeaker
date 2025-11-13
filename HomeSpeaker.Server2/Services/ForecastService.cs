@@ -76,8 +76,8 @@ public sealed class ForecastService
         _logger.LogInformation("Getting forecast status...");
         
         // Get location from configuration (default to a reasonable location)
-        var latitude = _configuration.GetValue<double>("Forecast:Latitude", 40.7128); // Default to NYC
-        var longitude = _configuration.GetValue<double>("Forecast:Longitude", -74.0060);
+        var latitude = _configuration.GetValue<double>("Forecast:Latitude", 39.2683); // Default to NYC
+        var longitude = _configuration.GetValue<double>("Forecast:Longitude", -111.63686);
         
         _logger.LogInformation("Fetching forecast for configured location");
 
