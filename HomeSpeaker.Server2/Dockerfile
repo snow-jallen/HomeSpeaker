@@ -32,10 +32,9 @@ RUN grep 1000 /etc/passwd
 # RUN groupadd -g 1000 mygroup
 # RUN useradd -u 1000 -g mygroup -s /bin/bash -m homespeakeruser
 # RUN usermod -aG audio homespeakeruser
-RUN existing_group=$(getent group 1000 | cut -d: -f1) \
-    && useradd -u 1000 -g "$existing_group" -s /bin/bash -m homespeakeruser \
-    && usermod -aG audio homespeakeruser
-USER homespeakeruser
+RUN usermod -aG audio ubuntu
+USER ubuntu
+
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "HomeSpeaker.Server2.dll"]
