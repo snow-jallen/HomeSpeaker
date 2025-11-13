@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>2bc8685f-1b2d-405a-b0d1-899806a7a151</UserSecretsId>
@@ -13,7 +13,7 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <WarningsAsErrors />
     <WarningsNotAsErrors />
-    <NoWarn>$(NoWarn);CS0169;CS0414;CS8618;CS8604;CS8600;CS8602;CS8603;CS4014;CS1998;SYSLIB0051;IDE0009;IDE0044;IDE0005;IDE0161;IDE0130;IDE1006;IDE2001;IDE2000;IDE0055;IDE0040;IDE2003;IDE0007;IDE0011;IDE0004;IDE2002;IDE0059;SA1649;CA1003;CA1063;CA1065;CA1725;CA1727;CA1805;CA1816;CA1823;CA1826;CA1835;CA1836;CA1849;CA1852;CA1854;CA1861;CA1869;CA2012;CA2016;CA2052;CA2254;MA0134;RS0030</NoWarn>
+    <NoWarn>$(NoWarn);CS0169;CS0414;CS8618;CS8604;CS8600;CS8602;CS8603;CS4014;CS1998;SYSLIB0051;IDE0009;IDE0031;IDE0044;IDE0005;IDE0161;IDE0130;IDE1006;IDE2001;IDE2000;IDE0055;IDE0040;IDE2003;IDE0007;IDE0011;IDE0004;IDE2002;IDE0059;SA1649;CA1003;CA1063;CA1065;CA1725;CA1727;CA1805;CA1816;CA1823;CA1826;CA1835;CA1836;CA1849;CA1852;CA1854;CA1861;CA1869;CA2012;CA2016;CA2052;CA2254;MA0134;RS0030</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <Protobuf Include="Protos\greet.proto" GrpcServices="Server" />
@@ -21,15 +21,15 @@
   <ItemGroup>
     <PackageReference Include="CliWrap" Version="3.8.2" />
     <PackageReference Include="JsonExtensions" Version="1.2.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="9.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.0" />
     <PackageReference Include="Grpc.AspNetCore" Version="2.67.0" />
     <PackageReference Include="Grpc.AspNetCore.Web" Version="2.67.0" />
     <PackageReference Include="ID3" Version="0.6.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.5">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.0" />
     <PackageReference Include="Microsoft.Fast.Components.FluentUI" Version="3.8.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.2" />
     <PackageReference Include="OpenTelemetry.Api" Version="1.12.0" />
