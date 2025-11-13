@@ -2,6 +2,7 @@ name: Docker Image CI
 
 on:
   push:
+  workflow_dispatch:    
     #tags:
     #- '*'
   # To have GitHub Actions deploy a new version, create a new tag
