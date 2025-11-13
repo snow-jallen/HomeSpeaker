@@ -155,7 +155,7 @@ public class PlaylistService
         {
             var songPath = songPathsList[i];
             var playlistItem = playlist.Songs.FirstOrDefault(s => s.SongPath == songPath);
-            if (playlistItem != null)
+            if (playlistItem is not null)
             {
                 playlistItem.Order = i;
             }
