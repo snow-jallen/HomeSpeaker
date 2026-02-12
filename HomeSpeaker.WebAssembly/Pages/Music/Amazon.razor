@@ -1,0 +1,93 @@
+@page "/amazon"
+@inject HomeSpeakerService svc
+@inject IJSRuntime JsRuntime
+@inject ILogger<Amazon> logger
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Amazon Music</h3>
+    <button @onclick="RefreshPlaylists" class="btn btn-outline-secondary" title="Refresh playlists">
+        <span class="oi oi-reload me-1"></span>Refresh
+    </button>
+</div>
+
+@if(playlists == null)
+{
+    <div class="d-flex justify-content-center p-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else if (!playlists.Any())
+{
+    <div class="text-center text-muted p-4">
+        <h5>No Amazon Music playlists found</h5>
+        <p>Connect your Amazon Music account to see your playlists here!</p>
+    </div>
+}
+else
+{
+    <div class="alert alert-info" role="alert">
+        <strong>Note:</strong> This is a demo feature. Click on a playlist to shuffle and play music from your local library. 
+        Full Amazon Music integration coming soon!
+    </div>
+    
+    <div class="list-group">
+        @foreach(var playlist in playlists)
+        {
+            <div @key="playlist.PlaylistId" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center flex-grow-1" style="cursor: pointer;" @onclick="() => PlayPlaylist(playlist.PlaylistId, playlist.PlaylistName)">
+                    <span class="oi oi-musical-note me-3 text-primary" style="font-size: 1.5rem;"></span>
+                    <div>
+                        <h5 class="mb-1">@playlist.PlaylistName</h5>
+                        <small class="text-muted">@playlist.TrackCount tracks</small>
+                    </div>
+                </div>
+                <button class="btn btn-primary" @onclick="() => PlayPlaylist(playlist.PlaylistId, playlist.PlaylistName)">
+                    <span class="oi oi-play-circle me-1"></span>Shuffle & Play
+                </button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    IEnumerable<AmazonPlaylistViewModel>? playlists;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshPlaylists();
+    }
+
+    async Task RefreshPlaylists()
+    {
+        try
+        {
+            logger.LogInformation("RefreshPlaylists: Starting to refresh Amazon Music playlists");
+            playlists = await svc.GetAmazonPlaylistsAsync();
+            logger.LogInformation("RefreshPlaylists: Got {Count} playlists from server", playlists.Count());
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "RefreshPlaylists: Error refreshing Amazon playlists: {Message}", ex.Message);
+            await JsRuntime.InvokeVoidAsync("console.error", $"RefreshPlaylists: Error refreshing playlists: {ex.Message}");
+            playlists = Enumerable.Empty<AmazonPlaylistViewModel>();
+        }
+    }
+
+    async Task PlayPlaylist(string playlistId, string playlistName)
+    {
+        try
+        {
+            logger.LogInformation("Playing Amazon Music playlist: {PlaylistName} ({PlaylistId})", playlistName, playlistId);
+            await svc.PlayAmazonPlaylistAsync(playlistId);
+            await JsRuntime.InvokeVoidAsync("alert", $"Now shuffling and playing: {playlistName}");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error playing Amazon playlist: {Message}", ex.Message);
+            await JsRuntime.InvokeVoidAsync("alert", $"Error playing playlist: {ex.Message}");
+        }
+    }
+}
