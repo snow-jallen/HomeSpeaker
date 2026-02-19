@@ -1,16 +1,26 @@
 ﻿@page "/"
 @inject HomeSpeakerService svc;
 @inject ILogger<Index> logger
+@inject HttpClient Http
 @using Microsoft.Fast.Components.FluentUI
 
-<div class="row g-2 mb-2">
-    <div class="col-md-6 col-12">
-        <TemperatureMonitor />
+@if (showTemperature || showBloodSugar)
+{
+    <div class="row g-2 mb-2">
+        @if (showTemperature)
+        {
+            <div class="col-md-6 col-12">
+                <TemperatureMonitor />
+            </div>
+        }
+        @if (showBloodSugar)
+        {
+            <div class="col-md-6 col-12">
+                <BloodSugarMonitor />
+            </div>
+        }
     </div>
-    <div class="col-md-6 col-12">
-        <BloodSugarMonitor />
-    </div>
-</div>
+}
 
 <div class="row">
     <div class="col">
@@ -63,6 +73,9 @@ else
     private int numPages = 0;
     private int artistCount;
     private string? filterValue;
+    private bool showTemperature;
+    private bool showBloodSugar;
+
     public string? FilterValue
     {
         get => filterValue;
@@ -79,8 +92,20 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        try
+        {
+            var features = await Http.GetFromJsonAsync<FeaturesResponse>("/api/features");
+            showTemperature = features?.TemperatureEnabled ?? false;
+            showBloodSugar = features?.BloodSugarEnabled ?? false;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to load feature flags");
+        }
         await reloadSongsAsync();
     }
+
+    private record FeaturesResponse(bool TemperatureEnabled, bool BloodSugarEnabled);
 
     async Task reloadSongsAsync()
     {

@@ -103,6 +103,11 @@ app.MapHub<HomeSpeaker.Server2.Hubs.AnchorHub>("/anchorHub");
 app.MapGrpcService<GreeterService>();
 app.MapGrpcService<HomeSpeakerService>();
 app.MapGet("/ns", (IConfiguration config) => config["NIGHTSCOUT_URL"] ?? string.Empty);
+app.MapGet("/api/features", (IConfiguration config) => new
+{
+    TemperatureEnabled = !string.IsNullOrEmpty(config["Temperature:ApiBaseUrl"]),
+    BloodSugarEnabled = !string.IsNullOrEmpty(config["NIGHTSCOUT_URL"])
+});
 
 // Temperature API endpoint
 app.MapGet("/api/temperature", async (TemperatureService temperatureService, CancellationToken cancellationToken) =>
