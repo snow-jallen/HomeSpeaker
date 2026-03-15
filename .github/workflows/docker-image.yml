@@ -25,6 +25,14 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Renew Tailscale certificate
+      run: |
+        cd ~/cert
+        HOSTNAME=$(hostname)
+        sudo tailscale cert ${HOSTNAME}.boston-cloud.ts.net
+        sudo openssl pkcs12 -export -out certificate.pfx -inkey ${HOSTNAME}.boston-cloud.ts.net.key -in ${HOSTNAME}.boston-cloud.ts.net.crt -passout pass:
+        sudo chown piuser. certificate.pfx
+
     - name: Docker compose pull
       run: docker-compose pull
 
