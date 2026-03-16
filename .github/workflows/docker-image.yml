@@ -12,7 +12,7 @@ on:
   # Then a new version will be deployed on the self-hosted runner.
 
 jobs:
-  rpi4:
+  Build-and-Deploy:
     runs-on: [self-hosted, "${{ matrix.runner}}" ]
     strategy:
       matrix:
@@ -23,7 +23,7 @@ jobs:
             airplay_name: "Upstairs HomeSpeaker"
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Renew Tailscale certificate
       run: |
@@ -32,6 +32,16 @@ jobs:
         sudo tailscale cert ${HOSTNAME}.boston-cloud.ts.net
         sudo openssl pkcs12 -export -out certificate.pfx -inkey ${HOSTNAME}.boston-cloud.ts.net.key -in ${HOSTNAME}.boston-cloud.ts.net.crt -passout pass:
         sudo chown piuser. certificate.pfx
+
+    - name: Write environment variables to .env file
+      env:
+        GOVEE_API_KEY: ${{ secrets.GOVEE_API_KEY }}
+        AIRPLAY_NAME: "${{ matrix.airplay_name }}"
+      run: |
+        cat > .env << EOF
+        GOVEE_API_KEY=${GOVEE_API_KEY}
+        AIRPLAY_NAME=${AIRPLAY_NAME}
+        EOF
 
     - name: Docker compose pull
       run: docker-compose pull
@@ -43,8 +53,6 @@ jobs:
       env:
         COMPOSE_DOCKER_CLI_BUILD: 1
         DOCKER_BUILDKIT: 1
-        GOVEE_API_KEY: ${{ secrets.GOVEE_API_KEY }}
-        AIRPLAY_NAME: "${{ matrix.airplay_name }}"
       run: docker-compose up -d --build --remove-orphans
 
     - name: Wait for services to be ready
