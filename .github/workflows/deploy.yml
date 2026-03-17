@@ -1,19 +1,17 @@
-name: Docker Image CI
+name: Deploy to Raspberry Pi
 
 on:
-  workflow_dispatch:    
-  push:
-    tags:
-      - '*'
-  # To have GitHub Actions deploy a new version, create a new tag
-  # git tag -a yyyy.m.d -m yyyy.m.d
-  # Then push those tags
-  # git push --tags
-  # Then a new version will be deployed on the self-hosted runner.
+  workflow_run:
+    workflows: ["Build and Push Docker Images"]
+    types:
+      - completed
+  workflow_dispatch:
 
 jobs:
-  Build-and-Deploy:
+  deploy:
     runs-on: [self-hosted, "${{ matrix.runner}}" ]
+    # Only deploy if the build workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     strategy:
       matrix:
         include:
@@ -24,6 +22,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Log in to GitHub Container Registry
+      run: |
+        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
     - name: Renew Tailscale certificate
       run: |
@@ -41,19 +43,17 @@ jobs:
         cat > .env << EOF
         GOVEE_API_KEY=${GOVEE_API_KEY}
         AIRPLAY_NAME=${AIRPLAY_NAME}
+        HOMESPEAKER_IMAGE=ghcr.io/${{ github.repository_owner }}/homespeaker:latest
         EOF
 
-    - name: Docker compose pull
+    - name: Pull latest images
       run: docker-compose pull
 
-    - name: Docker compose down
+    - name: Stop containers
       run: docker-compose down
 
-    - name: Docker compose up
-      env:
-        COMPOSE_DOCKER_CLI_BUILD: 1
-        DOCKER_BUILDKIT: 1
-      run: docker-compose up -d --build --remove-orphans
+    - name: Start containers (no build!)
+      run: docker-compose up -d --remove-orphans
 
     - name: Wait for services to be ready
       run: sleep 25
@@ -61,6 +61,9 @@ jobs:
     - name: Refresh browser on touchscreen
       run: |
         export DISPLAY=:0
-        xdotool key F5      
-      continue-on-error: 
-        true
+        xdotool key F5
+      continue-on-error: true
+
+    - name: Clean up old images
+      run: docker image prune -af --filter "until=168h"
+      continue-on-error: true
