@@ -9,6 +9,7 @@ namespace HomeSpeaker.Server2.Migrations
     public partial class AddRadioStreams : Migration
     {
         /// <inheritdoc />
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1814:Prefer jagged arrays over multidimensional", Justification = "EF Core migration generated code")]
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
