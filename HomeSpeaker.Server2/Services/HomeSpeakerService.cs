@@ -13,16 +13,18 @@ public class HomeSpeakerService : HomeSpeakerBase
     private readonly IMusicPlayer _musicPlayer;
     private readonly YoutubeService _youtubeService;
     private readonly PlaylistService _playlistService;
+    private readonly RadioStreamService _radioStreamService;
     private readonly List<IServerStreamWriter<StreamServerEvent>> _eventClients = new();
     private readonly List<IServerStreamWriter<StreamServerEvent>> _failedEvents = new();
 
-    public HomeSpeakerService(ILogger<HomeSpeakerService> logger, Mp3Library library, IMusicPlayer musicPlayer, YoutubeService youtubeService, PlaylistService playlistService)
+    public HomeSpeakerService(ILogger<HomeSpeakerService> logger, Mp3Library library, IMusicPlayer musicPlayer, YoutubeService youtubeService, PlaylistService playlistService, RadioStreamService radioStreamService)
     {
         _logger = logger ?? throw new System.ArgumentNullException(nameof(logger));
         _library = library ?? throw new System.ArgumentNullException(nameof(library));
         _musicPlayer = musicPlayer ?? throw new System.ArgumentNullException(nameof(musicPlayer));
         _youtubeService = youtubeService;
         _playlistService = playlistService;
+        _radioStreamService = radioStreamService;
         _musicPlayer.PlayerEvent += MusicPlayer_PlayerEvent;
     }
 
@@ -355,5 +357,108 @@ public class HomeSpeakerService : HomeSpeakerBase
         _logger.LogInformation("response: {response}", response);
 
         return new Empty();
+    }
+
+    public override async Task<GetRadioStreamsReply> GetRadioStreams(GetRadioStreamsRequest request, ServerCallContext context)
+    {
+        var streams = await _radioStreamService.GetAllStreamsAsync();
+        var reply = new GetRadioStreamsReply();
+
+        foreach (var stream in streams)
+        {
+            reply.Streams.Add(new RadioStreamMessage
+            {
+                Id = stream.Id,
+                Name = stream.Name,
+                Url = stream.Url,
+                FaviconFileName = stream.FaviconFileName ?? string.Empty,
+                PlayCount = stream.PlayCount,
+                DisplayOrder = stream.DisplayOrder,
+                CreatedAt = Timestamp.FromDateTime(stream.CreatedAt.ToUniversalTime()),
+                LastPlayedAt = stream.LastPlayedAt.HasValue
+                    ? Timestamp.FromDateTime(stream.LastPlayedAt.Value.ToUniversalTime())
+                    : null
+            });
+        }
+
+        return reply;
+    }
+
+    public override async Task<PlayRadioStreamReply> PlayRadioStream(PlayRadioStreamRequest request, ServerCallContext context)
+    {
+        _logger.LogInformation("PlayRadioStream request for stream ID {streamId}", request.StreamId);
+
+        var stream = await _radioStreamService.GetStreamByIdAsync(request.StreamId);
+        if (stream == null)
+        {
+            _logger.LogWarning("Stream {streamId} not found", request.StreamId);
+            return new PlayRadioStreamReply { Ok = false };
+        }
+
+        // Increment play count
+        await _radioStreamService.IncrementPlayCountAsync(request.StreamId);
+
+        // Play the stream
+        _musicPlayer.PlayStream(stream.Url);
+
+        return new PlayRadioStreamReply { Ok = true };
+    }
+
+    public override async Task<RadioStreamMessage> CreateRadioStream(CreateRadioStreamRequest request, ServerCallContext context)
+    {
+        _logger.LogInformation("CreateRadioStream request for {name}", request.Name);
+
+        var stream = await _radioStreamService.CreateStreamAsync(
+            request.Name,
+            request.Url,
+            string.IsNullOrWhiteSpace(request.FaviconUrl) ? null : request.FaviconUrl
+        );
+
+        return new RadioStreamMessage
+        {
+            Id = stream.Id,
+            Name = stream.Name,
+            Url = stream.Url,
+            FaviconFileName = stream.FaviconFileName ?? string.Empty,
+            PlayCount = stream.PlayCount,
+            DisplayOrder = stream.DisplayOrder,
+            CreatedAt = Timestamp.FromDateTime(stream.CreatedAt.ToUniversalTime())
+        };
+    }
+
+    public override async Task<RadioStreamMessage> UpdateRadioStream(UpdateRadioStreamRequest request, ServerCallContext context)
+    {
+        _logger.LogInformation("UpdateRadioStream request for stream ID {streamId}", request.StreamId);
+
+        await _radioStreamService.UpdateStreamAsync(
+            request.StreamId,
+            request.Name,
+            request.Url,
+            string.IsNullOrWhiteSpace(request.FaviconUrl) ? null : request.FaviconUrl
+        );
+
+        var stream = await _radioStreamService.GetStreamByIdAsync(request.StreamId);
+
+        return new RadioStreamMessage
+        {
+            Id = stream!.Id,
+            Name = stream.Name,
+            Url = stream.Url,
+            FaviconFileName = stream.FaviconFileName ?? string.Empty,
+            PlayCount = stream.PlayCount,
+            DisplayOrder = stream.DisplayOrder,
+            CreatedAt = Timestamp.FromDateTime(stream.CreatedAt.ToUniversalTime()),
+            LastPlayedAt = stream.LastPlayedAt.HasValue
+                ? Timestamp.FromDateTime(stream.LastPlayedAt.Value.ToUniversalTime())
+                : null
+        };
+    }
+
+    public override async Task<DeleteRadioStreamReply> DeleteRadioStream(DeleteRadioStreamRequest request, ServerCallContext context)
+    {
+        _logger.LogInformation("DeleteRadioStream request for stream ID {streamId}", request.StreamId);
+
+        await _radioStreamService.DeleteStreamAsync(request.StreamId);
+        return new DeleteRadioStreamReply { Success = true };
     }
 }

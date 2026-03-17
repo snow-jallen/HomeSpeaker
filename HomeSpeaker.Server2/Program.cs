@@ -33,6 +33,7 @@ builder.Services.AddHostedService<MigrationApplier>();
 builder.Services.AddHostedService<DailyAnchorWorker>();
 builder.Services.AddHostedService<AirPlayReceiverService>();
 builder.Services.AddScoped<PlaylistService>();
+builder.Services.AddScoped<RadioStreamService>();
 builder.Services.AddScoped<AnchorService>();
 builder.Services.AddScoped<IAnchorNotificationService, AnchorNotificationService>();
 builder.Services.AddSignalR();

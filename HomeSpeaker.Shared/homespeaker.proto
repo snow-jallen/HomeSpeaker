@@ -2,6 +2,7 @@
 
 import "google/protobuf/empty.proto";
 import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
 
 option csharp_namespace = "HomeSpeaker.Shared";
 
@@ -29,6 +30,11 @@ service HomeSpeaker {
 	rpc ReorderPlaylistSongs(ReorderPlaylistSongsRequest) returns (ReorderPlaylistSongsReply);
 	rpc UpdateQueue(UpdateQueueRequest) returns (UpdateQueueReply);
 	rpc ToggleBacklight(google.protobuf.Empty) returns (google.protobuf.Empty);
+	rpc GetRadioStreams(GetRadioStreamsRequest) returns (GetRadioStreamsReply);
+	rpc PlayRadioStream(PlayRadioStreamRequest) returns (PlayRadioStreamReply);
+	rpc CreateRadioStream(CreateRadioStreamRequest) returns (RadioStreamMessage);
+	rpc UpdateRadioStream(UpdateRadioStreamRequest) returns (RadioStreamMessage);
+	rpc DeleteRadioStream(DeleteRadioStreamRequest) returns (DeleteRadioStreamReply);
 }
 
 message UpdateQueueRequest {
@@ -160,3 +166,49 @@ message ReorderPlaylistSongsRequest{
 	repeated string SongPaths=2; // Songs in the new order
 }
 message ReorderPlaylistSongsReply{}
+
+message RadioStreamMessage {
+	int32 Id = 1;
+	string Name = 2;
+	string Url = 3;
+	string FaviconFileName = 4;
+	int32 PlayCount = 5;
+	int32 DisplayOrder = 6;
+	google.protobuf.Timestamp CreatedAt = 7;
+	google.protobuf.Timestamp LastPlayedAt = 8;
+}
+
+message GetRadioStreamsRequest {}
+
+message GetRadioStreamsReply {
+	repeated RadioStreamMessage Streams = 1;
+}
+
+message PlayRadioStreamRequest {
+	int32 StreamId = 1;
+}
+
+message PlayRadioStreamReply {
+	bool Ok = 1;
+}
+
+message CreateRadioStreamRequest {
+	string Name = 1;
+	string Url = 2;
+	string FaviconUrl = 3;
+}
+
+message UpdateRadioStreamRequest {
+	int32 StreamId = 1;
+	string Name = 2;
+	string Url = 3;
+	string FaviconUrl = 4;
+}
+
+message DeleteRadioStreamRequest {
+	int32 StreamId = 1;
+}
+
+message DeleteRadioStreamReply {
+	bool Success = 1;
+}

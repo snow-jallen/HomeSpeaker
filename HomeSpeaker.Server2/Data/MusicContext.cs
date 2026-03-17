@@ -14,6 +14,7 @@ public class MusicContext : DbContext
     public DbSet<AnchorDefinitionEntity> AnchorDefinitions { get; set; }
     public DbSet<UserAnchorEntity> UserAnchors { get; set; }
     public DbSet<DailyAnchorEntity> DailyAnchors { get; set; }
+    public DbSet<RadioStream> RadioStreams { get; set; }
 }
 
 public class Thumbnail
@@ -86,4 +87,16 @@ public class DailyAnchorEntity
     public string AnchorName { get; set; } = string.Empty; // Snapshot of name at time of creation
     public string AnchorDescription { get; set; } = string.Empty; // Snapshot of description at time of creation
     public DateTime CreatedAt { get; set; }
+}
+
+public class RadioStream
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+    public string? FaviconFileName { get; set; }
+    public int PlayCount { get; set; } = 0;
+    public int DisplayOrder { get; set; } = 0;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? LastPlayedAt { get; set; }
 }

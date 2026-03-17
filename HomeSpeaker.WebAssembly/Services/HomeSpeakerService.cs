@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using System.Diagnostics;
 using static HomeSpeaker.Shared.HomeSpeaker;
+using HomeSpeaker.WebAssembly.Models;
 
 namespace HomeSpeaker.WebAssembly.Services;
 
@@ -279,6 +280,72 @@ public class HomeSpeakerService
     {
         await client.ShuffleQueueAsync(new ShuffleQueueRequest());
         QueueChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    // Radio Stream methods
+    public async Task<IEnumerable<RadioStreamViewModel>> GetRadioStreamsAsync()
+    {
+        var reply = await client.GetRadioStreamsAsync(new GetRadioStreamsRequest());
+        return reply.Streams.Select(s => new RadioStreamViewModel
+        {
+            Id = s.Id,
+            Name = s.Name,
+            Url = s.Url,
+            FaviconFileName = string.IsNullOrWhiteSpace(s.FaviconFileName) ? null : s.FaviconFileName,
+            PlayCount = s.PlayCount,
+            DisplayOrder = s.DisplayOrder
+        });
+    }
+
+    public async Task PlayRadioStreamAsync(int streamId)
+    {
+        await client.PlayRadioStreamAsync(new PlayRadioStreamRequest { StreamId = streamId });
+    }
+
+    public async Task<RadioStreamViewModel> CreateRadioStreamAsync(string name, string url, string? faviconUrl)
+    {
+        var result = await client.CreateRadioStreamAsync(new CreateRadioStreamRequest
+        {
+            Name = name,
+            Url = url,
+            FaviconUrl = faviconUrl ?? string.Empty
+        });
+
+        return new RadioStreamViewModel
+        {
+            Id = result.Id,
+            Name = result.Name,
+            Url = result.Url,
+            FaviconFileName = string.IsNullOrWhiteSpace(result.FaviconFileName) ? null : result.FaviconFileName,
+            PlayCount = result.PlayCount,
+            DisplayOrder = result.DisplayOrder
+        };
+    }
+
+    public async Task<RadioStreamViewModel> UpdateRadioStreamAsync(int streamId, string name, string url, string? faviconUrl)
+    {
+        var result = await client.UpdateRadioStreamAsync(new UpdateRadioStreamRequest
+        {
+            StreamId = streamId,
+            Name = name,
+            Url = url,
+            FaviconUrl = faviconUrl ?? string.Empty
+        });
+
+        return new RadioStreamViewModel
+        {
+            Id = result.Id,
+            Name = result.Name,
+            Url = result.Url,
+            FaviconFileName = string.IsNullOrWhiteSpace(result.FaviconFileName) ? null : result.FaviconFileName,
+            PlayCount = result.PlayCount,
+            DisplayOrder = result.DisplayOrder
+        };
+    }
+
+    public async Task DeleteRadioStreamAsync(int streamId)
+    {
+        await client.DeleteRadioStreamAsync(new DeleteRadioStreamRequest { StreamId = streamId });
     }
 
     public event EventHandler<string>? StatusChanged;
