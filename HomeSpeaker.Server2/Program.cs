@@ -2,6 +2,8 @@ using HomeSpeaker.Server2;
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Shared;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using System.Runtime.InteropServices;
 
@@ -77,7 +79,53 @@ builder.Services.AddSingleton<BloodSugarService>();
 builder.Services.AddHttpClient<ForecastService>();
 builder.Services.AddSingleton<ForecastService>();
 
+// Add HttpClient for RadioStreamService (favicon downloads)
+builder.Services.AddHttpClient<RadioStreamService>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AutomaticDecompression = System.Net.DecompressionMethods.All
+    });
+
+// Add named HttpClient for backlight control with SSL bypass
+builder.Services.AddHttpClient("BacklightClient", client =>
+{
+    client.BaseAddress = new Uri("https://192.168.1.111:5001");
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    ClientCertificateOptions = ClientCertificateOption.Manual,
+    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+});
+
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<MusicContext>("database");
+
 var app = builder.Build();
+
+// Configure SQLite for optimal performance
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<MusicContext>();
+    try
+    {
+        // WAL mode: Better concurrency, faster writes
+        db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
+        // NORMAL synchronous mode: Faster, still safe
+        db.Database.ExecuteSqlRaw("PRAGMA synchronous=NORMAL;");
+        // 64MB cache for better performance
+        db.Database.ExecuteSqlRaw("PRAGMA cache_size=-64000;");
+        // Store temp tables in memory
+        db.Database.ExecuteSqlRaw("PRAGMA temp_store=MEMORY;");
+        // 256MB memory-mapped I/O for faster reads
+        db.Database.ExecuteSqlRaw("PRAGMA mmap_size=268435456;");
+
+        app.Logger.LogInformation("SQLite performance optimizations applied");
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Failed to apply SQLite optimizations, continuing with defaults");
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -95,6 +143,27 @@ app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
 //app.UseHttpsRedirection();
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(x => new
+            {
+                name = x.Key,
+                status = x.Value.Status.ToString(),
+                description = x.Value.Description,
+                duration = x.Value.Duration.TotalMilliseconds
+            }),
+            totalDuration = report.TotalDuration.TotalMilliseconds,
+            timestamp = DateTime.UtcNow
+        };
+        await context.Response.WriteAsJsonAsync(response);
+    }
+});
 app.UseRouting();
 app.UseCors(LocalCorsPolicy);
 app.MapRazorPages();

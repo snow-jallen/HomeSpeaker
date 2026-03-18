@@ -14,10 +14,11 @@ public class HomeSpeakerService : HomeSpeakerBase
     private readonly YoutubeService _youtubeService;
     private readonly PlaylistService _playlistService;
     private readonly RadioStreamService _radioStreamService;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly List<IServerStreamWriter<StreamServerEvent>> _eventClients = new();
     private readonly List<IServerStreamWriter<StreamServerEvent>> _failedEvents = new();
 
-    public HomeSpeakerService(ILogger<HomeSpeakerService> logger, Mp3Library library, IMusicPlayer musicPlayer, YoutubeService youtubeService, PlaylistService playlistService, RadioStreamService radioStreamService)
+    public HomeSpeakerService(ILogger<HomeSpeakerService> logger, Mp3Library library, IMusicPlayer musicPlayer, YoutubeService youtubeService, PlaylistService playlistService, RadioStreamService radioStreamService, IHttpClientFactory httpClientFactory)
     {
         _logger = logger ?? throw new System.ArgumentNullException(nameof(logger));
         _library = library ?? throw new System.ArgumentNullException(nameof(library));
@@ -25,6 +26,7 @@ public class HomeSpeakerService : HomeSpeakerBase
         _youtubeService = youtubeService;
         _playlistService = playlistService;
         _radioStreamService = radioStreamService;
+        _httpClientFactory = httpClientFactory;
         _musicPlayer.PlayerEvent += MusicPlayer_PlayerEvent;
     }
 
@@ -337,16 +339,15 @@ public class HomeSpeakerService : HomeSpeakerBase
 
     public override async Task<Empty> ToggleBacklight(Empty request, ServerCallContext context)
     {
-        var handler = new HttpClientHandler();
-        handler.ClientCertificateOptions = ClientCertificateOption.Manual;
-        handler.ServerCertificateCustomValidationCallback =
-            (httpRequestMessage, cert, cetChain, policyErrors) =>
-            {
-                return true;
-            };
+        var client = _httpClientFactory.CreateClient("BacklightClient");
 
-        var client = new HttpClient(handler) { BaseAddress = new Uri("https://192.168.1.111:5001") };
-        var currentBrightness = int.Parse(await client.GetStringAsync("/get"));
+        var currentBrightnessStr = await client.GetStringAsync("/get");
+        if (!int.TryParse(currentBrightnessStr, out var currentBrightness))
+        {
+            _logger.LogWarning("Failed to parse brightness value: {value}", currentBrightnessStr);
+            return new Empty();
+        }
+
         var newBrightness = currentBrightness switch
         {
             > 200 => 20,

@@ -7,7 +7,65 @@ public class MusicContext : DbContext
     public MusicContext(DbContextOptions<MusicContext> options) : base(options)
     {
 
-    }    public DbSet<Thumbnail> Thumbnails { get; set; }
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // RadioStream indexes
+        modelBuilder.Entity<RadioStream>()
+            .HasIndex(s => s.PlayCount)
+            .IsDescending();
+
+        modelBuilder.Entity<RadioStream>()
+            .HasIndex(s => s.DisplayOrder);
+
+        modelBuilder.Entity<RadioStream>()
+            .HasIndex(s => s.Name);
+
+        // Playlist indexes
+        modelBuilder.Entity<Playlist>()
+            .HasIndex(p => p.Name);
+
+        // PlaylistItem indexes
+        modelBuilder.Entity<PlaylistItem>()
+            .HasIndex(pi => pi.Order);
+
+        modelBuilder.Entity<PlaylistItem>()
+            .HasIndex(pi => new { pi.PlaylistId, pi.SongPath });
+
+        // Impression indexes
+        modelBuilder.Entity<Impression>()
+            .HasIndex(i => i.Timestamp);
+
+        modelBuilder.Entity<Impression>()
+            .HasIndex(i => i.SongPath);
+
+        modelBuilder.Entity<Impression>()
+            .HasIndex(i => i.PlayedBy);
+
+        // Thumbnail indexes
+        modelBuilder.Entity<Thumbnail>()
+            .HasIndex(t => new { t.Artist, t.Album });
+
+        // AnchorDefinitionEntity indexes
+        modelBuilder.Entity<AnchorDefinitionEntity>()
+            .HasIndex(ad => new { ad.IsActive, ad.Name });
+
+        // UserAnchorEntity indexes
+        modelBuilder.Entity<UserAnchorEntity>()
+            .HasIndex(ua => new { ua.UserId, ua.AnchorDefinitionId })
+            .IsUnique();
+
+        // DailyAnchorEntity indexes
+        modelBuilder.Entity<DailyAnchorEntity>()
+            .HasIndex(da => new { da.UserId, da.Date });
+
+        modelBuilder.Entity<DailyAnchorEntity>()
+            .HasIndex(da => new { da.Date, da.IsCompleted });
+    }
+    public DbSet<Thumbnail> Thumbnails { get; set; }
     public DbSet<Playlist> Playlists { get; set; }
     public DbSet<PlaylistItem> PlaylistItems { get; set; }
     public DbSet<Impression> Impressions { get; set; }

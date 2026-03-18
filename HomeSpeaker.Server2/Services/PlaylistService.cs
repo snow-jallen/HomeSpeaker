@@ -22,9 +22,17 @@ public class PlaylistService
 
     public async Task<IEnumerable<Shared.Playlist>> GetPlaylistsAsync()
     {
-        var dbPlaylists = await _dbContext.Playlists.Include(p => p.Songs).ToListAsync();
+        var dbPlaylists = await _dbContext.Playlists.Include(p => p.Songs).AsNoTracking().ToListAsync();
         _logger.LogInformation("Found {count} playlists in database.", dbPlaylists.Count);
-        return dbPlaylists.Select(p => new Shared.Playlist(p.Name, p.Songs.OrderBy(s => s.Order).Select(i => findSong(i))));
+
+        // Performance: Build dictionary once instead of O(n) lookup for each song
+        var songsByPath = _mp3Library.Songs.ToDictionary(s => s.Path, s => s);
+
+        return dbPlaylists.Select(p => new Shared.Playlist(
+            p.Name,
+            p.Songs.OrderBy(s => s.Order)
+                   .Select(i => songsByPath.GetValueOrDefault(i.SongPath))
+        ));
     }
 
     public async Task AppendSongToPlaylistAsync(string playlistName, string songPath)
@@ -73,7 +81,7 @@ public class PlaylistService
 
     public async Task PlayPlaylistAsync(string playlistName)
     {
-        var playlist = await _dbContext.Playlists.Include(p => p.Songs).FirstOrDefaultAsync(p => p.Name == playlistName);
+        var playlist = await _dbContext.Playlists.Include(p => p.Songs).AsNoTracking().FirstOrDefaultAsync(p => p.Name == playlistName);
         if (playlist == null)
         {
             _logger.LogWarning("Asked to play playlist {playlistName} but it doesn't exist.", playlistName);
@@ -82,11 +90,16 @@ public class PlaylistService
 
         _logger.LogInformation("Beginning to play playlist {playlistName}", playlistName);
 
+        // Performance: Build dictionary once instead of O(n) lookup for each song
+        var songsByPath = _mp3Library.Songs.ToDictionary(s => s.Path, s => s);
+
         _player.Stop();
         foreach (var playlistItem in playlist.Songs.OrderBy(s => s.Order))
         {
-            var song = _mp3Library.Songs.Single(s => s.Path == playlistItem.SongPath);
-            _player.EnqueueSong(song);
+            if (songsByPath.TryGetValue(playlistItem.SongPath, out var song))
+            {
+                _player.EnqueueSong(song);
+            }
         }
     }
 
@@ -150,12 +163,13 @@ public class PlaylistService
         var songPathsList = songPathsInNewOrder.ToList();
         _logger.LogInformation("Reordering {songCount} songs in playlist {playlistName}", songPathsList.Count, playlistName);
 
-        // Update the order of existing songs
+        // Performance: Build dictionary for O(1) lookup instead of O(n²) nested loop
+        var songsByPath = playlist.Songs.ToDictionary(s => s.SongPath, s => s);
+
         for (int i = 0; i < songPathsList.Count; i++)
         {
             var songPath = songPathsList[i];
-            var playlistItem = playlist.Songs.FirstOrDefault(s => s.SongPath == songPath);
-            if (playlistItem is not null)
+            if (songsByPath.TryGetValue(songPath, out var playlistItem))
             {
                 playlistItem.Order = i;
             }

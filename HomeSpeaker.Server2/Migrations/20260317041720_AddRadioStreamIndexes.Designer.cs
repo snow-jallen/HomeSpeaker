@@ -3,6 +3,7 @@ using System;
 using HomeSpeaker.Server2.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HomeSpeaker.Server2.Migrations
 {
     [DbContext(typeof(MusicContext))]
-    partial class MusicContextModelSnapshot : ModelSnapshot
+    [Migration("20260317041720_AddRadioStreamIndexes")]
+    partial class AddRadioStreamIndexes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.0");
@@ -41,8 +44,6 @@ namespace HomeSpeaker.Server2.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("IsActive", "Name");
 
                     b.ToTable("AnchorDefinitions");
                 });
@@ -82,10 +83,6 @@ namespace HomeSpeaker.Server2.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Date", "IsCompleted");
-
-                    b.HasIndex("UserId", "Date");
-
                     b.ToTable("DailyAnchors");
                 });
 
@@ -108,12 +105,6 @@ namespace HomeSpeaker.Server2.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PlayedBy");
-
-                    b.HasIndex("SongPath");
-
-                    b.HasIndex("Timestamp");
-
                     b.ToTable("Impressions");
                 });
 
@@ -128,8 +119,6 @@ namespace HomeSpeaker.Server2.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Name");
 
                     b.ToTable("Playlists");
                 });
@@ -152,9 +141,7 @@ namespace HomeSpeaker.Server2.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Order");
-
-                    b.HasIndex("PlaylistId", "SongPath");
+                    b.HasIndex("PlaylistId");
 
                     b.ToTable("PlaylistItems");
                 });
@@ -220,8 +207,6 @@ namespace HomeSpeaker.Server2.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Artist", "Album");
-
                     b.ToTable("Thumbnails");
                 });
 
@@ -244,9 +229,6 @@ namespace HomeSpeaker.Server2.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AnchorDefinitionId");
-
-                    b.HasIndex("UserId", "AnchorDefinitionId")
-                        .IsUnique();
 
                     b.ToTable("UserAnchors");
                 });

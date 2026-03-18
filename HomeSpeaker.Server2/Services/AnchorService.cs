@@ -23,6 +23,7 @@ public class AnchorService
         var definitions = await _dbContext.AnchorDefinitions
             .Where(ad => ad.IsActive)
             .OrderBy(ad => ad.Name)
+            .AsNoTracking()
             .ToListAsync();
 
         return definitions.Select(d => new AnchorDefinition(d.Id, d.Name, d.Description, d.IsActive));
@@ -92,6 +93,7 @@ public class AnchorService
             .Include(ua => ua.AnchorDefinition)
             .Where(ua => ua.UserId == userId)
             .OrderBy(ua => ua.AnchorDefinition!.Name)
+            .AsNoTracking()
             .ToListAsync();
 
         return userAnchors.Select(ua => new UserAnchor(ua.Id, ua.UserId, ua.AnchorDefinitionId, ua.CreatedAt));
@@ -161,6 +163,7 @@ public class AnchorService
         var userAnchors = await _dbContext.UserAnchors
             .Include(ua => ua.AnchorDefinition)
             .Where(ua => ua.UserId == userId && ua.AnchorDefinition!.IsActive)
+            .AsNoTracking()
             .ToListAsync();
 
         if (!userAnchors.Any())
@@ -192,10 +195,11 @@ public class AnchorService
         var dailyAnchors = await _dbContext.DailyAnchors
             .Where(da => da.UserId == userId && da.Date == date)
             .OrderBy(da => da.AnchorName)
+            .AsNoTracking()
             .ToListAsync();
 
         return dailyAnchors.Select(da => new DailyAnchor(
-            da.Id, da.UserId, da.AnchorDefinitionId, da.Date, da.IsCompleted, 
+            da.Id, da.UserId, da.AnchorDefinitionId, da.Date, da.IsCompleted,
             da.CompletedAt ?? DateTime.MinValue, da.AnchorName, da.AnchorDescription));
     }
 
@@ -205,10 +209,11 @@ public class AnchorService
             .Where(da => da.UserId == userId && da.Date >= startDate && da.Date <= endDate)
             .OrderBy(da => da.Date)
             .ThenBy(da => da.AnchorName)
+            .AsNoTracking()
             .ToListAsync();
 
         return dailyAnchors.Select(da => new DailyAnchor(
-            da.Id, da.UserId, da.AnchorDefinitionId, da.Date, da.IsCompleted, 
+            da.Id, da.UserId, da.AnchorDefinitionId, da.Date, da.IsCompleted,
             da.CompletedAt ?? DateTime.MinValue, da.AnchorName, da.AnchorDescription));
     }
 
@@ -239,6 +244,7 @@ public class AnchorService
             .Select(ua => ua.UserId)
             .Distinct()
             .OrderBy(u => u)
+            .AsNoTracking()
             .ToListAsync();
 
         return users;
@@ -255,6 +261,7 @@ public class AnchorService
             .OrderBy(da => da.UserId)
             .ThenBy(da => da.Date)
             .ThenBy(da => da.AnchorName)
+            .AsNoTracking()
             .ToListAsync();
 
         var result = new Dictionary<string, List<DailyAnchor>>();
@@ -294,6 +301,7 @@ public class AnchorService
             .Where(ua => ua.AnchorDefinition!.IsActive)
             .Select(ua => ua.UserId)
             .Distinct()
+            .AsNoTracking()
             .ToListAsync();
 
         foreach (var userId in usersWithAnchors)

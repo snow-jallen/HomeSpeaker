@@ -1,5 +1,6 @@
 using HomeSpeaker.Server2.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace HomeSpeaker.Server2.Services;
 
@@ -8,23 +9,40 @@ public class RadioStreamService
     private readonly MusicContext _dbContext;
     private readonly ILogger<RadioStreamService> _logger;
     private readonly IWebHostEnvironment _environment;
+    private readonly IMemoryCache _cache;
+    private readonly HttpClient _httpClient;
+
+    private const string CACHE_KEY = "radio_streams_all";
+    private static readonly TimeSpan CACHE_DURATION = TimeSpan.FromMinutes(5);
 
     public RadioStreamService(
         MusicContext dbContext,
         ILogger<RadioStreamService> logger,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IMemoryCache cache,
+        HttpClient httpClient)
     {
         _dbContext = dbContext;
         _logger = logger;
         _environment = environment;
+        _cache = cache;
+        _httpClient = httpClient;
+        _httpClient.Timeout = TimeSpan.FromSeconds(10);
     }
 
     public async Task<IEnumerable<RadioStream>> GetAllStreamsAsync()
     {
-        return await _dbContext.RadioStreams
-            .OrderByDescending(s => s.PlayCount)
-            .ThenBy(s => s.Name)
-            .ToListAsync();
+        return await _cache.GetOrCreateAsync(CACHE_KEY, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CACHE_DURATION;
+            _logger.LogDebug("Cache miss - loading radio streams from database");
+
+            return await _dbContext.RadioStreams
+                .OrderByDescending(s => s.PlayCount)
+                .ThenBy(s => s.Name)
+                .AsNoTracking()  // Performance: Read-only query
+                .ToListAsync();
+        }) ?? Enumerable.Empty<RadioStream>();
     }
 
     public async Task<RadioStream?> GetStreamByIdAsync(int id)
@@ -50,6 +68,9 @@ public class RadioStreamService
 
         await _dbContext.RadioStreams.AddAsync(stream);
         await _dbContext.SaveChangesAsync();
+
+        // Invalidate cache
+        _cache.Remove(CACHE_KEY);
 
         return stream;
     }
@@ -78,6 +99,9 @@ public class RadioStreamService
         }
 
         await _dbContext.SaveChangesAsync();
+
+        // Invalidate cache
+        _cache.Remove(CACHE_KEY);
     }
 
     public async Task DeleteStreamAsync(int id)
@@ -93,6 +117,9 @@ public class RadioStreamService
 
         _dbContext.RadioStreams.Remove(stream);
         await _dbContext.SaveChangesAsync();
+
+        // Invalidate cache
+        _cache.Remove(CACHE_KEY);
     }
 
     public async Task IncrementPlayCountAsync(int streamId)
@@ -103,16 +130,16 @@ public class RadioStreamService
         stream.PlayCount++;
         stream.LastPlayedAt = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync();
+
+        // Invalidate cache
+        _cache.Remove(CACHE_KEY);
     }
 
     private async Task<string?> DownloadFaviconAsync(string streamName, string faviconUrl)
     {
         try
         {
-            using var httpClient = new HttpClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(10);
-
-            var response = await httpClient.GetAsync(faviconUrl);
+            var response = await _httpClient.GetAsync(faviconUrl);
             if (!response.IsSuccessStatusCode) return null;
 
             var contentType = response.Content.Headers.ContentType?.MediaType;
