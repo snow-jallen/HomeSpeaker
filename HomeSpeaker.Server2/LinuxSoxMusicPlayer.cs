@@ -190,10 +190,17 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     private void PlayerProcess_Exited(object? sender, EventArgs e)
     {
         _logger.LogInformation("Finished playing a song.");
+        _lastPlayedSong = currentSong;
         currentSong = null;
+        
         if (_songQueue.Count > 0)
         {
             playNextSongInQueue();
+        }
+        else if (_repeatMode && _lastPlayedSong != null)
+        {
+            _logger.LogInformation("Repeat mode on, replaying last song: {songName}", _lastPlayedSong.Name);
+            PlaySong(_lastPlayedSong);
         }
         else
         {
@@ -335,8 +342,74 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     }
 
     private readonly ConcurrentQueue<Song> _songQueue = new();
+    private Song? _lastPlayedSong;
+    private bool _repeatMode = false;
+    private CancellationTokenSource? _sleepTimerCts;
+    private DateTime? _sleepTimerEndTime;
 
     public event EventHandler<string>? PlayerEvent;
 
     public IEnumerable<Song> SongQueue => _songQueue.ToArray();
+    
+    public bool RepeatMode
+    {
+        get => _repeatMode;
+        set
+        {
+            _repeatMode = value;
+            _logger.LogInformation("Repeat mode set to {repeatMode}", value);
+            PlayerEvent?.Invoke(this, value ? "Repeat mode: ON" : "Repeat mode: OFF");
+        }
+    }
+    
+    public bool SleepTimerActive => _sleepTimerCts != null && !_sleepTimerCts.IsCancellationRequested;
+    
+    public TimeSpan? SleepTimerRemaining => _sleepTimerEndTime.HasValue 
+        ? _sleepTimerEndTime.Value - DateTime.Now 
+        : null;
+    
+    public void SetSleepTimer(int minutes)
+    {
+        CancelSleepTimer();
+        _sleepTimerCts = new CancellationTokenSource();
+        _sleepTimerEndTime = DateTime.Now.AddMinutes(minutes);
+        
+        Task.Run(async () =>
+        {
+            try
+            {
+                _logger.LogInformation("Sleep timer set for {minutes} minutes", minutes);
+                PlayerEvent?.Invoke(this, $"Sleep timer: {minutes} min");
+                await Task.Delay(TimeSpan.FromMinutes(minutes), _sleepTimerCts.Token);
+                
+                _logger.LogInformation("Sleep timer expired, stopping playback");
+                Stop();
+                ClearQueue();
+                PlayerEvent?.Invoke(this, "Sleep timer: stopped");
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.LogInformation("Sleep timer cancelled");
+            }
+            finally
+            {
+                _sleepTimerEndTime = null;
+                _sleepTimerCts?.Dispose();
+                _sleepTimerCts = null;
+            }
+        });
+    }
+    
+    public void CancelSleepTimer()
+    {
+        if (_sleepTimerCts != null)
+        {
+            _sleepTimerCts.Cancel();
+            _sleepTimerCts.Dispose();
+            _sleepTimerCts = null;
+            _sleepTimerEndTime = null;
+            _logger.LogInformation("Sleep timer cancelled");
+            PlayerEvent?.Invoke(this, "Sleep timer: cancelled");
+        }
+    }
 }

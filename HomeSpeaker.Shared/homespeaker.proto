@@ -35,6 +35,11 @@ service HomeSpeaker {
 	rpc CreateRadioStream(CreateRadioStreamRequest) returns (RadioStreamMessage);
 	rpc UpdateRadioStream(UpdateRadioStreamRequest) returns (RadioStreamMessage);
 	rpc DeleteRadioStream(DeleteRadioStreamRequest) returns (DeleteRadioStreamReply);
+	rpc SetRepeatMode(SetRepeatModeRequest) returns (SetRepeatModeReply);
+	rpc GetRepeatMode(GetRepeatModeRequest) returns (GetRepeatModeReply);
+	rpc SetSleepTimer(SetSleepTimerRequest) returns (SetSleepTimerReply);
+	rpc CancelSleepTimer(CancelSleepTimerRequest) returns (CancelSleepTimerReply);
+	rpc GetSleepTimer(GetSleepTimerRequest) returns (GetSleepTimerReply);
 }
 
 message UpdateQueueRequest {
@@ -213,4 +218,39 @@ message DeleteRadioStreamRequest {
 
 message DeleteRadioStreamReply {
 	bool Success = 1;
+}
+
+message SetRepeatModeRequest {
+	bool RepeatMode = 1;
+}
+
+message SetRepeatModeReply {
+	bool Success = 1;
+}
+
+message GetRepeatModeRequest {}
+
+message GetRepeatModeReply {
+	bool RepeatMode = 1;
+}
+
+message SetSleepTimerRequest {
+	int32 Minutes = 1;
+}
+
+message SetSleepTimerReply {
+	bool Success = 1;
+}
+
+message CancelSleepTimerRequest {}
+
+message CancelSleepTimerReply {
+	bool Success = 1;
+}
+
+message GetSleepTimerRequest {}
+
+message GetSleepTimerReply {
+	bool Active = 1;
+	int32 RemainingSeconds = 2;
 }

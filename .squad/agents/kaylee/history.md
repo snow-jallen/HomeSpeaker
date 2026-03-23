@@ -115,6 +115,16 @@
 - HTML: `wwwroot/index.html`
 - Theme: `wwwroot/css/bootswatch/dist/darkly/bootstrap.min.css`
 
+### 2026 — Navigation & Dashboard Refactor (Kaylee)
+
+- **Music.razor** created at `/music` — moved the music library (search, artist/album list, pagination) out of `Index.razor`. Music page is purely the library browser; no health monitor flags.
+- **Index.razor** rewritten as a smart home dashboard for the 7" RPi touch screen. Shows: (A) Now Playing card with `GetStatusReply` data (song title, artist, album, progress bar, volume) auto-refreshed every 5s via `System.Threading.Timer` + `InvokeAsync`; (B) feature-flagged health monitors; (C) 4-button quick-access grid.
+- **Folders.razor** now redirects to `/music` via `NavigationManager.NavigateTo("/music", replace: true)`.
+- **NavMenu.razor**: "Folders" nav item replaced with "Music" (`href="music"`, `fa-music` icon).
+- `GetStatusReply` proto: `StilPlaying` (single-l typo), `CurrentSong` (Name/Artist/Album), `PercentComplete`, `Volume`.
+- Pages implementing `Timer` must `@implements IDisposable` and dispose the timer.
+- `FeaturesResponse` is a local private record in each page's `@code` block.
+
 ## Cross-Team Updates (2026-03-23)
 **From wash:** Security audit complete. Critical findings: no auth/authz implemented, health data endpoints exposed, cache DoS risks, path traversal vulnerabilities. Recommends immediate auth layer implementation.
 **From mal:** Repeat mode, sleep timer, recently played, and keyboard shortcuts implemented. ~15 files modified across Server2 and WebAssembly. Feature-complete and ready for deployment.

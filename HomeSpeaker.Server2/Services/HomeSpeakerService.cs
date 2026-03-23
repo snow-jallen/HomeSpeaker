@@ -1,5 +1,6 @@
 ﻿using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
+using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Shared;
 using static HomeSpeaker.Shared.HomeSpeaker;
@@ -18,7 +19,7 @@ public class HomeSpeakerService : HomeSpeakerBase
     private readonly List<IServerStreamWriter<StreamServerEvent>> _eventClients = new();
     private readonly List<IServerStreamWriter<StreamServerEvent>> _failedEvents = new();
 
-    public HomeSpeakerService(ILogger<HomeSpeakerService> logger, Mp3Library library, IMusicPlayer musicPlayer, YoutubeService youtubeService, PlaylistService playlistService, RadioStreamService radioStreamService, IHttpClientFactory httpClientFactory)
+    public HomeSpeakerService(ILogger<HomeSpeakerService> logger, Mp3Library library, IMusicPlayer musicPlayer, YoutubeService youtubeService, PlaylistService playlistService, RadioStreamService radioStreamService, IHttpClientFactory httpClientFactory, IServiceProvider serviceProvider)
     {
         _logger = logger ?? throw new System.ArgumentNullException(nameof(logger));
         _library = library ?? throw new System.ArgumentNullException(nameof(library));
@@ -27,8 +28,40 @@ public class HomeSpeakerService : HomeSpeakerBase
         _playlistService = playlistService;
         _radioStreamService = radioStreamService;
         _httpClientFactory = httpClientFactory;
+        _serviceProvider = serviceProvider;
+        _youtubeService = youtubeService;
+        _playlistService = playlistService;
+        _radioStreamService = radioStreamService;
+        _httpClientFactory = httpClientFactory;
         _musicPlayer.PlayerEvent += MusicPlayer_PlayerEvent;
+        
+        // Track song plays as impressions
+        _musicPlayer.PlayerEvent += async (sender, msg) =>
+        {
+            if (msg.StartsWith("Played: "))
+            {
+                var songName = msg.Substring(8);
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<MusicContext>();
+                    db.Impressions.Add(new Impression
+                    {
+                        SongPath = _musicPlayer.Status?.CurrentSong?.Path ?? "",
+                        Timestamp = DateTime.UtcNow,
+                        PlayedBy = "Server"
+                    });
+                    await db.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error saving impression for {songName}", songName);
+                }
+            }
+        };
     }
+
+    private readonly IServiceProvider _serviceProvider;
 
     private async void MusicPlayer_PlayerEvent(object? sender, string message)
     {
@@ -463,5 +496,41 @@ public class HomeSpeakerService : HomeSpeakerBase
 
         await _radioStreamService.DeleteStreamAsync(request.StreamId);
         return new DeleteRadioStreamReply { Success = true };
+    }
+
+    public override Task<SetRepeatModeReply> SetRepeatMode(SetRepeatModeRequest request, ServerCallContext context)
+    {
+        _logger.LogInformation("SetRepeatMode request: {repeatMode}", request.RepeatMode);
+        _musicPlayer.RepeatMode = request.RepeatMode;
+        return Task.FromResult(new SetRepeatModeReply { Success = true });
+    }
+
+    public override Task<GetRepeatModeReply> GetRepeatMode(GetRepeatModeRequest request, ServerCallContext context)
+    {
+        return Task.FromResult(new GetRepeatModeReply { RepeatMode = _musicPlayer.RepeatMode });
+    }
+
+    public override Task<SetSleepTimerReply> SetSleepTimer(SetSleepTimerRequest request, ServerCallContext context)
+    {
+        _logger.LogInformation("SetSleepTimer request: {minutes} minutes", request.Minutes);
+        _musicPlayer.SetSleepTimer(request.Minutes);
+        return Task.FromResult(new SetSleepTimerReply { Success = true });
+    }
+
+    public override Task<CancelSleepTimerReply> CancelSleepTimer(CancelSleepTimerRequest request, ServerCallContext context)
+    {
+        _logger.LogInformation("CancelSleepTimer request");
+        _musicPlayer.CancelSleepTimer();
+        return Task.FromResult(new CancelSleepTimerReply { Success = true });
+    }
+
+    public override Task<GetSleepTimerReply> GetSleepTimer(GetSleepTimerRequest request, ServerCallContext context)
+    {
+        var remaining = _musicPlayer.SleepTimerRemaining;
+        return Task.FromResult(new GetSleepTimerReply
+        {
+            Active = _musicPlayer.SleepTimerActive,
+            RemainingSeconds = remaining.HasValue ? (int)remaining.Value.TotalSeconds : 0
+        });
     }
 }

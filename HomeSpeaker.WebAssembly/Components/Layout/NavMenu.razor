@@ -4,76 +4,260 @@
 @inject ILogger<NavMenu> logger
 @inject IConfiguration config
 
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <div class="navbar-brand">
-            <a class="navbar-brand" href="">Home Speaker</a>
-            @if (showLogs ?? false)
-            {
-                <NavLink href="aspire"><img src="/aspire-dashboard.png" width="24" alt="aspire" /></NavLink>
-            }
-        </div>
-        <div class="playback-controls d-flex align-items-center">
-            <PlayControls />
-        </div>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
+<div class="nav-header">
+    <a class="brand-logo" href="">
+        <i class="fas fa-music"></i>
+        <span class="brand-text">Home Speaker</span>
+    </a>
+    @if (showLogs ?? false)
+    {
+        <NavLink href="aspire" class="aspire-link" title="Aspire Dashboard">
+            <img src="/aspire-dashboard.png" width="20" alt="aspire" />
+        </NavLink>
+    }
 </div>
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="oi oi-home" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="folders">
-                <span class="oi oi-folder" aria-hidden="true"></span> Folders
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="queue">
-                <span class="oi oi-list" aria-hidden="true"></span> Queue
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="streams">
-                <span class="oi oi-wifi" aria-hidden="true"></span> Streams
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="youtube">
-                <span class="oi oi-video" aria-hidden="true"></span> YouTube
-            </NavLink>
-        </div>        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="playlists">
-                <span class="oi oi-list-rich" aria-hidden="true"></span> Playlists
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="anchors">
-                <span class="oi oi-target" aria-hidden="true"></span> Anchors
-            </NavLink>
-        </div>
+<div class="playback-section">
+    <div class="section-label">Playback</div>
+    <PlayControls />
+</div>
+
+<button title="Navigation menu" class="navbar-toggler d-lg-none" @onclick="ToggleNavMenu">
+    <i class="fas fa-bars"></i>
+</button>
+
+<nav class="@NavMenuCssClass nav-menu" @onclick="ToggleNavMenu">
+    <div class="nav-section">
+        <div class="section-label">Library</div>
+        <NavLink class="nav-item" href="" Match="NavLinkMatch.All">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </NavLink>
+        <NavLink class="nav-item" href="music">
+            <i class="fas fa-music"></i>
+            <span>Music</span>
+        </NavLink>
+        <NavLink class="nav-item" href="playlists">
+            <i class="fas fa-list-ul"></i>
+            <span>Playlists</span>
+        </NavLink>
+        <NavLink class="nav-item" href="recently-played">
+            <i class="fas fa-history"></i>
+            <span>Recently Played</span>
+        </NavLink>
+    </div>
+    
+    <div class="nav-section">
+        <div class="section-label">Playback</div>
+        <NavLink class="nav-item" href="queue">
+            <i class="fas fa-stream"></i>
+            <span>Queue</span>
+        </NavLink>
+        <NavLink class="nav-item" href="streams">
+            <i class="fas fa-podcast"></i>
+            <span>Streams</span>
+        </NavLink>
+        <NavLink class="nav-item" href="youtube">
+            <i class="fab fa-youtube"></i>
+            <span>YouTube</span>
+        </NavLink>
+    </div>
+    
+    <div class="nav-section">
+        <div class="section-label">Settings</div>
+        <NavLink class="nav-item" href="anchors">
+            <i class="fas fa-anchor"></i>
+            <span>Anchors</span>
+        </NavLink>
         @if (nightscoutUrl?.Length > 0)
         {
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="nightscout">
-                    <span class="oi oi-pulse" aria-hidden="true"></span> NightScout
-                </NavLink>
-            </div>
+            <NavLink class="nav-item" href="nightscout">
+                <i class="fas fa-heartbeat"></i>
+                <span>NightScout</span>
+            </NavLink>
         }
-    </nav>
-</div>
+    </div>
+</nav>
+
+<style>
+    .nav-header {
+        padding: var(--hs-space-md);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .brand-logo {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        text-decoration: none;
+        color: var(--hs-text-primary);
+        font-weight: 700;
+        font-size: 1.1rem;
+        font-family: var(--hs-font-heading);
+        transition: color 0.2s ease;
+    }
+    
+    .brand-logo:hover {
+        color: var(--hs-primary);
+    }
+    
+    .brand-logo i {
+        color: var(--hs-primary);
+        font-size: 1.3rem;
+    }
+    
+    .aspire-link {
+        opacity: 0.6;
+        transition: opacity 0.2s ease;
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .aspire-link:active {
+        opacity: 1;
+    }
+    
+    .playback-section {
+        padding: var(--hs-space-md);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    
+    .section-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--hs-text-muted);
+        margin-bottom: var(--hs-space-md);
+        padding: 0 var(--hs-space-sm);
+    }
+    
+    .navbar-toggler {
+        position: fixed;
+        top: var(--hs-space-md);
+        right: var(--hs-space-md);
+        z-index: 1001;
+        background-color: var(--hs-primary);
+        color: #000;
+        border: none;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: var(--hs-shadow-lg);
+        transition: all 0.15s ease;
+    }
+    
+    .navbar-toggler:active {
+        background-color: var(--hs-primary-hover);
+        transform: scale(0.95);
+    }
+    
+    .nav-menu {
+        padding: var(--hs-space-md) 0;
+        overflow-y: auto;
+        max-height: calc(100vh - 300px);
+    }
+    
+    .nav-menu::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .nav-menu::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+    }
+    
+    .nav-section {
+        margin-bottom: var(--hs-space-lg);
+        padding: 0 var(--hs-space-md);
+    }
+    
+    .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        margin-bottom: 0.25rem;
+        border-radius: var(--hs-radius-md);
+        color: var(--hs-text-secondary);
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.15s ease;
+        position: relative;
+        min-height: 56px;
+        font-size: 1rem;
+    }
+    
+    .nav-item i {
+        width: 24px;
+        text-align: center;
+        font-size: 1.25rem;
+    }
+    
+    .nav-item:active {
+        background-color: var(--hs-hover-bg);
+        color: var(--hs-text-primary);
+        transform: translateX(2px);
+    }
+    
+    .nav-item.active {
+        background-color: rgba(29, 185, 84, 0.15);
+        color: var(--hs-primary);
+        font-weight: 600;
+    }
+    
+    .nav-item.active::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 32px;
+        background-color: var(--hs-primary);
+        border-radius: 0 2px 2px 0;
+    }
+    
+    /* Mobile menu in overlay */
+    @@media (max-width: 991.98px) {
+        .navbar-toggler {
+            display: none; /* Hidden - bottom nav "More" button handles this */
+        }
+        
+        .nav-header {
+            padding: var(--hs-space-sm);
+        }
+        
+        .playback-section {
+            padding: var(--hs-space-sm);
+        }
+        
+        .nav-menu {
+            max-height: none;
+        }
+    }
+    
+    /* Desktop sidebar */
+    @@media (min-width: 992px) {
+        .nav-menu.collapse {
+            display: block !important;
+        }
+    }
+</style>
 
 @code {
     private Uri? aspireUrl = null;
     private bool? showLogs = false;
     private bool collapseNavMenu = true;
-    private bool nightMode = false;
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
     private static string? nightscoutUrl = null;
     
@@ -112,23 +296,5 @@
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
-    }
-
-    private async Task stopAsync() => await svc.StopPlayingAsync();
-
-    private async Task skipAsync() => await svc.SkipToNextAsync();
-
-    async Task toggleNightmode()
-    {
-        nightMode = !nightMode;
-        try
-        {
-            await svc.ToggleBrightness();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError("Trouble setting brightness {ex}", ex);
-            logger.LogError(ex.ToString());
-        }
     }
 }

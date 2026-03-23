@@ -1,15 +1,188 @@
 ﻿@inject HomeSpeakerService svc
+@inject IJSRuntime JSRuntime
 
-<button @onclick=Stop title="Stop playing" class="btn btn-outline-primary"><span class="oi oi-media-stop"/></button>
-<button @onclick=Play title="Resume playing" class="btn btn-outline-primary"><span class="oi oi-media-play" /></button>
-<button @onclick=Skip title="Skip to next song" class="btn btn-outline-primary"><span class="oi oi-media-skip-forward" /></button>
-<button @onclick=Clear title="Clear queue" class="btn btn-outline-primary"><span class="oi oi-x" /></button>
-<button @onclick=Shuffle title="Shuffle queue" class="btn btn-outline-primary"><span class="oi oi-random" /></button>
+<div class="play-controls">
+    <button @onclick=Play title="Resume playing" class="btn btn-icon-lg btn-primary play-button">
+        <i class="fas fa-play"></i>
+    </button>
+    <button @onclick=Stop title="Stop playing" class="btn btn-icon btn-outline-primary">
+        <i class="fas fa-stop"></i>
+    </button>
+    <button @onclick=Skip title="Skip to next song" class="btn btn-icon btn-outline-primary">
+        <i class="fas fa-forward"></i>
+    </button>
+    <button @onclick=Shuffle title="Shuffle queue" class="btn btn-icon btn-outline-secondary">
+        <i class="fas fa-random"></i>
+    </button>
+    <button @onclick=ToggleRepeat title="@(repeatMode ? "Repeat: ON" : "Repeat: OFF")" class="btn btn-icon @(repeatMode ? "btn-warning" : "btn-outline-secondary")">
+        <i class="fas fa-redo"></i>
+    </button>
+    <button @onclick=Clear title="Clear queue" class="btn btn-icon btn-outline-danger">
+        <i class="fas fa-trash-alt"></i>
+    </button>
+    
+    <div class="dropdown">
+        <button class="btn btn-icon @(sleepTimerActive ? "btn-info" : "btn-outline-secondary") dropdown-toggle" 
+                type="button" 
+                id="sleepTimerDropdown" 
+                data-bs-toggle="dropdown" 
+                aria-expanded="false" 
+                title="@(sleepTimerActive ? $"Sleep timer: {sleepTimerRemaining}" : "Set sleep timer")">
+            <i class="fas fa-moon"></i>
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="sleepTimerDropdown">
+            @if (sleepTimerActive)
+            {
+                <li><h6 class="dropdown-header">Timer: @sleepTimerRemaining</h6></li>
+                <li><a class="dropdown-item" @onclick="CancelSleepTimer"><i class="fas fa-times me-2"></i>Cancel Timer</a></li>
+                <li><hr class="dropdown-divider" /></li>
+            }
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(15)">15 minutes</a></li>
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(30)">30 minutes</a></li>
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(45)">45 minutes</a></li>
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(60)">1 hour</a></li>
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(90)">1.5 hours</a></li>
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(120)">2 hours</a></li>
+        </ul>
+    </div>
+</div>
+
+<style>
+    .play-controls {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .play-controls .btn-icon {
+        transition: all 0.15s ease;
+    }
+    
+    /* Remove hover effects, use active states for touch */
+    .play-controls .btn-icon:active {
+        transform: scale(0.92);
+    }
+    
+    .play-button {
+        box-shadow: 0 4px 12px rgba(29, 185, 84, 0.4);
+    }
+    
+    /* Touch-friendly dropdown items */
+    .dropdown-item {
+        padding: 0.75rem 1.25rem;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        font-size: 1rem;
+    }
+    
+    .dropdown-item:active {
+        background-color: var(--hs-primary);
+        color: #000;
+    }
+    
+    /* RPi 7" screen - compact but still touch-friendly */
+    @@media (max-width: 800px) and (max-height: 480px) {
+        .play-controls {
+            gap: 0.5rem;
+        }
+        
+        .play-controls .btn-icon-lg {
+            width: 72px;
+            height: 72px;
+            font-size: 1.75rem;
+        }
+        
+        .play-controls .btn-icon {
+            width: 52px;
+            height: 52px;
+            font-size: 1.1rem;
+        }
+    }
+</style>
 
 @code {
+    bool repeatMode = false;
+    bool sleepTimerActive = false;
+    string sleepTimerRemaining = "";
+    System.Threading.Timer? refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshRepeatMode();
+        await RefreshSleepTimer();
+        
+        // Refresh sleep timer display every 10 seconds
+        refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            await RefreshSleepTimer();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+    }
+
+    async Task RefreshRepeatMode()
+    {
+        try
+        {
+            repeatMode = await svc.GetRepeatModeAsync();
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", $"Error getting repeat mode: {ex.Message}");
+        }
+    }
+
+    async Task RefreshSleepTimer()
+    {
+        try
+        {
+            var result = await svc.GetSleepTimerAsync();
+            sleepTimerActive = result.Active;
+            if (result.Active && result.RemainingSeconds > 0)
+            {
+                var remaining = TimeSpan.FromSeconds(result.RemainingSeconds);
+                sleepTimerRemaining = remaining.TotalHours >= 1
+                    ? $"{(int)remaining.TotalHours}h {remaining.Minutes}m"
+                    : $"{remaining.Minutes}m";
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", $"Error getting sleep timer: {ex.Message}");
+        }
+    }
+
+    async Task ToggleRepeat()
+    {
+        repeatMode = !repeatMode;
+        await svc.SetRepeatModeAsync(repeatMode);
+    }
+
+    async Task SetSleepTimer(int minutes)
+    {
+        await svc.SetSleepTimerAsync(minutes);
+        await RefreshSleepTimer();
+    }
+
+    async Task CancelSleepTimer()
+    {
+        await svc.CancelSleepTimerAsync();
+        sleepTimerActive = false;
+        await RefreshSleepTimer();
+    }
+
     async Task Play() => await svc.ResumePlayAsync();
     async Task Stop() => await svc.StopPlayingAsync();
     async Task Clear() => await svc.ClearQueueAsync();
     async Task Skip() => await svc.SkipToNextAsync();
     async Task Shuffle() => await svc.ShuffleQueueAsync();
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
 }
+
+@implements IDisposable

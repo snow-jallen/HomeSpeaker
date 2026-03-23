@@ -19,6 +19,16 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
 
     public IEnumerable<Song> SongQueue => actualPlayer.SongQueue;
 
+    public bool RepeatMode
+    {
+        get => actualPlayer.RepeatMode;
+        set => actualPlayer.RepeatMode = value;
+    }
+
+    public bool SleepTimerActive => actualPlayer.SleepTimerActive;
+    
+    public TimeSpan? SleepTimerRemaining => actualPlayer.SleepTimerRemaining;
+
     public event EventHandler<string>? PlayerEvent;
 
     public void ClearQueue()
@@ -78,6 +88,16 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
     {
         actualPlayer.UpdateQueue(songs);
         PlayerEvent?.Invoke(this, "Updated queue.");
+    }
+
+    public void SetSleepTimer(int minutes)
+    {
+        actualPlayer.SetSleepTimer(minutes);
+    }
+
+    public void CancelSleepTimer()
+    {
+        actualPlayer.CancelSleepTimer();
     }
 
     public void Dispose()

@@ -24,14 +24,10 @@ public class AirPlayReceiverService : BackgroundService
     {
         _logger.LogInformation("AirPlay Receiver Service starting...");
 
-        // Monitor for AirPlay session events via shared state file
-        _ = Task.Run(() => MonitorAirPlayEvents(stoppingToken), stoppingToken);
-        
-        // Monitor for metadata (song info, artwork, etc.)
-        _ = Task.Run(() => MonitorAirPlayMetadata(stoppingToken), stoppingToken);
+        var eventsTask = Task.Run(() => MonitorAirPlayEvents(stoppingToken), stoppingToken);
+        var metadataTask = Task.Run(() => MonitorAirPlayMetadata(stoppingToken), stoppingToken);
 
-        // Keep service running
-        await Task.Delay(Timeout.Infinite, stoppingToken);
+        await Task.WhenAll(eventsTask, metadataTask).ConfigureAwait(false);
     }
 
     private async Task MonitorAirPlayEvents(CancellationToken cancellationToken)
@@ -62,6 +58,10 @@ public class AirPlayReceiverService : BackgroundService
                 
                 await Task.Delay(1000, cancellationToken);
             }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error monitoring AirPlay state file");
@@ -90,6 +90,10 @@ public class AirPlayReceiverService : BackgroundService
                 }
                 
                 await Task.Delay(500, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
             catch (Exception ex)
             {

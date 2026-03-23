@@ -18,6 +18,11 @@ public interface IMusicPlayer : IDisposable
     Task<int> GetVolume();
     void ShuffleQueue();
     void UpdateQueue(IEnumerable<string> songs);
+    bool RepeatMode { get; set; }
+    void SetSleepTimer(int minutes);
+    void CancelSleepTimer();
+    bool SleepTimerActive { get; }
+    TimeSpan? SleepTimerRemaining { get; }
 
     event EventHandler<string> PlayerEvent;
 }

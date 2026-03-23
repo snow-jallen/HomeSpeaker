@@ -1,94 +1,249 @@
 ﻿@page "/"
-@inject HomeSpeakerService svc;
+@inject HomeSpeakerService svc
 @inject ILogger<Index> logger
 @inject HttpClient Http
-@using Microsoft.Fast.Components.FluentUI
+@implements IDisposable
 
+<PageTitle>Home Speaker</PageTitle>
+
+<!-- Section A: Now Playing -->
+<div class="now-playing-card mb-4">
+    <div class="now-playing-label">
+        <i class="fas fa-headphones me-2"></i>Now Playing
+    </div>
+    <div class="now-playing-status">
+        @if (playerStatus == null)
+        {
+            <div class="loading-spinner mx-auto mb-2"></div>
+            <span class="status-text text-muted">Connecting...</span>
+        }
+        else if (playerStatus.StilPlaying && playerStatus.CurrentSong != null)
+        {
+            <div class="song-info">
+                <div class="song-title">@playerStatus.CurrentSong.Name</div>
+                @if (!string.IsNullOrEmpty(playerStatus.CurrentSong.Artist))
+                {
+                    <div class="song-artist">@playerStatus.CurrentSong.Artist</div>
+                }
+                @if (!string.IsNullOrEmpty(playerStatus.CurrentSong.Album))
+                {
+                    <div class="song-album">@playerStatus.CurrentSong.Album</div>
+                }
+                <div class="progress-row mt-2">
+                    <div class="progress-bar-track">
+                        <div class="progress-bar-fill" style="width: @(playerStatus.PercentComplete.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                    </div>
+                    <span class="volume-badge"><i class="fas fa-volume-up me-1"></i>@playerStatus.Volume</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="idle-state">
+                <i class="fas fa-music idle-icon"></i>
+                <span class="status-text">Stopped</span>
+            </div>
+        }
+    </div>
+    <div class="now-playing-controls">
+        <PlayControls />
+    </div>
+</div>
+
+<!-- Section B: Health Monitors (feature-flagged) -->
 @if (showTemperature || showBloodSugar)
 {
-    <div class="row g-2 mb-2">
+    <div class="row g-2 mb-4">
         @if (showTemperature)
         {
-            <div class="col-md-6 col-12">
+            <div class="@(showBloodSugar ? "col-md-6 col-12" : "col-12")">
                 <TemperatureMonitor />
             </div>
         }
         @if (showBloodSugar)
         {
-            <div class="col-md-6 col-12">
+            <div class="@(showTemperature ? "col-md-6 col-12" : "col-12")">
                 <BloodSugarMonitor />
             </div>
         }
     </div>
 }
 
-<div class="row">
-    <div class="col">
-        <FluentSearch class="w-100 mb-2" Placeholder="Search / Filter" DisplayName="Search & Filter" ValueChanged="(s)=>FilterValue = s" ValueExpression="() => FilterValue" />
-    </div>
-    <div class="col-auto gx-0">
-        <button @onclick=refresh class="btn btn-primary d-md-none"><span class="oi oi-magnifying-glass"></span></button>
-        <button @onclick=refresh class="btn btn-primary d-none d-md-block"><span class="oi oi-magnifying-glass me-2"></span>Search </button>
-    </div>
-    <div class="col-auto ps-1">
-        <button @onclick=reloadSongsAsync class="btn btn-secondary d-md-none"><span class="oi oi-reload"></span></button>
-        <button @onclick=reloadSongsAsync class="btn btn-secondary d-none d-md-block"><span class="oi oi-reload me-2"></span>Refresh</button>
-    </div>
+<!-- Quick-access links -->
+<div class="quick-links">
+    <a href="music" class="quick-link-btn">
+        <i class="fas fa-music"></i>
+        <span>Music</span>
+    </a>
+    <a href="queue" class="quick-link-btn">
+        <i class="fas fa-stream"></i>
+        <span>Queue</span>
+    </a>
+    <a href="playlists" class="quick-link-btn">
+        <i class="fas fa-list-ul"></i>
+        <span>Playlists</span>
+    </a>
+    <a href="streams" class="quick-link-btn">
+        <i class="fas fa-podcast"></i>
+        <span>Streams</span>
+    </a>
 </div>
 
-@if (songs == null)
-{
-    <p>Loading...</p>
-}
-else if (numPages == 0)
-{
-    <div class="text-center">
-        No artists / albums / songs contain '@FilterValue'
-    </div>
-}
-else
-{
-    if (numPages > 1)
-    {
-        <div class="d-flex justify-content-around mt-2">
-            <FluentButton @onclick=@(()=>pageNum--) Disabled=@(pageNum == 0)><span class="oi oi-chevron-left me-2" />Prev Page</FluentButton>
-            <div>
-                Page @(
-               pageNum + 1
-               ) of @numPages
-            </div>
-            <FluentButton @onclick=@(()=>pageNum++) Disabled=@(pageNum+1 >= numPages)>Next Page <span class="oi oi-chevron-right ms-2" /></FluentButton>
-        </div>
+<style>
+    .now-playing-card {
+        background: linear-gradient(135deg, var(--hs-bg-elevated) 0%, var(--hs-bg-card) 100%);
+        border: 1px solid rgba(29, 185, 84, 0.2);
+        border-radius: var(--hs-radius-lg);
+        padding: var(--hs-space-lg);
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
     }
 
-    @foreach (var artist in (artists?.Skip(pageSize * pageNum).Take(pageSize)) ?? Enumerable.Empty<IGrouping<string, SongViewModel>>())
-    {
-        <Artist Content="@artist" />
+    .now-playing-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--hs-primary);
+        margin-bottom: var(--hs-space-md);
     }
-}
 
-@code {
-    private int pageNum = 0;
-    private int pageSize = 200;
-    private int numPages = 0;
-    private int artistCount;
-    private string? filterValue;
-    private bool showTemperature;
-    private bool showBloodSugar;
+    .now-playing-status {
+        min-height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        text-align: center;
+        margin-bottom: var(--hs-space-md);
+    }
 
-    public string? FilterValue
-    {
-        get => filterValue;
-        set
-        {
-            logger.LogInformation("Setting FilterValue to {value}", value);
-            filterValue = value;
-            refresh();
+    .song-info {
+        width: 100%;
+        text-align: center;
+    }
+
+    .song-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--hs-text-primary);
+        line-height: 1.2;
+        margin-bottom: 0.25rem;
+    }
+
+    .song-artist {
+        font-size: 1rem;
+        color: var(--hs-primary);
+        font-weight: 600;
+        margin-bottom: 0.15rem;
+    }
+
+    .song-album {
+        font-size: 0.875rem;
+        color: var(--hs-text-muted);
+    }
+
+    .progress-row {
+        display: flex;
+        align-items: center;
+        gap: var(--hs-space-sm);
+    }
+
+    .progress-bar-track {
+        flex: 1;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 2px;
+        overflow: hidden;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        background: var(--hs-primary);
+        border-radius: 2px;
+        transition: width 1s linear;
+    }
+
+    .volume-badge {
+        font-size: 0.75rem;
+        color: var(--hs-text-muted);
+        white-space: nowrap;
+    }
+
+    .idle-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--hs-space-sm);
+        opacity: 0.5;
+    }
+
+    .idle-icon {
+        font-size: 2.5rem;
+        color: var(--hs-text-muted);
+    }
+
+    .status-text {
+        font-size: 1rem;
+        color: var(--hs-text-muted);
+    }
+
+    .now-playing-controls {
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        padding-top: var(--hs-space-md);
+    }
+
+    .quick-links {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--hs-space-md);
+    }
+
+    .quick-link-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: 72px;
+        background: var(--hs-bg-elevated);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: var(--hs-radius-md);
+        color: var(--hs-text-secondary);
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: all 0.15s ease;
+    }
+
+    .quick-link-btn i {
+        font-size: 1.4rem;
+        color: var(--hs-primary);
+    }
+
+    .quick-link-btn:active {
+        background: var(--hs-hover-bg);
+        color: var(--hs-text-primary);
+        transform: scale(0.97);
+    }
+
+    @@media (max-width: 600px) {
+        .quick-links {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .song-title {
+            font-size: 1.1rem;
         }
     }
+</style>
 
-    IEnumerable<SongViewModel>? songs;
-    IOrderedEnumerable<IGrouping<string, SongViewModel>>? artists;
+@code {
+    private GetStatusReply? playerStatus;
+    private bool showTemperature;
+    private bool showBloodSugar;
+    private Timer? refreshTimer;
+
+    private record FeaturesResponse(bool TemperatureEnabled, bool BloodSugarEnabled);
 
     protected override async Task OnInitializedAsync()
     {
@@ -102,42 +257,38 @@ else
         {
             logger.LogWarning(ex, "Failed to load feature flags");
         }
-        await reloadSongsAsync();
-    }
 
-    private record FeaturesResponse(bool TemperatureEnabled, bool BloodSugarEnabled);
+        await RefreshStatusAsync();
 
-    async Task reloadSongsAsync()
-    {
-        songs = null;
-        StateHasChanged();
-        songs = await svc.GetAllSongsAsync();
-        FilterValue = null;
-        refresh();
-    }
-
-    void refresh()
-    {
-        if (songs == null)
-            return;
-
-        var filteredSongs = songs;
-        if (!string.IsNullOrWhiteSpace(FilterValue))
+        refreshTimer = new Timer(async _ =>
         {
-            logger.LogInformation("Filtering artists, albums and songs like {filterValue}", filterValue);
+            try
+            {
+                await InvokeAsync(RefreshStatusAsync);
+            }
+            catch (ObjectDisposedException) { }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error in status refresh timer");
+            }
+        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
 
-            filteredSongs = songs.Where(a =>
-                (a.Artist?.Contains(FilterValue, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (a.Album?.Contains(FilterValue, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (a.Name?.Contains(FilterValue, StringComparison.OrdinalIgnoreCase) ?? false)
-            );
+    private async Task RefreshStatusAsync()
+    {
+        try
+        {
+            playerStatus = await svc.GetStatusAsync();
+            StateHasChanged();
         }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to refresh player status");
+        }
+    }
 
-        artists = from s in filteredSongs
-                  group s by s.Artist into artists
-                  orderby artists.Key
-                  select artists;
-        artistCount = artists?.Count() ?? 0;
-        numPages = (artistCount + pageSize - 1) / pageSize;
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
     }
 }

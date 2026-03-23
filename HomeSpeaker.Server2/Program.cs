@@ -152,7 +152,7 @@ app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
 // Serve favicons from the media folder (writable volume) at /favicons
-var faviconsPath = Path.Combine(app.Configuration[ConfigKeys.MediaFolder] ?? "/music", "favicons");
+var faviconsPath = Path.GetFullPath(Path.Combine(app.Configuration[ConfigKeys.MediaFolder] ?? "/music", "favicons"));
 Directory.CreateDirectory(faviconsPath);
 app.UseStaticFiles(new StaticFileOptions
 {
@@ -488,6 +488,37 @@ app.MapGet("/api/anchors/users", async (AnchorService anchorService) =>
     catch (Exception ex)
     {
         return Results.Problem($"Failed to get users with anchors: {ex.Message}");
+    }
+});
+
+// Recently played endpoint
+app.MapGet("/api/music/recently-played", async (MusicContext db, Mp3Library library, int limit = 20) =>
+{
+    try
+    {
+        var recentImpressions = await db.Impressions
+            .OrderByDescending(i => i.Timestamp)
+            .Take(limit)
+            .ToListAsync();
+
+        var songs = recentImpressions
+            .Select(i => library.Songs.FirstOrDefault(s => s.Path == i.SongPath))
+            .Where(s => s != null)
+            .Select(s => new
+            {
+                s.SongId,
+                s.Name,
+                s.Path,
+                s.Album,
+                s.Artist
+            })
+            .ToList();
+
+        return Results.Ok(songs);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to get recently played: {ex.Message}");
     }
 });
 

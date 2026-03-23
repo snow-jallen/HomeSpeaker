@@ -350,5 +350,34 @@ public class HomeSpeakerService
         await client.DeleteRadioStreamAsync(new DeleteRadioStreamRequest { StreamId = streamId });
     }
 
+    // Repeat Mode methods
+    public async Task SetRepeatModeAsync(bool repeatMode)
+    {
+        await client.SetRepeatModeAsync(new SetRepeatModeRequest { RepeatMode = repeatMode });
+    }
+
+    public async Task<bool> GetRepeatModeAsync()
+    {
+        var result = await client.GetRepeatModeAsync(new GetRepeatModeRequest());
+        return result.RepeatMode;
+    }
+
+    // Sleep Timer methods
+    public async Task SetSleepTimerAsync(int minutes)
+    {
+        await client.SetSleepTimerAsync(new SetSleepTimerRequest { Minutes = minutes });
+    }
+
+    public async Task CancelSleepTimerAsync()
+    {
+        await client.CancelSleepTimerAsync(new CancelSleepTimerRequest());
+    }
+
+    public async Task<(bool Active, int RemainingSeconds)> GetSleepTimerAsync()
+    {
+        var result = await client.GetSleepTimerAsync(new GetSleepTimerRequest());
+        return (result.Active, result.RemainingSeconds);
+    }
+
     public event EventHandler<string>? StatusChanged;
 }
