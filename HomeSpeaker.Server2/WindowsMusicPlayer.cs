@@ -142,6 +142,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             {
                 _logger.LogInformation("Disposing WindowsMusicPlayer");
                 stopPlaying();
+                _sleepTimerCts?.Dispose();
             }
             _disposed = true;
         }

@@ -182,6 +182,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
             {
                 _logger.LogInformation("Disposing LinuxSoxMusicPlayer");
                 stopPlaying();
+                _sleepTimerCts?.Dispose();
             }
             _disposed = true;
         }
