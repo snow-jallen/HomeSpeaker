@@ -1,13 +1,13 @@
-name: Build and Push Docker Images
+name: Build and Push Base Image
 
 on:
   push:
-    tags:
-      - '*'
+    paths:
+      - 'HomeSpeaker.Server2/Dockerfile.base'
   workflow_dispatch:
 
 jobs:
-  build-and-push:
+  build-base:
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
@@ -26,23 +26,13 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ghcr.io/${{ github.repository_owner }}/homespeaker
-        tags: |
-          type=ref,event=tag
-          type=raw,value=latest
-
-    - name: Build and push ARM64 image
+    - name: Build and push base image
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./HomeSpeaker.Server2/Dockerfile
+        file: ./HomeSpeaker.Server2/Dockerfile.base
         platforms: linux/arm64
         push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
+        tags: ghcr.io/snow-jallen/homespeaker-base:latest
         cache-from: type=gha
         cache-to: type=gha,mode=max
