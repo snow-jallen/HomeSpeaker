@@ -8,9 +8,9 @@ public class RadioStreamService
 {
     private readonly MusicContext _dbContext;
     private readonly ILogger<RadioStreamService> _logger;
-    private readonly IWebHostEnvironment _environment;
     private readonly IMemoryCache _cache;
     private readonly HttpClient _httpClient;
+    private readonly string _faviconsDirectory;
 
     private const string CACHE_KEY = "radio_streams_all";
     private static readonly TimeSpan CACHE_DURATION = TimeSpan.FromMinutes(5);
@@ -18,16 +18,19 @@ public class RadioStreamService
     public RadioStreamService(
         MusicContext dbContext,
         ILogger<RadioStreamService> logger,
-        IWebHostEnvironment environment,
+        IConfiguration configuration,
         IMemoryCache cache,
         HttpClient httpClient)
     {
         _dbContext = dbContext;
         _logger = logger;
-        _environment = environment;
         _cache = cache;
         _httpClient = httpClient;
         _httpClient.Timeout = TimeSpan.FromSeconds(10);
+
+        // Store favicons in the media folder (volume-mounted, writable) rather than wwwroot (read-only in container)
+        var mediaFolder = configuration[ConfigKeys.MediaFolder] ?? "/music";
+        _faviconsDirectory = Path.Combine(mediaFolder, "favicons");
     }
 
     public async Task<IEnumerable<RadioStream>> GetAllStreamsAsync()
@@ -131,10 +134,9 @@ public class RadioStreamService
         var baseName = GetSafeFileName(Path.GetFileNameWithoutExtension(file.FileName));
         var uniqueName = baseName + Guid.NewGuid().ToString("N")[..8] + extension;
 
-        var faviconDir = Path.Combine(_environment.WebRootPath, "favicons");
-        Directory.CreateDirectory(faviconDir);
+        Directory.CreateDirectory(_faviconsDirectory);
 
-        var filePath = Path.Combine(faviconDir, uniqueName);
+        var filePath = Path.Combine(_faviconsDirectory, uniqueName);
         using var stream = File.Create(filePath);
         await file.CopyToAsync(stream);
 
@@ -185,11 +187,10 @@ public class RadioStreamService
 
             // Generate safe filename from stream name
             var safeFileName = GetSafeFileName(streamName) + extension;
-            var faviconDir = Path.Combine(_environment.WebRootPath, "favicons");
-            var faviconPath = Path.Combine(faviconDir, safeFileName);
+            var faviconPath = Path.Combine(_faviconsDirectory, safeFileName);
 
             // Ensure favicons directory exists
-            Directory.CreateDirectory(faviconDir);
+            Directory.CreateDirectory(_faviconsDirectory);
 
             var bytes = await response.Content.ReadAsByteArrayAsync();
             await File.WriteAllBytesAsync(faviconPath, bytes);
@@ -208,7 +209,7 @@ public class RadioStreamService
     {
         try
         {
-            var path = Path.Combine(_environment.WebRootPath, "favicons", fileName);
+            var path = Path.Combine(_faviconsDirectory, fileName);
             if (File.Exists(path))
             {
                 File.Delete(path);

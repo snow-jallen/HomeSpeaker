@@ -150,6 +150,16 @@ app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
 //app.UseHttpsRedirection();
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
+
+// Serve favicons from the media folder (writable volume) at /favicons
+var faviconsPath = Path.Combine(app.Configuration[ConfigKeys.MediaFolder] ?? "/music", "favicons");
+Directory.CreateDirectory(faviconsPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(faviconsPath),
+    RequestPath = "/favicons"
+});
+
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     ResponseWriter = async (context, report) =>
