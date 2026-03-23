@@ -412,7 +412,8 @@ public class HomeSpeakerService : HomeSpeakerBase
         var stream = await _radioStreamService.CreateStreamAsync(
             request.Name,
             request.Url,
-            string.IsNullOrWhiteSpace(request.FaviconUrl) ? null : request.FaviconUrl
+            string.IsNullOrWhiteSpace(request.FaviconUrl) ? null : request.FaviconUrl,
+            string.IsNullOrWhiteSpace(request.FaviconFileName) ? null : request.FaviconFileName
         );
 
         return new RadioStreamMessage
@@ -435,7 +436,8 @@ public class HomeSpeakerService : HomeSpeakerBase
             request.StreamId,
             request.Name,
             request.Url,
-            string.IsNullOrWhiteSpace(request.FaviconUrl) ? null : request.FaviconUrl
+            string.IsNullOrWhiteSpace(request.FaviconUrl) ? null : request.FaviconUrl,
+            string.IsNullOrWhiteSpace(request.FaviconFileName) ? null : request.FaviconFileName
         );
 
         var stream = await _radioStreamService.GetStreamByIdAsync(request.StreamId);

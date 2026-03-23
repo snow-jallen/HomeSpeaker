@@ -196,6 +196,7 @@ message CreateRadioStreamRequest {
 	string Name = 1;
 	string Url = 2;
 	string FaviconUrl = 3;
+	string FaviconFileName = 4;
 }
 
 message UpdateRadioStreamRequest {
@@ -203,6 +204,7 @@ message UpdateRadioStreamRequest {
 	string Name = 2;
 	string Url = 3;
 	string FaviconUrl = 4;
+	string FaviconFileName = 5;
 }
 
 message DeleteRadioStreamRequest {

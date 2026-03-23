@@ -35,7 +35,6 @@ builder.Services.AddHostedService<MigrationApplier>();
 builder.Services.AddHostedService<DailyAnchorWorker>();
 builder.Services.AddHostedService<AirPlayReceiverService>();
 builder.Services.AddScoped<PlaylistService>();
-builder.Services.AddScoped<RadioStreamService>();
 builder.Services.AddScoped<AnchorService>();
 builder.Services.AddScoped<IAnchorNotificationService, AnchorNotificationService>();
 builder.Services.AddSignalR();
@@ -85,6 +84,14 @@ builder.Services.AddHttpClient<RadioStreamService>()
     {
         AutomaticDecompression = System.Net.DecompressionMethods.All
     });
+
+// Add HttpClient for ImageSearchService (DDG + Wikipedia image search)
+builder.Services.AddHttpClient<ImageSearchService>(client =>
+{
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 
 // Add named HttpClient for backlight control with SSL bypass
 builder.Services.AddHttpClient("BacklightClient", client =>
@@ -562,6 +569,38 @@ app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, Htt
 
     return Results.Empty;
 });
+
+// Stream image search endpoint
+app.MapGet("/api/streams/image-search", async (string q, ImageSearchService imageSearch) =>
+{
+    if (string.IsNullOrWhiteSpace(q))
+        return Results.BadRequest(new { error = "Query is required" });
+
+    var results = await imageSearch.SearchAsync(q);
+    return Results.Ok(results);
+});
+
+// Stream image upload endpoint
+app.MapPost("/api/streams/upload-image", async (IFormFile file, RadioStreamService radioStreamService) =>
+{
+    var allowedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/png", "image/jpeg", "image/gif",
+        "image/x-icon", "image/vnd.microsoft.icon", "image/webp"
+    };
+
+    if (!allowedTypes.Contains(file.ContentType))
+        return Results.BadRequest(new { error = "File must be an image (PNG, JPG, GIF, ICO, WebP)" });
+
+    if (file.Length > 2 * 1024 * 1024)
+        return Results.BadRequest(new { error = "File must be under 2MB" });
+
+    var filename = await radioStreamService.UploadFaviconAsync(file);
+    if (filename == null)
+        return Results.Problem("Failed to save image");
+
+    return Results.Ok(new { filename });
+}).DisableAntiforgery();
 
 app.MapFallbackToFile("index.html");
 

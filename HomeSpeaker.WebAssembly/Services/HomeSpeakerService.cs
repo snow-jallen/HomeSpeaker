@@ -302,13 +302,14 @@ public class HomeSpeakerService
         await client.PlayRadioStreamAsync(new PlayRadioStreamRequest { StreamId = streamId });
     }
 
-    public async Task<RadioStreamViewModel> CreateRadioStreamAsync(string name, string url, string? faviconUrl)
+    public async Task<RadioStreamViewModel> CreateRadioStreamAsync(string name, string url, string faviconUrl = "", string faviconFileName = "")
     {
         var result = await client.CreateRadioStreamAsync(new CreateRadioStreamRequest
         {
             Name = name,
             Url = url,
-            FaviconUrl = faviconUrl ?? string.Empty
+            FaviconUrl = faviconUrl,
+            FaviconFileName = faviconFileName
         });
 
         return new RadioStreamViewModel
@@ -322,14 +323,15 @@ public class HomeSpeakerService
         };
     }
 
-    public async Task<RadioStreamViewModel> UpdateRadioStreamAsync(int streamId, string name, string url, string? faviconUrl)
+    public async Task<RadioStreamViewModel> UpdateRadioStreamAsync(int streamId, string name, string url, string faviconUrl = "", string faviconFileName = "")
     {
         var result = await client.UpdateRadioStreamAsync(new UpdateRadioStreamRequest
         {
             StreamId = streamId,
             Name = name,
             Url = url,
-            FaviconUrl = faviconUrl ?? string.Empty
+            FaviconUrl = faviconUrl,
+            FaviconFileName = faviconFileName
         });
 
         return new RadioStreamViewModel

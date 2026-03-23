@@ -50,7 +50,7 @@ public class RadioStreamService
         return await _dbContext.RadioStreams.FindAsync(id);
     }
 
-    public async Task<RadioStream> CreateStreamAsync(string name, string url, string? faviconUrl = null)
+    public async Task<RadioStream> CreateStreamAsync(string name, string url, string? faviconUrl = null, string? faviconFileName = null)
     {
         var stream = new RadioStream
         {
@@ -60,8 +60,12 @@ public class RadioStreamService
             DisplayOrder = await GetNextDisplayOrderAsync()
         };
 
-        // Try to download favicon if provided
-        if (!string.IsNullOrWhiteSpace(faviconUrl))
+        if (!string.IsNullOrWhiteSpace(faviconFileName))
+        {
+            // Pre-uploaded file — store filename directly
+            stream.FaviconFileName = faviconFileName;
+        }
+        else if (!string.IsNullOrWhiteSpace(faviconUrl))
         {
             stream.FaviconFileName = await DownloadFaviconAsync(name, faviconUrl);
         }
@@ -75,7 +79,7 @@ public class RadioStreamService
         return stream;
     }
 
-    public async Task UpdateStreamAsync(int id, string name, string url, string? faviconUrl = null)
+    public async Task UpdateStreamAsync(int id, string name, string url, string? faviconUrl = null, string? faviconFileName = null)
     {
         var stream = await _dbContext.RadioStreams.FindAsync(id);
         if (stream == null) return;
@@ -83,25 +87,59 @@ public class RadioStreamService
         stream.Name = name;
         stream.Url = url;
 
-        // Update favicon if new URL provided
-        if (!string.IsNullOrWhiteSpace(faviconUrl))
+        if (!string.IsNullOrWhiteSpace(faviconFileName))
+        {
+            // Pre-uploaded file — delete old favicon and store new filename directly
+            if (!string.IsNullOrWhiteSpace(stream.FaviconFileName))
+                DeleteFavicon(stream.FaviconFileName);
+            stream.FaviconFileName = faviconFileName;
+        }
+        else if (!string.IsNullOrWhiteSpace(faviconUrl))
         {
             // Download new favicon first
             var newFileName = await DownloadFaviconAsync(name, faviconUrl);
 
-            // Delete old favicon if new one was successfully downloaded
-            if (newFileName != null && !string.IsNullOrWhiteSpace(stream.FaviconFileName))
-            {
+            // Delete old favicon if new one was successfully downloaded (and it's a different file)
+            if (newFileName != null && !string.IsNullOrWhiteSpace(stream.FaviconFileName) && stream.FaviconFileName != newFileName)
                 DeleteFavicon(stream.FaviconFileName);
-            }
 
             stream.FaviconFileName = newFileName;
         }
+        // else: both empty — no change to favicon
 
         await _dbContext.SaveChangesAsync();
 
         // Invalidate cache
         _cache.Remove(CACHE_KEY);
+    }
+
+    public async Task<string?> UploadFaviconAsync(IFormFile file)
+    {
+        var allowedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "image/png", "image/jpeg", "image/gif",
+            "image/x-icon", "image/vnd.microsoft.icon", "image/webp"
+        };
+
+        if (!allowedTypes.Contains(file.ContentType))
+            return null;
+
+        if (file.Length > 2 * 1024 * 1024)
+            return null;
+
+        var extension = GetExtensionFromContentType(file.ContentType) ?? ".png";
+        var baseName = GetSafeFileName(Path.GetFileNameWithoutExtension(file.FileName));
+        var uniqueName = baseName + Guid.NewGuid().ToString("N")[..8] + extension;
+
+        var faviconDir = Path.Combine(_environment.WebRootPath, "favicons");
+        Directory.CreateDirectory(faviconDir);
+
+        var filePath = Path.Combine(faviconDir, uniqueName);
+        using var stream = File.Create(filePath);
+        await file.CopyToAsync(stream);
+
+        _logger.LogInformation("Uploaded favicon saved as {FileName}", uniqueName);
+        return uniqueName;
     }
 
     public async Task DeleteStreamAsync(int id)
@@ -200,6 +238,7 @@ public class RadioStreamService
             "image/gif" => ".gif",
             "image/x-icon" => ".ico",
             "image/vnd.microsoft.icon" => ".ico",
+            "image/webp" => ".webp",
             _ => ".png"
         };
     }

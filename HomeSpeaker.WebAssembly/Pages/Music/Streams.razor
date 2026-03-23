@@ -1,6 +1,8 @@
-﻿@page "/streams"
+@page "/streams"
 @using HomeSpeaker.WebAssembly.Models
+@using HomeSpeaker.Shared
 @inject HomeSpeakerService svc
+@inject ImagePickerService imagePicker
 @inject IJSRuntime JsRuntime
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -100,10 +102,111 @@ else
                         <label class="form-label">Stream URL *</label>
                         <input @bind="streamUrl" class="form-control" placeholder="https://..." />
                     </div>
+
+                    @* Image picker section *@
                     <div class="mb-3">
-                        <label class="form-label">Favicon URL (optional)</label>
-                        <input @bind="streamFaviconUrl" class="form-control" placeholder="https://example.com/favicon.ico" />
-                        <small class="text-muted">Leave blank to auto-detect from domain</small>
+                        <label class="form-label">Stream Image (optional)</label>
+
+                        @* Current image preview *@
+                        <div class="mb-2">
+                            <img src="@GetPreviewUrl()"
+                                 class="stream-image-preview"
+                                 onerror="this.src='/icon-192.png'"
+                                 alt="Stream image preview" />
+                        </div>
+
+                        @* Tab buttons *@
+                        <div class="btn-group btn-group-sm mb-2" role="group">
+                            <button type="button"
+                                    class="btn @(activePickerTab == "search" ? "btn-primary" : "btn-outline-secondary")"
+                                    @onclick='() => activePickerTab = "search"'>
+                                Search
+                            </button>
+                            <button type="button"
+                                    class="btn @(activePickerTab == "upload" ? "btn-primary" : "btn-outline-secondary")"
+                                    @onclick='() => activePickerTab = "upload"'>
+                                Upload
+                            </button>
+                            <button type="button"
+                                    class="btn @(activePickerTab == "url" ? "btn-primary" : "btn-outline-secondary")"
+                                    @onclick='() => activePickerTab = "url"'>
+                                URL
+                            </button>
+                        </div>
+
+                        @* Search tab *@
+                        @if (activePickerTab == "search")
+                        {
+                            <div class="input-group mb-2">
+                                <input @bind="imageSearchQuery"
+                                       @onkeydown="OnSearchKeyDown"
+                                       class="form-control form-control-sm"
+                                       placeholder="Search for station logo..." />
+                                <button class="btn btn-outline-secondary btn-sm"
+                                        @onclick="DoImageSearch"
+                                        disabled="@(isSearching || string.IsNullOrWhiteSpace(imageSearchQuery))">
+                                    @if (isSearching)
+                                    {
+                                        <span class="spinner-border spinner-border-sm"></span>
+                                    }
+                                    else
+                                    {
+                                        <span>Search</span>
+                                    }
+                                </button>
+                            </div>
+                            @if (searchError != null)
+                            {
+                                <div class="alert alert-warning py-1 px-2 mb-2 small">@searchError</div>
+                            }
+                            @if (searchResults.Any())
+                            {
+                                <div class="row g-1 search-results-grid">
+                                    @foreach (var result in searchResults)
+                                    {
+                                        var isSelected = selectedImage?.Source == ImageSourceType.Url && selectedImage.DownloadUrl == result.Url;
+                                        <div class="col-3">
+                                            <div class="search-thumb @(isSelected ? "selected" : "")"
+                                                 @onclick="() => SelectSearchResult(result)"
+                                                 title="@result.Title (@result.Source)">
+                                                <img src="@result.ThumbnailUrl"
+                                                     alt="@result.Title"
+                                                     onerror="this.parentElement.style.display='none'" />
+                                                @if (isSelected)
+                                                {
+                                                    <div class="thumb-check">✓</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
+
+                        @* Upload tab *@
+                        @if (activePickerTab == "upload")
+                        {
+                            <InputFile OnChange="OnFileSelected" accept="image/*" class="form-control form-control-sm" />
+                            @if (uploadError != null)
+                            {
+                                <div class="alert alert-danger py-1 px-2 mt-1 small">@uploadError</div>
+                            }
+                        }
+
+                        @* URL tab *@
+                        @if (activePickerTab == "url")
+                        {
+                            <input value="@urlTabInput"
+                                   @oninput="OnUrlTabInput"
+                                   class="form-control form-control-sm"
+                                   placeholder="https://example.com/logo.png" />
+                            <small class="text-muted">Paste a direct link to an image</small>
+                        }
+
+                        @if (saveError != null)
+                        {
+                            <div class="alert alert-danger py-1 px-2 mt-2 small">@saveError</div>
+                        }
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -126,6 +229,60 @@ else
         object-fit: contain;
         border-radius: 4px;
     }
+
+    .stream-image-preview {
+        width: 60px;
+        height: 60px;
+        object-fit: contain;
+        border-radius: 4px;
+        border: 1px solid #dee2e6;
+        background: #f8f9fa;
+    }
+
+    .search-results-grid {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .search-thumb {
+        position: relative;
+        cursor: pointer;
+        border: 2px solid transparent;
+        border-radius: 4px;
+        overflow: hidden;
+        aspect-ratio: 1;
+        background: #f8f9fa;
+    }
+
+    .search-thumb:hover {
+        border-color: #0d6efd;
+    }
+
+    .search-thumb.selected {
+        border-color: #0d6efd;
+    }
+
+    .search-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    .thumb-check {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        background: #0d6efd;
+        color: white;
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        line-height: 1;
+    }
 </style>
 
 @code {
@@ -136,7 +293,21 @@ else
     private RadioStreamViewModel? editingStream = null;
     private string streamName = string.Empty;
     private string streamUrl = string.Empty;
-    private string streamFaviconUrl = string.Empty;
+
+    // Image picker state
+    private enum ImageSourceType { None, Url, PendingUpload }
+    private record SelectedImage(ImageSourceType Source, string PreviewDataUri, string? DownloadUrl, byte[]? FileBytes, string? FileName, string? ContentType);
+    private SelectedImage? selectedImage = null;
+    private string? currentStreamFaviconUrl = null;
+
+    private string activePickerTab = "search";
+    private string imageSearchQuery = string.Empty;
+    private bool isSearching = false;
+    private List<ImageSearchResult> searchResults = new();
+    private string? searchError = null;
+    private string urlTabInput = string.Empty;
+    private string? uploadError = null;
+    private string? saveError = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -162,7 +333,7 @@ else
         try
         {
             await svc.PlayRadioStreamAsync(streamId);
-            await RefreshStreams(); // Refresh to show updated play count
+            await RefreshStreams();
         }
         catch (Exception ex)
         {
@@ -180,7 +351,8 @@ else
         editingStream = null;
         streamName = string.Empty;
         streamUrl = string.Empty;
-        streamFaviconUrl = string.Empty;
+        ResetPickerState();
+        currentStreamFaviconUrl = null;
         showStreamModal = true;
     }
 
@@ -189,8 +361,21 @@ else
         editingStream = stream;
         streamName = stream.Name;
         streamUrl = stream.Url;
-        streamFaviconUrl = string.Empty; // Don't pre-fill favicon URL
+        ResetPickerState();
+        currentStreamFaviconUrl = stream.FaviconUrl; // show existing favicon in preview
         showStreamModal = true;
+    }
+
+    void ResetPickerState()
+    {
+        selectedImage = null;
+        activePickerTab = "search";
+        imageSearchQuery = string.Empty;
+        searchResults = new();
+        searchError = null;
+        urlTabInput = string.Empty;
+        uploadError = null;
+        saveError = null;
     }
 
     void CloseStreamModal()
@@ -199,29 +384,122 @@ else
         editingStream = null;
     }
 
+    string GetPreviewUrl()
+    {
+        if (selectedImage != null) return selectedImage.PreviewDataUri;
+        return currentStreamFaviconUrl ?? "/icon-192.png";
+    }
+
+    async Task DoImageSearch()
+    {
+        if (string.IsNullOrWhiteSpace(imageSearchQuery)) return;
+        isSearching = true;
+        searchError = null;
+        searchResults = new();
+        StateHasChanged();
+        try
+        {
+            searchResults = await imagePicker.SearchImagesAsync(imageSearchQuery);
+            if (!searchResults.Any())
+                searchError = "No results found. Try different terms or paste a URL in the URL tab.";
+        }
+        finally
+        {
+            isSearching = false;
+            StateHasChanged();
+        }
+    }
+
+    async Task OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await DoImageSearch();
+    }
+
+    void SelectSearchResult(ImageSearchResult result)
+    {
+        selectedImage = new SelectedImage(ImageSourceType.Url, result.ThumbnailUrl, result.Url, null, null, null);
+    }
+
+    async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        uploadError = null;
+        var file = e.File;
+
+        var allowedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "image/png", "image/jpeg", "image/gif",
+            "image/x-icon", "image/vnd.microsoft.icon", "image/webp"
+        };
+
+        if (!allowedTypes.Contains(file.ContentType))
+        {
+            uploadError = "File must be an image (PNG, JPG, GIF, ICO, WebP)";
+            return;
+        }
+
+        if (file.Size > 2 * 1024 * 1024)
+        {
+            uploadError = "File must be under 2MB";
+            return;
+        }
+
+        using var stream = file.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        var bytes = ms.ToArray();
+        var dataUri = $"data:{file.ContentType};base64,{Convert.ToBase64String(bytes)}";
+        selectedImage = new SelectedImage(ImageSourceType.PendingUpload, dataUri, null, bytes, file.Name, file.ContentType);
+    }
+
+    void OnUrlTabInput(ChangeEventArgs e)
+    {
+        var url = e.Value?.ToString() ?? "";
+        urlTabInput = url;
+        if (!string.IsNullOrWhiteSpace(url))
+            selectedImage = new SelectedImage(ImageSourceType.Url, url, url, null, null, null);
+        else
+            selectedImage = null;
+    }
+
     async Task SaveStream()
     {
         if (string.IsNullOrWhiteSpace(streamName) || string.IsNullOrWhiteSpace(streamUrl))
             return;
 
+        saveError = null;
+
         try
         {
-            // Auto-detect favicon URL if not provided
-            var faviconUrl = streamFaviconUrl;
-            if (string.IsNullOrWhiteSpace(faviconUrl))
+            var faviconUrl = string.Empty;
+            var faviconFileName = string.Empty;
+
+            if (selectedImage?.Source == ImageSourceType.PendingUpload && selectedImage.FileBytes != null)
             {
-                faviconUrl = GetAutoFaviconUrl(streamUrl);
+                var filename = await imagePicker.UploadImageAsync(
+                    selectedImage.FileBytes,
+                    selectedImage.FileName ?? "upload",
+                    selectedImage.ContentType ?? "image/png");
+
+                if (filename == null)
+                {
+                    saveError = "Image upload failed. Please try again or use a URL instead.";
+                    return;
+                }
+
+                faviconFileName = filename;
+            }
+            else if (selectedImage?.Source == ImageSourceType.Url && !string.IsNullOrWhiteSpace(selectedImage.DownloadUrl))
+            {
+                faviconUrl = selectedImage.DownloadUrl;
             }
 
             if (editingStream == null)
             {
-                // Create new
-                await svc.CreateRadioStreamAsync(streamName.Trim(), streamUrl.Trim(), faviconUrl);
+                await svc.CreateRadioStreamAsync(streamName.Trim(), streamUrl.Trim(), faviconUrl, faviconFileName);
             }
             else
             {
-                // Update existing
-                await svc.UpdateRadioStreamAsync(editingStream.Id, streamName.Trim(), streamUrl.Trim(), faviconUrl);
+                await svc.UpdateRadioStreamAsync(editingStream.Id, streamName.Trim(), streamUrl.Trim(), faviconUrl, faviconFileName);
             }
 
             CloseStreamModal();
@@ -249,19 +527,6 @@ else
             {
                 await JsRuntime.InvokeVoidAsync("alert", $"Error deleting stream: {ex.Message}");
             }
-        }
-    }
-
-    string GetAutoFaviconUrl(string streamUrl)
-    {
-        try
-        {
-            var uri = new Uri(streamUrl);
-            return $"https://{uri.Host}/favicon.ico";
-        }
-        catch
-        {
-            return string.Empty;
         }
     }
 }
