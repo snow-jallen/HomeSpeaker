@@ -63,9 +63,9 @@ public class YoutubeService : IDisposable
         destinationPath = Path.Combine(destinationPath, fileName);
         var ffmpegLocation = _config[ConfigKeys.FFMpegLocation] ?? throw new Exception("Missing ffmeg path in config: " + ConfigKeys.FFMpegLocation);
 
-        _logger.LogInformation("Beginning to cache {title}", title);
+        _logger.LogInformation("Beginning to cache {Title}", title);
 
-        await _client.Videos.DownloadAsync(VideoId.Parse(id), new ConversionRequest(ffmpegLocation, destinationPath, Container.Mp3, ConversionPreset.Medium), progress);
+        await _client.Videos.DownloadAsync(VideoId.Parse(id), new ConversionRequest(ffmpegLocation, destinationPath, new ConversionFormat("mp3"), ConversionPreset.Medium), progress);
 
         try
         {
@@ -79,7 +79,7 @@ public class YoutubeService : IDisposable
             // Media tagging is not critical
         }
 
-        _logger.LogInformation("Finished caching {title}.  Saved to {destination}", title, destinationPath);
+        _logger.LogInformation("Finished caching {Title}.  Saved to {Destination}", title, destinationPath);
     }
 
     public void Dispose()

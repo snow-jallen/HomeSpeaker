@@ -72,30 +72,63 @@
 
 <style>
     .now-playing-card {
-        background: linear-gradient(135deg, var(--hs-bg-elevated) 0%, var(--hs-bg-card) 100%);
-        border: 1px solid rgba(29, 185, 84, 0.2);
-        border-radius: var(--hs-radius-lg);
-        padding: var(--hs-space-md);
-        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+        background: linear-gradient(160deg, #1C1C2E 0%, #13131F 60%, #0E0E1B 100%);
+        border: 1px solid rgba(201, 152, 90, 0.2);
+        border-radius: 20px;
+        padding: var(--hs-space-md) var(--hs-space-md) var(--hs-space-sm);
+        box-shadow:
+            0 12px 48px rgba(0, 0, 0, 0.7),
+            0 0 80px rgba(201, 152, 90, 0.06),
+            inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Ambient top-left glow — the "stage light" effect */
+    .now-playing-card::before {
+        content: '';
+        position: absolute;
+        top: -60px;
+        left: -30px;
+        width: 240px;
+        height: 240px;
+        background: radial-gradient(circle, rgba(201, 152, 90, 0.1) 0%, transparent 65%);
+        pointer-events: none;
+    }
+
+    /* Subtle shimmer line at top */
+    .now-playing-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 20%;
+        right: 20%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(201, 152, 90, 0.4), transparent);
+        pointer-events: none;
     }
 
     .now-playing-label {
-        font-size: 0.7rem;
+        font-family: 'Syne', sans-serif;
+        font-size: 0.62rem;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.12em;
+        letter-spacing: 0.22em;
         color: var(--hs-primary);
         margin-bottom: var(--hs-space-sm);
+        opacity: 0.85;
+        position: relative;
     }
 
     .now-playing-status {
-        min-height: 56px;
+        min-height: 60px;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-direction: column;
         text-align: center;
         margin-bottom: var(--hs-space-sm);
+        position: relative;
     }
 
     .song-info {
@@ -104,50 +137,62 @@
     }
 
     .song-title {
-        font-size: 1.1rem;
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 1.4rem;
         font-weight: 700;
+        font-style: italic;
         color: var(--hs-text-primary);
-        line-height: 1.2;
-        margin-bottom: 0.15rem;
+        line-height: 1.18;
+        margin-bottom: 0.3rem;
+        letter-spacing: -0.01em;
     }
 
     .song-artist {
-        font-size: 0.875rem;
+        font-family: 'Syne', sans-serif;
+        font-size: 0.72rem;
         color: var(--hs-primary);
         font-weight: 600;
-        margin-bottom: 0.1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        margin-bottom: 0.15rem;
     }
 
     .song-album {
-        font-size: 0.8rem;
+        font-size: 0.78rem;
         color: var(--hs-text-muted);
+        font-style: italic;
+        letter-spacing: 0.02em;
     }
 
     .progress-row {
         display: flex;
         align-items: center;
         gap: var(--hs-space-sm);
+        margin-top: 0.6rem;
     }
 
     .progress-bar-track {
         flex: 1;
         height: 3px;
-        background: rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.07);
         border-radius: 2px;
         overflow: hidden;
     }
 
     .progress-bar-fill {
         height: 100%;
-        background: var(--hs-primary);
+        background: linear-gradient(90deg, var(--hs-primary-dark) 0%, var(--hs-primary) 100%);
         border-radius: 2px;
         transition: width 1s linear;
+        box-shadow: 0 0 8px rgba(201, 152, 90, 0.5);
     }
 
     .volume-badge {
-        font-size: 0.7rem;
+        font-family: 'DM Mono', monospace;
+        font-size: 0.62rem;
         color: var(--hs-text-muted);
         white-space: nowrap;
+        letter-spacing: 0.03em;
     }
 
     .idle-state {
@@ -155,27 +200,38 @@
         flex-direction: column;
         align-items: center;
         gap: var(--hs-space-xs);
-        opacity: 0.5;
+        opacity: 0.3;
     }
 
     .idle-icon {
-        font-size: 1.75rem;
-        color: var(--hs-text-muted);
+        font-size: 2rem;
+        color: var(--hs-primary);
     }
 
     .status-text {
-        font-size: 0.875rem;
+        font-family: 'Syne', sans-serif;
+        font-size: 0.68rem;
         color: var(--hs-text-muted);
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
     }
 
     .now-playing-controls {
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
         padding-top: var(--hs-space-sm);
+        position: relative;
+    }
+
+    /* Sidebar already shows PlayControls — no need to duplicate on desktop */
+    @@media (min-width: 992px) {
+        .now-playing-controls {
+            display: none;
+        }
     }
 
     @@media (max-width: 600px) {
         .song-title {
-            font-size: 1rem;
+            font-size: 1.2rem;
         }
     }
 
@@ -184,6 +240,7 @@
         .now-playing-card {
             padding: 0.4rem var(--hs-space-sm);
             margin-bottom: 0.5rem !important;
+            border-radius: 12px;
         }
 
         .now-playing-label {
@@ -199,7 +256,7 @@
         }
 
         .song-title {
-            font-size: 0.875rem;
+            font-size: 0.95rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -207,7 +264,7 @@
         }
 
         .song-artist {
-            font-size: 0.75rem;
+            font-size: 0.68rem;
             display: inline;
         }
 
