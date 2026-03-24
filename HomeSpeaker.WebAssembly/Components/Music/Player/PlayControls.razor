@@ -1,5 +1,7 @@
 ﻿@inject HomeSpeakerService svc
 @inject IJSRuntime JSRuntime
+@inject PlayerStateService PlayerState
+@implements IDisposable
 
 <div class="play-controls">
     <button @onclick=Play title="Resume playing" class="btn btn-icon-lg btn-primary play-button">
@@ -14,7 +16,7 @@
     <button @onclick=Shuffle title="Shuffle queue" class="btn btn-icon btn-outline-secondary">
         <i class="fas fa-random"></i>
     </button>
-    <button @onclick=ToggleRepeat title="@(repeatMode ? "Repeat: ON" : "Repeat: OFF")" class="btn btn-icon @(repeatMode ? "btn-warning" : "btn-outline-secondary")">
+    <button @onclick=ToggleRepeat title="@(PlayerState.RepeatMode ? "Repeat: ON" : "Repeat: OFF")" class="btn btn-icon @(PlayerState.RepeatMode ? "btn-warning" : "btn-outline-secondary")">
         <i class="fas fa-redo"></i>
     </button>
     <button @onclick=Clear title="Clear queue" class="btn btn-icon btn-outline-danger">
@@ -104,16 +106,15 @@
 </style>
 
 @code {
-    bool repeatMode = false;
     bool sleepTimerActive = false;
     string sleepTimerRemaining = "";
     System.Threading.Timer? refreshTimer;
 
     protected override async Task OnInitializedAsync()
     {
-        await RefreshRepeatMode();
+        PlayerState.StateChanged += OnStateChanged;
         await RefreshSleepTimer();
-        
+
         // Refresh sleep timer display every 10 seconds
         refreshTimer = new System.Threading.Timer(async _ =>
         {
@@ -122,17 +123,7 @@
         }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
     }
 
-    async Task RefreshRepeatMode()
-    {
-        try
-        {
-            repeatMode = await svc.GetRepeatModeAsync();
-        }
-        catch (Exception ex)
-        {
-            await JSRuntime.InvokeVoidAsync("console.error", $"Error getting repeat mode: {ex.Message}");
-        }
-    }
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
 
     async Task RefreshSleepTimer()
     {
@@ -156,8 +147,9 @@
 
     async Task ToggleRepeat()
     {
-        repeatMode = !repeatMode;
-        await svc.SetRepeatModeAsync(repeatMode);
+        var newMode = !PlayerState.RepeatMode;
+        PlayerState.UpdateRepeatMode(newMode);  // optimistic update — notifies both instances
+        await svc.SetRepeatModeAsync(newMode);
     }
 
     async Task SetSleepTimer(int minutes)
@@ -181,8 +173,7 @@
 
     public void Dispose()
     {
+        PlayerState.StateChanged -= OnStateChanged;
         refreshTimer?.Dispose();
     }
 }
-
-@implements IDisposable

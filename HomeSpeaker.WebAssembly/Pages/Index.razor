@@ -2,6 +2,7 @@
 @inject HomeSpeakerService svc
 @inject ILogger<Index> logger
 @inject HttpClient Http
+@inject PlayerStateService PlayerState
 @implements IDisposable
 
 <PageTitle>Home Speaker</PageTitle>
@@ -12,28 +13,28 @@
         <i class="fas fa-headphones me-2"></i>Now Playing
     </div>
     <div class="now-playing-status">
-        @if (playerStatus == null)
+        @if (PlayerState.Status == null)
         {
             <div class="loading-spinner mx-auto mb-2"></div>
             <span class="status-text text-muted">Connecting...</span>
         }
-        else if (playerStatus.StilPlaying && playerStatus.CurrentSong != null)
+        else if (PlayerState.Status.StilPlaying && PlayerState.Status.CurrentSong != null)
         {
             <div class="song-info">
-                <div class="song-title">@playerStatus.CurrentSong.Name</div>
-                @if (!string.IsNullOrEmpty(playerStatus.CurrentSong.Artist))
+                <div class="song-title">@PlayerState.Status.CurrentSong.Name</div>
+                @if (!string.IsNullOrEmpty(PlayerState.Status.CurrentSong.Artist))
                 {
-                    <div class="song-artist">@playerStatus.CurrentSong.Artist</div>
+                    <div class="song-artist">@PlayerState.Status.CurrentSong.Artist</div>
                 }
-                @if (!string.IsNullOrEmpty(playerStatus.CurrentSong.Album))
+                @if (!string.IsNullOrEmpty(PlayerState.Status.CurrentSong.Album))
                 {
-                    <div class="song-album">@playerStatus.CurrentSong.Album</div>
+                    <div class="song-album">@PlayerState.Status.CurrentSong.Album</div>
                 }
                 <div class="progress-row mt-2">
                     <div class="progress-bar-track">
-                        <div class="progress-bar-fill" style="width: @(playerStatus.PercentComplete.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                        <div class="progress-bar-fill" style="width: @(PlayerState.Status.PercentComplete.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
                     </div>
-                    <span class="volume-badge"><i class="fas fa-volume-up me-1"></i>@playerStatus.Volume</span>
+                    <span class="volume-badge"><i class="fas fa-volume-up me-1"></i>@PlayerState.Status.Volume</span>
                 </div>
             </div>
         }
@@ -177,10 +178,58 @@
             font-size: 1rem;
         }
     }
+
+    /* Pi 7" screen — ultra compact now-playing */
+    @@media (max-height: 520px) {
+        .now-playing-card {
+            padding: 0.4rem var(--hs-space-sm);
+            margin-bottom: 0.5rem !important;
+        }
+
+        .now-playing-label {
+            display: none;
+        }
+
+        .now-playing-status {
+            min-height: 28px;
+            margin-bottom: 0.25rem;
+            flex-direction: row;
+            justify-content: flex-start;
+            gap: 0.5rem;
+        }
+
+        .song-title {
+            font-size: 0.875rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 60vw;
+        }
+
+        .song-artist {
+            font-size: 0.75rem;
+            display: inline;
+        }
+
+        .song-album {
+            display: none;
+        }
+
+        .progress-row {
+            display: none;
+        }
+
+        .idle-icon {
+            font-size: 1rem;
+        }
+
+        .now-playing-controls {
+            padding-top: 0.25rem;
+        }
+    }
 </style>
 
 @code {
-    private GetStatusReply? playerStatus;
     private bool showTemperature;
     private bool showBloodSugar;
     private Timer? refreshTimer;
@@ -200,6 +249,7 @@
             logger.LogWarning(ex, "Failed to load feature flags");
         }
 
+        PlayerState.StateChanged += OnStateChanged;
         await RefreshStatusAsync();
 
         refreshTimer = new Timer(async _ =>
@@ -216,12 +266,17 @@
         }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
     }
 
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
     private async Task RefreshStatusAsync()
     {
         try
         {
-            playerStatus = await svc.GetStatusAsync();
-            StateHasChanged();
+            var status = await svc.GetStatusAsync();
+            bool repeatMode = await svc.GetRepeatModeAsync();
+            PlayerState.UpdateStatus(status);
+            PlayerState.UpdateRepeatMode(repeatMode);
+            // StateHasChanged is triggered by the event subscription above
         }
         catch (Exception ex)
         {
@@ -231,6 +286,7 @@
 
     public void Dispose()
     {
+        PlayerState.StateChanged -= OnStateChanged;
         refreshTimer?.Dispose();
     }
 }

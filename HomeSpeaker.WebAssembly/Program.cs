@@ -17,6 +17,7 @@ builder.Logging.AddFilter("Microsoft.AspNetCore.Components.WebAssembly", LogLeve
 
 builder.Services.AddScoped((_) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 builder.Services.AddSingleton<HomeSpeakerService>();
+builder.Services.AddSingleton<PlayerStateService>();
 builder.Services.AddScoped<ITemperatureService, TemperatureService>();
 builder.Services.AddScoped<IBloodSugarService, BloodSugarService>();
 builder.Services.AddScoped<IForecastService, ForecastService>();
