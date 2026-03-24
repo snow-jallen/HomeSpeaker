@@ -7,7 +7,7 @@
 <PageTitle>Home Speaker</PageTitle>
 
 <!-- Section A: Now Playing -->
-<div class="now-playing-card mb-4">
+<div class="now-playing-card mb-3">
     <div class="now-playing-label">
         <i class="fas fa-headphones me-2"></i>Now Playing
     </div>
@@ -69,52 +69,32 @@
     </div>
 }
 
-<!-- Quick-access links -->
-<div class="quick-links">
-    <a href="music" class="quick-link-btn">
-        <i class="fas fa-music"></i>
-        <span>Music</span>
-    </a>
-    <a href="queue" class="quick-link-btn">
-        <i class="fas fa-stream"></i>
-        <span>Queue</span>
-    </a>
-    <a href="playlists" class="quick-link-btn">
-        <i class="fas fa-list-ul"></i>
-        <span>Playlists</span>
-    </a>
-    <a href="streams" class="quick-link-btn">
-        <i class="fas fa-podcast"></i>
-        <span>Streams</span>
-    </a>
-</div>
-
 <style>
     .now-playing-card {
         background: linear-gradient(135deg, var(--hs-bg-elevated) 0%, var(--hs-bg-card) 100%);
         border: 1px solid rgba(29, 185, 84, 0.2);
         border-radius: var(--hs-radius-lg);
-        padding: var(--hs-space-lg);
+        padding: var(--hs-space-md);
         box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
     }
 
     .now-playing-label {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.12em;
         color: var(--hs-primary);
-        margin-bottom: var(--hs-space-md);
+        margin-bottom: var(--hs-space-sm);
     }
 
     .now-playing-status {
-        min-height: 80px;
+        min-height: 56px;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-direction: column;
         text-align: center;
-        margin-bottom: var(--hs-space-md);
+        margin-bottom: var(--hs-space-sm);
     }
 
     .song-info {
@@ -123,22 +103,22 @@
     }
 
     .song-title {
-        font-size: 1.4rem;
+        font-size: 1.1rem;
         font-weight: 700;
         color: var(--hs-text-primary);
         line-height: 1.2;
-        margin-bottom: 0.25rem;
-    }
-
-    .song-artist {
-        font-size: 1rem;
-        color: var(--hs-primary);
-        font-weight: 600;
         margin-bottom: 0.15rem;
     }
 
-    .song-album {
+    .song-artist {
         font-size: 0.875rem;
+        color: var(--hs-primary);
+        font-weight: 600;
+        margin-bottom: 0.1rem;
+    }
+
+    .song-album {
+        font-size: 0.8rem;
         color: var(--hs-text-muted);
     }
 
@@ -150,7 +130,7 @@
 
     .progress-bar-track {
         flex: 1;
-        height: 4px;
+        height: 3px;
         background: rgba(255, 255, 255, 0.1);
         border-radius: 2px;
         overflow: hidden;
@@ -164,7 +144,7 @@
     }
 
     .volume-badge {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         color: var(--hs-text-muted);
         white-space: nowrap;
     }
@@ -173,66 +153,28 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: var(--hs-space-sm);
+        gap: var(--hs-space-xs);
         opacity: 0.5;
     }
 
     .idle-icon {
-        font-size: 2.5rem;
+        font-size: 1.75rem;
         color: var(--hs-text-muted);
     }
 
     .status-text {
-        font-size: 1rem;
+        font-size: 0.875rem;
         color: var(--hs-text-muted);
     }
 
     .now-playing-controls {
         border-top: 1px solid rgba(255, 255, 255, 0.06);
-        padding-top: var(--hs-space-md);
-    }
-
-    .quick-links {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: var(--hs-space-md);
-    }
-
-    .quick-link-btn {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        min-height: 72px;
-        background: var(--hs-bg-elevated);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: var(--hs-radius-md);
-        color: var(--hs-text-secondary);
-        text-decoration: none;
-        font-size: 0.85rem;
-        font-weight: 500;
-        transition: all 0.15s ease;
-    }
-
-    .quick-link-btn i {
-        font-size: 1.4rem;
-        color: var(--hs-primary);
-    }
-
-    .quick-link-btn:active {
-        background: var(--hs-hover-bg);
-        color: var(--hs-text-primary);
-        transform: scale(0.97);
+        padding-top: var(--hs-space-sm);
     }
 
     @@media (max-width: 600px) {
-        .quick-links {
-            grid-template-columns: repeat(2, 1fr);
-        }
-
         .song-title {
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
     }
 </style>

@@ -54,13 +54,66 @@ jobs:
       run: docker-compose up -d --remove-orphans
 
     - name: Wait for services to be ready
-      run: sleep 25
+      run: |
+        echo "Waiting for HomeSpeaker service to respond..."
+        for i in $(seq 1 12); do
+          if curl -sk https://localhost/ > /dev/null 2>&1; then
+            echo "✓ Service is up and responding"
+            break
+          fi
+          echo "  Attempt $i/12 - waiting 5s..."
+          sleep 5
+        done
 
     - name: Refresh browser on touchscreen
       run: |
+        echo "Attempting to refresh browser on :0 display..."
+        
+        # Strategy 1: Try Chromium remote debugging protocol (most reliable)
+        if curl -s http://localhost:9222/json/version > /dev/null 2>&1; then
+          echo "✓ Chrome debugging port available, using Page.reload..."
+          PAGE_ID=$(curl -s http://localhost:9222/json/list | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+          if [ -n "$PAGE_ID" ]; then
+            curl -s "http://localhost:9222/json/activate/$PAGE_ID" > /dev/null
+            curl -s "http://localhost:9222/json/new?javascript:location.reload()" > /dev/null
+            echo "✓ Browser refreshed via remote debugging protocol"
+            exit 0
+          fi
+        fi
+        
+        # Strategy 2: Try xdotool with proper XAUTHORITY
+        if command -v xdotool > /dev/null 2>&1; then
+          echo "Trying xdotool with XAUTHORITY..."
+          export DISPLAY=:0
+          
+          # Find the X authority file
+          XAUTH=$(find /home/piuser -name '.Xauthority' 2>/dev/null | head -1)
+          if [ -z "$XAUTH" ]; then
+            XAUTH=$(find /run/user -name 'Xauthority' 2>/dev/null | head -1)
+          fi
+          
+          if [ -n "$XAUTH" ]; then
+            export XAUTHORITY=$XAUTH
+            echo "  Using XAUTHORITY=$XAUTH"
+            if xdotool key F5 2>&1; then
+              echo "✓ Browser refreshed via xdotool"
+              exit 0
+            fi
+          else
+            echo "  Warning: Could not find .Xauthority file"
+          fi
+        fi
+        
+        # Strategy 3: Fallback - try xdotool anyway (might work if runner is piuser)
         export DISPLAY=:0
-        xdotool key F5
-      continue-on-error: true
+        export XAUTHORITY=/home/piuser/.Xauthority
+        if xdotool key F5 2>&1; then
+          echo "✓ Browser refreshed via xdotool (fallback)"
+          exit 0
+        fi
+        
+        echo "⚠ All refresh strategies failed - browser may need manual refresh (F5)"
+        exit 1
 
     - name: Clean up old images
       run: docker image prune -af --filter "until=168h"
