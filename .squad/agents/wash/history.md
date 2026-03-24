@@ -85,3 +85,41 @@
 **From mal:** Implemented repeat mode, sleep timer, recently played, and keyboard shortcuts across ~15 files. Feature-complete and ready for production.
 **From kaylee:** Completed full UI redesign with Darkly theme and touch optimization for RPi 7` 800x480. Bottom navigation, WCAG AAA touch targets, momentum scrolling. Interface production-ready.
 **From scribe:** Orchestration logs created, squad decisions consolidated, cross-team communication established. Ready for public release deployment.
+
+## Cross-Team Updates (2026-03-24)
+**From kaylee:** Removed redundant quick-link buttons from home page. Compacted Now Playing card to prioritize health data displays (80px → 56px, font sizes reduced 1.4rem → 1.1rem title, 1rem → 0.875rem artist). Changes scoped to avoid sidebar impact. Touch targets preserved.
+**From scribe:** Orchestration logs finalized, decisions merged into primary file, inbox cleared, git commit staged.
+
+### 2025-03-23 — Deployment Workflow: Browser Auto-Refresh Fix
+
+**Problem:** The GitHub Actions deploy workflow couldn't refresh the kiosk-mode Chromium browser after deployment. The `xdotool key F5` command failed silently due to X11 permission issues — the self-hosted runner (running as a service user) couldn't access the X display owned by the desktop session user.
+
+**Root Cause:** X11 display `:0` requires `XAUTHORITY` environment variable pointing to the `.Xauthority` cookie file. Without it, xdotool gets "Can't open display" permission denied errors. The `continue-on-error: true` flag hid these failures.
+
+**Solution Implemented:** Multi-strategy fallback approach in `.github/workflows/deploy.yml`:
+
+1. **Strategy 1 (Primary):** Chrome Remote Debugging Protocol — If Chromium is running with `--remote-debugging-port=9222`, use HTTP API to trigger `location.reload()`. This bypasses X11 permissions entirely.
+   
+2. **Strategy 2 (Secondary):** xdotool with proper XAUTHORITY — Search for `.Xauthority` file in `/home/piuser` and `/run/user`, export it, then run `xdotool key F5`.
+   
+3. **Strategy 3 (Fallback):** xdotool with hardcoded path — Try `/home/piuser/.Xauthority` directly (works if runner is piuser).
+
+**Changes Made:**
+- Enhanced "Wait for services" step to actively poll `https://localhost/` with curl (12 attempts × 5s = 60s max wait)
+- Replaced blind `xdotool` call with 3-strategy approach with logging
+- Removed `continue-on-error: true` — failures now properly reported (exit 1 if all strategies fail)
+- Added clear console output showing which strategy succeeded/failed
+
+**One-Time Pi Setup (Optional but Recommended):**
+To enable Strategy 1 (most reliable), modify the Chromium kiosk launch command to include:
+```bash
+chromium-browser --kiosk --remote-debugging-port=9222 <url>
+```
+This allows the deploy workflow to refresh the browser without any X11 permissions.
+
+**Deployment Pattern:**
+- Both `kitchen` and `upstairs` runners will try all 3 strategies
+- If Strategy 1 works on one Pi but not the other, that's fine — the fallback chain handles it
+- Failures are now visible in GitHub Actions logs (search for "⚠ All refresh strategies failed")
+
+**Security Note:** Remote debugging port (9222) is only accessible via localhost — no external exposure.

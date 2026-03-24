@@ -125,7 +125,27 @@
 - Pages implementing `Timer` must `@implements IDisposable` and dispose the timer.
 - `FeaturesResponse` is a local private record in each page's `@code` block.
 
+### 2026 — Home Page Cleanup: Remove Quick-Links, Compact Now Playing
+
+- **Removed** the "Quick-access links" section from `Pages/Index.razor` — the 4-button grid (Music, Queue, Playlists, Streams) was redundant because nav is always available via the sidebar (≥992px) or bottom nav (<992px).
+- **Compacted** Now Playing card on the home page:
+  - Card padding: `var(--hs-space-lg)` → `var(--hs-space-md)`; bottom margin `mb-4` → `mb-3`
+  - Label margin-bottom: `var(--hs-space-md)` → `var(--hs-space-sm)`
+  - Status section min-height: 80px → 56px; margin-bottom: `var(--hs-space-md)` → `var(--hs-space-sm)`
+  - Song title: 1.4rem → 1.1rem (1rem on <600px) — still ≥1rem, readable as primary text
+  - Song artist: 1rem → 0.875rem — meets 14px minimum per design system
+  - Song album: 0.875rem → 0.8rem (≈12.8px — slightly under 14px; acceptable for tertiary label)
+  - Idle icon: 2.5rem → 1.75rem
+  - Controls padding-top: `var(--hs-space-md)` → `var(--hs-space-sm)`
+  - Progress bar track: 4px → 3px height
+- **PlayControls** component is shared (also used in sidebar), so changes to Now Playing sizing were scoped to Index.razor's local `<style>` block — no impact on other usages.
+- Decision doc written at `.squad/decisions/inbox/kaylee-home-layout.md`
+
 ## Cross-Team Updates (2026-03-23)
 **From wash:** Security audit complete. Critical findings: no auth/authz implemented, health data endpoints exposed, cache DoS risks, path traversal vulnerabilities. Recommends immediate auth layer implementation.
 **From mal:** Repeat mode, sleep timer, recently played, and keyboard shortcuts implemented. ~15 files modified across Server2 and WebAssembly. Feature-complete and ready for deployment.
 **From scribe:** Squad documentation finalized. Orchestration logs, session records, and cross-team communication established. All artifacts committed.
+
+## Cross-Team Updates (2026-03-24)
+**From wash:** Browser auto-refresh fix deployed in .github/workflows/deploy.yml. Multi-strategy fallback: Chrome Remote Debugging Protocol (primary), xdotool with XAUTHORITY discovery (secondary), hardcoded path fallback. Service polling enhanced (12x curl checks). Failures now visible in CI.
+**From scribe:** Home page layout optimized by kaylee. Removed quick-link nav buttons (redundant), compacted Now Playing (80px → 56px). Typography adjusted (1.4rem → 1.1rem, 1rem → 0.875rem). Preserves touch targets. All changes scope-protected.

@@ -130,6 +130,64 @@ Implementation: JavaScript `keyboard.js` with global event listener (ignores typ
 
 ---
 
+### Browser Auto-Refresh Strategy for Kiosk Deployments
+**Date:** 2026-03-24  
+**Author:** Wash (Backend Dev)  
+**Status:** Implemented
+
+The GitHub Actions deploy workflow now uses a **multi-strategy fallback approach** for refreshing the kiosk-mode Chromium browser on Raspberry Pi runners.
+
+**Problem:** Previous `xdotool key F5` calls failed silently due to X11 permission issues — the self-hosted runner (service user) couldn't access the X display owned by the desktop session user.
+
+**Solution:**
+1. **Strategy 1 (Primary):** Chrome Remote Debugging Protocol — HTTP POST to `localhost:9222` to trigger `location.reload()`
+2. **Strategy 2 (Secondary):** xdotool with discovered XAUTHORITY — searches `/home/piuser` and `/run/user` for `.Xauthority` file
+3. **Strategy 3 (Fallback):** xdotool with hardcoded path — tries `/home/piuser/.Xauthority` directly
+
+**Supporting Changes:**
+- Enhanced service readiness polling: 12 attempts × 5s (curl to `https://localhost/`)
+- Removed `continue-on-error: true` — failures now visible in GitHub Actions logs
+- Detailed logging for each strategy attempt
+- Exit code 1 if all strategies fail
+
+**One-Time Pi Setup (Recommended):**
+Add `--remote-debugging-port=9222` to Chromium launch command to enable Strategy 1 (most reliable).
+
+**Implementation File:** `.github/workflows/deploy.yml`
+
+---
+
+### Home Page — Remove Quick-Links, Compact Now Playing
+**Date:** 2026-03-24  
+**Author:** Kaylee (Frontend Dev)  
+**Status:** Implemented
+
+Optimized home page layout for RPi 7" touch screen (800×480 landscape).
+
+**Decision 1: Remove Quick-Access Nav Buttons**
+Removed redundant 4-button quick-link grid (Music, Queue, Playlists, Streams). Navigation is always available via sidebar (≥992px) or bottom nav (<992px). On 480px height-constrained screen, redundant UI consumed space needed for health info.
+
+**Decision 2: Compact Now Playing Card**
+Reduced vertical footprint of Now Playing section to prioritize health data displays.
+
+**Changes (scoped to Index.razor local styles):**
+- Card padding: `var(--hs-space-lg)` → `var(--hs-space-md)`
+- Status section min-height: 80px → 56px
+- Song title: 1.4rem → 1.1rem (1rem on <600px)
+- Artist: 1rem → 0.875rem (≈14px)
+- Album: 0.875rem → 0.8rem (≈12.8px, acceptable for tertiary)
+- Idle icon: 2.5rem → 1.75rem
+- Progress track: 4px → 3px height
+- All margins/padding-tops tightened from `var(--hs-space-md)` to `var(--hs-space-sm)`
+
+**Touch Targets Preserved:** PlayControls buttons remain ≥44px; no button sizing changed.
+
+**Component Isolation:** Changes scoped to Index.razor only — no impact on PlayControls when used in sidebar.
+
+**Implementation File:** `Pages/Index.razor`
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus
