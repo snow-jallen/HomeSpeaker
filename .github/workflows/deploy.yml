@@ -35,13 +35,11 @@ jobs:
         sudo openssl pkcs12 -export -out certificate.pfx -inkey ${HOSTNAME}.boston-cloud.ts.net.key -in ${HOSTNAME}.boston-cloud.ts.net.crt -passout pass:
         sudo chown piuser. certificate.pfx
 
-    - name: Write environment variables to .env file
+    - name: Write deployment variables to .env file
       env:
-        GOVEE_API_KEY: ${{ secrets.GOVEE_API_KEY }}
         AIRPLAY_NAME: "${{ matrix.airplay_name }}"
       run: |
         cat > .env << EOF
-        GOVEE_API_KEY=${GOVEE_API_KEY}
         AIRPLAY_NAME=${AIRPLAY_NAME}
         HOMESPEAKER_IMAGE=ghcr.io/${{ github.repository_owner }}/homespeaker:latest
         EOF
