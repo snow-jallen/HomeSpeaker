@@ -21,10 +21,10 @@ services:
     - airplay-shared:/tmp/airplay-shared  # Shared volume for AirPlay state
     - /run/user/1000/pulse:/run/user/1000/pulse:rw
     # Persistent secrets file — create this once on each Pi, never committed to git.
-    # See: /home/piuser/homespeaker-secrets.env (example below)
+    # See homespeaker-secrets.env.example for the template.
+    # The deploy workflow creates this file (empty) if it doesn't exist yet.
     env_file:
-      - path: /home/piuser/homespeaker-secrets.env
-        required: false  # Gracefully skip if file doesn't exist yet
+      - /home/piuser/homespeaker-secrets.env
     depends_on:
     - aspire    
     environment:

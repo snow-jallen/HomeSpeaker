@@ -44,6 +44,9 @@ jobs:
         HOMESPEAKER_IMAGE=ghcr.io/${{ github.repository_owner }}/homespeaker:latest
         EOF
 
+    - name: Ensure secrets file exists
+      run: touch /home/piuser/homespeaker-secrets.env
+
     - name: Pull latest images
       run: docker-compose pull
 
