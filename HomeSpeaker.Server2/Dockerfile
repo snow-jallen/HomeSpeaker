@@ -26,6 +26,9 @@ RUN --mount=type=cache,target=/root/.nuget/packages \
 COPY . .
 WORKDIR "/src/HomeSpeaker.Server2"
 
+# Force Grpc.Tools to use x64 protoc compiler
+ENV GrpcToolsPlatform=x64
+
 RUN --mount=type=cache,target=/root/.nuget/packages \
     dotnet publish "./HomeSpeaker.Server2.csproj" \
     -c $BUILD_CONFIGURATION \
