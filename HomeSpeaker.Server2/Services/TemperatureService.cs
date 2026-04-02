@@ -11,11 +11,12 @@ public sealed class TemperatureService
     private readonly IConfiguration _configuration;
     private readonly ILogger<TemperatureService> _logger;
     private readonly IMemoryCache _cache;
-    
+
     private const string CacheKey = "temperature-status";
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(2);
 
-    public TemperatureService(HttpClient httpClient, IConfiguration configuration, ILogger<TemperatureService> logger, IMemoryCache cache)    {
+    public TemperatureService(HttpClient httpClient, IConfiguration configuration, ILogger<TemperatureService> logger, IMemoryCache cache)
+    {
         _httpClient = httpClient;
         _configuration = configuration;
         _logger = logger;
@@ -24,13 +25,13 @@ public sealed class TemperatureService
         // Configure the HttpClient for Govee API
         var apiBaseUrl = _configuration["Temperature:ApiBaseUrl"];
         var apiKey = _configuration["Temperature:ApiKey"];
-        
+
         _logger.LogInformation("Initializing TemperatureService with API Base URL: {ApiBaseUrl}", apiBaseUrl ?? "Not Set");
         if (!string.IsNullOrEmpty(apiBaseUrl))
         {
             _httpClient.BaseAddress = new Uri(apiBaseUrl);
         }
-        
+
         if (!string.IsNullOrEmpty(apiKey))
         {
             _httpClient.DefaultRequestHeaders.Add("Govee-API-Key", apiKey);
@@ -93,8 +94,8 @@ public sealed class TemperatureService
             response.EnsureSuccessStatusCode();
             var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
             var stateResponse = JsonSerializer.Deserialize<DeviceStateResponse>(responseJson);
-            
-            return stateResponse?.Payload?.SensorTemperature 
+
+            return stateResponse?.Payload?.SensorTemperature
                 ?? throw new InvalidOperationException("Temperature capability not found in device state response.");
         }
         catch (Exception ex)
@@ -113,7 +114,7 @@ public sealed class TemperatureService
             _logger.LogInformation("Returning cached temperature status: {TemperatureData}", JsonSerializer.Serialize(cachedValue));
             return cachedValue!;
         }
-        
+
         // Cache miss, fetch new data
         _logger.LogInformation("Temperature cache miss, fetching fresh data...");
         var temperatureStatus = await GetTemperatureStatusInternalAsync(cancellationToken);
@@ -158,7 +159,7 @@ public sealed class TemperatureService
         _logger.LogInformation("Getting temperature status...");
         var threshold = _configuration.GetValue<double>("TemperatureThreshold", 2.0);
         var devices = await GetDevicesAsync(cancellationToken);
-        
+
         var temperatureStatus = new TemperatureStatus
         {
             ReadingTakenAt = DateTime.Now,
@@ -179,7 +180,7 @@ public sealed class TemperatureService
         // Find devices using modern LINQ
         var deviceMap = devicePatterns.ToDictionary(
             kvp => kvp.Key,
-            kvp => devices.FirstOrDefault(d => kvp.Value.Any(pattern => 
+            kvp => devices.FirstOrDefault(d => kvp.Value.Any(pattern =>
                 d.DeviceName.Contains(pattern, StringComparison.OrdinalIgnoreCase)))
         );
 
@@ -192,7 +193,7 @@ public sealed class TemperatureService
         temperatureStatus.GreenhouseTemperature = await GetTemperatureForDevice(deviceMap["Greenhouse"], cancellationToken);
 
         // Calculate temperature difference and determine if within threshold
-        if (temperatureStatus.OutsideTemperature is { } outsideTemp && 
+        if (temperatureStatus.OutsideTemperature is { } outsideTemp &&
             temperatureStatus.YoungerGirlsRoomTemperature is { } girlsRoomTemp)
         {
             temperatureStatus.TemperatureDifference = Math.Abs(outsideTemp - girlsRoomTemp);
@@ -204,7 +205,7 @@ public sealed class TemperatureService
     }
 
     private async Task<double?> GetTemperatureForDevice(Device? device, CancellationToken cancellationToken)
-        => device is not null 
-            ? await GetDeviceTemperatureAsync(device, cancellationToken) 
+        => device is not null
+            ? await GetDeviceTemperatureAsync(device, cancellationToken)
             : null;
 }
