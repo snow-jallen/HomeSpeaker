@@ -1,6 +1,4 @@
 using Microsoft.JSInterop;
-using HomeSpeaker.WebAssembly.Models;
-using HomeSpeaker.WebAssembly.Services;
 
 namespace HomeSpeaker.WebAssembly.Services;
 

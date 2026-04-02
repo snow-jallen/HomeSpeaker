@@ -69,7 +69,9 @@ public class ImageSearchService
                     var thumbUrl = item.TryGetProperty("thumbnail", out var thumb) ? thumb.GetString() ?? imageUrl : imageUrl;
                     var title = item.TryGetProperty("title", out var t) ? t.GetString() ?? "" : "";
                     if (!string.IsNullOrWhiteSpace(imageUrl))
+                    {
                         results.Add(new ImageSearchResult(imageUrl, thumbUrl, "DuckDuckGo", title));
+                    }
                 }
             }
 
@@ -92,7 +94,9 @@ public class ImageSearchService
 
             var response = await _httpClient.GetAsync(url);
             if (!response.IsSuccessStatusCode)
+            {
                 return [];
+            }
 
             var json = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(json);
@@ -110,7 +114,9 @@ public class ImageSearchService
                     {
                         var thumbUrl = src.GetString() ?? "";
                         if (!string.IsNullOrWhiteSpace(thumbUrl))
+                        {
                             results.Add(new ImageSearchResult(thumbUrl, thumbUrl, "Wikipedia", title));
+                        }
                     }
                 }
             }

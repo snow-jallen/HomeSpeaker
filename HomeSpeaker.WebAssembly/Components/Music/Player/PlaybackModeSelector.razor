@@ -7,14 +7,14 @@
     <div class="d-flex align-items-center">
         <small class="text-muted me-2">Default playback mode:</small>
         <div class="btn-group btn-group-sm" role="group" aria-label="Default playback mode">
-            <input type="radio" class="btn-check" name="playbackMode" id="serverMode" 
+            <input type="radio" class="btn-check" name="playbackMode" id="serverMode"
                    checked="@(isServerMode)"
                    @onchange="@(() => SetModeToServer())" />
             <label class="btn btn-outline-primary btn-sm" for="serverMode">
                 <i class="fas fa-server me-1"></i>Server
             </label>
 
-            <input type="radio" class="btn-check" name="playbackMode" id="localMode" 
+            <input type="radio" class="btn-check" name="playbackMode" id="localMode"
                    checked="@(!isServerMode)"
                    @onchange="@(() => SetModeToLocal())" />
             <label class="btn btn-outline-primary btn-sm" for="localMode">
@@ -22,14 +22,14 @@
             </label>
         </div>
     </div>
-    
+
     @if (!string.IsNullOrEmpty(statusMessage))
     {
         <div class="mt-1">
             <small class="text-muted">@statusMessage</small>
         </div>
     }
-    
+
     <div class="mt-1">
         <small class="text-muted">Note: Use the dropdown on each Play button to choose server or local playback for individual actions.</small>
     </div>
@@ -54,15 +54,20 @@
         try
         {
             Console.WriteLine("SetModeToServer called");
-            
+
             // Get the current mode property and its type
             var currentModeProperty = PlaybackModeService.GetType().GetProperty("CurrentMode");
-            var enumType = currentModeProperty.PropertyType;
-            
+            var enumType = currentModeProperty?.PropertyType;
+
+            if(enumType == null)
+            {
+                throw new InvalidOperationException("CurrentMode property not found on PlaybackModeService");
+            }
+
             // Parse "Server" as the enum value
             var serverValue = Enum.Parse(enumType, "Server");
-            currentModeProperty.SetValue(PlaybackModeService, serverValue);
-            
+            currentModeProperty?.SetValue(PlaybackModeService, serverValue);
+
             Console.WriteLine($"Mode set to Server");
             UpdateModeFromService();
         }
@@ -80,15 +85,20 @@
         try
         {
             Console.WriteLine("SetModeToLocal called");
-            
+
             // Get the current mode property and its type
             var currentModeProperty = PlaybackModeService.GetType().GetProperty("CurrentMode");
-            var enumType = currentModeProperty.PropertyType;
+            var enumType = currentModeProperty?.PropertyType;
             
+            if(enumType == null)
+            {
+                throw new InvalidOperationException("CurrentMode property not found on PlaybackModeService");
+            }
+
             // Parse "Local" as the enum value
             var localValue = Enum.Parse(enumType, "Local");
-            currentModeProperty.SetValue(PlaybackModeService, localValue);
-            
+            currentModeProperty?.SetValue(PlaybackModeService, localValue);
+
             Console.WriteLine($"Mode set to Local");
             UpdateModeFromService();
         }
@@ -112,7 +122,7 @@
     {
         statusMessage = message;
         InvokeAsync(StateHasChanged);
-        
+
         // Clear status message after a few seconds
         _ = Task.Delay(3000).ContinueWith(_ =>
         {

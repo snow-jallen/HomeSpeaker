@@ -1,4 +1,3 @@
-using HomeSpeaker.Shared;
 using System.Text.Json;
 
 namespace HomeSpeaker.WebAssembly.Services;
@@ -17,7 +16,8 @@ public interface IAnchorService
     Task<bool> RemoveAnchorFromUserAsync(string userId, int anchorDefinitionId);
 
     // Daily Anchor Management
-    Task<IEnumerable<DailyAnchor>> GetDailyAnchorsAsync(string userId, DateOnly date);    Task<IEnumerable<DailyAnchor>> GetDailyAnchorsRangeAsync(string userId, DateOnly? startDate = null, DateOnly? endDate = null);
+    Task<IEnumerable<DailyAnchor>> GetDailyAnchorsAsync(string userId, DateOnly date);
+    Task<IEnumerable<DailyAnchor>> GetDailyAnchorsRangeAsync(string userId, DateOnly? startDate = null, DateOnly? endDate = null);
     Task CreateDailyAnchorsAsync(string userId, DateOnly date);
     Task<bool> UpdateAnchorCompletionAsync(UpdateAnchorCompletionRequest request);
     Task EnsureTodayAnchorsAsync();
@@ -86,10 +86,12 @@ public class AnchorService : IAnchorService
             var json = JsonSerializer.Serialize(request, jsonOptions);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
             var response = await httpClient.PutAsync($"/api/anchors/definitions/{id}", content);
-            
+
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
                 return null;
-                
+            }
+
             response.EnsureSuccessStatusCode();
             var responseJson = await response.Content.ReadAsStringAsync();
             return JsonSerializer.Deserialize<AnchorDefinition>(responseJson, jsonOptions);
@@ -190,9 +192,15 @@ public class AnchorService : IAnchorService
             {
                 var queryParams = new List<string>();
                 if (startDate.HasValue)
+                {
                     queryParams.Add($"startDate={startDate.Value:yyyy-MM-dd}");
+                }
+
                 if (endDate.HasValue)
+                {
                     queryParams.Add($"endDate={endDate.Value:yyyy-MM-dd}");
+                }
+
                 queryString = "?" + string.Join("&", queryParams);
             }
 
@@ -248,7 +256,8 @@ public class AnchorService : IAnchorService
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to ensure today's anchors");
-            throw;        }
+            throw;
+        }
     }
 
     // Multi-user methods
@@ -277,9 +286,15 @@ public class AnchorService : IAnchorService
             {
                 var queryParams = new List<string>();
                 if (startDate.HasValue)
+                {
                     queryParams.Add($"startDate={startDate.Value:yyyy-MM-dd}");
+                }
+
                 if (endDate.HasValue)
+                {
                     queryParams.Add($"endDate={endDate.Value:yyyy-MM-dd}");
+                }
+
                 queryString = "?" + string.Join("&", queryParams);
             }
 

@@ -34,7 +34,7 @@ public class DailyAnchorWorker : BackgroundService
             }
 
             // Wait until the next day at midnight
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow.ToLocalTime();
             var tomorrow = now.Date.AddDays(1);
             var delay = tomorrow - now;
             

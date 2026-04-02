@@ -361,14 +361,14 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
     public bool SleepTimerActive => _sleepTimerCts != null && !_sleepTimerCts.IsCancellationRequested;
     
     public TimeSpan? SleepTimerRemaining => _sleepTimerEndTime.HasValue 
-        ? _sleepTimerEndTime.Value - DateTime.Now 
+        ? _sleepTimerEndTime.Value - DateTime.UtcNow.ToLocalTime() 
         : null;
     
     public void SetSleepTimer(int minutes)
     {
         CancelSleepTimer();
         _sleepTimerCts = new CancellationTokenSource();
-        _sleepTimerEndTime = DateTime.Now.AddMinutes(minutes);
+        _sleepTimerEndTime = DateTime.UtcNow.ToLocalTime().AddMinutes(minutes);
         
         Task.Run(async () =>
         {
@@ -440,14 +440,18 @@ public static class Audio
     {
         var enumerator = new MMDeviceEnumeratorComObject() as IMMDeviceEnumerator;
         if (enumerator == null)
+        {
             throw new InvalidOperationException("Failed to create device enumerator");
-            
+        }
+
         IMMDevice? dev = null;
         Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(/*eRender*/ 0, /*eMultimedia*/ 1, out dev));
         
         if (dev == null)
+        {
             throw new InvalidOperationException("Failed to get default audio endpoint");
-            
+        }
+
         IAudioEndpointVolume? epv = null;
         var epvid = typeof(IAudioEndpointVolume).GUID;
         Marshal.ThrowExceptionForHR(dev.Activate(ref epvid, /*CLSCTX_ALL*/ 23, 0, out epv));

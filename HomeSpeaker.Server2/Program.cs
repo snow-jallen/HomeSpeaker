@@ -1,13 +1,14 @@
+using System.Runtime.InteropServices;
 using HomeSpeaker.Server2;
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Shared;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
-using System.Runtime.InteropServices;
 
+#pragma warning disable IDE1006 // Naming Styles
 const string LocalCorsPolicy = nameof(LocalCorsPolicy);
+#pragma warning restore IDE1006 // Naming Styles
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -474,7 +475,8 @@ app.MapPost("/api/anchors/daily/ensure-today", async (AnchorService anchorServic
     }
     catch (Exception ex)
     {
-        return Results.Problem($"Failed to ensure today's anchors: {ex.Message}");    }
+        return Results.Problem($"Failed to ensure today's anchors: {ex.Message}");
+    }
 });
 
 // Get all users who have anchors
@@ -506,11 +508,11 @@ app.MapGet("/api/music/recently-played", async (MusicContext db, Mp3Library libr
             .Where(s => s != null)
             .Select(s => new
             {
-                s.SongId,
-                s.Name,
-                s.Path,
-                s.Album,
-                s.Artist
+                s!.SongId,
+                s!.Name,
+                s!.Path,
+                s!.Album,
+                s!.Artist
             })
             .ToList();
 
@@ -539,19 +541,18 @@ app.MapGet("/api/anchors/daily", async (AnchorService anchorService, DateOnly? s
 // Music streaming endpoint for browser playback
 app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, HttpContext context, ILogger<Program> logger) =>
 {
-    logger.LogInformation("Streaming endpoint called for song ID: {songId}", songId);
+    logger.LogInformation("Streaming endpoint called for song ID: {SongId}", songId);
     var song = library.Songs.FirstOrDefault(s => s.SongId == songId);
     if (song == null)
     {
-        logger.LogWarning("Song with ID {songId} not found in library", songId);
+        logger.LogWarning("Song with ID {SongId} not found in library", songId);
         return Results.NotFound($"Song with ID {songId} not found");
     }
 
-    logger.LogInformation("Found song: {songName} at path: {path}", song.Name, song.Path);
-
+    logger.LogInformation("Found song: {SongName} at path: {Path}", song.Name, song.Path);
     if (!File.Exists(song.Path))
     {
-        logger.LogWarning("Music file not found on disk: {path}", song.Path);
+        logger.LogWarning("Music file not found on disk: {Path}", song.Path);
         return Results.NotFound($"Music file not found: {song.Path}");
     }
 
@@ -577,8 +578,8 @@ app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, Htt
         var range = rangeHeader.Substring(6).Split('-');
         if (long.TryParse(range[0], out var start))
         {
-            var end = range.Length > 1 && long.TryParse(range[1], out var endValue) 
-                ? endValue 
+            var end = range.Length > 1 && long.TryParse(range[1], out var endValue)
+                ? endValue
                 : fileInfo.Length - 1;
 
             context.Response.StatusCode = 206; // Partial Content
@@ -587,17 +588,21 @@ app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, Htt
 
             using var fileStream = new FileStream(song.Path, FileMode.Open, FileAccess.Read);
             fileStream.Seek(start, SeekOrigin.Begin);
-            
+
             var buffer = new byte[8192];
-            long remaining = end - start + 1;
-            
+            var remaining = end - start + 1;
+
             while (remaining > 0)
             {
                 var bytesToRead = (int)Math.Min(buffer.Length, remaining);
-                var bytesRead = await fileStream.ReadAsync(buffer, 0, bytesToRead);
-                if (bytesRead == 0) break;
-                
-                await context.Response.Body.WriteAsync(buffer, 0, bytesRead);
+                var mem = new Memory<byte>(buffer, 0, bytesToRead);
+                var bytesRead = await fileStream.ReadAsync(mem, context.RequestAborted);
+                if (bytesRead == 0)
+                {
+                    break;
+                }
+
+                await context.Response.Body.WriteAsync(mem.Slice(0, bytesRead), context.RequestAborted);
                 remaining -= bytesRead;
             }
         }
@@ -615,7 +620,9 @@ app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, Htt
 app.MapGet("/api/streams/image-search", async (string q, ImageSearchService imageSearch) =>
 {
     if (string.IsNullOrWhiteSpace(q))
+    {
         return Results.BadRequest(new { error = "Query is required" });
+    }
 
     var results = await imageSearch.SearchAsync(q);
     return Results.Ok(results);
@@ -631,14 +638,20 @@ app.MapPost("/api/streams/upload-image", async (IFormFile file, RadioStreamServi
     };
 
     if (!allowedTypes.Contains(file.ContentType))
+    {
         return Results.BadRequest(new { error = "File must be an image (PNG, JPG, GIF, ICO, WebP)" });
+    }
 
     if (file.Length > 2 * 1024 * 1024)
+    {
         return Results.BadRequest(new { error = "File must be under 2MB" });
+    }
 
     var filename = await radioStreamService.UploadFaviconAsync(file);
     if (filename == null)
+    {
         return Results.Problem("Failed to save image");
+    }
 
     return Results.Ok(new { filename });
 }).DisableAntiforgery();

@@ -85,7 +85,10 @@ public class RadioStreamService
     public async Task UpdateStreamAsync(int id, string name, string url, string? faviconUrl = null, string? faviconFileName = null)
     {
         var stream = await _dbContext.RadioStreams.FindAsync(id);
-        if (stream == null) return;
+        if (stream == null)
+        {
+            return;
+        }
 
         stream.Name = name;
         stream.Url = url;
@@ -94,7 +97,10 @@ public class RadioStreamService
         {
             // Pre-uploaded file — delete old favicon and store new filename directly
             if (!string.IsNullOrWhiteSpace(stream.FaviconFileName))
+            {
                 DeleteFavicon(stream.FaviconFileName);
+            }
+
             stream.FaviconFileName = faviconFileName;
         }
         else if (!string.IsNullOrWhiteSpace(faviconUrl))
@@ -104,7 +110,9 @@ public class RadioStreamService
 
             // Delete old favicon if new one was successfully downloaded (and it's a different file)
             if (newFileName != null && !string.IsNullOrWhiteSpace(stream.FaviconFileName) && stream.FaviconFileName != newFileName)
+            {
                 DeleteFavicon(stream.FaviconFileName);
+            }
 
             stream.FaviconFileName = newFileName;
         }
@@ -125,10 +133,14 @@ public class RadioStreamService
         };
 
         if (!allowedTypes.Contains(file.ContentType))
+        {
             return null;
+        }
 
         if (file.Length > 2 * 1024 * 1024)
+        {
             return null;
+        }
 
         var extension = GetExtensionFromContentType(file.ContentType) ?? ".png";
         var baseName = GetSafeFileName(Path.GetFileNameWithoutExtension(file.FileName));
@@ -147,7 +159,10 @@ public class RadioStreamService
     public async Task DeleteStreamAsync(int id)
     {
         var stream = await _dbContext.RadioStreams.FindAsync(id);
-        if (stream == null) return;
+        if (stream == null)
+        {
+            return;
+        }
 
         // Delete favicon file if exists
         if (!string.IsNullOrWhiteSpace(stream.FaviconFileName))
@@ -165,7 +180,10 @@ public class RadioStreamService
     public async Task IncrementPlayCountAsync(int streamId)
     {
         var stream = await _dbContext.RadioStreams.FindAsync(streamId);
-        if (stream == null) return;
+        if (stream == null)
+        {
+            return;
+        }
 
         stream.PlayCount++;
         stream.LastPlayedAt = DateTime.UtcNow;
@@ -180,7 +198,10 @@ public class RadioStreamService
         try
         {
             var response = await _httpClient.GetAsync(faviconUrl);
-            if (!response.IsSuccessStatusCode) return null;
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
 
             var contentType = response.Content.Headers.ContentType?.MediaType;
             var extension = GetExtensionFromContentType(contentType) ?? ".png";

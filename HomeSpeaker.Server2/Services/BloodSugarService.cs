@@ -115,7 +115,7 @@ public sealed class BloodSugarService
                 _logger.LogWarning("NIGHTSCOUT_URL not configured");
                 return new BloodSugarStatus
                 {
-                    LastUpdated = DateTime.Now,
+                    LastUpdated = DateTime.UtcNow.ToLocalTime(),
                     IsStale = true,
                     CurrentReading = null
                 };
@@ -139,7 +139,7 @@ public sealed class BloodSugarService
                 _logger.LogWarning("No blood sugar entries found");
                 return new BloodSugarStatus
                 {
-                    LastUpdated = DateTime.Now,
+                    LastUpdated = DateTime.UtcNow.ToLocalTime(),
                     IsStale = true,
                     CurrentReading = null
                 };
@@ -166,7 +166,7 @@ public sealed class BloodSugarService
             _logger.LogError(ex, "Failed to fetch blood sugar data from NightScout");
             return new BloodSugarStatus
             {
-                LastUpdated = DateTime.Now,
+                LastUpdated = DateTime.UtcNow.ToLocalTime(),
                 IsStale = true,
                 CurrentReading = null
             };

@@ -366,14 +366,14 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     public bool SleepTimerActive => _sleepTimerCts != null && !_sleepTimerCts.IsCancellationRequested;
     
     public TimeSpan? SleepTimerRemaining => _sleepTimerEndTime.HasValue 
-        ? _sleepTimerEndTime.Value - DateTime.Now 
+        ? _sleepTimerEndTime.Value - DateTime.UtcNow.ToLocalTime() 
         : null;
     
     public void SetSleepTimer(int minutes)
     {
         CancelSleepTimer();
         _sleepTimerCts = new CancellationTokenSource();
-        _sleepTimerEndTime = DateTime.Now.AddMinutes(minutes);
+        _sleepTimerEndTime = DateTime.UtcNow.ToLocalTime().AddMinutes(minutes);
         
         Task.Run(async () =>
         {

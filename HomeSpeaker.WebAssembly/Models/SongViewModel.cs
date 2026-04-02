@@ -12,9 +12,13 @@ public class SongViewModel
         {
             path = value;
             if (path?.Contains('\\') ?? false)
+            {
                 Folder = System.IO.Path.GetDirectoryName(path.Replace('\\', '/'));
+            }
             else
+            {
                 Folder = System.IO.Path.GetDirectoryName(path);
+            }
         }
     }
     public required string Album { get; set; }
@@ -49,7 +53,7 @@ public static class ViewModelExtensions
         };
     }
 
-    public static SongViewModel ToSongViewModel(this HomeSpeaker.Shared.Song song)
+    public static SongViewModel ToSongViewModel(this Song song)
     {
         return new SongViewModel
         {

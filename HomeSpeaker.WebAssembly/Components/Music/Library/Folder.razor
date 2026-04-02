@@ -20,10 +20,14 @@
 @code {
     protected override async Task OnParametersSetAsync()
     {
-        songs = await svc.GetSongsInFolder(Name);
+        songs = Name switch
+        {
+            null => Enumerable.Empty<SongViewModel>(),
+            _ => await svc.GetSongsInFolder(Name)
+        };
     }
 
-    IEnumerable<SongViewModel> songs;
+    IEnumerable<SongViewModel>? songs;
 
     [Parameter]
     public string? Name { get; set; }    private bool isExpanded = false;

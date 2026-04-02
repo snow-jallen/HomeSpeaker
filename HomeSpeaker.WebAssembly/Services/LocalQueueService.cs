@@ -82,7 +82,9 @@ public class LocalQueueService : ILocalQueueService
     public async Task RemoveSongAsync(int index)
     {
         if (index < 0 || index >= queue.Count)
+        {
             return;
+        }
 
         var removedSong = queue[index];
         queue.RemoveAt(index);
@@ -130,7 +132,9 @@ public class LocalQueueService : ILocalQueueService
     public async Task MoveSongAsync(int fromIndex, int toIndex)
     {
         if (fromIndex < 0 || fromIndex >= queue.Count || toIndex < 0 || toIndex >= queue.Count)
+        {
             return;
+        }
 
         var song = queue[fromIndex];
         queue.RemoveAt(fromIndex);
@@ -179,7 +183,9 @@ public class LocalQueueService : ILocalQueueService
     public async Task PlaySongAtIndexAsync(int index)
     {
         if (index < 0 || index >= queue.Count)
+        {
             return;
+        }
 
         currentIndex = index;
         var song = queue[currentIndex];
@@ -209,7 +215,9 @@ public class LocalQueueService : ILocalQueueService
     public Task ShuffleQueueAsync()
     {
         if (queue.Count <= 1)
+        {
             return Task.CompletedTask;
+        }
 
         var currentSong = CurrentSong;
         var random = new Random();

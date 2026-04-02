@@ -3,20 +3,20 @@
         <div class="flex-grow-1">
             <h4 class="mb-0 text-white">
                 <i class="fas @(isExpanded ? "fa-chevron-down" : "fa-chevron-right") me-2" style="font-size: 0.85rem; opacity: 0.7;"></i>
-                @(String.IsNullOrWhiteSpace(Content.Key) ? "[ No Artist ]" : Content.Key)
+                @(String.IsNullOrWhiteSpace(Content?.Key) ? "[ No Artist ]" : Content.Key)
             </h4>
-            <div class="text-muted small mt-1">@Content.Count() songs</div>
+            <div class="text-muted small mt-1">@Content?.Count() songs</div>
         </div>
         <div class="d-flex gap-2">
-            <PlayButtonWithDropdown Songs="Content.ToList()" />
-            <PlusButtonWithMenu Songs="Content.ToList()" />
+            <PlayButtonWithDropdown Songs="Content?.ToList()" />
+            <PlusButtonWithMenu Songs="Content?.ToList()" />
         </div>
     </div>
     
     @if (isExpanded)
     {
         <div class="albums-container mt-3">
-            @foreach (var album in from song in Content
+            @foreach (var album in from song in Content ?? Enumerable.Empty<SongViewModel>()
                                   group song by song.Album into album
                                   select album)
             {
@@ -55,7 +55,7 @@
 
 @code {
     [Parameter]
-    public IGrouping<string, SongViewModel> Content { get; set; }
+    public IGrouping<string, SongViewModel>? Content { get; set; }
 
     private bool isExpanded = false;
     private HashSet<string> expandedAlbums = new();

@@ -5,34 +5,31 @@ namespace HomeSpeaker.WebAssembly.Services;
 
 public sealed class ForecastService : IForecastService
 {
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<ForecastService> _logger;
+    private readonly HttpClient httpClient;
+    private readonly ILogger<ForecastService> logger;
 
     public ForecastService(HttpClient httpClient, ILogger<ForecastService> logger)
     {
-        _httpClient = httpClient;
-        _logger = logger;
+        this.httpClient = httpClient;
+        this.logger = logger;
     }
 
     public async Task<ForecastStatus> GetForecastStatusAsync()
     {
         try
         {
-            _logger.LogInformation("Fetching forecast status from server...");
-            var response = await _httpClient.GetAsync("/api/forecast");
+            logger.LogInformation("Fetching forecast status from server...");
+            var response = await httpClient.GetAsync("/api/forecast");
             response.EnsureSuccessStatusCode();
-            
+
             var json = await response.Content.ReadAsStringAsync();
-            var forecastStatus = JsonSerializer.Deserialize<ForecastStatus>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-            
+            var forecastStatus = JsonSerializer.Deserialize<ForecastStatus>(json, SerializationHelpers.PropertyNameCaseInsensitive);
+
             return forecastStatus ?? new ForecastStatus();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to fetch forecast status from server");
+            logger.LogError(ex, "Failed to fetch forecast status from server");
             // Return a default status if the server is not available
             return new ForecastStatus
             {
@@ -46,16 +43,16 @@ public sealed class ForecastService : IForecastService
     {
         try
         {
-            _logger.LogInformation("Clearing forecast cache on server...");
-            var response = await _httpClient.DeleteAsync("/api/forecast/cache");
+            logger.LogInformation("Clearing forecast cache on server...");
+            var response = await httpClient.DeleteAsync("/api/forecast/cache");
             response.EnsureSuccessStatusCode();
-            
-            _logger.LogInformation("Forecast cache cleared successfully");
+
+            logger.LogInformation("Forecast cache cleared successfully");
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to clear forecast cache on server");
+            logger.LogError(ex, "Failed to clear forecast cache on server");
             return false;
         }
     }
@@ -64,21 +61,18 @@ public sealed class ForecastService : IForecastService
     {
         try
         {
-            _logger.LogInformation("Refreshing forecast data from server...");
-            var response = await _httpClient.PostAsync("/api/forecast/refresh", null);
+            logger.LogInformation("Refreshing forecast data from server...");
+            var response = await httpClient.PostAsync("/api/forecast/refresh", null);
             response.EnsureSuccessStatusCode();
-            
+
             var json = await response.Content.ReadAsStringAsync();
-            var forecastStatus = JsonSerializer.Deserialize<ForecastStatus>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-            
+            var forecastStatus = JsonSerializer.Deserialize<ForecastStatus>(json, SerializationHelpers.PropertyNameCaseInsensitive);
+
             return forecastStatus ?? new ForecastStatus();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to refresh forecast data from server");
+            logger.LogError(ex, "Failed to refresh forecast data from server");
             // Return a default status if the server is not available
             return new ForecastStatus
             {

@@ -61,7 +61,10 @@ public class YoutubeService : IDisposable
         var fileName = string.Join("_", $"{title}.mp3".Split(Path.GetInvalidFileNameChars()));
         var destinationPath = Path.Combine(_config[ConfigKeys.MediaFolder]!, "YouTube Cache");
         if (!Directory.Exists(destinationPath))
+        {
             Directory.CreateDirectory(destinationPath);
+        }
+
         destinationPath = Path.Combine(destinationPath, fileName);
         var ffmpegLocation = _config[ConfigKeys.FFMpegLocation] ?? throw new Exception("Missing ffmeg path in config: " + ConfigKeys.FFMpegLocation);
 
@@ -210,7 +213,7 @@ internal partial class MediaFile : IDisposable
 
     public void Dispose()
     {
-        _file.Tag.DateTagged = DateTime.Now;
+        _file.Tag.DateTagged = DateTime.UtcNow.ToLocalTime();
         _file.Save();
         _file.Dispose();
     }

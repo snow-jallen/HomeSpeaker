@@ -120,7 +120,7 @@ public sealed class TemperatureService
         var temperatureStatus = await GetTemperatureStatusInternalAsync(cancellationToken);
 
         // Set cache timestamp
-        temperatureStatus.LastCachedAt = DateTime.Now;
+        temperatureStatus.LastCachedAt = DateTime.UtcNow.ToLocalTime();
 
         // Cache the result with absolute expiration
         var cacheOptions = new MemoryCacheEntryOptions
@@ -162,7 +162,7 @@ public sealed class TemperatureService
 
         var temperatureStatus = new TemperatureStatus
         {
-            ReadingTakenAt = DateTime.Now,
+            ReadingTakenAt = DateTime.UtcNow.ToLocalTime(),
             Threshold = threshold
         };
 

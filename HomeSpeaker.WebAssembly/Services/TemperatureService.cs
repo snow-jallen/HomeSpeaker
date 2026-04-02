@@ -36,8 +36,8 @@ public sealed class TemperatureService : ITemperatureService
             // Return a default status if the server is not available
             return new TemperatureStatus
             {
-                ReadingTakenAt = DateTime.Now,
-                LastCachedAt = DateTime.Now,
+                ReadingTakenAt = DateTime.UtcNow.ToLocalTime(),
+                LastCachedAt = DateTime.UtcNow.ToLocalTime(),
                 OutsideTemperature = null,
                 YoungerGirlsRoomTemperature = null
             };
@@ -84,8 +84,8 @@ public sealed class TemperatureService : ITemperatureService
             // Return a default status if the server is not available
             return new TemperatureStatus
             {
-                ReadingTakenAt = DateTime.Now,
-                LastCachedAt = DateTime.Now,
+                ReadingTakenAt = DateTime.UtcNow.ToLocalTime(),
+                LastCachedAt = DateTime.UtcNow.ToLocalTime(),
                 OutsideTemperature = null,
                 YoungerGirlsRoomTemperature = null
             };

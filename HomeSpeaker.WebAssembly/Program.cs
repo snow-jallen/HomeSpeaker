@@ -62,7 +62,7 @@ catch (Exception ex)
 var app = builder.Build();
 
 // Start anchor sync service for real-time updates
-try 
+try
 {
     var anchorSync = app.Services.GetRequiredService<IAnchorSyncService>();
     await anchorSync.StartAsync();

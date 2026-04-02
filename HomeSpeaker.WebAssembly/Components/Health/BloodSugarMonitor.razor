@@ -79,7 +79,7 @@
                         }
                         @if (bloodSugarStatus.LastUpdated != default(DateTime))
                         {
-                            <span class="ms-1">• Cached: @FormatTimeSince(DateTime.Now - bloodSugarStatus.LastUpdated)</span>
+                            <span class="ms-1">• Cached: @FormatTimeSince(DateTime.UtcNow.ToLocalTime() - bloodSugarStatus.LastUpdated)</span>
                         }
                     </small>
                 </div>
@@ -176,7 +176,7 @@
 
 @code {
     private BloodSugarStatus? bloodSugarStatus;
-    private DateTime lastUpdated = DateTime.Now;
+    private DateTime lastUpdated = DateTime.UtcNow.ToLocalTime();
     private Timer? refreshTimer;
     private bool isLoading = true;
     protected override async Task OnInitializedAsync()
@@ -212,7 +212,7 @@
             StateHasChanged();
 
             bloodSugarStatus = await BloodSugarService.GetBloodSugarStatusAsync();
-            lastUpdated = DateTime.Now;
+            lastUpdated = DateTime.UtcNow.ToLocalTime();
             isLoading = false;
 
             Logger.LogInformation("Blood sugar data refreshed successfully");
@@ -259,7 +259,7 @@
             StateHasChanged();
 
             bloodSugarStatus = await BloodSugarService.RefreshAsync();
-            lastUpdated = DateTime.Now;
+            lastUpdated = DateTime.UtcNow.ToLocalTime();
             isLoading = false;
             StateHasChanged();
 

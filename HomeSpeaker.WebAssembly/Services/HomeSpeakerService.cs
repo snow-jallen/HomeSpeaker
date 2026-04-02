@@ -1,22 +1,21 @@
-﻿using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using System.Diagnostics;
+﻿using System.Diagnostics;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using static HomeSpeaker.Shared.HomeSpeaker;
-using HomeSpeaker.WebAssembly.Models;
 
 namespace HomeSpeaker.WebAssembly.Services;
 
 public class HomeSpeakerService
 {
-    private HomeSpeakerClient client;
-    private List<SongMessage> songs = new();
+    private readonly HomeSpeakerClient client;
     private readonly ILogger<HomeSpeakerService> logger;
-    public IEnumerable<SongMessage> Songs => songs;
-    public event EventHandler? QueueChanged; public HomeSpeakerService(IConfiguration config, ILogger<HomeSpeakerService> logger, IWebAssemblyHostEnvironment hostEnvironment)
+    public event EventHandler? QueueChanged;
+
+    public HomeSpeakerService(IConfiguration config, ILogger<HomeSpeakerService> logger, IWebAssemblyHostEnvironment hostEnvironment)
     {
-        string address = config["ServerAddress"] ?? throw new MissingConfigException("ServerAddress");
-        logger.LogInformation($"I was about to use {address}");
+        var address = config["ServerAddress"] ?? throw new MissingConfigException("ServerAddress");
+        logger.LogInformation("I was about to use {Address}", address);
         address = hostEnvironment.BaseAddress;
-    logger.LogInformation("But instead I'll use {Address}", address);
+        logger.LogInformation("But instead I'll use {Address}", address);
         var channel = GrpcChannel.ForAddress(address, new GrpcChannelOptions
         {
             HttpHandler = new GrpcWebHandler(new HttpClientHandler())
@@ -36,7 +35,7 @@ public class HomeSpeakerService
             var eventReply = client.SendEvent(new Google.Protobuf.WellKnownTypes.Empty());
             await foreach (var eventInstance in eventReply.ResponseStream.ReadAllAsync())
             {
-                StatusChanged?.Invoke(this, eventInstance.Message);
+                StatusChanged?.Invoke(eventInstance.Message);
             }
         }
         catch (Exception ex)
@@ -135,18 +134,18 @@ public class HomeSpeakerService
 
     public async Task ReorderPlaylistSongsAsync(string playlistName, List<string> songPaths)
     {
-    logger.LogInformation("Calling ReorderPlaylistSongs gRPC method for playlist: {PlaylistName}", playlistName);
+        logger.LogInformation("Calling ReorderPlaylistSongs gRPC method for playlist: {PlaylistName}", playlistName);
         await client.ReorderPlaylistSongsAsync(new ReorderPlaylistSongsRequest
         {
             PlaylistName = playlistName,
             SongPaths = { songPaths }
         });
-    logger.LogInformation("Successfully called ReorderPlaylistSongs gRPC method for playlist: {PlaylistName}", playlistName);
+        logger.LogInformation("Successfully called ReorderPlaylistSongs gRPC method for playlist: {PlaylistName}", playlistName);
     }
 
     public async Task UpdateSongAsync(int songId, string name, string artist, string album)
     {
-    logger.LogInformation("Calling UpdateSong gRPC method for song: {SongId}", songId);
+        logger.LogInformation("Calling UpdateSong gRPC method for song: {SongId}", songId);
         await client.UpdateSongAsync(new UpdateSongRequest
         {
             SongId = songId,
@@ -154,10 +153,10 @@ public class HomeSpeakerService
             Artist = artist,
             Album = album
         });
-    logger.LogInformation("Successfully called UpdateSong gRPC method for song: {SongId}", songId);
+        logger.LogInformation("Successfully called UpdateSong gRPC method for song: {SongId}", songId);
     }
 
-    readonly char[] separators = new[] { '/', '\\' };
+    private readonly char[] separators = new[] { '/', '\\' };
 
     public async Task<IEnumerable<string>> GetFolders()
     {
@@ -251,6 +250,7 @@ public class HomeSpeakerService
         {
             queue.AddRange(reply.Songs.Select(s => s.ToSongViewModel()));
         }
+
         return queue;
     }
 
@@ -379,5 +379,5 @@ public class HomeSpeakerService
         return (result.Active, result.RemainingSeconds);
     }
 
-    public event EventHandler<string>? StatusChanged;
+    public event Action<string>? StatusChanged;
 }

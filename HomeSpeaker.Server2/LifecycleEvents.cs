@@ -61,7 +61,9 @@ public class LifecycleEvents : IHostedService
             {
                 _logger.LogInformation("Not playing anything, no state to save.");
                 if (File.Exists(LastStatePath)) //don't leave behind a file as if we were.
+                {
                     File.Delete(LastStatePath);
+                }
             }
         }
         catch (OperationCanceledException)
