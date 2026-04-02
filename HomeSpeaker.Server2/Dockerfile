@@ -12,7 +12,7 @@ WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
+FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/sdk:10.0 AS publish
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
@@ -25,9 +25,6 @@ RUN --mount=type=cache,target=/root/.nuget/packages \
 
 COPY . .
 WORKDIR "/src/HomeSpeaker.Server2"
-
-# Force Grpc.Tools to use x64 protoc compiler
-ENV GrpcToolsPlatform=x64
 
 RUN --mount=type=cache,target=/root/.nuget/packages \
     dotnet publish "./HomeSpeaker.Server2.csproj" \
