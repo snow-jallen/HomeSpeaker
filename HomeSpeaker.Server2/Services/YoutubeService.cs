@@ -20,7 +20,9 @@ public class YoutubeService : IDisposable
         _library = library;
     }
 
+#pragma warning disable CA2213 // YoutubeClient does not implement IDisposable — false positive
     private readonly YoutubeClient _client = new();
+#pragma warning restore CA2213
     private readonly IConfiguration _config;
     private readonly ILogger<YoutubeService> _logger;
     private readonly Mp3Library _library;
@@ -65,7 +67,10 @@ public class YoutubeService : IDisposable
 
         _logger.LogInformation("Beginning to cache {Title}", title);
 
-        await _client.Videos.DownloadAsync(VideoId.Parse(id), new ConversionRequest(ffmpegLocation, destinationPath, Container.Mp3, ConversionPreset.Medium), progress);
+        await _client.Videos.DownloadAsync(VideoId.Parse(id), destinationPath, o => o
+            .SetFFmpegPath(ffmpegLocation)
+            .SetContainer(Container.Mp3)
+            .SetPreset(ConversionPreset.Medium), progress);
 
         try
         {
@@ -94,7 +99,7 @@ public class YoutubeService : IDisposable
         {
             if (disposing)
             {
-                _client.Dispose();
+                // YoutubeClient does not implement IDisposable — nothing to dispose
             }
             _disposed = true;
         }

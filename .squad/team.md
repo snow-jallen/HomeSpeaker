@@ -18,6 +18,9 @@
 | Zoe | 🧪 Tester | .squad/agents/zoe/charter.md | active |
 | Scribe | 📋 Session Logger | .squad/agents/scribe/charter.md | active |
 | Ralph | 🔄 Work Monitor | .squad/agents/ralph/charter.md | active |
+| @copilot | 🤖 Coding Agent | — | active |
+
+<!-- copilot-auto-assign: true -->
 
 ## Project Context
 

@@ -12,3 +12,4 @@
 | Cross-cutting concerns, code review | Mal | Lead review |
 | Session logging, decision merging | Scribe | Always background |
 | Work queue monitoring, issue tracking | Ralph | Monitor role |
+| Good first issue, well-scoped bug fix, automated task | @copilot | AI coding agent |
