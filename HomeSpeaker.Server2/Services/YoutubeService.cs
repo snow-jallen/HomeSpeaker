@@ -65,7 +65,7 @@ public class YoutubeService : IDisposable
 
         _logger.LogInformation("Beginning to cache {Title}", title);
 
-        await _client.Videos.DownloadAsync(VideoId.Parse(id), new ConversionRequest(ffmpegLocation, destinationPath, new ConversionFormat("mp3"), ConversionPreset.Medium), progress);
+        await _client.Videos.DownloadAsync(VideoId.Parse(id), new ConversionRequest(ffmpegLocation, destinationPath, Container.Mp3, ConversionPreset.Medium), progress);
 
         try
         {
@@ -94,8 +94,7 @@ public class YoutubeService : IDisposable
         {
             if (disposing)
             {
-                // YoutubeClient doesn't implement IDisposable, so no cleanup needed
-                // Note: _client is readonly and cannot be reassigned
+                _client.Dispose();
             }
             _disposed = true;
         }
