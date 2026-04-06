@@ -264,7 +264,7 @@
     
     private string FormatTemperature(double? temperature)
     {
-        return temperature.HasValue ? $"{temperature.Value:F1}°" : "N/A";
+        return temperature.HasValue ? $"{temperature.Value:F0}°" : "N/A";
     }
 
     private string FormatForecastTemperature(double? temperature)
