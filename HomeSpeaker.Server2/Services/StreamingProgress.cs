@@ -5,25 +5,25 @@ namespace HomeSpeaker.Server2.Services;
 
 internal class StreamingProgress : IProgress<double>
 {
-    private readonly IServerStreamWriter<CacheVideoReply> _responseStream;
-    private readonly string _title;
-    private readonly ILogger _logger;
-    private double _lastProgress;
+    private readonly IServerStreamWriter<CacheVideoReply> responseStream;
+    private readonly string title;
+    private readonly ILogger logger;
+    private double lastProgress;
 
     public StreamingProgress(IServerStreamWriter<CacheVideoReply> responseStream, string title, ILogger logger)
     {
-        _responseStream = responseStream;
-        _title = title;
-        _logger = logger;
+        this.responseStream = responseStream;
+        this.title = title;
+        this.logger = logger;
     }
 
     public async void Report(double value)
     {
-        _logger.LogInformation("Progress of {title} is {value}", _title, value);
-        if (value > _lastProgress + .01)
+        logger.LogInformation("Progress of {title} is {value}", title, value);
+        if (value > lastProgress + .01)
         {
-            await _responseStream.WriteAsync(new CacheVideoReply { PercentComplete = value, Title = _title });
-            _lastProgress = value;
+            await responseStream.WriteAsync(new CacheVideoReply { PercentComplete = value, Title = title });
+            lastProgress = value;
         }
     }
 }

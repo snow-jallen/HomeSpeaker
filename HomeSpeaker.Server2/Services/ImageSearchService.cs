@@ -6,13 +6,13 @@ namespace HomeSpeaker.Server2.Services;
 
 public class ImageSearchService
 {
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<ImageSearchService> _logger;
+    private readonly HttpClient httpClient;
+    private readonly ILogger<ImageSearchService> logger;
 
     public ImageSearchService(HttpClient httpClient, ILogger<ImageSearchService> logger)
     {
-        _httpClient = httpClient;
-        _logger = logger;
+        this.httpClient = httpClient;
+        this.logger = logger;
     }
 
     public async Task<List<ImageSearchResult>> SearchAsync(string query)
@@ -32,14 +32,14 @@ public class ImageSearchService
         try
         {
             // Step 1: fetch vqd token from the DDG search page
-            var response = await _httpClient.GetAsync(
+            var response = await httpClient.GetAsync(
                 $"https://duckduckgo.com/?q={Uri.EscapeDataString(query)}&iax=images&ia=images");
             var html = await response.Content.ReadAsStringAsync();
 
             var vqdMatch = Regex.Match(html, @"vqd=['""]?([\w-]+)['""]?");
             if (!vqdMatch.Success)
             {
-                _logger.LogWarning("Could not extract DDG vqd token for query: {Query}", query);
+                logger.LogWarning("Could not extract DDG vqd token for query: {Query}", query);
                 return [];
             }
             var vqd = vqdMatch.Groups[1].Value;
@@ -50,10 +50,10 @@ public class ImageSearchService
                          $"&vqd={Uri.EscapeDataString(vqd)}" +
                          $"&p=1&o=json&f=,,,&l=&s=safe";
 
-            var imgResponse = await _httpClient.GetAsync(imgUrl);
+            var imgResponse = await httpClient.GetAsync(imgUrl);
             if (!imgResponse.IsSuccessStatusCode)
             {
-                _logger.LogWarning("DDG image search returned {StatusCode}", imgResponse.StatusCode);
+                logger.LogWarning("DDG image search returned {StatusCode}", imgResponse.StatusCode);
                 return [];
             }
 
@@ -79,7 +79,7 @@ public class ImageSearchService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "DDG image search failed for query: {Query}", query);
+            logger.LogWarning(ex, "DDG image search failed for query: {Query}", query);
             return [];
         }
     }
@@ -92,7 +92,7 @@ public class ImageSearchService
                       $"?action=query&generator=search&gsrsearch={Uri.EscapeDataString(query)}" +
                       "&prop=pageimages&piprop=thumbnail&pithumbsize=200&format=json&origin=*";
 
-            var response = await _httpClient.GetAsync(url);
+            var response = await httpClient.GetAsync(url);
             if (!response.IsSuccessStatusCode)
             {
                 return [];
@@ -125,7 +125,7 @@ public class ImageSearchService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Wikipedia image search failed for query: {Query}", query);
+            logger.LogWarning(ex, "Wikipedia image search failed for query: {Query}", query);
             return [];
         }
     }

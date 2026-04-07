@@ -10,19 +10,19 @@ public interface IFileSource
 
 public class DefaultFileSource : IFileSource
 {
-    private readonly string _rootFolder;
-    private readonly string _userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    private readonly string rootFolder;
+    private readonly string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
     public DefaultFileSource(string rootFolder)
     {
-        _rootFolder = rootFolder;
+        this.rootFolder = rootFolder;
     }
 
-    public string RootFolder => _rootFolder;
+    public string RootFolder => rootFolder;
 
     public IEnumerable<string> GetAllMp3s()
     {
-        var musicFolder = _rootFolder.Replace("~", _userProfile);
+        var musicFolder = rootFolder.Replace("~", userProfile);
 
         if (!Directory.Exists(musicFolder))
         {
@@ -34,7 +34,7 @@ public class DefaultFileSource : IFileSource
 
     public void SoftDelete(string path)
     {
-        var destFolder = Path.Combine(_userProfile, "DeletedMusic");
+        var destFolder = Path.Combine(userProfile, "DeletedMusic");
         if (!Directory.Exists(destFolder))
         {
             Directory.CreateDirectory(destFolder);

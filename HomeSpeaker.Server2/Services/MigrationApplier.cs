@@ -5,33 +5,33 @@ namespace HomeSpeaker.Server2.Services;
 
 public class MigrationApplier : IHostedService
 {
-    private readonly IServiceProvider _service;
-    private readonly ILogger<MigrationApplier> _logger;
+    private readonly IServiceProvider service;
+    private readonly ILogger<MigrationApplier> logger;
 
     public MigrationApplier(IServiceProvider service, ILogger<MigrationApplier> logger)
     {
-        _service = service;
-        _logger = logger;
+        this.service = service;
+        this.logger = logger;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        using (var scope = _service.CreateScope())
+        using (var scope = service.CreateScope())
         {
             try
             {
                 var context = scope.ServiceProvider.GetRequiredService<MusicContext>();
-                _logger.LogInformation("Applying migrations...");
+                logger.LogInformation("Applying migrations...");
                 context.Database.Migrate();
-                _logger.LogInformation("Migrations applied successfully!");
+                logger.LogInformation("Migrations applied successfully!");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "***  Trouble applying migrations!");
+                logger.LogError(ex, "***  Trouble applying migrations!");
 
                 if (System.Diagnostics.Debugger.IsAttached)
                 {
-                    _logger.LogWarning("Maybe it's a connection string issue, or the database is not up?\n");
+                    logger.LogWarning("Maybe it's a connection string issue, or the database is not up?\n");
                 }
                 throw;
             }

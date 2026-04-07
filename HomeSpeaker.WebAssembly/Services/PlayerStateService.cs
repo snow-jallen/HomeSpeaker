@@ -2,23 +2,23 @@ namespace HomeSpeaker.WebAssembly.Services;
 
 public class PlayerStateService
 {
-    private GetStatusReply? _status;
-    private bool _repeatMode;
+    private GetStatusReply? status;
+    private bool repeatMode;
 
-    public GetStatusReply? Status => _status;
-    public bool RepeatMode => _repeatMode;
+    public GetStatusReply? Status => status;
+    public bool RepeatMode => repeatMode;
 
     public event Action? StateChanged;
 
     public void UpdateStatus(GetStatusReply? status)
     {
-        _status = status;
+        this.status = status;
         StateChanged?.Invoke();
     }
 
     public void UpdateRepeatMode(bool repeatMode)
     {
-        _repeatMode = repeatMode;
+        this.repeatMode = repeatMode;
         StateChanged?.Invoke();
     }
 }

@@ -4,45 +4,45 @@ namespace HomeSpeaker.Server2;
 
 public class Mp3Library
 {
-    private readonly IFileSource _fileSource;
-    private readonly ITagParser _tagParser;
-    private readonly IDataStore _dataStore;
-    private readonly ILogger<Mp3Library> _logger;
+    private readonly IFileSource fileSource;
+    private readonly ITagParser tagParser;
+    private readonly IDataStore dataStore;
+    private readonly ILogger<Mp3Library> logger;
     private readonly object lockObject = new();
 
     public Mp3Library(IFileSource fileSource, ITagParser tagParser, IDataStore dataStore, ILogger<Mp3Library> logger)
     {
-        _fileSource = fileSource ?? throw new ArgumentNullException(nameof(fileSource));
-        _tagParser = tagParser ?? throw new ArgumentNullException(nameof(tagParser));
-        _dataStore = dataStore ?? throw new ArgumentNullException(nameof(dataStore));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _logger.LogInformation($"Initialized with fileSource {fileSource.RootFolder}");
+        this.fileSource = fileSource ?? throw new ArgumentNullException(nameof(fileSource));
+        this.tagParser = tagParser ?? throw new ArgumentNullException(nameof(tagParser));
+        this.dataStore = dataStore ?? throw new ArgumentNullException(nameof(dataStore));
+        this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        this.logger.LogInformation($"Initialized with fileSource {fileSource.RootFolder}");
 
         SyncLibrary();
     }
 
-    public string RootFolder => _fileSource.RootFolder;
+    public string RootFolder => fileSource.RootFolder;
 
     public void SyncLibrary()
     {
         lock (lockObject)
         {
-            _logger.LogInformation("Synchronizing MP3 library - reloading from disk.");
-            _dataStore.Clear();
-            var files = _fileSource.GetAllMp3s();
+            logger.LogInformation("Synchronizing MP3 library - reloading from disk.");
+            dataStore.Clear();
+            var files = fileSource.GetAllMp3s();
             foreach (var file in files)
             {
                 try
                 {
-                    var song = _tagParser.CreateSong(file);
-                    _dataStore.Add(song);
+                    var song = tagParser.CreateSong(file);
+                    dataStore.Add(song);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Trouble parsing tag info!");
+                    logger.LogError(ex, "Trouble parsing tag info!");
                 }
             }
-            _logger.LogInformation("Sync Completed! {count} songs in database.", _dataStore.GetSongs().Count());
+            logger.LogInformation("Sync Completed! {count} songs in database.", dataStore.GetSongs().Count());
         }
     }
 
@@ -54,7 +54,7 @@ public class Mp3Library
             {
                 ResetLibrary();
             }
-            return _dataStore.GetSongs();
+            return dataStore.GetSongs();
         }
     }
 
@@ -73,8 +73,8 @@ public class Mp3Library
             return;
         }
 
-        _logger.LogWarning("Deleting song# {songId} at {path}", songId, song.Path);
-        _fileSource.SoftDelete(song.Path);
+        logger.LogWarning("Deleting song# {songId} at {path}", songId, song.Path);
+        fileSource.SoftDelete(song.Path);
         IsDirty = true;
     }
 
@@ -82,23 +82,23 @@ public class Mp3Library
     {
         lock (lockObject)
         {
-            _logger.LogInformation("Updating song# {songId} with name: {name}, artist: {artist}, album: {album}", songId, name, artist, album);
+            logger.LogInformation("Updating song# {songId} with name: {name}, artist: {artist}, album: {album}", songId, name, artist, album);
 
             // Find the song to get its file path
             var song = Songs.Where(s => s.SongId == songId).FirstOrDefault();
             if (song == null)
             {
-                _logger.LogWarning("Song with ID {songId} not found", songId);
+                logger.LogWarning("Song with ID {songId} not found", songId);
                 return;
             }
 
             // Update the MP3 file tags
-            _tagParser.UpdateSongTags(song.Path, name, artist, album);
+            tagParser.UpdateSongTags(song.Path, name, artist, album);
 
             // Update the in-memory data store
-            _dataStore.UpdateSong(songId, name, artist, album);
+            dataStore.UpdateSong(songId, name, artist, album);
 
-            _logger.LogInformation("Successfully updated song# {songId} both in file and in memory", songId);
+            logger.LogInformation("Successfully updated song# {songId} both in file and in memory", songId);
         }
     }
 }

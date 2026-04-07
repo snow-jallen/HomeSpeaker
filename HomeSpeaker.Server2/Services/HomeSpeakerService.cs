@@ -9,45 +9,45 @@ namespace HomeSpeaker.Server2.Services;
 
 public class HomeSpeakerService : HomeSpeakerBase
 {
-    private readonly ILogger<HomeSpeakerService> _logger;
-    private readonly Mp3Library _library;
-    private readonly IMusicPlayer _musicPlayer;
-    private readonly YoutubeService _youtubeService;
-    private readonly PlaylistService _playlistService;
-    private readonly RadioStreamService _radioStreamService;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly List<IServerStreamWriter<StreamServerEvent>> _eventClients = new();
-    private readonly List<IServerStreamWriter<StreamServerEvent>> _failedEvents = new();
+    private readonly ILogger<HomeSpeakerService> logger;
+    private readonly Mp3Library library;
+    private readonly IMusicPlayer musicPlayer;
+    private readonly YoutubeService youtubeService;
+    private readonly PlaylistService playlistService;
+    private readonly RadioStreamService radioStreamService;
+    private readonly IHttpClientFactory httpClientFactory;
+    private readonly List<IServerStreamWriter<StreamServerEvent>> eventClients = new();
+    private readonly List<IServerStreamWriter<StreamServerEvent>> failedEvents = new();
 
     public HomeSpeakerService(ILogger<HomeSpeakerService> logger, Mp3Library library, IMusicPlayer musicPlayer, YoutubeService youtubeService, PlaylistService playlistService, RadioStreamService radioStreamService, IHttpClientFactory httpClientFactory, IServiceProvider serviceProvider)
     {
-        _logger = logger ?? throw new System.ArgumentNullException(nameof(logger));
-        _library = library ?? throw new System.ArgumentNullException(nameof(library));
-        _musicPlayer = musicPlayer ?? throw new System.ArgumentNullException(nameof(musicPlayer));
-        _youtubeService = youtubeService;
-        _playlistService = playlistService;
-        _radioStreamService = radioStreamService;
-        _httpClientFactory = httpClientFactory;
-        _serviceProvider = serviceProvider;
-        _youtubeService = youtubeService;
-        _playlistService = playlistService;
-        _radioStreamService = radioStreamService;
-        _httpClientFactory = httpClientFactory;
-        _musicPlayer.PlayerEvent += MusicPlayer_PlayerEvent;
+        this.logger = logger ?? throw new System.ArgumentNullException(nameof(logger));
+        this.library = library ?? throw new System.ArgumentNullException(nameof(library));
+        this.musicPlayer = musicPlayer ?? throw new System.ArgumentNullException(nameof(musicPlayer));
+        this.youtubeService = youtubeService;
+        this.playlistService = playlistService;
+        this.radioStreamService = radioStreamService;
+        this.httpClientFactory = httpClientFactory;
+        this.serviceProvider = serviceProvider;
+        this.youtubeService = youtubeService;
+        this.playlistService = playlistService;
+        this.radioStreamService = radioStreamService;
+        this.httpClientFactory = httpClientFactory;
+        this.musicPlayer.PlayerEvent += MusicPlayer_PlayerEvent;
         
         // Track song plays as impressions
-        _musicPlayer.PlayerEvent += async (sender, msg) =>
+        musicPlayer.PlayerEvent += async (sender, msg) =>
         {
             if (msg.StartsWith("Played: "))
             {
                 var songName = msg.Substring(8);
                 try
                 {
-                    using var scope = _serviceProvider.CreateScope();
+                    using var scope = serviceProvider.CreateScope();
                     var db = scope.ServiceProvider.GetRequiredService<MusicContext>();
                     db.Impressions.Add(new Impression
                     {
-                        SongPath = _musicPlayer.Status?.CurrentSong?.Path ?? "",
+                        SongPath = musicPlayer.Status?.CurrentSong?.Path ?? "",
                         Timestamp = DateTime.UtcNow,
                         PlayedBy = "Server"
                     });
@@ -55,17 +55,17 @@ public class HomeSpeakerService : HomeSpeakerBase
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error saving impression for {songName}", songName);
+                    logger.LogError(ex, "Error saving impression for {songName}", songName);
                 }
             }
         };
     }
 
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IServiceProvider serviceProvider;
 
     private async void MusicPlayer_PlayerEvent(object? sender, string message)
     {
-        foreach (var client in _eventClients)
+        foreach (var client in eventClients)
         {
             try
             {
@@ -73,70 +73,70 @@ public class HomeSpeakerService : HomeSpeakerBase
             }
             catch
             {
-                _failedEvents.Add(client);
+                failedEvents.Add(client);
             }
         }
 
-        if (_failedEvents.Any())
+        if (failedEvents.Any())
         {
-            foreach (var client in _failedEvents)
+            foreach (var client in failedEvents)
             {
-                _eventClients.Remove(client);
+                eventClients.Remove(client);
             }
-            _failedEvents.Clear();
+            failedEvents.Clear();
         }
     }
 
     public override Task<UpdateQueueReply> UpdateQueue(UpdateQueueRequest request, ServerCallContext context)
     {
-        _musicPlayer.UpdateQueue(request.Songs);
+        musicPlayer.UpdateQueue(request.Songs);
         return Task.FromResult(new UpdateQueueReply());
     }
 
     public override async Task<PlayPlaylistReply> PlayPlaylist(PlayPlaylistRequest request, ServerCallContext context)
     {
-        await _playlistService.PlayPlaylistAsync(request.PlaylistName);
+        await playlistService.PlayPlaylistAsync(request.PlaylistName);
         return new PlayPlaylistReply();
     }
 
     public override async Task<RenamePlaylistReply> RenamePlaylist(RenamePlaylistRequest request, ServerCallContext context)
     {
-        _logger.LogInformation("Received RenamePlaylist request: {oldName} -> {newName}", request.OldName, request.NewName);
-        await _playlistService.RenamePlaylistAsync(request.OldName, request.NewName);
-        _logger.LogInformation("Successfully renamed playlist: {oldName} -> {newName}", request.OldName, request.NewName);
+        logger.LogInformation("Received RenamePlaylist request: {oldName} -> {newName}", request.OldName, request.NewName);
+        await playlistService.RenamePlaylistAsync(request.OldName, request.NewName);
+        logger.LogInformation("Successfully renamed playlist: {oldName} -> {newName}", request.OldName, request.NewName);
         return new RenamePlaylistReply();
     }
 
     public override async Task<DeletePlaylistReply> DeletePlaylist(DeletePlaylistRequest request, ServerCallContext context)
     {
-        await _playlistService.DeletePlaylistAsync(request.PlaylistName);
+        await playlistService.DeletePlaylistAsync(request.PlaylistName);
         return new DeletePlaylistReply();
     }
 
     public override async Task<ReorderPlaylistSongsReply> ReorderPlaylistSongs(ReorderPlaylistSongsRequest request, ServerCallContext context)
     {
-        _logger.LogInformation("Received ReorderPlaylistSongs request for playlist: {playlistName}", request.PlaylistName);
-        await _playlistService.ReorderPlaylistSongsAsync(request.PlaylistName, request.SongPaths.ToList());
-        _logger.LogInformation("Successfully reordered songs in playlist: {playlistName}", request.PlaylistName);
+        logger.LogInformation("Received ReorderPlaylistSongs request for playlist: {playlistName}", request.PlaylistName);
+        await playlistService.ReorderPlaylistSongsAsync(request.PlaylistName, request.SongPaths.ToList());
+        logger.LogInformation("Successfully reordered songs in playlist: {playlistName}", request.PlaylistName);
         return new ReorderPlaylistSongsReply();
     }
 
     public override async Task<AddSongToPlaylistReply> AddSongToPlaylist(AddSongToPlaylistRequest request, ServerCallContext context)
     {
-        await _playlistService.AppendSongToPlaylistAsync(request.PlaylistName, request.SongPath);
+        await playlistService.AppendSongToPlaylistAsync(request.PlaylistName, request.SongPath);
         return new AddSongToPlaylistReply();
     }
 
     public override async Task<RemoveSongFromPlaylistReply> RemoveSongFromPlaylist(RemoveSongFromPlaylistRequest request, ServerCallContext context)
     {
-        await _playlistService.RemoveSongFromPlaylistAsync(request.PlaylistName, request.SongPath);
+        await playlistService.RemoveSongFromPlaylistAsync(request.PlaylistName, request.SongPath);
         return new RemoveSongFromPlaylistReply();
     }
 
     public override async Task<GetPlaylistsReply> GetPlaylists(GetPlaylistsRequest request, ServerCallContext context)
     {
         var reply = new GetPlaylistsReply();
-        var playlists = await _playlistService.GetPlaylistsAsync();
+        var playlists = await playlistService.GetPlaylistsAsync();
         foreach (var playlist in playlists)
         {
             var playlistMessage = new PlaylistMessage
@@ -156,19 +156,19 @@ public class HomeSpeakerService : HomeSpeakerBase
 
     public override Task<DeleteSongReply> DeleteSong(DeleteSongRequest request, ServerCallContext context)
     {
-        _library.DeleteSong(request.SongId);
+        library.DeleteSong(request.SongId);
         return Task.FromResult(new DeleteSongReply());
     }
 
     public override Task<UpdateSongReply> UpdateSong(UpdateSongRequest request, ServerCallContext context)
     {
-        _library.UpdateSong(request.SongId, request.Name, request.Artist, request.Album);
+        library.UpdateSong(request.SongId, request.Name, request.Artist, request.Album);
         return Task.FromResult(new UpdateSongReply());
     }
 
     public override async Task<SearchVideoReply> SearchViedo(SearchVideoRequest request, ServerCallContext context)
     {
-        var videos = await _youtubeService.SearchAsync(request.SearchTerm);
+        var videos = await youtubeService.SearchAsync(request.SearchTerm);
         var result = new SearchVideoReply();
         result.Results.AddRange(videos.Select(v => new Shared.Video
         {
@@ -185,76 +185,76 @@ public class HomeSpeakerService : HomeSpeakerBase
     public override async Task CacheVideo(CacheVideoRequest request, IServerStreamWriter<CacheVideoReply> responseStream, ServerCallContext context)
     {
         var v = request.Video;
-        var streamingProgress = new StreamingProgress(responseStream, v.Title, _logger);
-        await _youtubeService.CacheVideoAsync(v.Id, v.Title, streamingProgress);
-        _library.IsDirty = true;
+        var streamingProgress = new StreamingProgress(responseStream, v.Title, logger);
+        await youtubeService.CacheVideoAsync(v.Id, v.Title, streamingProgress);
+        library.IsDirty = true;
     }
 
     public override async Task GetSongs(GetSongsRequest request, IServerStreamWriter<GetSongsReply> responseStream, ServerCallContext context)
     {
         var reply = new GetSongsReply();
-        if (_library?.Songs?.Any() ?? false)
+        if (library?.Songs?.Any() ?? false)
         {
-            IEnumerable<Song> songs = _library.Songs;
+            IEnumerable<Song> songs = library.Songs;
             if (!string.IsNullOrEmpty(request.Folder))
             {
-                _logger.LogInformation("Filtering songs to just those in the {folder} folder", request.Folder);
+                logger.LogInformation("Filtering songs to just those in the {folder} folder", request.Folder);
                 songs = songs.Where(s => s.Path.Contains(request.Folder));
             }
-            _logger.LogInformation("Found songs!  Sending to client.");
+            logger.LogInformation("Found songs!  Sending to client.");
             var songMessages = translateSongs(songs);
             reply.Songs.AddRange(songMessages);
         }
         else
         {
-            _logger.LogInformation("No songs found.  Sending back empty list.");
+            logger.LogInformation("No songs found.  Sending back empty list.");
         }
         await responseStream.WriteAsync(reply);
     }
 
     public override Task<PlaySongReply> PlaySong(PlaySongRequest request, ServerCallContext context)
     {
-        _logger.LogInformation("PlaySong request for {songid}", request.SongId);
+        logger.LogInformation("PlaySong request for {songid}", request.SongId);
 
-        var song = _library.Songs.FirstOrDefault(s => s.SongId == request.SongId);
+        var song = library.Songs.FirstOrDefault(s => s.SongId == request.SongId);
 
         var reply = new PlaySongReply { Ok = false };
         if (song != null)
         {
             _ = Task.Run(() =>
-                _musicPlayer.PlaySong(song)
+                musicPlayer.PlaySong(song)
             );
             reply.Ok = true;
         }
         else
         {
-            _logger.LogWarning("Song {songid} not found in _library.", request.SongId);
+            logger.LogWarning("Song {songid} not found in library.", request.SongId);
         }
         return Task.FromResult(reply);
     }
 
     public override Task<PlaySongReply> PlayStream(PlayStreamRequest request, ServerCallContext context)
     {
-        _logger.LogInformation("PlayStream request for {streamurl}", request.StreamUrl);
-        _musicPlayer.PlayStream(request.StreamUrl);
+        logger.LogInformation("PlayStream request for {streamurl}", request.StreamUrl);
+        musicPlayer.PlayStream(request.StreamUrl);
         return Task.FromResult(new PlaySongReply { Ok = true });
     }
 
     public override Task<PlaySongReply> EnqueueSong(PlaySongRequest request, ServerCallContext context)
     {
-        _logger.LogInformation("EnqueueSong request for {songid}", request.SongId);
+        logger.LogInformation("EnqueueSong request for {songid}", request.SongId);
 
-        var song = _library.Songs.FirstOrDefault(s => s.SongId == request.SongId);
+        var song = library.Songs.FirstOrDefault(s => s.SongId == request.SongId);
         var reply = new PlaySongReply { Ok = false };
         if (song != null)
         {
-            _logger.LogInformation($"Queuing up #{song.SongId}: {song.Name}");
-            _musicPlayer.EnqueueSong(song);
+            logger.LogInformation($"Queuing up #{song.SongId}: {song.Name}");
+            musicPlayer.EnqueueSong(song);
             reply.Ok = true;
         }
         else
         {
-            _logger.LogWarning("Song {songid} not found in library", request.SongId);
+            logger.LogWarning("Song {songid} not found in library", request.SongId);
         }
 
         return Task.FromResult(reply);
@@ -262,8 +262,8 @@ public class HomeSpeakerService : HomeSpeakerBase
 
     public override async Task<GetStatusReply> GetPlayerStatus(GetStatusRequest request, ServerCallContext context)
     {
-        var status = _musicPlayer.Status ?? new Shared.PlayerStatus();
-        var currentVolume = await _musicPlayer.GetVolume();
+        var status = musicPlayer.Status ?? new Shared.PlayerStatus();
+        var currentVolume = await musicPlayer.GetVolume();
         return new GetStatusReply
         {
             Elapsed = Duration.FromTimeSpan(status.Elapsed),
@@ -278,15 +278,15 @@ public class HomeSpeakerService : HomeSpeakerBase
     public override async Task GetPlayQueue(GetSongsRequest request, IServerStreamWriter<GetSongsReply> responseStream, ServerCallContext context)
     {
         var reply = new GetSongsReply();
-        System.Collections.Generic.IEnumerable<Shared.Song> songQueue = _musicPlayer.SongQueue;
+        System.Collections.Generic.IEnumerable<Shared.Song> songQueue = musicPlayer.SongQueue;
         if (songQueue.Any())
         {
-            _logger.LogInformation("Found songs in queue!  Sending to client.");
+            logger.LogInformation("Found songs in queue!  Sending to client.");
             reply.Songs.AddRange(translateSongs(songQueue));
         }
         else
         {
-            _logger.LogInformation("No songs in queue.  Sending back empty list.");
+            logger.LogInformation("No songs in queue.  Sending back empty list.");
         }
         await responseStream.WriteAsync(reply);
     }
@@ -298,10 +298,10 @@ public class HomeSpeakerService : HomeSpeakerBase
 
     private SongMessage translateSong(Song s)
     {
-        //string? path = s?.Path.Replace(_library.RootFolder, string.Empty, StringComparison.InvariantCultureIgnoreCase).Substring(1);
+        //string? path = s?.Path.Replace(library.RootFolder, string.Empty, StringComparison.InvariantCultureIgnoreCase).Substring(1);
         //if (path == s?.Path)
         //{
-        //    _logger.LogWarning("what? orig {orig} is same as {new}", s.Path, path);
+        //    logger.LogWarning("what? orig {orig} is same as {new}", s.Path, path);
         //}
         return new SongMessage
         {
@@ -317,67 +317,67 @@ public class HomeSpeakerService : HomeSpeakerBase
     {
         if (request.ClearQueue)
         {
-            _musicPlayer.ClearQueue();
+            musicPlayer.ClearQueue();
         }
         if (request.Play)
         {
-            _musicPlayer.ResumePlay();
+            musicPlayer.ResumePlay();
         }
         if (request.SkipToNext)
         {
-            _musicPlayer.SkipToNext();
+            musicPlayer.SkipToNext();
         }
         if (request.Stop)
         {
-            _musicPlayer.Stop();
+            musicPlayer.Stop();
         }
         if (request.SetVolume)
         {
-            _musicPlayer.SetVolume(request.VolumeLevel);
+            musicPlayer.SetVolume(request.VolumeLevel);
         }
         return Task.FromResult(new PlayerControlReply());
     }
 
     public override Task<ShuffleQueueReply> ShuffleQueue(ShuffleQueueRequest request, ServerCallContext context)
     {
-        _musicPlayer.ShuffleQueue();
+        musicPlayer.ShuffleQueue();
         return Task.FromResult(new ShuffleQueueReply());
     }
 
     public override Task<EnqueueFolderReply> EnqueueFolder(EnqueueFolderRequest request, ServerCallContext context)
     {
-        foreach (var song in _library.Songs.Where(s => s.Path.Contains(request.FolderPath)))
+        foreach (var song in library.Songs.Where(s => s.Path.Contains(request.FolderPath)))
         {
-            _musicPlayer.EnqueueSong(song);
+            musicPlayer.EnqueueSong(song);
         }
         return Task.FromResult(new EnqueueFolderReply());
     }
 
     public override Task<PlayFolderReply> PlayFolder(PlayFolderRequest request, ServerCallContext context)
     {
-        _musicPlayer.Stop();
-        foreach (var song in _library.Songs.Where(s => s.Path.Contains(request.FolderPath)))
+        musicPlayer.Stop();
+        foreach (var song in library.Songs.Where(s => s.Path.Contains(request.FolderPath)))
         {
-            _musicPlayer.EnqueueSong(song);
+            musicPlayer.EnqueueSong(song);
         }
         return Task.FromResult(new PlayFolderReply());
     }
 
     public override async Task SendEvent(Empty request, IServerStreamWriter<StreamServerEvent> responseStream, ServerCallContext context)
     {
-        _eventClients.Add(responseStream);
+        eventClients.Add(responseStream);
         await responseStream.WriteAsync(new StreamServerEvent { Message = "Client connected." });
         await Task.Delay(TimeSpan.FromMinutes(180));
     }
 
     public override async Task<Empty> ToggleBacklight(Empty request, ServerCallContext context)
     {
-        var client = _httpClientFactory.CreateClient("BacklightClient");
+        var client = httpClientFactory.CreateClient("BacklightClient");
 
         var currentBrightnessStr = await client.GetStringAsync("/get");
         if (!int.TryParse(currentBrightnessStr, out var currentBrightness))
         {
-            _logger.LogWarning("Failed to parse brightness value: {value}", currentBrightnessStr);
+            logger.LogWarning("Failed to parse brightness value: {value}", currentBrightnessStr);
             return new Empty();
         }
 
@@ -386,16 +386,16 @@ public class HomeSpeakerService : HomeSpeakerBase
             > 200 => 20,
             _ => 255
         };
-        _logger.LogInformation("Trying to set brightness to {brightness}", newBrightness);
+        logger.LogInformation("Trying to set brightness to {brightness}", newBrightness);
         var response = await client.GetAsync($"/set?brightness={newBrightness}");
-        _logger.LogInformation("response: {response}", response);
+        logger.LogInformation("response: {response}", response);
 
         return new Empty();
     }
 
     public override async Task<GetRadioStreamsReply> GetRadioStreams(GetRadioStreamsRequest request, ServerCallContext context)
     {
-        var streams = await _radioStreamService.GetAllStreamsAsync();
+        var streams = await radioStreamService.GetAllStreamsAsync();
         var reply = new GetRadioStreamsReply();
 
         foreach (var stream in streams)
@@ -420,29 +420,29 @@ public class HomeSpeakerService : HomeSpeakerBase
 
     public override async Task<PlayRadioStreamReply> PlayRadioStream(PlayRadioStreamRequest request, ServerCallContext context)
     {
-        _logger.LogInformation("PlayRadioStream request for stream ID {streamId}", request.StreamId);
+        logger.LogInformation("PlayRadioStream request for stream ID {streamId}", request.StreamId);
 
-        var stream = await _radioStreamService.GetStreamByIdAsync(request.StreamId);
+        var stream = await radioStreamService.GetStreamByIdAsync(request.StreamId);
         if (stream == null)
         {
-            _logger.LogWarning("Stream {streamId} not found", request.StreamId);
+            logger.LogWarning("Stream {streamId} not found", request.StreamId);
             return new PlayRadioStreamReply { Ok = false };
         }
 
         // Increment play count
-        await _radioStreamService.IncrementPlayCountAsync(request.StreamId);
+        await radioStreamService.IncrementPlayCountAsync(request.StreamId);
 
         // Play the stream
-        _musicPlayer.PlayStream(stream.Url);
+        musicPlayer.PlayStream(stream.Url);
 
         return new PlayRadioStreamReply { Ok = true };
     }
 
     public override async Task<RadioStreamMessage> CreateRadioStream(CreateRadioStreamRequest request, ServerCallContext context)
     {
-        _logger.LogInformation("CreateRadioStream request for {name}", request.Name);
+        logger.LogInformation("CreateRadioStream request for {name}", request.Name);
 
-        var stream = await _radioStreamService.CreateStreamAsync(
+        var stream = await radioStreamService.CreateStreamAsync(
             request.Name,
             request.Url,
             string.IsNullOrWhiteSpace(request.FaviconUrl) ? null : request.FaviconUrl,
@@ -463,9 +463,9 @@ public class HomeSpeakerService : HomeSpeakerBase
 
     public override async Task<RadioStreamMessage> UpdateRadioStream(UpdateRadioStreamRequest request, ServerCallContext context)
     {
-        _logger.LogInformation("UpdateRadioStream request for stream ID {streamId}", request.StreamId);
+        logger.LogInformation("UpdateRadioStream request for stream ID {streamId}", request.StreamId);
 
-        await _radioStreamService.UpdateStreamAsync(
+        await radioStreamService.UpdateStreamAsync(
             request.StreamId,
             request.Name,
             request.Url,
@@ -473,7 +473,7 @@ public class HomeSpeakerService : HomeSpeakerBase
             string.IsNullOrWhiteSpace(request.FaviconFileName) ? null : request.FaviconFileName
         );
 
-        var stream = await _radioStreamService.GetStreamByIdAsync(request.StreamId);
+        var stream = await radioStreamService.GetStreamByIdAsync(request.StreamId);
 
         return new RadioStreamMessage
         {
@@ -492,44 +492,44 @@ public class HomeSpeakerService : HomeSpeakerBase
 
     public override async Task<DeleteRadioStreamReply> DeleteRadioStream(DeleteRadioStreamRequest request, ServerCallContext context)
     {
-        _logger.LogInformation("DeleteRadioStream request for stream ID {streamId}", request.StreamId);
+        logger.LogInformation("DeleteRadioStream request for stream ID {streamId}", request.StreamId);
 
-        await _radioStreamService.DeleteStreamAsync(request.StreamId);
+        await radioStreamService.DeleteStreamAsync(request.StreamId);
         return new DeleteRadioStreamReply { Success = true };
     }
 
     public override Task<SetRepeatModeReply> SetRepeatMode(SetRepeatModeRequest request, ServerCallContext context)
     {
-        _logger.LogInformation("SetRepeatMode request: {repeatMode}", request.RepeatMode);
-        _musicPlayer.RepeatMode = request.RepeatMode;
+        logger.LogInformation("SetRepeatMode request: {repeatMode}", request.RepeatMode);
+        musicPlayer.RepeatMode = request.RepeatMode;
         return Task.FromResult(new SetRepeatModeReply { Success = true });
     }
 
     public override Task<GetRepeatModeReply> GetRepeatMode(GetRepeatModeRequest request, ServerCallContext context)
     {
-        return Task.FromResult(new GetRepeatModeReply { RepeatMode = _musicPlayer.RepeatMode });
+        return Task.FromResult(new GetRepeatModeReply { RepeatMode = musicPlayer.RepeatMode });
     }
 
     public override Task<SetSleepTimerReply> SetSleepTimer(SetSleepTimerRequest request, ServerCallContext context)
     {
-        _logger.LogInformation("SetSleepTimer request: {minutes} minutes", request.Minutes);
-        _musicPlayer.SetSleepTimer(request.Minutes);
+        logger.LogInformation("SetSleepTimer request: {minutes} minutes", request.Minutes);
+        musicPlayer.SetSleepTimer(request.Minutes);
         return Task.FromResult(new SetSleepTimerReply { Success = true });
     }
 
     public override Task<CancelSleepTimerReply> CancelSleepTimer(CancelSleepTimerRequest request, ServerCallContext context)
     {
-        _logger.LogInformation("CancelSleepTimer request");
-        _musicPlayer.CancelSleepTimer();
+        logger.LogInformation("CancelSleepTimer request");
+        musicPlayer.CancelSleepTimer();
         return Task.FromResult(new CancelSleepTimerReply { Success = true });
     }
 
     public override Task<GetSleepTimerReply> GetSleepTimer(GetSleepTimerRequest request, ServerCallContext context)
     {
-        var remaining = _musicPlayer.SleepTimerRemaining;
+        var remaining = musicPlayer.SleepTimerRemaining;
         return Task.FromResult(new GetSleepTimerReply
         {
-            Active = _musicPlayer.SleepTimerActive,
+            Active = musicPlayer.SleepTimerActive,
             RemainingSeconds = remaining.HasValue ? (int)remaining.Value.TotalSeconds : 0
         });
     }

@@ -6,23 +6,23 @@ namespace HomeSpeaker.Server2.Services;
 
 public class AirPlayReceiverService : BackgroundService
 {
-    private readonly ILogger<AirPlayReceiverService> _logger;
-    private readonly IMusicPlayer _musicPlayer;
+    private readonly ILogger<AirPlayReceiverService> logger;
+    private readonly IMusicPlayer musicPlayer;
 
     private const string MetadataPipePath = "/tmp/airplay-shared/metadata";
     private const string AirPlayStatePath = "/tmp/airplay-shared/state";
     private const string AirPlayLogPath = "/tmp/airplay-shared/log";
-    private bool _airplayActive;
+    private bool airplayActive;
 
     public AirPlayReceiverService(ILogger<AirPlayReceiverService> logger, IMusicPlayer musicPlayer)
     {
-        _logger = logger;
-        _musicPlayer = musicPlayer;
+        this.logger = logger;
+        this.musicPlayer = musicPlayer;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("AirPlay Receiver Service starting...");
+        logger.LogInformation("AirPlay Receiver Service starting...");
 
         var eventsTask = Task.Run(() => MonitorAirPlayEvents(stoppingToken), stoppingToken);
         var metadataTask = Task.Run(() => MonitorAirPlayMetadata(stoppingToken), stoppingToken);
@@ -42,16 +42,16 @@ public class AirPlayReceiverService : BackgroundService
                     var stateContent = await File.ReadAllTextAsync(AirPlayStatePath, cancellationToken);
                     bool currentlyActive = stateContent.Trim().Equals("ACTIVE", StringComparison.OrdinalIgnoreCase);
                     
-                    if (currentlyActive && !_airplayActive)
+                    if (currentlyActive && !airplayActive)
                     {
-                        _logger.LogInformation("AirPlay session started - pausing local playback");
-                        _musicPlayer.Stop(); // Pause local music when AirPlay starts
-                        _airplayActive = true;
+                        logger.LogInformation("AirPlay session started - pausing local playback");
+                        musicPlayer.Stop(); // Pause local music when AirPlay starts
+                        airplayActive = true;
                     }
-                    else if (!currentlyActive && _airplayActive)
+                    else if (!currentlyActive && airplayActive)
                     {
-                        _logger.LogInformation("AirPlay session ended - can resume local playback");
-                        _airplayActive = false;
+                        logger.LogInformation("AirPlay session ended - can resume local playback");
+                        airplayActive = false;
                         // Optionally auto-resume: musicPlayer.ResumePlay();
                     }
                 }
@@ -64,7 +64,7 @@ public class AirPlayReceiverService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error monitoring AirPlay state file");
+                logger.LogError(ex, "Error monitoring AirPlay state file");
                 await Task.Delay(5000, cancellationToken);
             }
         }
@@ -83,7 +83,7 @@ public class AirPlayReceiverService : BackgroundService
                     
                     if (!string.IsNullOrEmpty(metadata))
                     {
-                        _logger.LogInformation("AirPlay metadata: {metadata}", metadata);
+                        logger.LogInformation("AirPlay metadata: {metadata}", metadata);
                         // Parse metadata and update UI if needed
                         // Could send events through your existing SendEvent mechanism
                     }
@@ -97,7 +97,7 @@ public class AirPlayReceiverService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error reading AirPlay metadata");
+                logger.LogError(ex, "Error reading AirPlay metadata");
                 await Task.Delay(2000, cancellationToken);
             }
         }

@@ -5,21 +5,21 @@ namespace HomeSpeaker.WebAssembly.Services;
 
 public sealed class TemperatureService : ITemperatureService
 {
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<TemperatureService> _logger;
+    private readonly HttpClient httpClient;
+    private readonly ILogger<TemperatureService> logger;
 
     public TemperatureService(HttpClient httpClient, ILogger<TemperatureService> logger)
     {
-        _httpClient = httpClient;
-        _logger = logger;
+        this.httpClient = httpClient;
+        this.logger = logger;
     }
 
     public async Task<TemperatureStatus> GetTemperatureStatusAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogInformation("Fetching temperature status from server...");
-            var response = await _httpClient.GetAsync("/api/temperature", cancellationToken);
+            logger.LogInformation("Fetching temperature status from server...");
+            var response = await httpClient.GetAsync("/api/temperature", cancellationToken);
             response.EnsureSuccessStatusCode();
             
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -32,7 +32,7 @@ public sealed class TemperatureService : ITemperatureService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to fetch temperature status from server");
+            logger.LogError(ex, "Failed to fetch temperature status from server");
             // Return a default status if the server is not available
             return new TemperatureStatus
             {
@@ -48,16 +48,16 @@ public sealed class TemperatureService : ITemperatureService
     {
         try
         {
-            _logger.LogInformation("Clearing temperature cache on server...");
-            var response = await _httpClient.DeleteAsync("/api/temperature/cache", cancellationToken);
+            logger.LogInformation("Clearing temperature cache on server...");
+            var response = await httpClient.DeleteAsync("/api/temperature/cache", cancellationToken);
             response.EnsureSuccessStatusCode();
             
-            _logger.LogInformation("Temperature cache cleared successfully");
+            logger.LogInformation("Temperature cache cleared successfully");
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to clear temperature cache on server");
+            logger.LogError(ex, "Failed to clear temperature cache on server");
             return false;
         }
     }
@@ -66,8 +66,8 @@ public sealed class TemperatureService : ITemperatureService
     {
         try
         {
-            _logger.LogInformation("Refreshing temperature data from server...");
-            var response = await _httpClient.PostAsync("/api/temperature/refresh", null, cancellationToken);
+            logger.LogInformation("Refreshing temperature data from server...");
+            var response = await httpClient.PostAsync("/api/temperature/refresh", null, cancellationToken);
             response.EnsureSuccessStatusCode();
             
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -80,7 +80,7 @@ public sealed class TemperatureService : ITemperatureService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to refresh temperature data from server");
+            logger.LogError(ex, "Failed to refresh temperature data from server");
             // Return a default status if the server is not available
             return new TemperatureStatus
             {

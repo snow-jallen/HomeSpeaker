@@ -5,26 +5,26 @@ namespace HomeSpeaker.WebAssembly.Services;
 
 public class ImagePickerService
 {
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<ImagePickerService> _logger;
+    private readonly HttpClient httpClient;
+    private readonly ILogger<ImagePickerService> logger;
 
     public ImagePickerService(HttpClient httpClient, ILogger<ImagePickerService> logger)
     {
-        _httpClient = httpClient;
-        _logger = logger;
+        this.httpClient = httpClient;
+        this.logger = logger;
     }
 
     public async Task<List<ImageSearchResult>> SearchImagesAsync(string query)
     {
         try
         {
-            var results = await _httpClient.GetFromJsonAsync<List<ImageSearchResult>>(
+            var results = await httpClient.GetFromJsonAsync<List<ImageSearchResult>>(
                 $"/api/streams/image-search?q={Uri.EscapeDataString(query)}");
             return results ?? [];
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Image search failed for query: {Query}", query);
+            logger.LogWarning(ex, "Image search failed for query: {Query}", query);
             return [];
         }
     }
@@ -38,11 +38,11 @@ public class ImagePickerService
             fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
             content.Add(fileContent, "file", fileName);
 
-            var response = await _httpClient.PostAsync("/api/streams/upload-image", content);
+            var response = await httpClient.PostAsync("/api/streams/upload-image", content);
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadFromJsonAsync<UploadErrorResponse>();
-                _logger.LogWarning("Upload failed: {Error}", error?.Error);
+                logger.LogWarning("Upload failed: {Error}", error?.Error);
                 return null;
             }
 
@@ -51,7 +51,7 @@ public class ImagePickerService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Upload failed");
+            logger.LogWarning(ex, "Upload failed");
             return null;
         }
     }

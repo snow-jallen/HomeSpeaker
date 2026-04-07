@@ -7,33 +7,33 @@ namespace HomeSpeaker.Server2.Services;
 
 public sealed class ForecastService
 {
-    private readonly HttpClient _httpClient;
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<ForecastService> _logger;
-    private readonly IMemoryCache _cache;
+    private readonly HttpClient httpClient;
+    private readonly IConfiguration configuration;
+    private readonly ILogger<ForecastService> logger;
+    private readonly IMemoryCache cache;
     
     private const string CacheKey = "forecast-status";
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(30);
 
     public ForecastService(HttpClient httpClient, IConfiguration configuration, ILogger<ForecastService> logger, IMemoryCache cache)
     {
-        _httpClient = httpClient;
-        _configuration = configuration;
-        _logger = logger;
-        _cache = cache;
+        this.httpClient = httpClient;
+        this.configuration = configuration;
+        this.logger = logger;
+        this.cache = cache;
     }
 
     public async Task<ForecastStatus> GetForecastStatusAsync(CancellationToken cancellationToken = default)
     {
         // Try to get cached value
-        if (_cache.TryGetValue(CacheKey, out ForecastStatus? cachedValue))
+        if (cache.TryGetValue(CacheKey, out ForecastStatus? cachedValue))
         {
-            _logger.LogInformation("Returning cached forecast status");
+            logger.LogInformation("Returning cached forecast status");
             return cachedValue!;
         }
         
         // Cache miss, fetch new data
-        _logger.LogInformation("Forecast cache miss, fetching fresh data...");
+        logger.LogInformation("Forecast cache miss, fetching fresh data...");
         var forecastStatus = await GetForecastStatusInternalAsync(cancellationToken);
 
         // Set cache timestamp
@@ -46,8 +46,8 @@ public sealed class ForecastService
             Priority = CacheItemPriority.Normal
         };
 
-        _cache.Set(CacheKey, forecastStatus, cacheOptions);
-        _logger.LogInformation("Forecast data cached for {Minutes} minutes", CacheExpiration.TotalMinutes);
+        cache.Set(CacheKey, forecastStatus, cacheOptions);
+        logger.LogInformation("Forecast data cached for {Minutes} minutes", CacheExpiration.TotalMinutes);
 
         return forecastStatus;
     }
@@ -57,8 +57,8 @@ public sealed class ForecastService
     /// </summary>
     public void ClearCache()
     {
-        _cache.Remove(CacheKey);
-        _logger.LogInformation("Forecast cache cleared");
+        cache.Remove(CacheKey);
+        logger.LogInformation("Forecast cache cleared");
     }
 
     /// <summary>
@@ -66,27 +66,27 @@ public sealed class ForecastService
     /// </summary>
     public async Task<ForecastStatus> RefreshAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Refreshing forecast data (clearing cache and fetching fresh data)");
+        logger.LogInformation("Refreshing forecast data (clearing cache and fetching fresh data)");
         ClearCache();
         return await GetForecastStatusAsync(cancellationToken);
     }
 
     private async Task<ForecastStatus> GetForecastStatusInternalAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Getting forecast status...");
+        logger.LogInformation("Getting forecast status...");
         
         // Get location from configuration (default to a reasonable location)
-        var latitude = _configuration.GetValue<double>("Forecast:Latitude", 39.2683); // Default to NYC
-        var longitude = _configuration.GetValue<double>("Forecast:Longitude", -111.63686);
+        var latitude = configuration.GetValue<double>("Forecast:Latitude", 39.2683); // Default to NYC
+        var longitude = configuration.GetValue<double>("Forecast:Longitude", -111.63686);
         
-        _logger.LogInformation("Fetching forecast for configured location");
+        logger.LogInformation("Fetching forecast for configured location");
 
         try
         {
             // Use Open-Meteo API (free, no API key required)
             var url = $"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,weather_code&temperature_unit=fahrenheit&timezone=auto&forecast_days=2";
             
-            var response = await _httpClient.GetAsync(url, cancellationToken);
+            var response = await httpClient.GetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
             
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -97,7 +97,7 @@ public sealed class ForecastService
 
             if (weatherData?.Hourly == null)
             {
-                _logger.LogWarning("No forecast data received from API");
+                logger.LogWarning("No forecast data received from API");
                 return new ForecastStatus { LastUpdated = DateTime.UtcNow };
             }
 
@@ -166,8 +166,8 @@ public sealed class ForecastService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to fetch forecast data");
-            _logger.LogInformation("Using sample forecast data for testing");
+            logger.LogError(ex, "Failed to fetch forecast data");
+            logger.LogInformation("Using sample forecast data for testing");
             
             // Return sample data when API is unavailable (for testing/demo purposes)
             return new ForecastStatus

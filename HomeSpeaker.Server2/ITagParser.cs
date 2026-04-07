@@ -11,11 +11,11 @@ public interface ITagParser
 
 public class DefaultTagParser : ITagParser
 {
-    private readonly ILogger<DefaultTagParser> _logger;
+    private readonly ILogger<DefaultTagParser> logger;
 
     public DefaultTagParser(ILogger<DefaultTagParser> logger)
     {
-        _logger = logger;
+        this.logger = logger;
     }
 
     public Song CreateSong(string fullPath)
@@ -42,7 +42,7 @@ public class DefaultTagParser : ITagParser
     {
         try
         {
-            _logger.LogInformation("Updating MP3 tags for file: {fullPath}", fullPath);
+            logger.LogInformation("Updating MP3 tags for file: {fullPath}", fullPath);
 
             using var mp3 = new Mp3(fullPath, Mp3Permissions.ReadWrite);
 
@@ -60,16 +60,16 @@ public class DefaultTagParser : ITagParser
                 // Write the changes back to the file
                 mp3.WriteTag(tag, WriteConflictAction.Replace);
 
-                _logger.LogInformation("Successfully updated MP3 tags for file: {fullPath}", fullPath);
+                logger.LogInformation("Successfully updated MP3 tags for file: {fullPath}", fullPath);
             }
             else
             {
-                _logger.LogWarning("No existing tags found and unable to create new tags for file: {fullPath}", fullPath);
+                logger.LogWarning("No existing tags found and unable to create new tags for file: {fullPath}", fullPath);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating MP3 tags for file: {fullPath}", fullPath);
+            logger.LogError(ex, "Error updating MP3 tags for file: {fullPath}", fullPath);
             throw;
         }
     }

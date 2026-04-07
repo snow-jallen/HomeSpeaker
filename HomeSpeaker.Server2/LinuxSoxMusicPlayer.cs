@@ -8,32 +8,32 @@ namespace HomeSpeaker.Server2;
 
 public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
 {
-    private readonly ILogger<LinuxSoxMusicPlayer> _logger;
-    private readonly Mp3Library _library;
+    private readonly ILogger<LinuxSoxMusicPlayer> logger;
+    private readonly Mp3Library library;
     private Process? playerProcess;
-    private bool _disposed;
+    private bool disposed;
 
     public LinuxSoxMusicPlayer(ILogger<LinuxSoxMusicPlayer> logger, Mp3Library library)
     {
-        _logger = logger;
-        _library = library;
+        this.logger = logger;
+        this.library = library;
     }
 
     private PlayerStatus status = new();
     private Song? currentSong;
     public PlayerStatus Status => (status ?? new PlayerStatus()) with { CurrentSong = currentSong };
 
-    private bool _startedPlaying;
+    private bool startedPlaying;
     private Song? stoppedSong;
 
     public void PlayStream(string streamPath)
     {
-        _logger.LogInformation($"Asked to play stream: {streamPath}");
+        logger.LogInformation($"Asked to play stream: {streamPath}");
 
         //make a Uri first...to make sure the argument is a valid URL.
         //...maybe that helps a bit with unsafe input??
         var url = new Uri(streamPath).ToString();
-        _logger.LogInformation($"After converting to a Uri: {streamPath}");
+        logger.LogInformation($"After converting to a Uri: {streamPath}");
 
         stopPlaying();
         status = new PlayerStatus
@@ -54,13 +54,13 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         playerProcess.StartInfo.RedirectStandardError = true;
         playerProcess.OutputDataReceived += new DataReceivedEventHandler((s, e) =>
         {
-            _logger.LogInformation($"OutputDataReceived: {e.Data}");
+            logger.LogInformation($"OutputDataReceived: {e.Data}");
         });
         playerProcess.ErrorDataReceived += new DataReceivedEventHandler((s, e) =>
         {
-            _logger.LogInformation($"ErrorDataReceived: {e.Data}");
+            logger.LogInformation($"ErrorDataReceived: {e.Data}");
         });
-        _logger.LogInformation($"Starting vlc {streamPath}");
+        logger.LogInformation($"Starting vlc {streamPath}");
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
         playerProcess.Exited += PlayerProcess_Exited;
@@ -71,7 +71,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
 
     public void PlaySong(Song song)
     {
-        _startedPlaying = true;
+        startedPlaying = true;
         currentSong = song;
         stopPlaying();
         stoppedSong = null;
@@ -116,7 +116,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
             }
         });
 
-        _logger.LogInformation($"Starting to play {song.Path}");
+        logger.LogInformation($"Starting to play {song.Path}");
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
         PlayerEvent?.Invoke(this, "Playing " + song.Name);
@@ -124,7 +124,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
 
         playerProcess.BeginOutputReadLine();
         playerProcess.BeginErrorReadLine();
-        _startedPlaying = false;
+        startedPlaying = false;
     }    private void stopPlaying()
     {
         if (playerProcess != null)
@@ -141,7 +141,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error stopping player process");
+                logger.LogWarning(ex, "Error stopping player process");
             }
             finally
             {
@@ -164,7 +164,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error cleaning up audio processes");
+            logger.LogWarning(ex, "Error cleaning up audio processes");
         }
     }
 
@@ -176,44 +176,44 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!disposed)
         {
             if (disposing)
             {
-                _logger.LogInformation("Disposing LinuxSoxMusicPlayer");
+                logger.LogInformation("Disposing LinuxSoxMusicPlayer");
                 stopPlaying();
-                _sleepTimerCts?.Dispose();
+                sleepTimerCts?.Dispose();
             }
-            _disposed = true;
+            disposed = true;
         }
     }
 
     private void PlayerProcess_Exited(object? sender, EventArgs e)
     {
-        _logger.LogInformation("Finished playing a song.");
-        _lastPlayedSong = currentSong;
+        logger.LogInformation("Finished playing a song.");
+        lastPlayedSong = currentSong;
         currentSong = null;
         
-        if (_songQueue.Count > 0)
+        if (songQueue.Count > 0)
         {
             playNextSongInQueue();
         }
-        else if (_repeatMode && _lastPlayedSong != null)
+        else if (repeatMode && lastPlayedSong != null)
         {
-            _logger.LogInformation("Repeat mode on, replaying last song: {songName}", _lastPlayedSong.Name);
-            PlaySong(_lastPlayedSong);
+            logger.LogInformation("Repeat mode on, replaying last song: {songName}", lastPlayedSong.Name);
+            PlaySong(lastPlayedSong);
         }
         else
         {
-            _logger.LogInformation("Nothing in the queue, so Status is now empty.");
+            logger.LogInformation("Nothing in the queue, so Status is now empty.");
             status = new PlayerStatus();
         }
     }
 
     private void playNextSongInQueue()
     {
-        _logger.LogInformation($"There are still {_songQueue.Count} songs in the queue, so I'll play the next one:");
-        if (_songQueue.TryDequeue(out var nextSong))
+        logger.LogInformation($"There are still {songQueue.Count} songs in the queue, so I'll play the next one:");
+        if (songQueue.TryDequeue(out var nextSong))
         {
             PlaySong(nextSong);
         }
@@ -250,20 +250,20 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         if (StillPlaying)
         {
             story.AppendLine("StillPlaying is true, so I'll add to queue.");
-            _songQueue.Enqueue(song);
-            story.AppendLine($"Added song# {song.SongId} to queue, now contains {_songQueue.Count} songs.");
+            songQueue.Enqueue(song);
+            story.AppendLine($"Added song# {song.SongId} to queue, now contains {songQueue.Count} songs.");
         }
         else
         {
             story.AppendLine("Nothing playing, so instead of queuing I'll just play it...");
             PlaySong(song);
         }
-        _logger.LogInformation(story.ToString());
+        logger.LogInformation(story.ToString());
     }
 
     public void ClearQueue()
     {
-        _songQueue.Clear();
+        songQueue.Clear();
     }
 
     public void ResumePlay()
@@ -272,7 +272,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         {
             PlaySong(stoppedSong);
         }
-        else if (_songQueue.Any())
+        else if (songQueue.Any())
         {
             playNextSongInQueue();
         }
@@ -309,27 +309,27 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         int actualMax = 100;
         var percent = Math.Max(0, Math.Min(100, level0to100)) / 100M;
         var newLevel = (actualMax - actualMin) * percent + actualMin;
-        _logger.LogInformation("Desired volume: {level0to100}; newLevel {newLevel} = (actualMax {actualMax} - actual Min {actualMin}) * percent {percent} + actualMin {actualMin}",
+        logger.LogInformation("Desired volume: {level0to100}; newLevel {newLevel} = (actualMax {actualMax} - actual Min {actualMin}) * percent {percent} + actualMin {actualMin}",
             level0to100, newLevel, actualMax, actualMin, percent, actualMin);
         Process.Start("amixer", $"sset PCM,0 {newLevel}%");
     }
 
     public void ShuffleQueue()
     {
-        var oldQueue = _songQueue.ToList();
-        _songQueue.Clear();
+        var oldQueue = songQueue.ToList();
+        songQueue.Clear();
         foreach (var s in oldQueue.OrderBy(i => Guid.NewGuid()))
         {
-            _songQueue.Enqueue(s);
+            songQueue.Enqueue(s);
         }
     }
 
     public void UpdateQueue(IEnumerable<string> songs)
     {
-        _songQueue.Clear();
+        songQueue.Clear();
         foreach (var song in songs)
         {
-            _songQueue.Enqueue(_library.Songs.Single(s => s.Path == song));
+            songQueue.Enqueue(library.Songs.Single(s => s.Path == song));
         }
     }
 
@@ -337,79 +337,79 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     {
         get
         {
-            _logger.LogInformation($"StillPlaying: startedPlaying {_startedPlaying} || (playerProcess?.HasExited {playerProcess?.HasExited} ?? true) {playerProcess?.HasExited ?? false} == false) {(playerProcess?.HasExited ?? true) == false}");
-            return _startedPlaying || (playerProcess?.HasExited ?? true) == false;
+            logger.LogInformation($"StillPlaying: startedPlaying {startedPlaying} || (playerProcess?.HasExited {playerProcess?.HasExited} ?? true) {playerProcess?.HasExited ?? false} == false) {(playerProcess?.HasExited ?? true) == false}");
+            return startedPlaying || (playerProcess?.HasExited ?? true) == false;
         }
     }
 
-    private readonly ConcurrentQueue<Song> _songQueue = new();
-    private Song? _lastPlayedSong;
-    private bool _repeatMode = false;
-    private CancellationTokenSource? _sleepTimerCts;
-    private DateTime? _sleepTimerEndTime;
+    private readonly ConcurrentQueue<Song> songQueue = new();
+    private Song? lastPlayedSong;
+    private bool repeatMode = false;
+    private CancellationTokenSource? sleepTimerCts;
+    private DateTime? sleepTimerEndTime;
 
     public event EventHandler<string>? PlayerEvent;
 
-    public IEnumerable<Song> SongQueue => _songQueue.ToArray();
+    public IEnumerable<Song> SongQueue => songQueue.ToArray();
     
     public bool RepeatMode
     {
-        get => _repeatMode;
+        get => repeatMode;
         set
         {
-            _repeatMode = value;
-            _logger.LogInformation("Repeat mode set to {repeatMode}", value);
+            repeatMode = value;
+            logger.LogInformation("Repeat mode set to {repeatMode}", value);
             PlayerEvent?.Invoke(this, value ? "Repeat mode: ON" : "Repeat mode: OFF");
         }
     }
     
-    public bool SleepTimerActive => _sleepTimerCts != null && !_sleepTimerCts.IsCancellationRequested;
+    public bool SleepTimerActive => sleepTimerCts != null && !sleepTimerCts.IsCancellationRequested;
     
-    public TimeSpan? SleepTimerRemaining => _sleepTimerEndTime.HasValue 
-        ? _sleepTimerEndTime.Value - DateTime.UtcNow.ToLocalTime() 
+    public TimeSpan? SleepTimerRemaining => sleepTimerEndTime.HasValue 
+        ? sleepTimerEndTime.Value - DateTime.UtcNow.ToLocalTime() 
         : null;
     
     public void SetSleepTimer(int minutes)
     {
         CancelSleepTimer();
-        _sleepTimerCts = new CancellationTokenSource();
-        _sleepTimerEndTime = DateTime.UtcNow.ToLocalTime().AddMinutes(minutes);
+        sleepTimerCts = new CancellationTokenSource();
+        sleepTimerEndTime = DateTime.UtcNow.ToLocalTime().AddMinutes(minutes);
         
         Task.Run(async () =>
         {
             try
             {
-                _logger.LogInformation("Sleep timer set for {minutes} minutes", minutes);
+                logger.LogInformation("Sleep timer set for {minutes} minutes", minutes);
                 PlayerEvent?.Invoke(this, $"Sleep timer: {minutes} min");
-                await Task.Delay(TimeSpan.FromMinutes(minutes), _sleepTimerCts.Token);
+                await Task.Delay(TimeSpan.FromMinutes(minutes), sleepTimerCts.Token);
                 
-                _logger.LogInformation("Sleep timer expired, stopping playback");
+                logger.LogInformation("Sleep timer expired, stopping playback");
                 Stop();
                 ClearQueue();
                 PlayerEvent?.Invoke(this, "Sleep timer: stopped");
             }
             catch (TaskCanceledException)
             {
-                _logger.LogInformation("Sleep timer cancelled");
+                logger.LogInformation("Sleep timer cancelled");
             }
             finally
             {
-                _sleepTimerEndTime = null;
-                _sleepTimerCts?.Dispose();
-                _sleepTimerCts = null;
+                sleepTimerEndTime = null;
+                sleepTimerCts?.Dispose();
+                sleepTimerCts = null;
             }
         });
     }
     
     public void CancelSleepTimer()
     {
-        if (_sleepTimerCts != null)
+        if (sleepTimerCts != null)
         {
-            _sleepTimerCts.Cancel();
-            _sleepTimerCts.Dispose();
-            _sleepTimerCts = null;
-            _sleepTimerEndTime = null;
-            _logger.LogInformation("Sleep timer cancelled");
+            sleepTimerCts.Cancel();
+            sleepTimerCts.Dispose();
+            sleepTimerCts = null;
+            sleepTimerEndTime = null;
+            logger.LogInformation("Sleep timer cancelled");
             PlayerEvent?.Invoke(this, "Sleep timer: cancelled");
         }
     }

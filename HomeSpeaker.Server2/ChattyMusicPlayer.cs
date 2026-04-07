@@ -5,7 +5,7 @@ namespace HomeSpeaker.Server2;
 public class ChattyMusicPlayer : IMusicPlayer, IDisposable
 {
     private readonly IMusicPlayer actualPlayer;
-    private bool _disposed;
+    private bool disposed;
 
     public ChattyMusicPlayer(IMusicPlayer actualPlayer)
     {
@@ -108,13 +108,13 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!disposed)
         {
             if (disposing)
             {
                 actualPlayer?.Dispose();
             }
-            _disposed = true;
+            disposed = true;
         }
     }
 }
