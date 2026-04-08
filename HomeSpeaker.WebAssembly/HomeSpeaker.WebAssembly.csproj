@@ -15,7 +15,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Grpc.Net.Client.Web" Version="2.76.0" />
-    <PackageReference Include="Meziantou.Analyzer" Version="3.0.44">
+    <PackageReference Include="Meziantou.Analyzer" Version="3.0.46">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
@@ -23,7 +23,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.5" PrivateAssets="all" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.5" />
     <PackageReference Include="Microsoft.Fast.Components.FluentUI" Version="3.8.0" />
-    <PackageReference Include="MudBlazor" Version="9.2.0" />
+    <PackageReference Include="MudBlazor" Version="9.3.0" />
     <PackageReference Include="OpenTelemetry" Version="1.15.1" />
     <PackageReference Include="OpenTelemetry.Api" Version="1.15.1" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.1" />
