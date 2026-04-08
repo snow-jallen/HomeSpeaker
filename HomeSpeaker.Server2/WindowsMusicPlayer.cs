@@ -39,7 +39,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         playerProcess.StartInfo.UseShellExecute = false;
         playerProcess.StartInfo.RedirectStandardOutput = true;
         playerProcess.StartInfo.RedirectStandardError = true;
-        playerProcess.OutputDataReceived += (sender, args) => logger.LogInformation("Vlc output data {data}", args.Data);
+        playerProcess.OutputDataReceived += (sender, args) => logger.LogInformation("Vlc output data {Data}", args.Data);
 
         playerProcess.OutputDataReceived += new DataReceivedEventHandler((s, e) =>
         {
@@ -76,7 +76,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 
         status = new PlayerStatus { CurrentSong = currentSong, StillPlaying = true };
 
-        logger.LogInformation($"Starting to play {song.Path}");
+        logger.LogInformation("Starting to play {SongPath}", song.Path);
         PlayerEvent?.Invoke(this, "Playing " + song.Name);
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
@@ -155,13 +155,13 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         lastPlayedSong = currentSong;
         currentSong = null;
 
-        if (songQueue.Count > 0)
+        if (songQueue.Any())
         {
             playNextSongInQueue();
         }
         else if (repeatMode && lastPlayedSong != null)
         {
-            logger.LogInformation("Repeat mode on, replaying last song: {songName}", lastPlayedSong.Name);
+            logger.LogInformation("Repeat mode on, replaying last song: {SongName}", lastPlayedSong.Name);
             PlaySong(lastPlayedSong);
         }
         else
@@ -172,7 +172,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
     }
     private void playNextSongInQueue()
     {
-        logger.LogInformation($"There are still {songQueue.Count} songs in the queue, so I'll play the next one:");
+        logger.LogInformation("There are still {QueueCount} songs in the queue, so I'll play the next one:", songQueue.Count);
         if (songQueue.TryDequeue(out var nextSong))
         {
             PlaySong(nextSong);
@@ -185,7 +185,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         {
             try
             {
-                var parts = output.Split(new char[] { ' ', '%', '[', ']' }, StringSplitOptions.RemoveEmptyEntries);
+                var parts = output.Split(IMusicPlayer.Separators, StringSplitOptions.RemoveEmptyEntries);
                 var percentComplete = decimal.Parse(parts[0].Substring(parts[0].IndexOf(':') + 1)) / 100;
                 var elapsedTime = TimeSpan.Parse(parts[1]);
                 var remainingTime = TimeSpan.Parse(parts[2]);
@@ -219,7 +219,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             story.AppendLine("Nothing playing, so instead of queuing I'll just play it...");
             PlaySong(song);
         }
-        logger.LogInformation(story.ToString());
+        logger.LogInformation("Queue story: {Story}", story);
     }
 
     public void ClearQueue()
@@ -258,12 +258,12 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 
     public void PlayStream(string streamUrl)
     {
-        logger.LogInformation($"Asked to play stream: {streamUrl}");
+        logger.LogInformation("Asked to play stream: {StreamUrl}", streamUrl);
 
         //make a Uri first...to make sure the argument is a valid URL.
         //...maybe that helps a bit with unsafe input??
         var url = new Uri(streamUrl).ToString();
-        logger.LogInformation($"After converting to a Uri: {streamUrl}");
+        logger.LogInformation("After converting to a Uri: {StreamUrl}", url);
 
         stopPlaying();
         status = new PlayerStatus
@@ -284,13 +284,13 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         playerProcess.StartInfo.RedirectStandardError = true;
         playerProcess.OutputDataReceived += new DataReceivedEventHandler((s, e) =>
         {
-            logger.LogInformation($"OutputDataReceived: {e.Data}");
+            logger.LogInformation("OutputDataReceived: {Data}", e.Data);
         });
         playerProcess.ErrorDataReceived += new DataReceivedEventHandler((s, e) =>
         {
-            logger.LogInformation($"ErrorDataReceived: {e.Data}");
+            logger.LogInformation("ErrorDataReceived: {Data}", e.Data);
         });
-        logger.LogInformation($"Starting vlc {streamUrl}");
+        logger.LogInformation("Starting vlc {StreamUrl}", streamUrl);
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
         playerProcess.Exited += PlayerProcess_Exited;
@@ -331,7 +331,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             try
             {
                 var stillPlaying = startedPlaying || (playerProcess?.HasExited ?? true) == false;
-                logger.LogInformation("startedPlaying {startedPlaying}, playerProcess {playerProcess}, stillPlaying {stillPlaying}", startedPlaying, playerProcess, stillPlaying);
+                logger.LogInformation("startedPlaying {StartedPlaying}, playerProcess {PlayerProcess}, stillPlaying {StillPlaying}", startedPlaying, playerProcess, stillPlaying);
                 return stillPlaying;
             }
             catch { return false; }
@@ -340,7 +340,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 
     private readonly ConcurrentQueue<Song> songQueue = new();
     private Song? lastPlayedSong;
-    private bool repeatMode = false;
+    private bool repeatMode;
     private CancellationTokenSource? sleepTimerCts;
     private DateTime? sleepTimerEndTime;
 
@@ -354,7 +354,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         set
         {
             repeatMode = value;
-            logger.LogInformation("Repeat mode set to {repeatMode}", value);
+            logger.LogInformation("Repeat mode set to {RepeatMode}", value);
             PlayerEvent?.Invoke(this, value ? "Repeat mode: ON" : "Repeat mode: OFF");
         }
     }
@@ -375,7 +375,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         {
             try
             {
-                logger.LogInformation("Sleep timer set for {minutes} minutes", minutes);
+                logger.LogInformation("Sleep timer set for {Minutes} minutes", minutes);
                 PlayerEvent?.Invoke(this, $"Sleep timer: {minutes} min");
                 await Task.Delay(TimeSpan.FromMinutes(minutes), sleepTimerCts.Token);
 
@@ -412,32 +412,37 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 }
 
 [Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IAudioEndpointVolume
+public interface IAudioEndpointVolume
 {
     // f(), g(), ... are unused COM method slots. Define these if you care
     int f(); int g(); int h(); int i();
-    int SetMasterVolumeLevelScalar(float fLevel, System.Guid pguidEventContext);
+    int SetMasterVolumeLevelScalar(float fLevel, Guid pguidEventContext);
     int j();
     int GetMasterVolumeLevelScalar(out float pfLevel);
     int k(); int l(); int m(); int n();
-    int SetMute([MarshalAs(UnmanagedType.Bool)] bool bMute, System.Guid pguidEventContext);
+    int SetMute([MarshalAs(UnmanagedType.Bool)] bool bMute, Guid pguidEventContext);
     int GetMute(out bool pbMute);
 }
+
 [Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDevice
+internal interface IMMDevice
 {
-    int Activate(ref System.Guid id, int clsCtx, int activationParams, out IAudioEndpointVolume aev);
+    int Activate(ref Guid id, int clsCtx, int activationParams, out IAudioEndpointVolume aev);
 }
+
 [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDeviceEnumerator
+internal interface IMMDeviceEnumerator
 {
     int f(); // Unused
     int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice endpoint);
 }
-[ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumeratorComObject { }
+
+[ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
+internal class MMDeviceEnumeratorComObject { }
+
 public static class Audio
 {
-    static IAudioEndpointVolume Vol()
+    public static IAudioEndpointVolume Vol()
     {
         var enumerator = new MMDeviceEnumeratorComObject() as IMMDeviceEnumerator;
         if (enumerator == null)
@@ -445,7 +450,7 @@ public static class Audio
             throw new InvalidOperationException("Failed to create device enumerator");
         }
 
-        IMMDevice? dev = null;
+        IMMDevice? dev;
         Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(/*eRender*/ 0, /*eMultimedia*/ 1, out dev));
 
         if (dev == null)
@@ -453,7 +458,7 @@ public static class Audio
             throw new InvalidOperationException("Failed to get default audio endpoint");
         }
 
-        IAudioEndpointVolume? epv = null;
+        IAudioEndpointVolume? epv;
         var epvid = typeof(IAudioEndpointVolume).GUID;
         Marshal.ThrowExceptionForHR(dev.Activate(ref epvid, /*CLSCTX_ALL*/ 23, 0, out epv));
 
@@ -461,12 +466,20 @@ public static class Audio
     }
     public static float Volume
     {
-        get { float v = -1; Marshal.ThrowExceptionForHR(Vol().GetMasterVolumeLevelScalar(out v)); return v; }
-        set { Marshal.ThrowExceptionForHR(Vol().SetMasterVolumeLevelScalar(value, System.Guid.Empty)); }
+        get
+        {
+            Marshal.ThrowExceptionForHR(Vol().GetMasterVolumeLevelScalar(out var v));
+            return v;
+        }
+        set { Marshal.ThrowExceptionForHR(Vol().SetMasterVolumeLevelScalar(value, Guid.Empty)); }
     }
     public static bool Mute
     {
-        get { bool mute; Marshal.ThrowExceptionForHR(Vol().GetMute(out mute)); return mute; }
-        set { Marshal.ThrowExceptionForHR(Vol().SetMute(value, System.Guid.Empty)); }
+        get
+        {
+            Marshal.ThrowExceptionForHR(Vol().GetMute(out var mute));
+            return mute;
+        }
+        set { Marshal.ThrowExceptionForHR(Vol().SetMute(value, Guid.Empty)); }
     }
 }

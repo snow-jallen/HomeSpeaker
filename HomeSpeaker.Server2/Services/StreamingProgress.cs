@@ -19,7 +19,7 @@ internal class StreamingProgress : IProgress<double>
 
     public async void Report(double value)
     {
-        logger.LogInformation("Progress of {title} is {value}", title, value);
+        logger.LogInformation("Progress of {Title} is {Value}", title, value);
         if (value > lastProgress + .01)
         {
             await responseStream.WriteAsync(new CacheVideoReply { PercentComplete = value, Title = title });

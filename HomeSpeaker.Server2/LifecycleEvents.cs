@@ -18,7 +18,7 @@ public class LifecycleEvents : IHostedService
     }
 
     //write to media folder because that exists outside of the container
-    public string LastStatePath => Path.Combine(config[ConfigKeys.MediaFolder], "lastState.json");
+    public string LastStatePath => Path.Combine(config[ConfigKeys.MediaFolder]!, "lastState.json");
 
     private readonly ILogger<LifecycleEvents> logger;
     private readonly IMusicPlayer player;
@@ -31,7 +31,7 @@ public class LifecycleEvents : IHostedService
         {
             logger.LogInformation("Found {LastStatePath} file, re-setting current song and queue", LastStatePath);
 
-            var lastState = JsonSerializer.Deserialize<LastState>(await File.ReadAllTextAsync(LastStatePath));
+            var lastState = JsonSerializer.Deserialize<LastState>(await File.ReadAllTextAsync(LastStatePath, cancellationToken));
             if (lastState?.CurrentSong != null && lastState?.Queue != null)
             {
                 player.PlaySong(lastState.CurrentSong);
@@ -40,7 +40,7 @@ public class LifecycleEvents : IHostedService
                     player.EnqueueSong(s);
                 }
 
-                logger.LogInformation("Restarted using {lastState}", lastState);
+                logger.LogInformation("Restarted using {LastState}", lastState);
             }
         }
     }

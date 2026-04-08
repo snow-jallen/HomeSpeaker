@@ -28,12 +28,12 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
 
     public void PlayStream(string streamUrl)
     {
-        logger.LogInformation($"Asked to play stream: {streamUrl}");
+        logger.LogInformation("Asked to play stream: {StreamUrl}", streamUrl);
 
         //make a Uri first...to make sure the argument is a valid URL.
         //...maybe that helps a bit with unsafe input??
         var url = new Uri(streamUrl).ToString();
-        logger.LogInformation($"After converting to a Uri: {streamUrl}");
+        logger.LogInformation("After converting to a Uri: {StreamUrl}", url);
 
         stopPlaying();
         status = new PlayerStatus
@@ -54,13 +54,13 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         playerProcess.StartInfo.RedirectStandardError = true;
         playerProcess.OutputDataReceived += new DataReceivedEventHandler((s, e) =>
         {
-            logger.LogInformation($"OutputDataReceived: {e.Data}");
+            logger.LogInformation("OutputDataReceived: {Data}", e.Data);
         });
         playerProcess.ErrorDataReceived += new DataReceivedEventHandler((s, e) =>
         {
-            logger.LogInformation($"ErrorDataReceived: {e.Data}");
+            logger.LogInformation("ErrorDataReceived: {Data}", e.Data);
         });
-        logger.LogInformation($"Starting vlc {streamUrl}");
+        logger.LogInformation("Starting vlc {StreamUrl}", streamUrl);
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
         playerProcess.Exited += PlayerProcess_Exited;
@@ -116,7 +116,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
             }
         });
 
-        logger.LogInformation($"Starting to play {song.Path}");
+        logger.LogInformation("Starting to play {SongPath}", song.Path);
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
         PlayerEvent?.Invoke(this, "Playing " + song.Name);
@@ -195,13 +195,13 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         lastPlayedSong = currentSong;
         currentSong = null;
 
-        if (songQueue.Count > 0)
+        if (songQueue.Any())
         {
             playNextSongInQueue();
         }
         else if (repeatMode && lastPlayedSong != null)
         {
-            logger.LogInformation("Repeat mode on, replaying last song: {songName}", lastPlayedSong.Name);
+            logger.LogInformation("Repeat mode on, replaying last song: {SongName}", lastPlayedSong.Name);
             PlaySong(lastPlayedSong);
         }
         else
@@ -213,7 +213,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
 
     private void playNextSongInQueue()
     {
-        logger.LogInformation($"There are still {songQueue.Count} songs in the queue, so I'll play the next one:");
+        logger.LogInformation("There are still {QueueCount} songs in the queue, so I'll play the next one:", songQueue.Count);
         if (songQueue.TryDequeue(out var nextSong))
         {
             PlaySong(nextSong);
@@ -224,7 +224,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     {
         try
         {
-            var parts = output.Split(new char[] { ' ', '%', '[', ']' }, StringSplitOptions.RemoveEmptyEntries);
+            var parts = output.Split(IMusicPlayer.Separators, StringSplitOptions.RemoveEmptyEntries);
             var percentComplete = decimal.Parse(parts[0].Substring(parts[0].IndexOf(':') + 1)) / 100;
             var elapsedTime = TimeSpan.Parse(parts[1]);
             var remainingTime = TimeSpan.Parse(parts[2]);
@@ -259,7 +259,8 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
             story.AppendLine("Nothing playing, so instead of queuing I'll just play it...");
             PlaySong(song);
         }
-        logger.LogInformation(story.ToString());
+
+        logger.LogInformation("Enqueued song: {Story}", story);
     }
 
     public void ClearQueue()
@@ -306,11 +307,11 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
 
     public void SetVolume(int level0to100)
     {
-        int actualMin = 40;
-        int actualMax = 100;
+        var actualMin = 40;
+        var actualMax = 100;
         var percent = Math.Max(0, Math.Min(100, level0to100)) / 100M;
         var newLevel = (actualMax - actualMin) * percent + actualMin;
-        logger.LogInformation("Desired volume: {level0to100}; newLevel {newLevel} = (actualMax {actualMax} - actual Min {actualMin}) * percent {percent} + actualMin {actualMin}",
+        logger.LogInformation("Desired volume: {Level0to100}; newLevel {NewLevel} = (actualMax {ActualMax} - actual Min {ActualMin}) * percent {Percent} + actualMin {ActualMin}",
             level0to100, newLevel, actualMax, actualMin, percent, actualMin);
         Process.Start("amixer", $"sset PCM,0 {newLevel}%");
     }
@@ -338,14 +339,18 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     {
         get
         {
-            logger.LogInformation($"StillPlaying: startedPlaying {startedPlaying} || (playerProcess?.HasExited {playerProcess?.HasExited} ?? true) {playerProcess?.HasExited ?? false} == false) {(playerProcess?.HasExited ?? true) == false}");
+            logger.LogInformation("StillPlaying: startedPlaying {StartedPlaying} || (playerProcess?.HasExited {HasExited} ?? true) == false) {(playerProcess?.HasExited ?? true) == false}",
+                startedPlaying,
+                playerProcess?.HasExited,
+                playerProcess?.HasExited ?? false);
+
             return startedPlaying || (playerProcess?.HasExited ?? true) == false;
         }
     }
 
     private readonly ConcurrentQueue<Song> songQueue = new();
     private Song? lastPlayedSong;
-    private bool repeatMode = false;
+    private bool repeatMode;
     private CancellationTokenSource? sleepTimerCts;
     private DateTime? sleepTimerEndTime;
 
@@ -359,7 +364,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         set
         {
             repeatMode = value;
-            logger.LogInformation("Repeat mode set to {repeatMode}", value);
+            logger.LogInformation("Repeat mode set to {RepeatMode}", value);
             PlayerEvent?.Invoke(this, value ? "Repeat mode: ON" : "Repeat mode: OFF");
         }
     }
@@ -380,7 +385,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         {
             try
             {
-                logger.LogInformation("Sleep timer set for {minutes} minutes", minutes);
+                logger.LogInformation("Sleep timer set for {Minutes} minutes", minutes);
                 PlayerEvent?.Invoke(this, $"Sleep timer: {minutes} min");
                 await Task.Delay(TimeSpan.FromMinutes(minutes), sleepTimerCts.Token);
 

@@ -25,4 +25,6 @@ public interface IMusicPlayer : IDisposable
     TimeSpan? SleepTimerRemaining { get; }
 
     event EventHandler<string> PlayerEvent;
+
+    static readonly char[] Separators = new char[] { ' ', '%', '[', ']' };
 }

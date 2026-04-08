@@ -37,14 +37,14 @@ public class DailyAnchorWorker : BackgroundService
             var now = DateTime.UtcNow.ToLocalTime();
             var tomorrow = now.Date.AddDays(1);
             var delay = tomorrow - now;
-            
+
             // If delay is less than 1 minute, add a day (to handle edge cases)
             if (delay.TotalMinutes < 1)
             {
                 delay = delay.Add(TimeSpan.FromDays(1));
             }
 
-            logger.LogInformation("Next daily anchor creation scheduled for {time} (in {hours} hours)", 
+            logger.LogInformation("Next daily anchor creation scheduled for {Time} (in {Hours} hours)",
                 now.Add(delay), delay.TotalHours);
 
             try
