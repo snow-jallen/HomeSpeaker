@@ -20,13 +20,14 @@ COPY ["HomeSpeaker.Server2/HomeSpeaker.Server2.csproj", "HomeSpeaker.Server2/"]
 COPY ["HomeSpeaker.Shared/HomeSpeaker.Shared.csproj", "HomeSpeaker.Shared/"]
 COPY ["HomeSpeaker.WebAssembly/HomeSpeaker.WebAssembly.csproj", "HomeSpeaker.WebAssembly/"]
 
-RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet restore "./HomeSpeaker.Server2/HomeSpeaker.Server2.csproj"
+# RUN --mount=type=cache,target=/root/.nuget/packages \
+#    dotnet restore "./HomeSpeaker.Server2/HomeSpeaker.Server2.csproj"
 
 COPY . .
 WORKDIR "/src/HomeSpeaker.Server2"
 
 RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet restore "./HomeSpeaker.Server2.csproj" && \
     dotnet publish "./HomeSpeaker.Server2.csproj" \
     -c $BUILD_CONFIGURATION \
     -o /app/publish \
