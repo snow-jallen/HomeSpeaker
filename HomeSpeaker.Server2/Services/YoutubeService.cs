@@ -1,4 +1,3 @@
-﻿using HomeSpeaker.Server2;
 using System.Diagnostics.CodeAnalysis;
 using TagLib;
 using YoutubeExplode;
@@ -38,7 +37,7 @@ public class YoutubeService : IDisposable
                 switch (result)
                 {
                     case VideoSearchResult v:
-                        results.Add(new VideoDto(v.Title, v.Id, v.Url, v.Thumbnails.FirstOrDefault()?.Url, v.Author?.ChannelTitle, v.Duration));
+                        results.Add(new VideoDto(v.Title, v.Id, v.Url, v.Thumbnails.Count > 0 ? v.Thumbnails[0]?.Url : null, v.Author?.ChannelTitle, v.Duration));
                         break;
                         //case PlaylistSearchResult p:
                         //    results.Add(new Video(p.Title, p.Url, p.Thumbnails.FirstOrDefault()?.Url, p.Author?.ChannelTitle, TimeSpan.Zero));
@@ -54,8 +53,10 @@ public class YoutubeService : IDisposable
                 }
             }
         }
+
         return results;
     }
+
     public async Task CacheVideoAsync(string id, string title, IProgress<double> progress)
     {
         var fileName = string.Join("_", $"{title}.mp3".Split(Path.GetInvalidFileNameChars()));
@@ -104,6 +105,7 @@ public class YoutubeService : IDisposable
             {
                 // YoutubeClient does not implement IDisposable — nothing to dispose
             }
+
             disposed = true;
         }
     }
@@ -184,7 +186,7 @@ public class Video : IVideo
     public override string ToString() => $"Video ({Title})";
 }
 
-internal partial class MediaFile : IDisposable
+internal sealed partial class MediaFile : IDisposable
 {
     private readonly TagFile file;
 

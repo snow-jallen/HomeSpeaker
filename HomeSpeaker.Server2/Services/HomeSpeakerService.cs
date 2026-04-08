@@ -1,7 +1,6 @@
-﻿using Google.Protobuf.WellKnownTypes;
+using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using HomeSpeaker.Server2.Data;
-using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Shared;
 using static HomeSpeaker.Shared.HomeSpeaker;
 
@@ -33,8 +32,8 @@ public class HomeSpeakerService : HomeSpeakerBase
         this.playlistService = playlistService;
         this.radioStreamService = radioStreamService;
         this.httpClientFactory = httpClientFactory;
-        this.musicPlayer.PlayerEvent += MusicPlayer_PlayerEvent;
-        
+        this.musicPlayer.PlayerEvent += musicPlayer_PlayerEvent;
+
         // Track song plays as impressions
         musicPlayer.PlayerEvent += async (sender, msg) =>
         {
@@ -63,7 +62,7 @@ public class HomeSpeakerService : HomeSpeakerBase
 
     private readonly IServiceProvider serviceProvider;
 
-    private async void MusicPlayer_PlayerEvent(object? sender, string message)
+    private async void musicPlayer_PlayerEvent(object? sender, string message)
     {
         foreach (var client in eventClients)
         {
@@ -83,6 +82,7 @@ public class HomeSpeakerService : HomeSpeakerBase
             {
                 eventClients.Remove(client);
             }
+
             failedEvents.Clear();
         }
     }
@@ -151,6 +151,7 @@ public class HomeSpeakerService : HomeSpeakerBase
 
             reply.Playlists.Add(playlistMessage);
         }
+
         return reply;
     }
 
@@ -195,12 +196,13 @@ public class HomeSpeakerService : HomeSpeakerBase
         var reply = new GetSongsReply();
         if (library?.Songs?.Any() ?? false)
         {
-            IEnumerable<Song> songs = library.Songs;
+            var songs = library.Songs;
             if (!string.IsNullOrEmpty(request.Folder))
             {
                 logger.LogInformation("Filtering songs to just those in the {Folder} folder", request.Folder);
                 songs = songs.Where(s => s.Path.Contains(request.Folder));
             }
+
             logger.LogInformation("Found songs!  Sending to client.");
             var songMessages = translateSongs(songs);
             reply.Songs.AddRange(songMessages);
@@ -209,6 +211,7 @@ public class HomeSpeakerService : HomeSpeakerBase
         {
             logger.LogInformation("No songs found.  Sending back empty list.");
         }
+
         await responseStream.WriteAsync(reply);
     }
 
@@ -230,6 +233,7 @@ public class HomeSpeakerService : HomeSpeakerBase
         {
             logger.LogWarning("Song {SongId} not found in library.", request.SongId);
         }
+
         return Task.FromResult(reply);
     }
 
@@ -248,7 +252,7 @@ public class HomeSpeakerService : HomeSpeakerBase
         var reply = new PlaySongReply { Ok = false };
         if (song != null)
         {
-            logger.LogInformation($"Queuing up #{song.SongId}: {song.Name}");
+            logger.LogInformation("Queuing up #{SongId}: {SongName}", song.SongId, song.Name);
             musicPlayer.EnqueueSong(song);
             reply.Ok = true;
         }
@@ -278,7 +282,7 @@ public class HomeSpeakerService : HomeSpeakerBase
     public override async Task GetPlayQueue(GetSongsRequest request, IServerStreamWriter<GetSongsReply> responseStream, ServerCallContext context)
     {
         var reply = new GetSongsReply();
-        System.Collections.Generic.IEnumerable<Shared.Song> songQueue = musicPlayer.SongQueue;
+        var songQueue = musicPlayer.SongQueue;
         if (songQueue.Any())
         {
             logger.LogInformation("Found songs in queue!  Sending to client.");
@@ -288,6 +292,7 @@ public class HomeSpeakerService : HomeSpeakerBase
         {
             logger.LogInformation("No songs in queue.  Sending back empty list.");
         }
+
         await responseStream.WriteAsync(reply);
     }
 
@@ -319,22 +324,27 @@ public class HomeSpeakerService : HomeSpeakerBase
         {
             musicPlayer.ClearQueue();
         }
+
         if (request.Play)
         {
             musicPlayer.ResumePlay();
         }
+
         if (request.SkipToNext)
         {
             musicPlayer.SkipToNext();
         }
+
         if (request.Stop)
         {
             musicPlayer.Stop();
         }
+
         if (request.SetVolume)
         {
             musicPlayer.SetVolume(request.VolumeLevel);
         }
+
         return Task.FromResult(new PlayerControlReply());
     }
 
@@ -350,6 +360,7 @@ public class HomeSpeakerService : HomeSpeakerBase
         {
             musicPlayer.EnqueueSong(song);
         }
+
         return Task.FromResult(new EnqueueFolderReply());
     }
 
@@ -360,6 +371,7 @@ public class HomeSpeakerService : HomeSpeakerBase
         {
             musicPlayer.EnqueueSong(song);
         }
+
         return Task.FromResult(new PlayFolderReply());
     }
 

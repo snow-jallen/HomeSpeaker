@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+
+#pragma warning disable SA1649 // File name should match first type name
 
 namespace HomeSpeaker.Server2.Pages;
 

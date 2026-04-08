@@ -11,9 +11,10 @@ public sealed class ForecastService
     private readonly IConfiguration configuration;
     private readonly ILogger<ForecastService> logger;
     private readonly IMemoryCache cache;
-    
+
     private const string CacheKey = "forecast-status";
-    private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan cacheExpiration = TimeSpan.FromMinutes(30);
+    private static readonly JsonSerializerOptions jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public ForecastService(HttpClient httpClient, IConfiguration configuration, ILogger<ForecastService> logger, IMemoryCache cache)
     {
@@ -31,10 +32,10 @@ public sealed class ForecastService
             logger.LogInformation("Returning cached forecast status");
             return cachedValue!;
         }
-        
+
         // Cache miss, fetch new data
         logger.LogInformation("Forecast cache miss, fetching fresh data...");
-        var forecastStatus = await GetForecastStatusInternalAsync(cancellationToken);
+        var forecastStatus = await getForecastStatusInternalAsync(cancellationToken);
 
         // Set cache timestamp
         forecastStatus.LastCachedAt = DateTime.UtcNow;
@@ -42,12 +43,12 @@ public sealed class ForecastService
         // Cache the result with absolute expiration
         var cacheOptions = new MemoryCacheEntryOptions
         {
-            AbsoluteExpirationRelativeToNow = CacheExpiration,
+            AbsoluteExpirationRelativeToNow = cacheExpiration,
             Priority = CacheItemPriority.Normal
         };
 
         cache.Set(CacheKey, forecastStatus, cacheOptions);
-        logger.LogInformation("Forecast data cached for {Minutes} minutes", CacheExpiration.TotalMinutes);
+        logger.LogInformation("Forecast data cached for {Minutes} minutes", cacheExpiration.TotalMinutes);
 
         return forecastStatus;
     }
@@ -71,29 +72,26 @@ public sealed class ForecastService
         return await GetForecastStatusAsync(cancellationToken);
     }
 
-    private async Task<ForecastStatus> GetForecastStatusInternalAsync(CancellationToken cancellationToken = default)
+    private async Task<ForecastStatus> getForecastStatusInternalAsync(CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Getting forecast status...");
-        
+
         // Get location from configuration (default to a reasonable location)
         var latitude = configuration.GetValue<double>("Forecast:Latitude", 39.2683); // Default to NYC
         var longitude = configuration.GetValue<double>("Forecast:Longitude", -111.63686);
-        
+
         logger.LogInformation("Fetching forecast for configured location");
 
         try
         {
             // Use Open-Meteo API (free, no API key required)
             var url = $"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,weather_code&temperature_unit=fahrenheit&timezone=auto&forecast_days=2";
-            
+
             var response = await httpClient.GetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
-            
+
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            var weatherData = JsonSerializer.Deserialize<OpenMeteoResponse>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            var weatherData = JsonSerializer.Deserialize<OpenMeteoResponse>(json, jsonOptions);
 
             if (weatherData?.Hourly == null)
             {
@@ -110,8 +108,8 @@ public sealed class ForecastService
             // Find tonight's low (remaining hours of today)
             var todayEnd = now.Date.AddDays(1);
             var tonightTemps = new List<(DateTime time, double temp)>();
-            
-            for (int i = 0; i < weatherData.Hourly.Time.Length; i++)
+
+            for (var i = 0; i < weatherData.Hourly.Time.Length; i++)
             {
                 var time = DateTime.Parse(weatherData.Hourly.Time[i]);
                 if (time >= now && time < todayEnd)
@@ -124,12 +122,12 @@ public sealed class ForecastService
             {
                 var lowestTemp = tonightTemps.MinBy(t => t.temp);
                 var lowestTempIndex = Array.IndexOf(weatherData.Hourly.Time, lowestTemp.time.ToString("yyyy-MM-ddTHH:00"));
-                
+
                 forecastStatus.TonightLow = new ForecastData
                 {
                     DateTime = lowestTemp.time,
                     Temperature = lowestTemp.temp,
-                    Conditions = GetConditionDescription(weatherData.Hourly.WeatherCode[lowestTempIndex]),
+                    Conditions = getConditionDescription(weatherData.Hourly.WeatherCode[lowestTempIndex]),
                     PrecipitationChance = weatherData.Hourly.PrecipitationProbability?[lowestTempIndex]
                 };
             }
@@ -138,8 +136,8 @@ public sealed class ForecastService
             var tomorrowStart = todayEnd;
             var tomorrowEnd = tomorrowStart.AddDays(1);
             var tomorrowTemps = new List<(DateTime time, double temp)>();
-            
-            for (int i = 0; i < weatherData.Hourly.Time.Length; i++)
+
+            for (var i = 0; i < weatherData.Hourly.Time.Length; i++)
             {
                 var time = DateTime.Parse(weatherData.Hourly.Time[i]);
                 if (time >= tomorrowStart && time < tomorrowEnd)
@@ -152,12 +150,12 @@ public sealed class ForecastService
             {
                 var highestTemp = tomorrowTemps.MaxBy(t => t.temp);
                 var highestTempIndex = Array.IndexOf(weatherData.Hourly.Time, highestTemp.time.ToString("yyyy-MM-ddTHH:00"));
-                
+
                 forecastStatus.TomorrowHigh = new ForecastData
                 {
                     DateTime = highestTemp.time,
                     Temperature = highestTemp.temp,
-                    Conditions = GetConditionDescription(weatherData.Hourly.WeatherCode[highestTempIndex]),
+                    Conditions = getConditionDescription(weatherData.Hourly.WeatherCode[highestTempIndex]),
                     PrecipitationChance = weatherData.Hourly.PrecipitationProbability?[highestTempIndex]
                 };
             }
@@ -168,7 +166,7 @@ public sealed class ForecastService
         {
             logger.LogError(ex, "Failed to fetch forecast data");
             logger.LogInformation("Using sample forecast data for testing");
-            
+
             // Return sample data when API is unavailable (for testing/demo purposes)
             return new ForecastStatus
             {
@@ -191,7 +189,7 @@ public sealed class ForecastService
         }
     }
 
-    private static string GetConditionDescription(int weatherCode)
+    private static string getConditionDescription(int weatherCode)
     {
         // WMO Weather interpretation codes
         return weatherCode switch
@@ -214,13 +212,13 @@ public sealed class ForecastService
     }
 
     // Response models for Open-Meteo API
-    private class OpenMeteoResponse
+    private sealed class OpenMeteoResponse
     {
         [JsonPropertyName("hourly")]
         public HourlyData? Hourly { get; set; }
     }
 
-    private class HourlyData
+    private sealed class HourlyData
     {
         [JsonPropertyName("time")]
         public string[] Time { get; set; } = Array.Empty<string>();

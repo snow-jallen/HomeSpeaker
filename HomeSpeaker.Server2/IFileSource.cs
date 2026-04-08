@@ -1,4 +1,4 @@
-﻿namespace HomeSpeaker.Server2;
+namespace HomeSpeaker.Server2;
 
 public interface IFileSource
 {
@@ -39,6 +39,7 @@ public class DefaultFileSource : IFileSource
         {
             Directory.CreateDirectory(destFolder);
         }
+
         File.Move(path, Path.Combine(destFolder, Path.GetFileName(path)));
     }
 }

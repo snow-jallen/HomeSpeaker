@@ -7,7 +7,6 @@ public class AirPlayReceiverService : BackgroundService
 
     private const string MetadataPipePath = "/tmp/airplay-shared/metadata";
     private const string AirPlayStatePath = "/tmp/airplay-shared/state";
-    private const string AirPlayLogPath = "/tmp/airplay-shared/log";
     private bool airplayActive;
 
     public AirPlayReceiverService(ILogger<AirPlayReceiverService> logger, IMusicPlayer musicPlayer)
@@ -20,13 +19,13 @@ public class AirPlayReceiverService : BackgroundService
     {
         logger.LogInformation("AirPlay Receiver Service starting...");
 
-        var eventsTask = Task.Run(() => MonitorAirPlayEvents(stoppingToken), stoppingToken);
-        var metadataTask = Task.Run(() => MonitorAirPlayMetadata(stoppingToken), stoppingToken);
+        var eventsTask = Task.Run(() => monitorAirPlayEvents(stoppingToken), stoppingToken);
+        var metadataTask = Task.Run(() => monitorAirPlayMetadata(stoppingToken), stoppingToken);
 
         await Task.WhenAll(eventsTask, metadataTask).ConfigureAwait(false);
     }
 
-    private async Task MonitorAirPlayEvents(CancellationToken cancellationToken)
+    private async Task monitorAirPlayEvents(CancellationToken cancellationToken)
     {
         // Monitor the shared state file written by ShairportSync scripts
         while (!cancellationToken.IsCancellationRequested)
@@ -36,7 +35,7 @@ public class AirPlayReceiverService : BackgroundService
                 if (File.Exists(AirPlayStatePath))
                 {
                     var stateContent = await File.ReadAllTextAsync(AirPlayStatePath, cancellationToken);
-                    bool currentlyActive = stateContent.Trim().Equals("ACTIVE", StringComparison.OrdinalIgnoreCase);
+                    var currentlyActive = stateContent.Trim().Equals("ACTIVE", StringComparison.OrdinalIgnoreCase);
 
                     if (currentlyActive && !airplayActive)
                     {
@@ -66,7 +65,7 @@ public class AirPlayReceiverService : BackgroundService
         }
     }
 
-    private async Task MonitorAirPlayMetadata(CancellationToken cancellationToken)
+    private async Task monitorAirPlayMetadata(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {

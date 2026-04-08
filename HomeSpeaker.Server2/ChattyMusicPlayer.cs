@@ -1,4 +1,4 @@
-﻿using HomeSpeaker.Shared;
+using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server2;
 
@@ -26,7 +26,7 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
     }
 
     public bool SleepTimerActive => actualPlayer.SleepTimerActive;
-    
+
     public TimeSpan? SleepTimerRemaining => actualPlayer.SleepTimerRemaining;
 
     public event EventHandler<string>? PlayerEvent;
@@ -84,7 +84,8 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
     {
         actualPlayer.Stop();
         PlayerEvent?.Invoke(this, "Stopped playing.");
-    }    public void UpdateQueue(IEnumerable<string> songs)
+    }
+    public void UpdateQueue(IEnumerable<string> songs)
     {
         actualPlayer.UpdateQueue(songs);
         PlayerEvent?.Invoke(this, "Updated queue.");
@@ -114,6 +115,7 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
             {
                 actualPlayer?.Dispose();
             }
+
             disposed = true;
         }
     }

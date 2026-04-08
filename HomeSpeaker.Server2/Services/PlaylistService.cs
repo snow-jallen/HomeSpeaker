@@ -1,4 +1,4 @@
-﻿using HomeSpeaker.Server2.Data;
+using HomeSpeaker.Server2.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace HomeSpeaker.Server2.Services;
@@ -48,6 +48,7 @@ public class PlaylistService
             await dbContext.Playlists.AddAsync(playlist);
             await dbContext.SaveChangesAsync();
         }
+
         var playlistItem = new PlaylistItem
         {
             PlaylistId = playlist.Id,
@@ -66,6 +67,7 @@ public class PlaylistService
             logger.LogWarning("User tried to remove {Song} from {Playlist} but that playlist doesn't exist.", songPath, playlistName);
             return;
         }
+
         var playlistItem = await dbContext.PlaylistItems.FirstOrDefaultAsync(i => i.PlaylistId == playlist.Id && i.SongPath == songPath);
         if (playlistItem == null)
         {

@@ -1,4 +1,4 @@
-﻿namespace HomeSpeaker.Server2;
+namespace HomeSpeaker.Server2;
 
 public class Mp3Library
 {
@@ -40,6 +40,7 @@ public class Mp3Library
                     logger.LogError(ex, "Trouble parsing tag info!");
                 }
             }
+
             logger.LogInformation("Sync Completed! {Count} songs in database.", dataStore.GetSongs().Count());
         }
     }
@@ -52,6 +53,7 @@ public class Mp3Library
             {
                 ResetLibrary();
             }
+
             return dataStore.GetSongs();
         }
     }

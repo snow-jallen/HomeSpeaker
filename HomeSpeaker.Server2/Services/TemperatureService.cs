@@ -13,7 +13,7 @@ public sealed class TemperatureService
     private readonly IMemoryCache cache;
 
     private const string CacheKey = "temperature-status";
-    private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan cacheExpiration = TimeSpan.FromMinutes(2);
 
     public TemperatureService(HttpClient httpClient, IConfiguration configuration, ILogger<TemperatureService> logger, IMemoryCache cache)
     {
@@ -117,7 +117,7 @@ public sealed class TemperatureService
 
         // Cache miss, fetch new data
         logger.LogInformation("Temperature cache miss, fetching fresh data...");
-        var temperatureStatus = await GetTemperatureStatusInternalAsync(cancellationToken);
+        var temperatureStatus = await getTemperatureStatusInternalAsync(cancellationToken);
 
         // Set cache timestamp
         temperatureStatus.LastCachedAt = DateTime.UtcNow.ToLocalTime();
@@ -125,12 +125,12 @@ public sealed class TemperatureService
         // Cache the result with absolute expiration
         var cacheOptions = new MemoryCacheEntryOptions
         {
-            AbsoluteExpirationRelativeToNow = CacheExpiration,
+            AbsoluteExpirationRelativeToNow = cacheExpiration,
             Priority = CacheItemPriority.Normal
         };
 
         cache.Set(CacheKey, temperatureStatus, cacheOptions);
-        logger.LogInformation("Temperature data cached for {Minutes} minutes", CacheExpiration.TotalMinutes);
+        logger.LogInformation("Temperature data cached for {Minutes} minutes", cacheExpiration.TotalMinutes);
 
         return temperatureStatus;
     }
@@ -154,7 +154,7 @@ public sealed class TemperatureService
         return await GetTemperatureStatusAsync(cancellationToken);
     }
 
-    private async Task<TemperatureStatus> GetTemperatureStatusInternalAsync(CancellationToken cancellationToken = default)
+    private async Task<TemperatureStatus> getTemperatureStatusInternalAsync(CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Getting temperature status...");
         var threshold = configuration.GetValue<double>("TemperatureThreshold", 2.0);
@@ -185,12 +185,12 @@ public sealed class TemperatureService
         );
 
         // Get temperatures for found devices
-        temperatureStatus.OutsideTemperature = await GetTemperatureForDevice(deviceMap["Outside"], cancellationToken);
-        temperatureStatus.YoungerGirlsRoomTemperature = await GetTemperatureForDevice(deviceMap["Girl"], cancellationToken);
-        temperatureStatus.OlderGirlsRoomTemperature = await GetTemperatureForDevice(deviceMap["Emma"], cancellationToken);
-        temperatureStatus.BoysRoomTemperature = await GetTemperatureForDevice(deviceMap["Boy"], cancellationToken);
-        temperatureStatus.MomAndDadsRoomTemperature = await GetTemperatureForDevice(deviceMap["Downstairs"], cancellationToken);
-        temperatureStatus.GreenhouseTemperature = await GetTemperatureForDevice(deviceMap["Greenhouse"], cancellationToken);
+        temperatureStatus.OutsideTemperature = await getTemperatureForDevice(deviceMap["Outside"], cancellationToken);
+        temperatureStatus.YoungerGirlsRoomTemperature = await getTemperatureForDevice(deviceMap["Girl"], cancellationToken);
+        temperatureStatus.OlderGirlsRoomTemperature = await getTemperatureForDevice(deviceMap["Emma"], cancellationToken);
+        temperatureStatus.BoysRoomTemperature = await getTemperatureForDevice(deviceMap["Boy"], cancellationToken);
+        temperatureStatus.MomAndDadsRoomTemperature = await getTemperatureForDevice(deviceMap["Downstairs"], cancellationToken);
+        temperatureStatus.GreenhouseTemperature = await getTemperatureForDevice(deviceMap["Greenhouse"], cancellationToken);
 
         // Calculate temperature difference and determine if within threshold
         if (temperatureStatus.OutsideTemperature is { } outsideTemp &&
@@ -204,7 +204,7 @@ public sealed class TemperatureService
         return temperatureStatus;
     }
 
-    private async Task<double?> GetTemperatureForDevice(Device? device, CancellationToken cancellationToken)
+    private async Task<double?> getTemperatureForDevice(Device? device, CancellationToken cancellationToken)
         => device is not null
             ? await GetDeviceTemperatureAsync(device, cancellationToken)
             : null;

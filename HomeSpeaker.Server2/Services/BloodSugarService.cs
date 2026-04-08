@@ -12,6 +12,7 @@ public sealed class BloodSugarService
     private readonly IMemoryCache cache;
 
     private const string CacheKey = "blood-sugar-status";
+    private static readonly JsonSerializerOptions jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public BloodSugarService(HttpClient httpClient, ILogger<BloodSugarService> logger, IConfiguration configuration, IMemoryCache cache)
     {
@@ -26,7 +27,7 @@ public sealed class BloodSugarService
         // Try to get cached value and check if it needs refresh based on smart logic
         if (cache.TryGetValue(CacheKey, out BloodSugarStatus? cachedValue) && cachedValue != null)
         {
-            var shouldRefresh = ShouldRefreshBloodSugarCache(cachedValue);
+            var shouldRefresh = shouldRefreshBloodSugarCache(cachedValue);
             if (!shouldRefresh)
             {
                 logger.LogInformation("Returning cached blood sugar status {CachedValue}", JsonSerializer.Serialize(cachedValue));
@@ -36,10 +37,10 @@ public sealed class BloodSugarService
 
         // Cache miss or needs refresh, fetch new data
         logger.LogInformation("Blood sugar cache refresh needed, fetching fresh data...");
-        var bloodSugarStatus = await GetBloodSugarStatusInternalAsync(cancellationToken);
+        var bloodSugarStatus = await getBloodSugarStatusInternalAsync(cancellationToken);
 
         // Cache with smart expiration based on reading age
-        var cacheExpiration = CalculateCacheExpiration(bloodSugarStatus);
+        var cacheExpiration = calculateCacheExpiration(bloodSugarStatus);
         var cacheOptions = new MemoryCacheEntryOptions
         {
             AbsoluteExpirationRelativeToNow = cacheExpiration,
@@ -52,7 +53,7 @@ public sealed class BloodSugarService
         return bloodSugarStatus;
     }
 
-    private bool ShouldRefreshBloodSugarCache(BloodSugarStatus cachedStatus)
+    private bool shouldRefreshBloodSugarCache(BloodSugarStatus cachedStatus)
     {
         // If no current reading, refresh more frequently
         if (cachedStatus.CurrentReading == null)
@@ -79,7 +80,7 @@ public sealed class BloodSugarService
         return cacheAge.TotalSeconds >= 30;
     }
 
-    private TimeSpan CalculateCacheExpiration(BloodSugarStatus status)
+    private TimeSpan calculateCacheExpiration(BloodSugarStatus status)
     {
         // If no reading, cache for 1 minute
         if (status.CurrentReading == null)
@@ -105,7 +106,7 @@ public sealed class BloodSugarService
         return TimeSpan.FromSeconds(30);
     }
 
-    private async Task<BloodSugarStatus> GetBloodSugarStatusInternalAsync(CancellationToken cancellationToken = default)
+    private async Task<BloodSugarStatus> getBloodSugarStatusInternalAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -129,10 +130,7 @@ public sealed class BloodSugarService
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            var entries = JsonSerializer.Deserialize<BloodSugarReading[]>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            var entries = JsonSerializer.Deserialize<BloodSugarReading[]>(json, jsonOptions);
 
             if (entries == null || entries.Length == 0)
             {

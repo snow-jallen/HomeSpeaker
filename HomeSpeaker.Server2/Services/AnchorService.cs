@@ -265,7 +265,7 @@ public class AnchorService
             .ToListAsync();
 
         var result = new Dictionary<string, List<DailyAnchor>>();
-        
+
         foreach (var da in dailyAnchors)
         {
             var dailyAnchor = new DailyAnchor(
@@ -279,12 +279,13 @@ public class AnchorService
                 da.AnchorDescription
             );
 
-            if (!result.ContainsKey(da.UserId))
+            if (!result.TryGetValue(da.UserId, out var userAnchors))
             {
-                result[da.UserId] = new List<DailyAnchor>();
+                userAnchors = new List<DailyAnchor>();
+                result[da.UserId] = userAnchors;
             }
-            
-            result[da.UserId].Add(dailyAnchor);
+
+            userAnchors.Add(dailyAnchor);
         }
 
         return result;
@@ -294,7 +295,7 @@ public class AnchorService
     public async Task EnsureTodayAnchorsForAllUsersAsync()
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
-        
+
         // Get all users who have active anchors
         var usersWithAnchors = await dbContext.UserAnchors
             .Include(ua => ua.AnchorDefinition)

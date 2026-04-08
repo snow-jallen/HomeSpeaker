@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -14,7 +14,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         this.library = library;
     }
 
-    private const string vlcPath = @"c:\program files\videolan\vlc\vlc.exe";
+    private const string VlcPath = @"c:\program files\videolan\vlc\vlc.exe";
     private readonly ILogger<WindowsMusicPlayer> logger;
     private readonly Mp3Library library;
     private Process? playerProcess;
@@ -34,7 +34,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         stoppedSong = null;
 
         playerProcess = new Process();
-        playerProcess.StartInfo.FileName = vlcPath;
+        playerProcess.StartInfo.FileName = VlcPath;
         playerProcess.StartInfo.Arguments = $"--play-and-exit \"{song.Path}\" --qt-start-minimized";
         playerProcess.StartInfo.UseShellExecute = false;
         playerProcess.StartInfo.RedirectStandardOutput = true;
@@ -80,12 +80,13 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         PlayerEvent?.Invoke(this, "Playing " + song.Name);
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
-        playerProcess.Exited += PlayerProcess_Exited;
+        playerProcess.Exited += playerProcess_Exited;
 
         playerProcess.BeginOutputReadLine();
         playerProcess.BeginErrorReadLine();
         startedPlaying = false;
     }
+
     private void stopPlaying()
     {
         if (playerProcess != null)
@@ -94,10 +95,11 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             {
                 if (!playerProcess.HasExited)
                 {
-                    playerProcess.Exited -= PlayerProcess_Exited; // Stop listening to when the process ends
+                    playerProcess.Exited -= playerProcess_Exited; // Stop listening to when the process ends
                     playerProcess.Kill();
                     playerProcess.WaitForExit(5000); // Wait up to 5 seconds for clean exit
                 }
+
                 playerProcess.Dispose();
             }
             catch (Exception ex)
@@ -120,6 +122,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
                     proc.Kill();
                     proc.WaitForExit(2000);
                 }
+
                 proc.Dispose();
             }
         }
@@ -145,11 +148,12 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
                 stopPlaying();
                 sleepTimerCts?.Dispose();
             }
+
             disposed = true;
         }
     }
 
-    private void PlayerProcess_Exited(object? sender, EventArgs e)
+    private void playerProcess_Exited(object? sender, EventArgs e)
     {
         logger.LogInformation("Finished playing a song.");
         lastPlayedSong = currentSong;
@@ -200,6 +204,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             }
             catch { }
         }
+
         playerStatus = new PlayerStatus();
         return false;
     }
@@ -219,6 +224,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             story.AppendLine("Nothing playing, so instead of queuing I'll just play it...");
             PlaySong(song);
         }
+
         logger.LogInformation("Queue story: {Story}", story);
     }
 
@@ -277,7 +283,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             }
         };
         playerProcess = new Process();
-        playerProcess.StartInfo.FileName = vlcPath;
+        playerProcess.StartInfo.FileName = VlcPath;
         playerProcess.StartInfo.Arguments = $"\"{streamUrl}\"";
         playerProcess.StartInfo.UseShellExecute = false;
         playerProcess.StartInfo.RedirectStandardOutput = true;
@@ -293,12 +299,11 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         logger.LogInformation("Starting vlc {StreamUrl}", streamUrl);
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
-        playerProcess.Exited += PlayerProcess_Exited;
+        playerProcess.Exited += playerProcess_Exited;
 
         playerProcess.BeginOutputReadLine();
         playerProcess.BeginErrorReadLine();
     }
-
 
     public void ShuffleQueue()
     {
@@ -334,7 +339,10 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
                 logger.LogInformation("startedPlaying {StartedPlaying}, playerProcess {PlayerProcess}, stillPlaying {StillPlaying}", startedPlaying, playerProcess, stillPlaying);
                 return stillPlaying;
             }
-            catch { return false; }
+            catch
+            {
+                return false;
+            }
         }
     }
 
@@ -371,7 +379,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         sleepTimerCts = new CancellationTokenSource();
         sleepTimerEndTime = DateTime.UtcNow.ToLocalTime().AddMinutes(minutes);
 
-        Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
             try
             {
@@ -414,12 +422,12 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 [Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 public interface IAudioEndpointVolume
 {
-    // f(), g(), ... are unused COM method slots. Define these if you care
-    int f(); int g(); int h(); int i();
+    // F(), G(), ... are unused COM method slots. Define these if you care
+    int F(); int G(); int H(); int I();
     int SetMasterVolumeLevelScalar(float fLevel, Guid pguidEventContext);
-    int j();
+    int J();
     int GetMasterVolumeLevelScalar(out float pfLevel);
-    int k(); int l(); int m(); int n();
+    int K(); int L(); int M(); int N();
     int SetMute([MarshalAs(UnmanagedType.Bool)] bool bMute, Guid pguidEventContext);
     int GetMute(out bool pbMute);
 }
@@ -433,7 +441,7 @@ internal interface IMMDevice
 [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 internal interface IMMDeviceEnumerator
 {
-    int f(); // Unused
+    int F(); // Unused
     int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice endpoint);
 }
 

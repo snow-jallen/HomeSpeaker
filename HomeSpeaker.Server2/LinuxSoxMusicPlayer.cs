@@ -138,6 +138,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
                     playerProcess.Kill();
                     playerProcess.WaitForExit(5000); // Wait up to 5 seconds for clean exit
                 }
+
                 playerProcess.Dispose();
             }
             catch (Exception ex)
@@ -160,6 +161,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
                     proc.Kill();
                     proc.WaitForExit(2000);
                 }
+
                 proc.Dispose();
             }
         }
@@ -185,6 +187,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
                 stopPlaying();
                 sleepTimerCts?.Dispose();
             }
+
             disposed = true;
         }
     }
@@ -381,7 +384,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         sleepTimerCts = new CancellationTokenSource();
         sleepTimerEndTime = DateTime.UtcNow.ToLocalTime().AddMinutes(minutes);
 
-        Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
             try
             {

@@ -1,9 +1,9 @@
-﻿using Grpc.Core;
+using Grpc.Core;
 using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server2.Services;
 
-internal class StreamingProgress : IProgress<double>
+internal sealed class StreamingProgress : IProgress<double>
 {
     private readonly IServerStreamWriter<CacheVideoReply> responseStream;
     private readonly string title;

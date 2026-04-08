@@ -13,7 +13,7 @@ public class RadioStreamService
     private readonly string faviconsDirectory;
 
     private const string CACHE_KEY = "radio_streams_all";
-    private static readonly TimeSpan CACHE_DURATION = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan cacheDuration = TimeSpan.FromMinutes(5);
 
     public RadioStreamService(
         MusicContext dbContext,
@@ -37,7 +37,7 @@ public class RadioStreamService
     {
         return await cache.GetOrCreateAsync(CACHE_KEY, async entry =>
         {
-            entry.AbsoluteExpirationRelativeToNow = CACHE_DURATION;
+            entry.AbsoluteExpirationRelativeToNow = cacheDuration;
             logger.LogDebug("Cache miss - loading radio streams from database");
 
             return await dbContext.RadioStreams
@@ -60,7 +60,7 @@ public class RadioStreamService
             Name = name,
             Url = url,
             CreatedAt = DateTime.UtcNow,
-            DisplayOrder = await GetNextDisplayOrderAsync()
+            DisplayOrder = await getNextDisplayOrderAsync()
         };
 
         if (!string.IsNullOrWhiteSpace(faviconFileName))
@@ -70,7 +70,7 @@ public class RadioStreamService
         }
         else if (!string.IsNullOrWhiteSpace(faviconUrl))
         {
-            stream.FaviconFileName = await DownloadFaviconAsync(name, faviconUrl);
+            stream.FaviconFileName = await downloadFaviconAsync(name, faviconUrl);
         }
 
         await dbContext.RadioStreams.AddAsync(stream);
@@ -98,7 +98,7 @@ public class RadioStreamService
             // Pre-uploaded file — delete old favicon and store new filename directly
             if (!string.IsNullOrWhiteSpace(stream.FaviconFileName))
             {
-                DeleteFavicon(stream.FaviconFileName);
+                deleteFavicon(stream.FaviconFileName);
             }
 
             stream.FaviconFileName = faviconFileName;
@@ -106,12 +106,12 @@ public class RadioStreamService
         else if (!string.IsNullOrWhiteSpace(faviconUrl))
         {
             // Download new favicon first
-            var newFileName = await DownloadFaviconAsync(name, faviconUrl);
+            var newFileName = await downloadFaviconAsync(name, faviconUrl);
 
             // Delete old favicon if new one was successfully downloaded (and it's a different file)
             if (newFileName != null && !string.IsNullOrWhiteSpace(stream.FaviconFileName) && stream.FaviconFileName != newFileName)
             {
-                DeleteFavicon(stream.FaviconFileName);
+                deleteFavicon(stream.FaviconFileName);
             }
 
             stream.FaviconFileName = newFileName;
@@ -142,8 +142,8 @@ public class RadioStreamService
             return null;
         }
 
-        var extension = GetExtensionFromContentType(file.ContentType) ?? ".png";
-        var baseName = GetSafeFileName(Path.GetFileNameWithoutExtension(file.FileName));
+        var extension = getExtensionFromContentType(file.ContentType) ?? ".png";
+        var baseName = getSafeFileName(Path.GetFileNameWithoutExtension(file.FileName));
         var uniqueName = baseName + Guid.NewGuid().ToString("N")[..8] + extension;
 
         Directory.CreateDirectory(faviconsDirectory);
@@ -167,7 +167,7 @@ public class RadioStreamService
         // Delete favicon file if exists
         if (!string.IsNullOrWhiteSpace(stream.FaviconFileName))
         {
-            DeleteFavicon(stream.FaviconFileName);
+            deleteFavicon(stream.FaviconFileName);
         }
 
         dbContext.RadioStreams.Remove(stream);
@@ -193,7 +193,7 @@ public class RadioStreamService
         cache.Remove(CACHE_KEY);
     }
 
-    private async Task<string?> DownloadFaviconAsync(string streamName, string faviconUrl)
+    private async Task<string?> downloadFaviconAsync(string streamName, string faviconUrl)
     {
         try
         {
@@ -204,10 +204,10 @@ public class RadioStreamService
             }
 
             var contentType = response.Content.Headers.ContentType?.MediaType;
-            var extension = GetExtensionFromContentType(contentType) ?? ".png";
+            var extension = getExtensionFromContentType(contentType) ?? ".png";
 
             // Generate safe filename from stream name
-            var safeFileName = GetSafeFileName(streamName) + extension;
+            var safeFileName = getSafeFileName(streamName) + extension;
             var faviconPath = Path.Combine(faviconsDirectory, safeFileName);
 
             // Ensure favicons directory exists
@@ -226,7 +226,7 @@ public class RadioStreamService
         }
     }
 
-    private void DeleteFavicon(string fileName)
+    private void deleteFavicon(string fileName)
     {
         try
         {
@@ -243,7 +243,7 @@ public class RadioStreamService
         }
     }
 
-    private string GetSafeFileName(string name)
+    private string getSafeFileName(string name)
     {
         // Remove invalid filename characters
         var invalid = Path.GetInvalidFileNameChars();
@@ -251,7 +251,7 @@ public class RadioStreamService
         return safeName.ToLowerInvariant().Replace(" ", "_");
     }
 
-    private string? GetExtensionFromContentType(string? contentType)
+    private string? getExtensionFromContentType(string? contentType)
     {
         return contentType switch
         {
@@ -265,7 +265,7 @@ public class RadioStreamService
         };
     }
 
-    private async Task<int> GetNextDisplayOrderAsync()
+    private async Task<int> getNextDisplayOrderAsync()
     {
         var maxOrder = await dbContext.RadioStreams.MaxAsync(s => (int?)s.DisplayOrder);
         return (maxOrder ?? 0) + 1;

@@ -1,4 +1,4 @@
-﻿using HomeSpeaker.Shared;
+using HomeSpeaker.Shared;
 using Id3;
 
 namespace HomeSpeaker.Server2;

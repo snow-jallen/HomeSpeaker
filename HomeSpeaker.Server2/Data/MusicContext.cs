@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace HomeSpeaker.Server2.Data;
 
@@ -153,8 +153,8 @@ public class RadioStream
     public string Name { get; set; } = string.Empty;
     public string Url { get; set; } = string.Empty;
     public string? FaviconFileName { get; set; }
-    public int PlayCount { get; set; } = 0;
-    public int DisplayOrder { get; set; } = 0;
+    public int PlayCount { get; set; }
+    public int DisplayOrder { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastPlayedAt { get; set; }
 }

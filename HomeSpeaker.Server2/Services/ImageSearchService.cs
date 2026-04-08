@@ -17,17 +17,17 @@ public class ImageSearchService
 
     public async Task<List<ImageSearchResult>> SearchAsync(string query)
     {
-        var ddgTask = SearchDuckDuckGoAsync(query);
-        var wikiTask = SearchWikipediaAsync(query);
+        var ddgTask = searchDuckDuckGoAsync(query);
+        var wikiTask = searchWikipediaAsync(query);
         await Task.WhenAll(ddgTask, wikiTask);
 
         var results = new List<ImageSearchResult>();
-        results.AddRange(ddgTask.Result);
-        results.AddRange(wikiTask.Result);
+        results.AddRange(await ddgTask);
+        results.AddRange(await wikiTask);
         return results.Take(20).ToList();
     }
 
-    private async Task<List<ImageSearchResult>> SearchDuckDuckGoAsync(string query)
+    private async Task<List<ImageSearchResult>> searchDuckDuckGoAsync(string query)
     {
         try
         {
@@ -42,6 +42,7 @@ public class ImageSearchService
                 logger.LogWarning("Could not extract DDG vqd token for query: {Query}", query);
                 return [];
             }
+
             var vqd = vqdMatch.Groups[1].Value;
 
             // Step 2: fetch image results with safe=strict
@@ -84,7 +85,7 @@ public class ImageSearchService
         }
     }
 
-    private async Task<List<ImageSearchResult>> SearchWikipediaAsync(string query)
+    private async Task<List<ImageSearchResult>> searchWikipediaAsync(string query)
     {
         try
         {

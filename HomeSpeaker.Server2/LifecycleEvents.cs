@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server2;

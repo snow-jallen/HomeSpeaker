@@ -1,6 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
+#pragma warning disable IDE0161 // Convert to file-scoped namespace
+#pragma warning disable CA1861 // Prefer static readonly fields over constant array arguments
 
 namespace HomeSpeaker.Server2.Migrations
 {
