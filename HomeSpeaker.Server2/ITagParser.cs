@@ -42,7 +42,7 @@ public class DefaultTagParser : ITagParser
     {
         try
         {
-            logger.LogInformation("Updating MP3 tags for file: {fullPath}", fullPath);
+            logger.LogInformation("Updating MP3 tags for file: {FullPath}", fullPath);
 
             using var mp3 = new Mp3(fullPath, Mp3Permissions.ReadWrite);
 
@@ -60,16 +60,16 @@ public class DefaultTagParser : ITagParser
                 // Write the changes back to the file
                 mp3.WriteTag(tag, WriteConflictAction.Replace);
 
-                logger.LogInformation("Successfully updated MP3 tags for file: {fullPath}", fullPath);
+                logger.LogInformation("Successfully updated MP3 tags for file: {FullPath}", fullPath);
             }
             else
             {
-                logger.LogWarning("No existing tags found and unable to create new tags for file: {fullPath}", fullPath);
+                logger.LogWarning("No existing tags found and unable to create new tags for file: {FullPath}", fullPath);
             }
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error updating MP3 tags for file: {fullPath}", fullPath);
+            logger.LogError(ex, "Error updating MP3 tags for file: {FullPath}", fullPath);
             throw;
         }
     }

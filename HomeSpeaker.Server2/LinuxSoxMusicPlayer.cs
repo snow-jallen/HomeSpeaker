@@ -63,7 +63,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         logger.LogInformation("Starting vlc {StreamUrl}", streamUrl);
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
-        playerProcess.Exited += PlayerProcess_Exited;
+        playerProcess.Exited += playerProcess_Exited;
 
         playerProcess.BeginOutputReadLine();
         playerProcess.BeginErrorReadLine();
@@ -120,7 +120,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
         PlayerEvent?.Invoke(this, "Playing " + song.Name);
-        playerProcess.Exited += PlayerProcess_Exited;
+        playerProcess.Exited += playerProcess_Exited;
 
         playerProcess.BeginOutputReadLine();
         playerProcess.BeginErrorReadLine();
@@ -134,7 +134,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
             {
                 if (!playerProcess.HasExited)
                 {
-                    playerProcess.Exited -= PlayerProcess_Exited; // Stop listening to when the process ends
+                    playerProcess.Exited -= playerProcess_Exited; // Stop listening to when the process ends
                     playerProcess.Kill();
                     playerProcess.WaitForExit(5000); // Wait up to 5 seconds for clean exit
                 }
@@ -189,7 +189,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         }
     }
 
-    private void PlayerProcess_Exited(object? sender, EventArgs e)
+    private void playerProcess_Exited(object? sender, EventArgs e)
     {
         logger.LogInformation("Finished playing a song.");
         lastPlayedSong = currentSong;

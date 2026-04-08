@@ -29,7 +29,7 @@ public sealed class BloodSugarService
             var shouldRefresh = ShouldRefreshBloodSugarCache(cachedValue);
             if (!shouldRefresh)
             {
-                logger.LogInformation("Returning cached blood sugar status {cachedValue}", JsonSerializer.Serialize(cachedValue));
+                logger.LogInformation("Returning cached blood sugar status {CachedValue}", JsonSerializer.Serialize(cachedValue));
                 return cachedValue;
             }
         }
@@ -47,7 +47,7 @@ public sealed class BloodSugarService
         };
 
         cache.Set(CacheKey, bloodSugarStatus, cacheOptions);
-        logger.LogInformation("Blood sugar data cached for {Seconds} seconds {cachedValue}", cacheExpiration.TotalSeconds, JsonSerializer.Serialize(bloodSugarStatus));
+        logger.LogInformation("Blood sugar data cached for {Seconds} seconds {CachedValue}", cacheExpiration.TotalSeconds, JsonSerializer.Serialize(bloodSugarStatus));
 
         return bloodSugarStatus;
     }

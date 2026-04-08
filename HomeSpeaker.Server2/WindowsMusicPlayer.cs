@@ -14,7 +14,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         this.library = library;
     }
 
-    private const string _vlc = @"c:\program files\videolan\vlc\vlc.exe";
+    private const string vlcPath = @"c:\program files\videolan\vlc\vlc.exe";
     private readonly ILogger<WindowsMusicPlayer> logger;
     private readonly Mp3Library library;
     private Process? playerProcess;
@@ -34,7 +34,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         stoppedSong = null;
 
         playerProcess = new Process();
-        playerProcess.StartInfo.FileName = _vlc;
+        playerProcess.StartInfo.FileName = vlcPath;
         playerProcess.StartInfo.Arguments = $"--play-and-exit \"{song.Path}\" --qt-start-minimized";
         playerProcess.StartInfo.UseShellExecute = false;
         playerProcess.StartInfo.RedirectStandardOutput = true;
@@ -277,7 +277,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             }
         };
         playerProcess = new Process();
-        playerProcess.StartInfo.FileName = _vlc;
+        playerProcess.StartInfo.FileName = vlcPath;
         playerProcess.StartInfo.Arguments = $"\"{streamUrl}\"";
         playerProcess.StartInfo.UseShellExecute = false;
         playerProcess.StartInfo.RedirectStandardOutput = true;

@@ -31,7 +31,7 @@ public class AnchorService
 
     public async Task<AnchorDefinition> CreateAnchorDefinitionAsync(CreateAnchorDefinitionRequest request)
     {
-        logger.LogInformation("Creating anchor definition: {name}", request.Name);
+        logger.LogInformation("Creating anchor definition: {Name}", request.Name);
 
         var entity = new AnchorDefinitionEntity
         {
@@ -54,7 +54,7 @@ public class AnchorService
         var entity = await dbContext.AnchorDefinitions.FindAsync(id);
         if (entity == null)
         {
-            logger.LogWarning("Anchor definition {id} not found for update", id);
+            logger.LogWarning("Anchor definition {Id} not found for update", id);
             return null;
         }
 
@@ -62,7 +62,7 @@ public class AnchorService
         entity.Description = request.Description;
         await dbContext.SaveChangesAsync();
 
-        logger.LogInformation("Updated anchor definition {id}: {name}", id, request.Name);
+        logger.LogInformation("Updated anchor definition {Id}: {Name}", id, request.Name);
         var result = new AnchorDefinition(entity.Id, entity.Name, entity.Description, entity.IsActive);
         await notificationService.NotifyAnchorDefinitionUpdated(result);
         return result;
@@ -73,7 +73,7 @@ public class AnchorService
         var entity = await dbContext.AnchorDefinitions.FindAsync(id);
         if (entity == null)
         {
-            logger.LogWarning("Anchor definition {id} not found for deactivation", id);
+            logger.LogWarning("Anchor definition {Id} not found for deactivation", id);
             return false;
         }
 
@@ -81,7 +81,7 @@ public class AnchorService
         entity.DeactivatedAt = DateTime.UtcNow;
         await dbContext.SaveChangesAsync();
 
-        logger.LogInformation("Deactivated anchor definition {id}: {name}", id, entity.Name);
+        logger.LogInformation("Deactivated anchor definition {Id}: {Name}", id, entity.Name);
         await notificationService.NotifyAnchorDefinitionDeactivated(id);
         return true;
     }
@@ -107,7 +107,7 @@ public class AnchorService
 
         if (existing != null)
         {
-            logger.LogInformation("User {userId} already has anchor {anchorId}", request.UserId, request.AnchorDefinitionId);
+            logger.LogInformation("User {UserId} already has anchor {AnchorId}", request.UserId, request.AnchorDefinitionId);
             return new UserAnchor(existing.Id, existing.UserId, existing.AnchorDefinitionId, existing.CreatedAt);
         }
 
@@ -121,7 +121,7 @@ public class AnchorService
         await dbContext.UserAnchors.AddAsync(entity);
         await dbContext.SaveChangesAsync();
 
-        logger.LogInformation("Assigned anchor {anchorId} to user {userId}", request.AnchorDefinitionId, request.UserId);
+        logger.LogInformation("Assigned anchor {AnchorId} to user {UserId}", request.AnchorDefinitionId, request.UserId);
         var result = new UserAnchor(entity.Id, entity.UserId, entity.AnchorDefinitionId, entity.CreatedAt);
         await notificationService.NotifyUserAnchorAssigned(result);
         return result;
@@ -134,14 +134,14 @@ public class AnchorService
 
         if (entity == null)
         {
-            logger.LogWarning("User anchor not found for user {userId} and anchor {anchorId}", userId, anchorDefinitionId);
+            logger.LogWarning("User anchor not found for user {UserId} and anchor {AnchorId}", userId, anchorDefinitionId);
             return false;
         }
 
         dbContext.UserAnchors.Remove(entity);
         await dbContext.SaveChangesAsync();
 
-        logger.LogInformation("Removed anchor {anchorId} from user {userId}", anchorDefinitionId, userId);
+        logger.LogInformation("Removed anchor {AnchorId} from user {UserId}", anchorDefinitionId, userId);
         await notificationService.NotifyUserAnchorRemoved(userId, anchorDefinitionId);
         return true;
     }
@@ -155,7 +155,7 @@ public class AnchorService
 
         if (existingCount > 0)
         {
-            logger.LogInformation("Daily anchors already exist for user {userId} on {date}", userId, date);
+            logger.LogInformation("Daily anchors already exist for user {UserId} on {Date}", userId, date);
             return;
         }
 
@@ -168,7 +168,7 @@ public class AnchorService
 
         if (!userAnchors.Any())
         {
-            logger.LogInformation("No active anchors found for user {userId}", userId);
+            logger.LogInformation("No active anchors found for user {UserId}", userId);
             return;
         }
 
@@ -187,7 +187,7 @@ public class AnchorService
         await dbContext.DailyAnchors.AddRangeAsync(dailyAnchors);
         await dbContext.SaveChangesAsync();
 
-        logger.LogInformation("Created {count} daily anchors for user {userId} on {date}", userAnchors.Count, userId, date);
+        logger.LogInformation("Created {Count} daily anchors for user {UserId} on {Date}", userAnchors.Count, userId, date);
     }
 
     public async Task<IEnumerable<DailyAnchor>> GetDailyAnchorsAsync(string userId, DateOnly date)
@@ -222,7 +222,7 @@ public class AnchorService
         var entity = await dbContext.DailyAnchors.FindAsync(request.DailyAnchorId);
         if (entity == null)
         {
-            logger.LogWarning("Daily anchor {id} not found for completion update", request.DailyAnchorId);
+            logger.LogWarning("Daily anchor {Id} not found for completion update", request.DailyAnchorId);
             return false;
         }
 
@@ -230,7 +230,7 @@ public class AnchorService
         entity.CompletedAt = request.IsCompleted ? DateTime.UtcNow : null;
         await dbContext.SaveChangesAsync();
 
-        logger.LogInformation("Updated daily anchor {id} completion to {completed}", request.DailyAnchorId, request.IsCompleted);
+        logger.LogInformation("Updated daily anchor {Id} completion to {Completed}", request.DailyAnchorId, request.IsCompleted);
         await notificationService.NotifyDailyAnchorCompletionUpdated(request.DailyAnchorId, request.IsCompleted, entity.CompletedAt);
         return true;
     }
@@ -309,6 +309,6 @@ public class AnchorService
             await CreateDailyAnchorsForUserAsync(userId, today);
         }
 
-        logger.LogInformation("Ensured daily anchors exist for {count} users on {date}", usersWithAnchors.Count, today);
+        logger.LogInformation("Ensured daily anchors exist for {Count} users on {Date}", usersWithAnchors.Count, today);
     }
 }
