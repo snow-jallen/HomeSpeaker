@@ -45,14 +45,15 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
     }
 
     public async Task PlaySongAsync(SongViewModel song)
-    {        try
+    {
+        try
         {
             Console.WriteLine($"BrowserAudioService.PlaySongAsync called with song: {song.Name}");
             await EnsureInitializedAsync();
             // Get the current base address from the browser
             var baseUri = await jsRuntime.InvokeAsync<string>("eval", "window.location.origin");
             var audioUrl = $"{baseUri}/api/music/{song.SongId}";
-            
+
             Console.WriteLine($"Playing song {song.Name} from {audioUrl}");
             logger.LogInformation("Playing song {SongName} from {Url}", song.Name, audioUrl);
             await audioModule!.InvokeVoidAsync("playSong", audioUrl, song.Name);
@@ -174,7 +175,7 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
     [JSInvokable]
     public void OnError(string error)
     {
-    logger.LogError("Browser audio error: {Error}", error);
+        logger.LogError("Browser audio error: {Error}", error);
         ErrorOccurred?.Invoke(this, error);
     }
 
@@ -185,7 +186,7 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
             await audioModule.InvokeVoidAsync("dispose");
             await audioModule.DisposeAsync();
         }
-        
+
         dotNetRef?.Dispose();
     }
 }

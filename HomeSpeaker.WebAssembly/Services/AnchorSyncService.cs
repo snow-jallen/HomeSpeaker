@@ -122,12 +122,12 @@ public class AnchorSyncService : IAnchorSyncService
         if (disposing)
         {
             _ = hubConnection?.DisposeAsync();
-
         }
     }
 
     public void Dispose()
     {
         Dispose(true);
+        GC.SuppressFinalize(this);
     }
 }
