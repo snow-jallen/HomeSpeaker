@@ -454,6 +454,26 @@ a:hover, .btn-link:hover {
 
 /* ===== MUSIC PLAYER COMPONENT STYLES ===== */
 
+/* Override Bootstrap card colors for dark theme -- prevents near-white text
+   on a white card background (contrast issue on Streams page and elsewhere) */
+.card {
+    background-color: var(--hs-bg-card);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: var(--hs-text-primary);
+}
+
+.card-header {
+    background-color: rgba(255, 255, 255, 0.03);
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+    color: var(--hs-text-primary);
+}
+
+.card-footer {
+    background-color: rgba(255, 255, 255, 0.03);
+    border-top-color: rgba(255, 255, 255, 0.08);
+    color: var(--hs-text-primary);
+}
+
 /* Card system for music items */
 .hs-card {
     background: linear-gradient(160deg, var(--hs-bg-card) 0%, var(--hs-bg-elevated) 100%);
