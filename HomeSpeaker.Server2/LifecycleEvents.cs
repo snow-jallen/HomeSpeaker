@@ -1,5 +1,5 @@
-﻿using HomeSpeaker.Shared;
-using System.Text.Json;
+﻿using System.Text.Json;
+using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server2;
 
@@ -10,10 +10,15 @@ public class LifecycleEvents : IHostedService
         this.logger = logger;
         this.player = player;
         this.config = config;
+
+        if (!Path.Exists(config[ConfigKeys.MediaFolder]))
+        {
+            throw new MissingConfigException(ConfigKeys.MediaFolder);
+        }
     }
 
     //write to media folder because that exists outside of the container
-    public string LastStatePath => Path.Combine(config[ConfigKeys.MediaFolder] ?? throw new MissingConfigException(ConfigKeys.MediaFolder), "lastState.json");
+    public string LastStatePath => Path.Combine(config[ConfigKeys.MediaFolder], "lastState.json");
 
     private readonly ILogger<LifecycleEvents> logger;
     private readonly IMusicPlayer player;

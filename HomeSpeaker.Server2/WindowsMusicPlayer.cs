@@ -1,8 +1,8 @@
-﻿using HomeSpeaker.Shared;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server2;
 
@@ -85,7 +85,8 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         playerProcess.BeginOutputReadLine();
         playerProcess.BeginErrorReadLine();
         startedPlaying = false;
-    }    private void stopPlaying()
+    }
+    private void stopPlaying()
     {
         if (playerProcess != null)
         {
@@ -153,7 +154,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         logger.LogInformation("Finished playing a song.");
         lastPlayedSong = currentSong;
         currentSong = null;
-        
+
         if (songQueue.Count > 0)
         {
             playNextSongInQueue();
@@ -250,19 +251,19 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         stopPlaying();
     }
 
-    public void SetVolume(int level)
+    public void SetVolume(int level0to100)
     {
-        Audio.Volume = (level / 100.0f);
+        Audio.Volume = (level0to100 / 100.0f);
     }
 
-    public void PlayStream(string streamPath)
+    public void PlayStream(string streamUrl)
     {
-        logger.LogInformation($"Asked to play stream: {streamPath}");
+        logger.LogInformation($"Asked to play stream: {streamUrl}");
 
         //make a Uri first...to make sure the argument is a valid URL.
         //...maybe that helps a bit with unsafe input??
-        var url = new Uri(streamPath).ToString();
-        logger.LogInformation($"After converting to a Uri: {streamPath}");
+        var url = new Uri(streamUrl).ToString();
+        logger.LogInformation($"After converting to a Uri: {streamUrl}");
 
         stopPlaying();
         status = new PlayerStatus
@@ -277,7 +278,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         };
         playerProcess = new Process();
         playerProcess.StartInfo.FileName = _vlc;
-        playerProcess.StartInfo.Arguments = $"\"{streamPath}\"";
+        playerProcess.StartInfo.Arguments = $"\"{streamUrl}\"";
         playerProcess.StartInfo.UseShellExecute = false;
         playerProcess.StartInfo.RedirectStandardOutput = true;
         playerProcess.StartInfo.RedirectStandardError = true;
@@ -289,7 +290,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         {
             logger.LogInformation($"ErrorDataReceived: {e.Data}");
         });
-        logger.LogInformation($"Starting vlc {streamPath}");
+        logger.LogInformation($"Starting vlc {streamUrl}");
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
         playerProcess.Exited += PlayerProcess_Exited;
@@ -346,7 +347,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
     public event EventHandler<string>? PlayerEvent;
 
     public IEnumerable<Song> SongQueue => songQueue.ToArray();
-    
+
     public bool RepeatMode
     {
         get => repeatMode;
@@ -357,19 +358,19 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             PlayerEvent?.Invoke(this, value ? "Repeat mode: ON" : "Repeat mode: OFF");
         }
     }
-    
+
     public bool SleepTimerActive => sleepTimerCts != null && !sleepTimerCts.IsCancellationRequested;
-    
-    public TimeSpan? SleepTimerRemaining => sleepTimerEndTime.HasValue 
-        ? sleepTimerEndTime.Value - DateTime.UtcNow.ToLocalTime() 
+
+    public TimeSpan? SleepTimerRemaining => sleepTimerEndTime.HasValue
+        ? sleepTimerEndTime.Value - DateTime.UtcNow.ToLocalTime()
         : null;
-    
+
     public void SetSleepTimer(int minutes)
     {
         CancelSleepTimer();
         sleepTimerCts = new CancellationTokenSource();
         sleepTimerEndTime = DateTime.UtcNow.ToLocalTime().AddMinutes(minutes);
-        
+
         Task.Run(async () =>
         {
             try
@@ -377,7 +378,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
                 logger.LogInformation("Sleep timer set for {minutes} minutes", minutes);
                 PlayerEvent?.Invoke(this, $"Sleep timer: {minutes} min");
                 await Task.Delay(TimeSpan.FromMinutes(minutes), sleepTimerCts.Token);
-                
+
                 logger.LogInformation("Sleep timer expired, stopping playback");
                 Stop();
                 ClearQueue();
@@ -395,7 +396,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             }
         });
     }
-    
+
     public void CancelSleepTimer()
     {
         if (sleepTimerCts != null)
@@ -446,7 +447,7 @@ public static class Audio
 
         IMMDevice? dev = null;
         Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(/*eRender*/ 0, /*eMultimedia*/ 1, out dev));
-        
+
         if (dev == null)
         {
             throw new InvalidOperationException("Failed to get default audio endpoint");
@@ -455,7 +456,7 @@ public static class Audio
         IAudioEndpointVolume? epv = null;
         var epvid = typeof(IAudioEndpointVolume).GUID;
         Marshal.ThrowExceptionForHR(dev.Activate(ref epvid, /*CLSCTX_ALL*/ 23, 0, out epv));
-        
+
         return epv ?? throw new InvalidOperationException("Failed to activate audio endpoint volume");
     }
     public static float Volume

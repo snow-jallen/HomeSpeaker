@@ -1,8 +1,8 @@
-using CliWrap.Buffered;
-using HomeSpeaker.Shared;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
+using CliWrap.Buffered;
+using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server2;
 
@@ -26,14 +26,14 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     private bool startedPlaying;
     private Song? stoppedSong;
 
-    public void PlayStream(string streamPath)
+    public void PlayStream(string streamUrl)
     {
-        logger.LogInformation($"Asked to play stream: {streamPath}");
+        logger.LogInformation($"Asked to play stream: {streamUrl}");
 
         //make a Uri first...to make sure the argument is a valid URL.
         //...maybe that helps a bit with unsafe input??
-        var url = new Uri(streamPath).ToString();
-        logger.LogInformation($"After converting to a Uri: {streamPath}");
+        var url = new Uri(streamUrl).ToString();
+        logger.LogInformation($"After converting to a Uri: {streamUrl}");
 
         stopPlaying();
         status = new PlayerStatus
@@ -48,7 +48,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         };
         playerProcess = new Process();
         playerProcess.StartInfo.FileName = "cvlc";
-        playerProcess.StartInfo.Arguments = $"\"{streamPath}\"";
+        playerProcess.StartInfo.Arguments = $"\"{streamUrl}\"";
         playerProcess.StartInfo.UseShellExecute = false;
         playerProcess.StartInfo.RedirectStandardOutput = true;
         playerProcess.StartInfo.RedirectStandardError = true;
@@ -60,7 +60,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         {
             logger.LogInformation($"ErrorDataReceived: {e.Data}");
         });
-        logger.LogInformation($"Starting vlc {streamPath}");
+        logger.LogInformation($"Starting vlc {streamUrl}");
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
         playerProcess.Exited += PlayerProcess_Exited;
@@ -125,7 +125,8 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         playerProcess.BeginOutputReadLine();
         playerProcess.BeginErrorReadLine();
         startedPlaying = false;
-    }    private void stopPlaying()
+    }
+    private void stopPlaying()
     {
         if (playerProcess != null)
         {
@@ -193,7 +194,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         logger.LogInformation("Finished playing a song.");
         lastPlayedSong = currentSong;
         currentSong = null;
-        
+
         if (songQueue.Count > 0)
         {
             playNextSongInQueue();
@@ -351,7 +352,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     public event EventHandler<string>? PlayerEvent;
 
     public IEnumerable<Song> SongQueue => songQueue.ToArray();
-    
+
     public bool RepeatMode
     {
         get => repeatMode;
@@ -362,19 +363,19 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
             PlayerEvent?.Invoke(this, value ? "Repeat mode: ON" : "Repeat mode: OFF");
         }
     }
-    
+
     public bool SleepTimerActive => sleepTimerCts != null && !sleepTimerCts.IsCancellationRequested;
-    
-    public TimeSpan? SleepTimerRemaining => sleepTimerEndTime.HasValue 
-        ? sleepTimerEndTime.Value - DateTime.UtcNow.ToLocalTime() 
+
+    public TimeSpan? SleepTimerRemaining => sleepTimerEndTime.HasValue
+        ? sleepTimerEndTime.Value - DateTime.UtcNow.ToLocalTime()
         : null;
-    
+
     public void SetSleepTimer(int minutes)
     {
         CancelSleepTimer();
         sleepTimerCts = new CancellationTokenSource();
         sleepTimerEndTime = DateTime.UtcNow.ToLocalTime().AddMinutes(minutes);
-        
+
         Task.Run(async () =>
         {
             try
@@ -382,7 +383,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
                 logger.LogInformation("Sleep timer set for {minutes} minutes", minutes);
                 PlayerEvent?.Invoke(this, $"Sleep timer: {minutes} min");
                 await Task.Delay(TimeSpan.FromMinutes(minutes), sleepTimerCts.Token);
-                
+
                 logger.LogInformation("Sleep timer expired, stopping playback");
                 Stop();
                 ClearQueue();
@@ -400,7 +401,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
             }
         });
     }
-    
+
     public void CancelSleepTimer()
     {
         if (sleepTimerCts != null)
