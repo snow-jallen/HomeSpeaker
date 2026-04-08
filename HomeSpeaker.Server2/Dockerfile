@@ -31,6 +31,7 @@ RUN --mount=type=cache,target=/root/.nuget/packages \
     -c $BUILD_CONFIGURATION \
     -o /app/publish \
     /p:UseAppHost=false \
+    /p:RunAnalyzersDuringPublish=false \
     --no-restore
 
 FROM base AS final
