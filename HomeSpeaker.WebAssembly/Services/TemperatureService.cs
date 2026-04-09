@@ -14,6 +14,11 @@ public sealed class TemperatureService : ITemperatureService
         this.logger = logger;
     }
 
+    private readonly JsonSerializerOptions jsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     public async Task<TemperatureStatus> GetTemperatureStatusAsync(CancellationToken cancellationToken = default)
     {
         try
@@ -21,13 +26,10 @@ public sealed class TemperatureService : ITemperatureService
             logger.LogInformation("Fetching temperature status from server...");
             var response = await httpClient.GetAsync("/api/temperature", cancellationToken);
             response.EnsureSuccessStatusCode();
-            
+
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            var temperatureStatus = JsonSerializer.Deserialize<TemperatureStatus>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-            
+            var temperatureStatus = JsonSerializer.Deserialize<TemperatureStatus>(json, jsonOptions);
+
             return temperatureStatus ?? new TemperatureStatus();
         }
         catch (Exception ex)
@@ -51,7 +53,7 @@ public sealed class TemperatureService : ITemperatureService
             logger.LogInformation("Clearing temperature cache on server...");
             var response = await httpClient.DeleteAsync("/api/temperature/cache", cancellationToken);
             response.EnsureSuccessStatusCode();
-            
+
             logger.LogInformation("Temperature cache cleared successfully");
             return true;
         }
@@ -69,13 +71,10 @@ public sealed class TemperatureService : ITemperatureService
             logger.LogInformation("Refreshing temperature data from server...");
             var response = await httpClient.PostAsync("/api/temperature/refresh", null, cancellationToken);
             response.EnsureSuccessStatusCode();
-            
+
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            var temperatureStatus = JsonSerializer.Deserialize<TemperatureStatus>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-            
+            var temperatureStatus = JsonSerializer.Deserialize<TemperatureStatus>(json, jsonOptions);
+
             return temperatureStatus ?? new TemperatureStatus();
         }
         catch (Exception ex)

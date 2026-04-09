@@ -188,6 +188,7 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
         }
 
         dotNetRef?.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
 
