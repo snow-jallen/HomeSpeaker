@@ -78,13 +78,13 @@ public static class HomeSpeakerRestEndpoints
             .WithDescription("Control player operations like play, pause, stop, skip, and volume");
 
         // POST /api/homespeaker/folders/{*folderPath}/play
-        group.MapPost("/folders/{*folderPath}/play", PlayFolder)
+        group.MapPost("/folders/{folderPath}/play", PlayFolder)
             .WithName("PlayFolder")
             .WithSummary("Play all songs in a folder")
             .WithDescription("Starts playing all songs from the specified folder");
 
         // POST /api/homespeaker/folders/{*folderPath}/enqueue
-        group.MapPost("/folders/{*folderPath}/enqueue", EnqueueFolder)
+        group.MapPost("/folders/{folderPath}/enqueue", EnqueueFolder)
             .WithName("EnqueueFolder")
             .WithSummary("Add folder to queue")
             .WithDescription("Adds all songs from the specified folder to the playback queue");

@@ -227,7 +227,7 @@ public class HomeSpeakerRestClient
 }
 
 // Example usage
-public class HomeSpeakerClientExample
+public static class HomeSpeakerClientExample
 {
     public static async Task RunExamplesAsync()
     {

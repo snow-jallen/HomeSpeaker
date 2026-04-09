@@ -9,7 +9,9 @@
       "Bash(tee *.txt)",
       "Bash(dotnet clean:*)",
       "Bash(dotnet format:*)",
-      "Bash(grep \"HomeSpeaker.Server2\\\\\\\\\")"
+      "Bash(grep \"HomeSpeaker.Server2\\\\\\\\\")",
+      "Bash(docker build:*)",
+      "Bash(dotnet publish:*)"
     ],
     "deny": [],
     "ask": []
