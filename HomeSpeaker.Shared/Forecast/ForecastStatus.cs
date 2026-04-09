@@ -7,6 +7,7 @@ namespace HomeSpeaker.Shared.Forecast;
 public sealed class ForecastStatus
 {
     public ForecastData? TonightLow { get; set; }
+    public ForecastData? TodayHigh { get; set; }
     public ForecastData? TomorrowHigh { get; set; }
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
     public DateTime LastCachedAt { get; set; } = DateTime.UtcNow;

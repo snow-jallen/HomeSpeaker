@@ -109,18 +109,21 @@
                                 </div>
                             </div>
                         }
-                        @if (forecastStatus.TomorrowHigh != null)
+                        var showTodayHigh = DateTime.UtcNow.ToLocalTime().Hour < 15;
+                        var highData = showTodayHigh ? forecastStatus.TodayHigh : forecastStatus.TomorrowHigh;
+                        var highLabel = showTodayHigh ? "Today's High" : "Tomorrow's High";
+                        @if (highData != null)
                         {
                             <div class="col-6 col-md-4">
                                 <div class="text-center">
                                     <div class="mb-2">
-                                        <i class="fas fa-sun fa-2x" style="color: @GetTemperatureColor(forecastStatus.TomorrowHigh.Temperature)"></i>
+                                        <i class="fas fa-sun fa-2x" style="color: @GetTemperatureColor(highData.Temperature)"></i>
                                     </div>
-                                    <div class="h6 text-muted mb-2">Tomorrow's High</div>
+                                    <div class="h6 text-muted mb-2">@highLabel</div>
                                     <div class="temperature-display">
-                                        <span class="display-1 fw-bold" style="color: @GetTemperatureColor(forecastStatus.TomorrowHigh.Temperature)">@FormatForecastTemperature(forecastStatus.TomorrowHigh.Temperature)</span>
+                                        <span class="display-1 fw-bold" style="color: @GetTemperatureColor(highData.Temperature)">@FormatForecastTemperature(highData.Temperature)</span>
                                     </div>
-                                    <div class="small text-muted mt-1">@forecastStatus.TomorrowHigh.Conditions</div>
+                                    <div class="small text-muted mt-1">@highData.Conditions</div>
                                 </div>
                             </div>
                         }
