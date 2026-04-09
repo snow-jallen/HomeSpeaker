@@ -1,14 +1,15 @@
-using HomeSpeaker.Server;
-using HomeSpeaker.Server.Data;
+using System.Runtime.InteropServices;
 using HomeSpeaker.Server2;
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Endpoints;
 using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Shared;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
-using System.Runtime.InteropServices;
 
+#pragma warning disable IDE1006 // Naming Styles
 const string LocalCorsPolicy = nameof(LocalCorsPolicy);
+#pragma warning restore IDE1006 // Naming Styles
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +38,8 @@ builder.Services.AddHostedService<DailyAnchorWorker>();
 builder.Services.AddHostedService<AirPlayReceiverService>();
 builder.Services.AddScoped<PlaylistService>();
 builder.Services.AddScoped<AnchorService>();
+builder.Services.AddScoped<IAnchorNotificationService, AnchorNotificationService>();
+builder.Services.AddSignalR();
 builder.Services.AddDbContext<MusicContext>(options => options.UseSqlite(builder.Configuration["SqliteConnectionString"]));
 builder.Services.AddSingleton<IDataStore, OnDiskDataStore>();
 builder.Services.AddSingleton<IFileSource>(_ => new DefaultFileSource(builder.Configuration[ConfigKeys.MediaFolder] ?? throw new MissingConfigException(ConfigKeys.MediaFolder)));
@@ -73,7 +76,65 @@ builder.Services.AddSingleton<TemperatureService>();
 builder.Services.AddHttpClient<BloodSugarService>();
 builder.Services.AddSingleton<BloodSugarService>();
 
+// Add forecast service with caching
+builder.Services.AddHttpClient<ForecastService>();
+builder.Services.AddSingleton<ForecastService>();
+
+// Add HttpClient for RadioStreamService (favicon downloads)
+builder.Services.AddHttpClient<RadioStreamService>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AutomaticDecompression = System.Net.DecompressionMethods.All
+    });
+
+// Add HttpClient for ImageSearchService (DDG + Wikipedia image search)
+builder.Services.AddHttpClient<ImageSearchService>(client =>
+{
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
+// Add named HttpClient for backlight control with SSL bypass
+builder.Services.AddHttpClient("BacklightClient", client =>
+{
+    client.BaseAddress = new Uri("https://192.168.1.111:5001");
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    ClientCertificateOptions = ClientCertificateOption.Manual,
+    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+});
+
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<MusicContext>("database");
+
 var app = builder.Build();
+
+// Configure SQLite for optimal performance
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<MusicContext>();
+    try
+    {
+        // WAL mode: Better concurrency, faster writes
+        db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
+        // NORMAL synchronous mode: Faster, still safe
+        db.Database.ExecuteSqlRaw("PRAGMA synchronous=NORMAL;");
+        // 64MB cache for better performance
+        db.Database.ExecuteSqlRaw("PRAGMA cache_size=-64000;");
+        // Store temp tables in memory
+        db.Database.ExecuteSqlRaw("PRAGMA temp_store=MEMORY;");
+        // 256MB memory-mapped I/O for faster reads
+        db.Database.ExecuteSqlRaw("PRAGMA mmap_size=268435456;");
+
+        app.Logger.LogInformation("SQLite performance optimizations applied");
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Failed to apply SQLite optimizations, continuing with defaults");
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -91,14 +152,51 @@ app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
 //app.UseHttpsRedirection();
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
+
+// Serve favicons from the media folder (writable volume) at /favicons
+var faviconsPath = Path.GetFullPath(Path.Combine(app.Configuration[ConfigKeys.MediaFolder] ?? "/music", "favicons"));
+Directory.CreateDirectory(faviconsPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(faviconsPath),
+    RequestPath = "/favicons"
+});
+
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(x => new
+            {
+                name = x.Key,
+                status = x.Value.Status.ToString(),
+                description = x.Value.Description,
+                duration = x.Value.Duration.TotalMilliseconds
+            }),
+            totalDuration = report.TotalDuration.TotalMilliseconds,
+            timestamp = DateTime.UtcNow
+        };
+        await context.Response.WriteAsJsonAsync(response);
+    }
+});
 app.UseRouting();
 app.UseCors(LocalCorsPolicy);
 app.MapRazorPages();
+app.MapHub<HomeSpeaker.Server2.Hubs.AnchorHub>("/anchorHub");
 
 // Configure the HTTP request pipeline.
 app.MapGrpcService<GreeterService>();
 app.MapGrpcService<HomeSpeakerService>();
 app.MapGet("/ns", (IConfiguration config) => config["NIGHTSCOUT_URL"] ?? string.Empty);
+app.MapGet("/api/features", (IConfiguration config) => new
+{
+    TemperatureEnabled = !string.IsNullOrEmpty(config["Temperature:ApiBaseUrl"]),
+    BloodSugarEnabled = !string.IsNullOrEmpty(config["NIGHTSCOUT_URL"])
+});
 
 // Temperature API endpoint
 app.MapGet("/api/temperature", async (TemperatureService temperatureService, CancellationToken cancellationToken) =>
@@ -179,6 +277,47 @@ app.MapPost("/api/bloodsugar/refresh", async (BloodSugarService bloodSugarServic
     catch (Exception ex)
     {
         return Results.Problem($"Failed to refresh blood sugar data: {ex.Message}");
+    }
+});
+
+// Forecast API endpoint
+app.MapGet("/api/forecast", async (ForecastService forecastService, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var forecastStatus = await forecastService.GetForecastStatusAsync(cancellationToken);
+        return Results.Ok(forecastStatus);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to get forecast data: {ex.Message}");
+    }
+});
+
+// Forecast cache management endpoints
+app.MapDelete("/api/forecast/cache", (ForecastService forecastService) =>
+{
+    try
+    {
+        forecastService.ClearCache();
+        return Results.Ok(new { message = "Forecast cache cleared successfully" });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to clear forecast cache: {ex.Message}");
+    }
+});
+
+app.MapPost("/api/forecast/refresh", async (ForecastService forecastService, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var forecastStatus = await forecastService.RefreshAsync(cancellationToken);
+        return Results.Ok(forecastStatus);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to refresh forecast data: {ex.Message}");
     }
 });
 
@@ -337,7 +476,8 @@ app.MapPost("/api/anchors/daily/ensure-today", async (AnchorService anchorServic
     }
     catch (Exception ex)
     {
-        return Results.Problem($"Failed to ensure today's anchors: {ex.Message}");    }
+        return Results.Problem($"Failed to ensure today's anchors: {ex.Message}");
+    }
 });
 
 // Get all users who have anchors
@@ -351,6 +491,37 @@ app.MapGet("/api/anchors/users", async (AnchorService anchorService) =>
     catch (Exception ex)
     {
         return Results.Problem($"Failed to get users with anchors: {ex.Message}");
+    }
+});
+
+// Recently played endpoint
+app.MapGet("/api/music/recently-played", async (MusicContext db, Mp3Library library, int limit = 20) =>
+{
+    try
+    {
+        var recentImpressions = await db.Impressions
+            .OrderByDescending(i => i.Timestamp)
+            .Take(limit)
+            .ToListAsync();
+
+        var songs = recentImpressions
+            .Select(i => library.Songs.FirstOrDefault(s => s.Path == i.SongPath))
+            .Where(s => s != null)
+            .Select(s => new
+            {
+                s!.SongId,
+                s!.Name,
+                s!.Path,
+                s!.Album,
+                s!.Artist
+            })
+            .ToList();
+
+        return Results.Ok(songs);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to get recently played: {ex.Message}");
     }
 });
 
@@ -371,19 +542,18 @@ app.MapGet("/api/anchors/daily", async (AnchorService anchorService, DateOnly? s
 // Music streaming endpoint for browser playback
 app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, HttpContext context, ILogger<Program> logger) =>
 {
-    logger.LogInformation("Streaming endpoint called for song ID: {songId}", songId);
+    logger.LogInformation("Streaming endpoint called for song ID: {SongId}", songId);
     var song = library.Songs.FirstOrDefault(s => s.SongId == songId);
     if (song == null)
     {
-        logger.LogWarning("Song with ID {songId} not found in library", songId);
+        logger.LogWarning("Song with ID {SongId} not found in library", songId);
         return Results.NotFound($"Song with ID {songId} not found");
     }
 
-    logger.LogInformation("Found song: {songName} at path: {path}", song.Name, song.Path);
-
+    logger.LogInformation("Found song: {SongName} at path: {Path}", song.Name, song.Path);
     if (!File.Exists(song.Path))
     {
-        logger.LogWarning("Music file not found on disk: {path}", song.Path);
+        logger.LogWarning("Music file not found on disk: {Path}", song.Path);
         return Results.NotFound($"Music file not found: {song.Path}");
     }
 
@@ -409,8 +579,8 @@ app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, Htt
         var range = rangeHeader.Substring(6).Split('-');
         if (long.TryParse(range[0], out var start))
         {
-            var end = range.Length > 1 && long.TryParse(range[1], out var endValue) 
-                ? endValue 
+            var end = range.Length > 1 && long.TryParse(range[1], out var endValue)
+                ? endValue
                 : fileInfo.Length - 1;
 
             context.Response.StatusCode = 206; // Partial Content
@@ -419,17 +589,21 @@ app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, Htt
 
             using var fileStream = new FileStream(song.Path, FileMode.Open, FileAccess.Read);
             fileStream.Seek(start, SeekOrigin.Begin);
-            
+
             var buffer = new byte[8192];
-            long remaining = end - start + 1;
-            
+            var remaining = end - start + 1;
+
             while (remaining > 0)
             {
                 var bytesToRead = (int)Math.Min(buffer.Length, remaining);
-                var bytesRead = await fileStream.ReadAsync(buffer, 0, bytesToRead);
-                if (bytesRead == 0) break;
-                
-                await context.Response.Body.WriteAsync(buffer, 0, bytesRead);
+                var mem = new Memory<byte>(buffer, 0, bytesToRead);
+                var bytesRead = await fileStream.ReadAsync(mem, context.RequestAborted);
+                if (bytesRead == 0)
+                {
+                    break;
+                }
+
+                await context.Response.Body.WriteAsync(mem.Slice(0, bytesRead), context.RequestAborted);
                 remaining -= bytesRead;
             }
         }
@@ -445,6 +619,46 @@ app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, Htt
 
 // Map HomeSpeaker REST API endpoints
 app.MapHomeSpeakerApi();
+
+// Stream image search endpoint
+app.MapGet("/api/streams/image-search", async (string q, ImageSearchService imageSearch) =>
+{
+    if (string.IsNullOrWhiteSpace(q))
+    {
+        return Results.BadRequest(new { error = "Query is required" });
+    }
+
+    var results = await imageSearch.SearchAsync(q);
+    return Results.Ok(results);
+});
+
+// Stream image upload endpoint
+app.MapPost("/api/streams/upload-image", async (IFormFile file, RadioStreamService radioStreamService) =>
+{
+    var allowedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/png", "image/jpeg", "image/gif",
+        "image/x-icon", "image/vnd.microsoft.icon", "image/webp"
+    };
+
+    if (!allowedTypes.Contains(file.ContentType))
+    {
+        return Results.BadRequest(new { error = "File must be an image (PNG, JPG, GIF, ICO, WebP)" });
+    }
+
+    if (file.Length > 2 * 1024 * 1024)
+    {
+        return Results.BadRequest(new { error = "File must be under 2MB" });
+    }
+
+    var filename = await radioStreamService.UploadFaviconAsync(file);
+    if (filename == null)
+    {
+        return Results.Problem("Failed to save image");
+    }
+
+    return Results.Ok(new { filename });
+}).DisableAntiforgery();
 
 app.MapFallbackToFile("index.html");
 

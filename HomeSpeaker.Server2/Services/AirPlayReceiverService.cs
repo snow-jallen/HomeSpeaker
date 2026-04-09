@@ -1,16 +1,13 @@
-using System.IO.Pipes;
-using HomeSpeaker.Server;
-using System.Diagnostics;
-
 namespace HomeSpeaker.Server2.Services;
 
 public class AirPlayReceiverService : BackgroundService
 {
     private readonly ILogger<AirPlayReceiverService> logger;
-    private readonly IMusicPlayer musicPlayer;    private const string MetadataPipePath = "/tmp/airplay-shared/metadata";
+    private readonly IMusicPlayer musicPlayer;
+
+    private const string MetadataPipePath = "/tmp/airplay-shared/metadata";
     private const string AirPlayStatePath = "/tmp/airplay-shared/state";
-    private const string AirPlayLogPath = "/tmp/airplay-shared/log";
-    private bool airplayActive = false;
+    private bool airplayActive;
 
     public AirPlayReceiverService(ILogger<AirPlayReceiverService> logger, IMusicPlayer musicPlayer)
     {
@@ -22,17 +19,13 @@ public class AirPlayReceiverService : BackgroundService
     {
         logger.LogInformation("AirPlay Receiver Service starting...");
 
-        // Monitor for AirPlay session events via shared state file
-        _ = Task.Run(() => MonitorAirPlayEvents(stoppingToken), stoppingToken);
-        
-        // Monitor for metadata (song info, artwork, etc.)
-        _ = Task.Run(() => MonitorAirPlayMetadata(stoppingToken), stoppingToken);
+        var eventsTask = Task.Run(() => monitorAirPlayEvents(stoppingToken), stoppingToken);
+        var metadataTask = Task.Run(() => monitorAirPlayMetadata(stoppingToken), stoppingToken);
 
-        // Keep service running
-        await Task.Delay(Timeout.Infinite, stoppingToken);
+        await Task.WhenAll(eventsTask, metadataTask).ConfigureAwait(false);
     }
 
-    private async Task MonitorAirPlayEvents(CancellationToken cancellationToken)
+    private async Task monitorAirPlayEvents(CancellationToken cancellationToken)
     {
         // Monitor the shared state file written by ShairportSync scripts
         while (!cancellationToken.IsCancellationRequested)
@@ -42,8 +35,8 @@ public class AirPlayReceiverService : BackgroundService
                 if (File.Exists(AirPlayStatePath))
                 {
                     var stateContent = await File.ReadAllTextAsync(AirPlayStatePath, cancellationToken);
-                    bool currentlyActive = stateContent.Trim().Equals("ACTIVE", StringComparison.OrdinalIgnoreCase);
-                    
+                    var currentlyActive = stateContent.Trim().Equals("ACTIVE", StringComparison.OrdinalIgnoreCase);
+
                     if (currentlyActive && !airplayActive)
                     {
                         logger.LogInformation("AirPlay session started - pausing local playback");
@@ -57,8 +50,12 @@ public class AirPlayReceiverService : BackgroundService
                         // Optionally auto-resume: musicPlayer.ResumePlay();
                     }
                 }
-                
+
                 await Task.Delay(1000, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
             catch (Exception ex)
             {
@@ -68,7 +65,7 @@ public class AirPlayReceiverService : BackgroundService
         }
     }
 
-    private async Task MonitorAirPlayMetadata(CancellationToken cancellationToken)
+    private async Task monitorAirPlayMetadata(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -77,17 +74,21 @@ public class AirPlayReceiverService : BackgroundService
                 if (File.Exists(MetadataPipePath))
                 {
                     using var reader = new StreamReader(MetadataPipePath);
-                    var metadata = await reader.ReadToEndAsync();
-                    
+                    var metadata = await reader.ReadToEndAsync(cancellationToken);
+
                     if (!string.IsNullOrEmpty(metadata))
                     {
-                        logger.LogInformation("AirPlay metadata: {metadata}", metadata);
+                        logger.LogInformation("AirPlay metadata: {Metadata}", metadata);
                         // Parse metadata and update UI if needed
                         // Could send events through your existing SendEvent mechanism
                     }
                 }
-                
+
                 await Task.Delay(500, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
             catch (Exception ex)
             {

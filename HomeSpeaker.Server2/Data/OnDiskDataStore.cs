@@ -1,7 +1,6 @@
-﻿using HomeSpeaker.Server2;
 using HomeSpeaker.Shared;
 
-namespace HomeSpeaker.Server.Data;
+namespace HomeSpeaker.Server2.Data;
 
 
 public class OnDiskDataStore : IDataStore
@@ -11,7 +10,9 @@ public class OnDiskDataStore : IDataStore
         songs = new();
     }
 
-    private List<Song> songs;    public void Add(Song song)
+    private readonly List<Song> songs;
+
+    public void Add(Song song)
     {
         song.SongId = songs.Count;
         songs.Add(song);

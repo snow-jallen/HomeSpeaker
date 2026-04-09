@@ -1,5 +1,5 @@
 ﻿namespace HomeSpeaker.Shared;
 
-internal class Records
+internal sealed class Records
 {
 }

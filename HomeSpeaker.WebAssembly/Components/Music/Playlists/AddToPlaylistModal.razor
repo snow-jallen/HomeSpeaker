@@ -29,16 +29,16 @@ else
 }
 
 @code {
-    [Parameter] public SongViewModel Song { get; set; }
+    [Parameter] public SongViewModel? Song { get; set; }
 
     [Parameter] public EventCallback Closed { get; set; }
-    private IEnumerable<Playlist> allPlaylists;
-    private string newPlaylistName;
+    private IEnumerable<Playlist>? allPlaylists;
+    private string? newPlaylistName;
 
     private List<SelectionState> selections = new();
     public class SelectionState
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public bool OriginalValue { get; set; }
         public bool NewValue { get; set; }
     }
@@ -48,7 +48,7 @@ else
         allPlaylists = await svc.GetPlaylistsAsync();
         foreach (var playlist in allPlaylists)
         {
-            bool inPlaylist = playlist.Songs.Any(s => s.Path == Song.Path);
+            bool inPlaylist = playlist.Songs.Any(s => s.Path == Song?.Path);
             selections.Add(new SelectionState
                 {
                     Name = playlist.Name,
@@ -67,7 +67,7 @@ else
 
     async Task save()
     {
-        if (Song == null)
+        if (Song?.Path is null)
             return;
 
         var uncheckedPlaylists = selections.Where(s => s.NewValue == false && s.OriginalValue == true).Select(s => s.Name);

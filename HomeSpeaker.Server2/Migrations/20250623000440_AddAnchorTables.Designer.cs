@@ -8,11 +8,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace HomeSpeaker.Server2.Migrations
-{
-    [DbContext(typeof(MusicContext))]
-    [Migration("20250623000440_AddAnchorTables")]
-    partial class AddAnchorTables
+namespace HomeSpeaker.Server2.Migrations;
+
+[DbContext(typeof(MusicContext))]
+[Migration("20250623000440_AddAnchorTables")]
+partial class AddAnchorTables
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -218,5 +218,4 @@ namespace HomeSpeaker.Server2.Migrations
                 });
 #pragma warning restore 612, 618
         }
-    }
 }

@@ -50,7 +50,7 @@ public class LocalQueueService : ILocalQueueService
     public async Task AddSongAsync(SongViewModel song)
     {
         queue.Add(song);
-        logger.LogInformation("Added song {songName} to local queue. Queue now has {count} songs", song.Name, queue.Count);
+    logger.LogInformation("Added song {SongName} to local queue. Queue now has {Count} songs", song.Name, queue.Count);
         QueueChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -58,7 +58,7 @@ public class LocalQueueService : ILocalQueueService
     {
         var songList = songs.ToList();
         queue.AddRange(songList);
-        logger.LogInformation("Added {count} songs to local queue. Queue now has {totalCount} songs", songList.Count, queue.Count);
+    logger.LogInformation("Added {Count} songs to local queue. Queue now has {TotalCount} songs", songList.Count, queue.Count);
         QueueChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -82,7 +82,9 @@ public class LocalQueueService : ILocalQueueService
     public async Task RemoveSongAsync(int index)
     {
         if (index < 0 || index >= queue.Count)
+        {
             return;
+        }
 
         var removedSong = queue[index];
         queue.RemoveAt(index);
@@ -113,7 +115,7 @@ public class LocalQueueService : ILocalQueueService
             }
         }
         
-        logger.LogInformation("Removed song {songName} from local queue at index {index}", removedSong.Name, index);
+    logger.LogInformation("Removed song {SongName} from local queue at index {Index}", removedSong.Name, index);
         QueueChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -122,7 +124,7 @@ public class LocalQueueService : ILocalQueueService
         queue.Clear();
         currentIndex = -1;
         await audioService.StopAsync();
-        logger.LogInformation("Cleared local queue");
+    logger.LogInformation("Cleared local queue");
         QueueChanged?.Invoke(this, EventArgs.Empty);
         CurrentSongChanged?.Invoke(this, null!);
     }
@@ -130,7 +132,9 @@ public class LocalQueueService : ILocalQueueService
     public async Task MoveSongAsync(int fromIndex, int toIndex)
     {
         if (fromIndex < 0 || fromIndex >= queue.Count || toIndex < 0 || toIndex >= queue.Count)
+        {
             return;
+        }
 
         var song = queue[fromIndex];
         queue.RemoveAt(fromIndex);
@@ -150,7 +154,7 @@ public class LocalQueueService : ILocalQueueService
             currentIndex++;
         }
 
-        logger.LogInformation("Moved song {songName} from index {fromIndex} to {toIndex}", song.Name, fromIndex, toIndex);
+    logger.LogInformation("Moved song {SongName} from index {FromIndex} to {ToIndex}", song.Name, fromIndex, toIndex);
         QueueChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -179,7 +183,9 @@ public class LocalQueueService : ILocalQueueService
     public async Task PlaySongAtIndexAsync(int index)
     {
         if (index < 0 || index >= queue.Count)
+        {
             return;
+        }
 
         currentIndex = index;
         var song = queue[currentIndex];
@@ -187,12 +193,12 @@ public class LocalQueueService : ILocalQueueService
         try
         {
             await audioService.PlaySongAsync(song);
-            logger.LogInformation("Playing song {songName} at index {index} from local queue", song.Name, index);
+            logger.LogInformation("Playing song {SongName} at index {Index} from local queue", song.Name, index);
             CurrentSongChanged?.Invoke(this, song);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error playing song {songName} from local queue", song.Name);
+            logger.LogError(ex, "Error playing song {SongName} from local queue", song.Name);
         }
     }
 
@@ -209,7 +215,9 @@ public class LocalQueueService : ILocalQueueService
     public Task ShuffleQueueAsync()
     {
         if (queue.Count <= 1)
+        {
             return Task.CompletedTask;
+        }
 
         var currentSong = CurrentSong;
         var random = new Random();
@@ -229,7 +237,7 @@ public class LocalQueueService : ILocalQueueService
             currentIndex = queue.FindIndex(s => s.SongId == currentSong.SongId);
         }
 
-        logger.LogInformation("Shuffled local queue with {count} songs", queue.Count);
+    logger.LogInformation("Shuffled local queue with {Count} songs", queue.Count);
         QueueChanged?.Invoke(this, EventArgs.Empty);
         return Task.CompletedTask;
     }

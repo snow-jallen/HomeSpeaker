@@ -32,15 +32,18 @@ else
 
 @code {
     bool isSearching = false;
-    IEnumerable<Video> videos;
-    string searchTerm;
+    IEnumerable<Video>? videos;
+    string? searchTerm;
     async Task searchAsync()
     {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return;
+
         isSearching = true;
-        logger.LogInformation("Starting youtube search for {searchTerm}", searchTerm);
+        logger.LogInformation("Starting youtube search for {SearchTerm}", searchTerm);
         var response = await svc.HomeSpeakerClient.SearchViedoAsync(new SearchVideoRequest { SearchTerm = searchTerm });
         videos = response.Results;
-        logger.LogInformation("Found {resultCount} results", videos.Count());
+        logger.LogInformation("Found {ResultCount} results", videos.Count());
         isSearching = false;
     }
 }

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using HomeSpeaker.Server;
 using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Shared;
 using Microsoft.AspNetCore.Mvc;
@@ -11,8 +10,7 @@ public static class HomeSpeakerRestEndpoints
     public static RouteGroupBuilder MapHomeSpeakerApi(this WebApplication app)
     {
         var homeSpeakerGroup = app.MapGroup("/api/homespeaker")
-            .WithTags("HomeSpeaker")
-            .WithOpenApi();
+            .WithTags("HomeSpeaker");
 
         // Song Management Endpoints
         MapSongEndpoints(homeSpeakerGroup);
@@ -195,7 +193,7 @@ public static class HomeSpeakerRestEndpoints
 
     private static async Task<IResult> GetSongs(
         [FromServices] Mp3Library library,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger,
         [FromQuery] string? folder = null)
     {
         using var activity = Activity.Current?.Source.StartActivity("GetSongs");
@@ -238,7 +236,7 @@ public static class HomeSpeakerRestEndpoints
         [FromRoute] int songId,
         [FromBody] UpdateSongRequest request,
         [FromServices] Mp3Library library,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("UpdateSong");
         activity?.SetTag("song_id", songId);
@@ -264,7 +262,7 @@ public static class HomeSpeakerRestEndpoints
     private static async Task<IResult> DeleteSong(
         [FromRoute] int songId,
         [FromServices] Mp3Library library,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("DeleteSong");
         activity?.SetTag("song_id", songId);
@@ -289,7 +287,7 @@ public static class HomeSpeakerRestEndpoints
         [FromRoute] int songId,
         [FromServices] Mp3Library library,
         [FromServices] IMusicPlayer musicPlayer,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("PlaySong");
         activity?.SetTag("song_id", songId);
@@ -323,7 +321,7 @@ public static class HomeSpeakerRestEndpoints
         [FromRoute] int songId,
         [FromServices] Mp3Library library,
         [FromServices] IMusicPlayer musicPlayer,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("EnqueueSong");
         activity?.SetTag("song_id", songId);
@@ -355,7 +353,7 @@ public static class HomeSpeakerRestEndpoints
 
     private static async Task<IResult> GetPlayerStatus(
         [FromServices] IMusicPlayer musicPlayer,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("GetPlayerStatus");
 
@@ -395,7 +393,7 @@ public static class HomeSpeakerRestEndpoints
     private static async Task<IResult> PlayerControl(
         [FromBody] PlayerControlRequest request,
         [FromServices] IMusicPlayer musicPlayer,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("PlayerControl");
 
@@ -450,7 +448,7 @@ public static class HomeSpeakerRestEndpoints
         [FromRoute] string folderPath,
         [FromServices] Mp3Library library,
         [FromServices] IMusicPlayer musicPlayer,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("PlayFolder");
         activity?.SetTag("folder_path", folderPath);
@@ -490,7 +488,7 @@ public static class HomeSpeakerRestEndpoints
         [FromRoute] string folderPath,
         [FromServices] Mp3Library library,
         [FromServices] IMusicPlayer musicPlayer,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("EnqueueFolder");
         activity?.SetTag("folder_path", folderPath);
@@ -527,7 +525,7 @@ public static class HomeSpeakerRestEndpoints
     private static async Task<IResult> PlayStream(
         [FromBody] PlayStreamRequest request,
         [FromServices] IMusicPlayer musicPlayer,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("PlayStream");
         activity?.SetTag("stream_url", request.StreamUrl);
@@ -550,7 +548,7 @@ public static class HomeSpeakerRestEndpoints
     }
 
     private static async Task<IResult> ToggleBacklight(
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("ToggleBacklight");
 
@@ -573,7 +571,7 @@ public static class HomeSpeakerRestEndpoints
 
     private static async Task<IResult> GetPlaylists(
         [FromServices] PlaylistService playlistService,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("GetPlaylists");
 
@@ -600,7 +598,7 @@ public static class HomeSpeakerRestEndpoints
     private static async Task<IResult> PlayPlaylist(
         [FromRoute] string playlistName,
         [FromServices] PlaylistService playlistService,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("PlayPlaylist");
         activity?.SetTag("playlist_name", playlistName);
@@ -626,7 +624,7 @@ public static class HomeSpeakerRestEndpoints
         [FromRoute] string oldName,
         [FromBody] RenamePlaylistRequest request,
         [FromServices] PlaylistService playlistService,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("RenamePlaylist");
         activity?.SetTag("old_name", oldName);
@@ -652,7 +650,7 @@ public static class HomeSpeakerRestEndpoints
     private static async Task<IResult> DeletePlaylist(
         [FromRoute] string playlistName,
         [FromServices] PlaylistService playlistService,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("DeletePlaylist");
         activity?.SetTag("playlist_name", playlistName);
@@ -678,7 +676,7 @@ public static class HomeSpeakerRestEndpoints
         [FromRoute] string playlistName,
         [FromBody] AddSongToPlaylistRequest request,
         [FromServices] PlaylistService playlistService,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("AddSongToPlaylist");
         activity?.SetTag("playlist_name", playlistName);
@@ -705,7 +703,7 @@ public static class HomeSpeakerRestEndpoints
         [FromRoute] string playlistName,
         [FromBody] RemoveSongFromPlaylistRequest request,
         [FromServices] PlaylistService playlistService,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("RemoveSongFromPlaylist");
         activity?.SetTag("playlist_name", playlistName);
@@ -732,7 +730,7 @@ public static class HomeSpeakerRestEndpoints
         [FromRoute] string playlistName,
         [FromBody] ReorderPlaylistSongsRequest request,
         [FromServices] PlaylistService playlistService,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("ReorderPlaylistSongs");
         activity?.SetTag("playlist_name", playlistName);
@@ -757,7 +755,7 @@ public static class HomeSpeakerRestEndpoints
 
     private static async Task<IResult> GetPlayQueue(
         [FromServices] IMusicPlayer musicPlayer,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("GetPlayQueue");
 
@@ -783,7 +781,7 @@ public static class HomeSpeakerRestEndpoints
     private static async Task<IResult> UpdateQueue(
         [FromBody] UpdateQueueRequest request,
         [FromServices] IMusicPlayer musicPlayer,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("UpdateQueue");
         activity?.SetTag("song_count", request.Songs?.Count() ?? 0);
@@ -807,7 +805,7 @@ public static class HomeSpeakerRestEndpoints
 
     private static async Task<IResult> ShuffleQueue(
         [FromServices] IMusicPlayer musicPlayer,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("ShuffleQueue");
 
@@ -830,7 +828,7 @@ public static class HomeSpeakerRestEndpoints
 
     private static async Task<IResult> ClearQueue(
         [FromServices] IMusicPlayer musicPlayer,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("ClearQueue");
 
@@ -854,7 +852,7 @@ public static class HomeSpeakerRestEndpoints
     private static async Task<IResult> SearchVideo(
         [FromQuery] string q,
         [FromServices] YoutubeService youtubeService,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("SearchVideo");
         activity?.SetTag("search_term", q);
@@ -882,7 +880,7 @@ public static class HomeSpeakerRestEndpoints
     private static async Task<IResult> CacheVideo(
         [FromBody] CacheVideoRequest request,
         [FromServices] YoutubeService youtubeService,
-        [FromServices] ILogger<HomeSpeakerRestEndpoints> logger)
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("CacheVideo");
         activity?.SetTag("video_title", request.Video?.Title);
@@ -918,7 +916,7 @@ public static class HomeSpeakerRestEndpoints
             });
             
             logger.LogInformation("Started caching video: {title}", request.Video.Title);
-            return Results.Accepted(new { success = true, message = "Video caching started", title = request.Video.Title });
+            return Results.Accepted(uri: null, new { success = true, message = "Video caching started", title = request.Video.Title });
         }
         catch (Exception ex)
         {
@@ -940,7 +938,9 @@ public static class HomeSpeakerRestEndpoints
     public record RemoveSongFromPlaylistRequest(string SongPath);
     public record ReorderPlaylistSongsRequest(IEnumerable<string> SongPaths);
     public record UpdateQueueRequest(IEnumerable<string> Songs);
-    public record CacheVideoRequest(Video Video);
+    public record CacheVideoRequest(VideoDto Video);
 
     #endregion
+
+    private sealed class HomeSpeakerApiLogger { }
 }

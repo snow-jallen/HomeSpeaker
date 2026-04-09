@@ -12,8 +12,8 @@ public sealed class TemperatureStatus
     public double? BoysRoomTemperature { get; set; }
     public double? MomAndDadsRoomTemperature { get; set; }
     public double? GreenhouseTemperature { get; set; }
-    public DateTime ReadingTakenAt { get; set; } = DateTime.Now;
-    public DateTime LastCachedAt { get; set; } = DateTime.Now;
+    public DateTime ReadingTakenAt { get; set; } = DateTime.UtcNow;
+    public DateTime LastCachedAt { get; set; } = DateTime.UtcNow;
     public bool ShouldWindowsBeClosed { get; set; }
     public double TemperatureDifference { get; set; }
     public bool IsWithinThreshold { get; set; }

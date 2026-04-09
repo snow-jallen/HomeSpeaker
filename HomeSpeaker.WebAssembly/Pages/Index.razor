@@ -1,118 +1,349 @@
 ﻿@page "/"
-@inject HomeSpeakerService svc;
+@inject HomeSpeakerService svc
 @inject ILogger<Index> logger
-@using Microsoft.Fast.Components.FluentUI
+@inject HttpClient Http
+@inject PlayerStateService PlayerState
+@implements IDisposable
 
-<div class="row g-2 mb-2">
-    <div class="col-md-6 col-12">
-        <TemperatureMonitor />
-    </div>
-    <div class="col-md-6 col-12">
-        <BloodSugarMonitor />
-    </div>
-</div>
+<PageTitle>Home Speaker</PageTitle>
 
-<div class="row">
-    <div class="col">
-        <FluentSearch class="w-100 mb-2" Placeholder="Search / Filter" DisplayName="Search & Filter" ValueChanged="(s)=>FilterValue = s" ValueExpression="() => FilterValue" />
+<!-- Section A: Now Playing -->
+<div class="now-playing-card mb-3">
+    <div class="now-playing-label">
+        <i class="fas fa-headphones me-2"></i>Now Playing
     </div>
-    <div class="col-auto gx-0">
-        <button @onclick=refresh class="btn btn-primary d-md-none"><span class="oi oi-magnifying-glass"></span></button>
-        <button @onclick=refresh class="btn btn-primary d-none d-md-block"><span class="oi oi-magnifying-glass me-2"></span>Search </button>
-    </div>
-    <div class="col-auto ps-1">
-        <button @onclick=reloadSongsAsync class="btn btn-secondary d-md-none"><span class="oi oi-reload"></span></button>
-        <button @onclick=reloadSongsAsync class="btn btn-secondary d-none d-md-block"><span class="oi oi-reload me-2"></span>Refresh</button>
-    </div>
-</div>
-
-@if (songs == null)
-{
-    <p>Loading...</p>
-}
-else if (numPages == 0)
-{
-    <div class="text-center">
-        No artists / albums / songs contain '@FilterValue'
-    </div>
-}
-else
-{
-    if (numPages > 1)
-    {
-        <div class="d-flex justify-content-around mt-2">
-            <FluentButton @onclick=@(()=>pageNum--) Disabled=@(pageNum == 0)><span class="oi oi-chevron-left me-2" />Prev Page</FluentButton>
-            <div>
-                Page @(
-               pageNum + 1
-               ) of @numPages
-            </div>
-            <FluentButton @onclick=@(()=>pageNum++) Disabled=@(pageNum+1 >= numPages)>Next Page <span class="oi oi-chevron-right ms-2" /></FluentButton>
-        </div>
-    }
-
-    @foreach (var artist in (artists?.Skip(pageSize * pageNum).Take(pageSize)) ?? Enumerable.Empty<IGrouping<string, SongViewModel>>())
-    {
-        <Artist Content="@artist" />
-    }
-}
-
-@code {
-    private int pageNum = 0;
-    private int pageSize = 200;
-    private int numPages = 0;
-    private int artistCount;
-    private string? filterValue;
-    public string? FilterValue
-    {
-        get => filterValue;
-        set
+    <div class="now-playing-status">
+        @if (PlayerState.Status == null)
         {
-            logger.LogInformation("Setting FilterValue to {value}", value);
-            filterValue = value;
-            refresh();
+            <div class="loading-spinner mx-auto mb-2"></div>
+            <span class="status-text text-muted">Connecting...</span>
+        }
+        else if (PlayerState.Status.StilPlaying && PlayerState.Status.CurrentSong != null)
+        {
+            <div class="song-info">
+                <div class="song-title">@PlayerState.Status.CurrentSong.Name</div>
+                @if (!string.IsNullOrEmpty(PlayerState.Status.CurrentSong.Artist))
+                {
+                    <div class="song-artist">@PlayerState.Status.CurrentSong.Artist</div>
+                }
+                @if (!string.IsNullOrEmpty(PlayerState.Status.CurrentSong.Album))
+                {
+                    <div class="song-album">@PlayerState.Status.CurrentSong.Album</div>
+                }
+                <div class="progress-row mt-2">
+                    <div class="progress-bar-track">
+                        <div class="progress-bar-fill" style="width: @(PlayerState.Status.PercentComplete.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                    </div>
+                    <span class="volume-badge"><i class="fas fa-volume-up me-1"></i>@PlayerState.Status.Volume</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="idle-state">
+                <i class="fas fa-music idle-icon"></i>
+                <span class="status-text">Stopped</span>
+            </div>
+        }
+    </div>
+    <div class="now-playing-controls">
+        <PlayControls />
+    </div>
+</div>
+
+<!-- Section B: Health Monitors (feature-flagged) -->
+@if (showTemperature || showBloodSugar)
+{
+    <div class="row g-2 mb-4">
+        @if (showTemperature)
+        {
+            <div class="@(showBloodSugar ? "col-md-6 col-12" : "col-12")">
+                <TemperatureMonitor />
+            </div>
+        }
+        @if (showBloodSugar)
+        {
+            <div class="@(showTemperature ? "col-md-6 col-12" : "col-12")">
+                <BloodSugarMonitor />
+            </div>
+        }
+    </div>
+}
+
+<style>
+    .now-playing-card {
+        background: linear-gradient(160deg, #1C1C2E 0%, #13131F 60%, #0E0E1B 100%);
+        border: 1px solid rgba(201, 152, 90, 0.2);
+        border-radius: 20px;
+        padding: var(--hs-space-md) var(--hs-space-md) var(--hs-space-sm);
+        box-shadow:
+            0 12px 48px rgba(0, 0, 0, 0.7),
+            0 0 80px rgba(201, 152, 90, 0.06),
+            inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Ambient top-left glow — the "stage light" effect */
+    .now-playing-card::before {
+        content: '';
+        position: absolute;
+        top: -60px;
+        left: -30px;
+        width: 240px;
+        height: 240px;
+        background: radial-gradient(circle, rgba(201, 152, 90, 0.1) 0%, transparent 65%);
+        pointer-events: none;
+    }
+
+    /* Subtle shimmer line at top */
+    .now-playing-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 20%;
+        right: 20%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(201, 152, 90, 0.4), transparent);
+        pointer-events: none;
+    }
+
+    .now-playing-label {
+        font-family: 'Syne', sans-serif;
+        font-size: 0.62rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.22em;
+        color: var(--hs-primary);
+        margin-bottom: var(--hs-space-sm);
+        opacity: 0.85;
+        position: relative;
+    }
+
+    .now-playing-status {
+        min-height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        text-align: center;
+        margin-bottom: var(--hs-space-sm);
+        position: relative;
+    }
+
+    .song-info {
+        width: 100%;
+        text-align: center;
+    }
+
+    .song-title {
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 1.4rem;
+        font-weight: 700;
+        font-style: italic;
+        color: var(--hs-text-primary);
+        line-height: 1.18;
+        margin-bottom: 0.3rem;
+        letter-spacing: -0.01em;
+    }
+
+    .song-artist {
+        font-family: 'Syne', sans-serif;
+        font-size: 0.72rem;
+        color: var(--hs-primary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        margin-bottom: 0.15rem;
+    }
+
+    .song-album {
+        font-size: 0.78rem;
+        color: var(--hs-text-muted);
+        font-style: italic;
+        letter-spacing: 0.02em;
+    }
+
+    .progress-row {
+        display: flex;
+        align-items: center;
+        gap: var(--hs-space-sm);
+        margin-top: 0.6rem;
+    }
+
+    .progress-bar-track {
+        flex: 1;
+        height: 3px;
+        background: rgba(255, 255, 255, 0.07);
+        border-radius: 2px;
+        overflow: hidden;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--hs-primary-dark) 0%, var(--hs-primary) 100%);
+        border-radius: 2px;
+        transition: width 1s linear;
+        box-shadow: 0 0 8px rgba(201, 152, 90, 0.5);
+    }
+
+    .volume-badge {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.62rem;
+        color: var(--hs-text-muted);
+        white-space: nowrap;
+        letter-spacing: 0.03em;
+    }
+
+    .idle-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--hs-space-xs);
+        opacity: 0.3;
+    }
+
+    .idle-icon {
+        font-size: 2rem;
+        color: var(--hs-primary);
+    }
+
+    .status-text {
+        font-family: 'Syne', sans-serif;
+        font-size: 0.68rem;
+        color: var(--hs-text-muted);
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+    }
+
+    .now-playing-controls {
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        padding-top: var(--hs-space-sm);
+        position: relative;
+    }
+
+    /* Sidebar already shows PlayControls — no need to duplicate on desktop */
+    @@media (min-width: 992px) {
+        .now-playing-controls {
+            display: none;
         }
     }
 
-    IEnumerable<SongViewModel>? songs;
-    IOrderedEnumerable<IGrouping<string, SongViewModel>>? artists;
+    @@media (max-width: 600px) {
+        .song-title {
+            font-size: 1.2rem;
+        }
+    }
+
+    /* Pi 7" screen — ultra compact now-playing */
+    @@media (max-height: 520px) {
+        .now-playing-card {
+            padding: 0.4rem var(--hs-space-sm);
+            margin-bottom: 0.5rem !important;
+            border-radius: 12px;
+        }
+
+        .now-playing-label {
+            display: none;
+        }
+
+        .now-playing-status {
+            min-height: 28px;
+            margin-bottom: 0.25rem;
+            flex-direction: row;
+            justify-content: flex-start;
+            gap: 0.5rem;
+        }
+
+        .song-title {
+            font-size: 0.95rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 60vw;
+        }
+
+        .song-artist {
+            font-size: 0.68rem;
+            display: inline;
+        }
+
+        .song-album {
+            display: none;
+        }
+
+        .progress-row {
+            display: none;
+        }
+
+        .idle-icon {
+            font-size: 1rem;
+        }
+
+        .now-playing-controls {
+            padding-top: 0.25rem;
+        }
+    }
+</style>
+
+@code {
+    private bool showTemperature;
+    private bool showBloodSugar;
+    private Timer? refreshTimer;
+
+    private record FeaturesResponse(bool TemperatureEnabled, bool BloodSugarEnabled);
 
     protected override async Task OnInitializedAsync()
     {
-        await reloadSongsAsync();
-    }
-
-    async Task reloadSongsAsync()
-    {
-        songs = null;
-        StateHasChanged();
-        songs = await svc.GetAllSongsAsync();
-        FilterValue = null;
-        refresh();
-    }
-
-    void refresh()
-    {
-        if (songs == null)
-            return;
-
-        var filteredSongs = songs;
-        if (!string.IsNullOrWhiteSpace(FilterValue))
+        try
         {
-            logger.LogInformation("Filtering artists, albums and songs like {filterValue}", filterValue);
-
-            filteredSongs = songs.Where(a =>
-                (a.Artist?.Contains(FilterValue, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (a.Album?.Contains(FilterValue, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (a.Name?.Contains(FilterValue, StringComparison.OrdinalIgnoreCase) ?? false)
-            );
+            var features = await Http.GetFromJsonAsync<FeaturesResponse>("/api/features");
+            showTemperature = features?.TemperatureEnabled ?? false;
+            showBloodSugar = features?.BloodSugarEnabled ?? false;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to load feature flags");
         }
 
-        artists = from s in filteredSongs
-                  group s by s.Artist into artists
-                  orderby artists.Key
-                  select artists;
-        artistCount = artists?.Count() ?? 0;
-        numPages = (artistCount + pageSize - 1) / pageSize;
+        PlayerState.StateChanged += OnStateChanged;
+        await RefreshStatusAsync();
+
+        refreshTimer = new Timer(async _ =>
+        {
+            try
+            {
+                await InvokeAsync(RefreshStatusAsync);
+            }
+            catch (ObjectDisposedException) { }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error in status refresh timer");
+            }
+        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task RefreshStatusAsync()
+    {
+        try
+        {
+            var status = await svc.GetStatusAsync();
+            bool repeatMode = await svc.GetRepeatModeAsync();
+            PlayerState.UpdateStatus(status);
+            PlayerState.UpdateRepeatMode(repeatMode);
+            // StateHasChanged is triggered by the event subscription above
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to refresh player status");
+        }
+    }
+
+    public void Dispose()
+    {
+        PlayerState.StateChanged -= OnStateChanged;
+        refreshTimer?.Dispose();
     }
 }

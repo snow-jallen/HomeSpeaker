@@ -17,24 +17,21 @@ builder.Logging.AddFilter("Microsoft.AspNetCore.Components.WebAssembly", LogLeve
 
 builder.Services.AddScoped((_) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 builder.Services.AddSingleton<HomeSpeakerService>();
-
-// Register temperature service
+builder.Services.AddSingleton<PlayerStateService>();
 builder.Services.AddScoped<ITemperatureService, TemperatureService>();
-
-// Register blood sugar service
 builder.Services.AddScoped<IBloodSugarService, BloodSugarService>();
-
-// Register anchor service
-builder.Services.AddScoped<IAnchorService, AnchorService>();
-
-// Register browser audio service
+builder.Services.AddScoped<IForecastService, ForecastService>();
+builder.Services.AddHttpClient<IAnchorService, AnchorService>((serviceProvider, client) =>
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    var anchorsApiAddress = configuration["AnchorsApiAddress"] ?? builder.HostEnvironment.BaseAddress;
+    client.BaseAddress = new Uri(anchorsApiAddress);
+});
+builder.Services.AddScoped<IAnchorSyncService, AnchorSyncService>();
 builder.Services.AddScoped<IBrowserAudioService, BrowserAudioService>();
-
-// Register local queue service
 builder.Services.AddScoped<ILocalQueueService, LocalQueueService>();
-
-// Register playback mode service
 builder.Services.AddScoped<IPlaybackModeService, PlaybackModeService>();
+builder.Services.AddScoped<ImagePickerService>();
 
 builder.Services.AddFluentUIComponents();
 builder.Services.AddMudServices();
@@ -62,4 +59,17 @@ catch (Exception ex)
     Console.WriteLine("!!! Trouble contacting jaeger: " + ex.ToString());
 }
 
-await builder.Build().RunAsync();
+var app = builder.Build();
+
+// Start anchor sync service for real-time updates
+try
+{
+    var anchorSync = app.Services.GetRequiredService<IAnchorSyncService>();
+    await anchorSync.StartAsync();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Failed to start anchor sync: {ex.Message}");
+}
+
+await app.RunAsync();

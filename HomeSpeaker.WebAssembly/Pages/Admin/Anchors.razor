@@ -409,7 +409,7 @@ else
                         var updatedAnchor = anchor with 
                         { 
                             IsCompleted = isCompleted,
-                            CompletedAt = isCompleted ? DateTime.Now : DateTime.MinValue
+                            CompletedAt = isCompleted ? DateTime.UtcNow.ToLocalTime() : DateTime.MinValue
                         };
                         userAnchors[index] = updatedAnchor;
                         StateHasChanged();

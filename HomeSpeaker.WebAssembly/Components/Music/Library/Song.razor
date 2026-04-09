@@ -6,31 +6,44 @@
 
 @if (SongViewModel == null)
 {
-    <div>Nothing to see here...</div>
+    <div class="text-muted">Nothing to see here...</div>
 }
 else
 {
-    var classVal = "row ms-1 py-1 gx-0";
-    if (ShowBackground)
-    {
-        classVal += " bg-light";
-    }
-    <div class=@classVal>
-        <div class="col ms-3">
-            <div class="text-wrap" @onclick=toggleDetailsView>@SongViewModel.Name</div>
-            @if (ShowFolder)
-            {
-                <div>@SongViewModel.Folder</div>
-            }
-        </div>        <div class="col-auto">
-            <button @onclick=toggleDetailsView class="btn btn-outline"><span class=@toggleIcon></span></button>
-            <PlayButtonWithDropdown Song="SongViewModel" />
-            <PlusButtonWithMenu Song="SongViewModel" />
-        </div>        @if (showDetails)
+    <div class="song-item @(ShowBackground ? "with-bg" : "")" @onclick=toggleDetailsView>
+        <div class="row g-0 align-items-center w-100">
+            <div class="col">
+                <div class="song-item-title">@SongViewModel.Name</div>
+                @if (ShowFolder && !string.IsNullOrWhiteSpace(SongViewModel.Folder))
+                {
+                    <div class="song-item-meta">
+                        <i class="fas fa-folder me-1" style="font-size: 0.75rem;"></i>
+                        @SongViewModel.Folder
+                    </div>
+                }
+            </div>
+            <div class="col-auto">
+                <div class="d-flex gap-1 align-items-center">
+                    <button @onclick:stopPropagation="true" @onclick=toggleDetailsView class="btn btn-sm btn-icon" title="@(showDetails ? "Hide details" : "Show details")">
+                        <i class="fas @(showDetails ? "fa-chevron-up" : "fa-chevron-down")"></i>
+                    </button>
+                    <PlayButtonWithDropdown Song="SongViewModel" />
+                    <PlusButtonWithMenu Song="SongViewModel" />
+                </div>
+            </div>
+        </div>
+
+        @if (showDetails)
         {
-            <div class="d-flex justify-content-center mb-2 pt-2 ps-2 g-0 gap-2">
-                <button class="btn btn-outline-danger" @onclick=delete><span class="oi oi-delete me-1"></span>Delete</button>
-                <button class="btn btn-outline-info" @onclick=toggleEditModalVisibility><span class="oi oi-pencil me-1"></span>Edit</button>
+            <div class="song-details-panel mt-2 pt-2" style="border-top: 1px solid rgba(255,255,255,0.1);">
+                <div class="d-flex justify-content-center gap-2">
+                    <button class="btn btn-sm btn-outline-info" @onclick:stopPropagation="true" @onclick=toggleEditModalVisibility>
+                        <i class="fas fa-pencil me-1"></i>Edit
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" @onclick:stopPropagation="true" @onclick=delete>
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </button>
+                </div>
             </div>
         }
     </div>
@@ -40,8 +53,8 @@ else
 {
     <FluentDialog Hidden=@isEditModalHidden>
         <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
+            <div class="modal-content" style="background-color: var(--hs-bg-card); color: var(--hs-text-primary);">
+                <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
                     <h5 class="modal-title">Edit Song</h5>
                 </div>
                 <div class="modal-body">
@@ -58,7 +71,7 @@ else
                         <input type="text" class="form-control" id="songAlbum" @bind="editedAlbum" />
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer" style="border-top: 1px solid rgba(255,255,255,0.1);">
                     <button type="button" class="btn btn-secondary" @onclick=cancelEdit>Cancel</button>
                     <button type="button" class="btn btn-primary" @onclick=saveEdit>Save</button>
                 </div>
@@ -67,10 +80,15 @@ else
     </FluentDialog>
 }
 
+<style>
+    .song-item.with-bg {
+        background-color: rgba(255, 255, 255, 0.03);
+    }
+</style>
 
 @code {
     [Parameter]
-    public SongViewModel SongViewModel { get; set; }
+    public SongViewModel? SongViewModel { get; set; }
 
     [Parameter]
     public bool ShowFolder { get; set; }
@@ -91,14 +109,11 @@ else
     private string editedAlbum = string.Empty;
 
     private void toggleDetailsView() => showDetails = !showDetails;
-    private string toggleIcon => showDetails ? "oi oi-chevron-top" : "oi oi-chevron-bottom";
-
-    private bool isDeleteConfirmationOpen = false;
 
     async Task delete()
     {
         bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
-        if (confirmed)
+        if (confirmed && SongViewModel != null)
         {
             await svc.HomeSpeakerClient.DeleteSongAsync(new DeleteSongRequest { SongId = SongViewModel.SongId });
             await OnDeleted.InvokeAsync(SongViewModel.SongId);
@@ -108,7 +123,7 @@ else
 
     void toggleEditModalVisibility()
     {
-        if (isEditModalHidden)
+        if (isEditModalHidden && SongViewModel != null)
         {
             // Opening modal - populate with current values
             editedName = SongViewModel.Name;
@@ -127,20 +142,24 @@ else
     {
         try
         {
+            if (SongViewModel is null)
+            {
+                return;
+            }
+
             await svc.UpdateSongAsync(SongViewModel.SongId, editedName, editedArtist, editedAlbum);
-            
+
             // Update the local model
             SongViewModel.Name = editedName;
             SongViewModel.Artist = editedArtist;
             SongViewModel.Album = editedAlbum;
-            
+
             isEditModalHidden = true;
             await OnUpdated.InvokeAsync();
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error updating song");
-            // You could show an error message here
         }
     }
 }
