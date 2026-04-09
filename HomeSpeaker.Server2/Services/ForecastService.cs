@@ -132,6 +132,33 @@ public sealed class ForecastService
                 };
             }
 
+            // Find today's high (all hours of today)
+            var todayStart = now.Date;
+            var todayTemps = new List<(DateTime time, double temp)>();
+
+            for (var i = 0; i < weatherData.Hourly.Time.Length; i++)
+            {
+                var time = DateTime.Parse(weatherData.Hourly.Time[i]);
+                if (time >= todayStart && time < todayEnd)
+                {
+                    todayTemps.Add((time, weatherData.Hourly.Temperature2m[i]));
+                }
+            }
+
+            if (todayTemps.Any())
+            {
+                var highestTodayTemp = todayTemps.MaxBy(t => t.temp);
+                var highestTodayTempIndex = Array.IndexOf(weatherData.Hourly.Time, highestTodayTemp.time.ToString("yyyy-MM-ddTHH:00"));
+
+                forecastStatus.TodayHigh = new ForecastData
+                {
+                    DateTime = highestTodayTemp.time,
+                    Temperature = highestTodayTemp.temp,
+                    Conditions = getConditionDescription(weatherData.Hourly.WeatherCode[highestTodayTempIndex]),
+                    PrecipitationChance = weatherData.Hourly.PrecipitationProbability?[highestTodayTempIndex]
+                };
+            }
+
             // Find tomorrow's high
             var tomorrowStart = todayEnd;
             var tomorrowEnd = tomorrowStart.AddDays(1);
@@ -177,6 +204,13 @@ public sealed class ForecastService
                     Temperature = 45.0,
                     Conditions = "Clear",
                     PrecipitationChance = 10
+                },
+                TodayHigh = new ForecastData
+                {
+                    DateTime = DateTime.UtcNow.Date.AddHours(14),
+                    Temperature = 72.0,
+                    Conditions = "Sunny",
+                    PrecipitationChance = 5
                 },
                 TomorrowHigh = new ForecastData
                 {

@@ -95,6 +95,7 @@ public class HomeSpeakerService
             .Playlists
             .Select(p => new Playlist(
                 p.PlaylistName,
+                p.AlwaysShuffle,
                 p.Songs.Select(s => s.ToSong())
             ));
 
