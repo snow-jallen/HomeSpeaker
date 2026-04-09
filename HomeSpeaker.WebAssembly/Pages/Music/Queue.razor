@@ -3,6 +3,7 @@
 @inject IJSRuntime JSRuntime
 @inject ILogger<Queue> logger
 @inject ILocalQueueService localQueueService
+@inject PlayerStateService PlayerState
 @implements IDisposable
 
 <button @onclick=refresh title="Refresh queue" class="btn btn-secondary position-absolute top-10 end-0 mx-3"><span class="oi oi-reload"></span></button>
@@ -38,7 +39,7 @@
                     Now Playing
                 </div>
                 <div class="now-playing-title">
-                    @currentSong
+                    @(PlayerState.Status?.CurrentSong?.Name ?? "[ Not playing anything ]")
                 </div>
                 <div class="now-playing-controls mt-3">
                     <PlayControls />
@@ -73,7 +74,7 @@
                     {
                         var song = queue[i];
                         var index = i;
-                        var isCurrentSong = currentSong != null && song.Name == currentSong;
+                        var isCurrentSong = PlayerState.Status?.CurrentSong?.Name != null && song.Name == PlayerState.Status.CurrentSong.Name;
 
                         <div class="queue-item-wrapper @(serverDraggedIndex == index ? "dragging" : "") @(serverDropTargetIndex == index ? "drop-target" : "")"
                              data-index="@index"
@@ -133,29 +134,15 @@
     }
 
     List<SongViewModel> queue = new();
-    string? currentSong;
 
     protected override async Task OnInitializedAsync()
     {
+        PlayerState.StateChanged += OnStateChanged;
         await refresh();
-        svc.QueueChanged += async (_, _) =>
-        {
-            try
-            {
-                logger.LogInformation("The QueueChanged event was raised.  Refreshing.");
-                await refresh();
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error handling queue change event");
-            }
-        };
+        svc.QueueChanged += OnQueueChanged;
 
         // Subscribe to local queue changes to update tab counts
-        localQueueService.QueueChanged += (_, _) =>
-        {
-            InvokeAsync(StateHasChanged);
-        };
+        localQueueService.QueueChanged += OnLocalQueueChanged;
 
         try
         {
@@ -208,12 +195,29 @@
         await svc.UpdateQueueAsync(queue);
     }
 
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    private async void OnQueueChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            logger.LogInformation("The QueueChanged event was raised.  Refreshing.");
+            await refresh();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error handling queue change event");
+        }
+    }
+
+    private void OnLocalQueueChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
+
     async Task refresh()
     {
         queue.Clear();
         queue.AddRange(await svc.GetPlayQueueAsync());
         var status = await svc.GetStatusAsync();
-        currentSong = status?.CurrentSong?.Name ?? "[ Not playing anything ]";
+        PlayerState.UpdateStatus(status);
         StateHasChanged();
     }
 
@@ -297,7 +301,9 @@
 
     public void Dispose()
     {
-        localQueueService.QueueChanged -= (_, _) => InvokeAsync(StateHasChanged);
+        PlayerState.StateChanged -= OnStateChanged;
+        svc.QueueChanged -= OnQueueChanged;
+        localQueueService.QueueChanged -= OnLocalQueueChanged;
     }
 }
 
