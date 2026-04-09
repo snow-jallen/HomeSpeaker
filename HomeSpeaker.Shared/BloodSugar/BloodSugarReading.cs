@@ -8,12 +8,12 @@ public sealed class BloodSugarReading
 {
     public double Sgv { get; set; }
     //public DateTime Date { get; set; }
-    public DateTime Date => DateString;
+    public DateTime Date => this.DateString;
     public string Direction { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
     public DateTime DateString { get; set; }
 
-    public string DirectionIcon => Direction switch
+    public string DirectionIcon => this.Direction switch
     {
         "Flat" => "→",
         "SingleUp" => "↗",
@@ -25,7 +25,7 @@ public sealed class BloodSugarReading
         _ => "?"
     };
 
-    public string DirectionDescription => Direction switch
+    public string DirectionDescription => this.Direction switch
     {
         "Flat" => "Stable",
         "SingleUp" => "Rising slowly",

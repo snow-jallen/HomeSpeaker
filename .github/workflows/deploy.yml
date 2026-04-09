@@ -1,0 +1,123 @@
+name: Deploy to Raspberry Pi
+
+on:
+  workflow_run:
+    workflows: ["Build and Push Docker Images"]
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, "${{ matrix.runner}}" ]
+    # Only deploy if the build workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      matrix:
+        include:
+          - runner: kitchen
+            airplay_name: "Kitchen HomeSpeaker"
+          - runner: upstairs
+            airplay_name: "Upstairs HomeSpeaker"
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Log in to GitHub Container Registry
+      run: |
+        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+    - name: Renew Tailscale certificate
+      run: |
+        cd ~/cert
+        HOSTNAME=$(hostname)
+        sudo tailscale cert ${HOSTNAME}.boston-cloud.ts.net
+        sudo openssl pkcs12 -export -out certificate.pfx -inkey ${HOSTNAME}.boston-cloud.ts.net.key -in ${HOSTNAME}.boston-cloud.ts.net.crt -passout pass:
+        sudo chown piuser. certificate.pfx
+
+    - name: Write deployment variables to .env file
+      env:
+        AIRPLAY_NAME: "${{ matrix.airplay_name }}"
+      run: |
+        cat > .env << EOF
+        AIRPLAY_NAME=${AIRPLAY_NAME}
+        HOMESPEAKER_IMAGE=ghcr.io/${{ github.repository_owner }}/homespeaker:latest
+        EOF
+
+    - name: Ensure secrets file exists
+      run: touch /home/piuser/homespeaker-secrets.env
+
+    - name: Pull latest images
+      run: docker-compose pull
+
+    - name: Stop containers
+      run: docker-compose down
+
+    - name: Start containers (no build!)
+      run: docker-compose up -d --remove-orphans
+
+    - name: Wait for services to be ready
+      run: |
+        echo "Waiting for HomeSpeaker service to respond..."
+        for i in $(seq 1 12); do
+          if curl -sk https://localhost/ > /dev/null 2>&1; then
+            echo "✓ Service is up and responding"
+            break
+          fi
+          echo "  Attempt $i/12 - waiting 5s..."
+          sleep 5
+        done
+
+    - name: Refresh browser on touchscreen
+      run: |
+        echo "Attempting to refresh browser on :0 display..."
+        
+        # Strategy 1: Try Chromium remote debugging protocol (most reliable)
+        if curl -s http://localhost:9222/json/version > /dev/null 2>&1; then
+          echo "✓ Chrome debugging port available, using Page.reload..."
+          PAGE_ID=$(curl -s http://localhost:9222/json/list | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+          if [ -n "$PAGE_ID" ]; then
+            curl -s "http://localhost:9222/json/activate/$PAGE_ID" > /dev/null
+            curl -s "http://localhost:9222/json/new?javascript:location.reload()" > /dev/null
+            echo "✓ Browser refreshed via remote debugging protocol"
+            exit 0
+          fi
+        fi
+        
+        # Strategy 2: Try xdotool with proper XAUTHORITY
+        if command -v xdotool > /dev/null 2>&1; then
+          echo "Trying xdotool with XAUTHORITY..."
+          export DISPLAY=:0
+          
+          # Find the X authority file
+          XAUTH=$(find /home/piuser -name '.Xauthority' 2>/dev/null | head -1)
+          if [ -z "$XAUTH" ]; then
+            XAUTH=$(find /run/user -name 'Xauthority' 2>/dev/null | head -1)
+          fi
+          
+          if [ -n "$XAUTH" ]; then
+            export XAUTHORITY=$XAUTH
+            echo "  Using XAUTHORITY=$XAUTH"
+            if xdotool key F5 2>&1; then
+              echo "✓ Browser refreshed via xdotool"
+              exit 0
+            fi
+          else
+            echo "  Warning: Could not find .Xauthority file"
+          fi
+        fi
+        
+        # Strategy 3: Fallback - try xdotool anyway (might work if runner is piuser)
+        export DISPLAY=:0
+        export XAUTHORITY=/home/piuser/.Xauthority
+        if xdotool key F5 2>&1; then
+          echo "✓ Browser refreshed via xdotool (fallback)"
+          exit 0
+        fi
+        
+        echo "⚠ All refresh strategies failed - browser may need manual refresh (F5)"
+        exit 1
+
+    - name: Clean up old images
+      run: docker image prune -af --filter "until=168h"
+      continue-on-error: true

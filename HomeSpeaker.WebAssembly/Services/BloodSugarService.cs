@@ -5,38 +5,35 @@ namespace HomeSpeaker.WebAssembly.Services;
 
 public sealed class BloodSugarService : IBloodSugarService
 {
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<BloodSugarService> _logger;
+    private readonly HttpClient httpClient;
+    private readonly ILogger<BloodSugarService> logger;
 
     public BloodSugarService(HttpClient httpClient, ILogger<BloodSugarService> logger)
     {
-        _httpClient = httpClient;
-        _logger = logger;
+        this.httpClient = httpClient;
+        this.logger = logger;
     }
 
     public async Task<BloodSugarStatus> GetBloodSugarStatusAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogInformation("Fetching blood sugar status from server...");
-            var response = await _httpClient.GetAsync("/api/bloodsugar", cancellationToken);
+            logger.LogInformation("Fetching blood sugar status from server...");
+            var response = await httpClient.GetAsync("/api/bloodsugar", cancellationToken);
             response.EnsureSuccessStatusCode();
-            
+
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            var bloodSugarStatus = JsonSerializer.Deserialize<BloodSugarStatus>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-            
+            var bloodSugarStatus = JsonSerializer.Deserialize<BloodSugarStatus>(json, SerializationHelpers.PropertyNameCaseInsensitive);
+
             return bloodSugarStatus ?? new BloodSugarStatus();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to fetch blood sugar status from server");
+            logger.LogError(ex, "Failed to fetch blood sugar status from server");
             // Return a default status if the server is not available
             return new BloodSugarStatus
             {
-                LastUpdated = DateTime.Now,
+                LastUpdated = DateTime.UtcNow.ToLocalTime(),
                 IsStale = true,
                 CurrentReading = null
             };
@@ -47,16 +44,16 @@ public sealed class BloodSugarService : IBloodSugarService
     {
         try
         {
-            _logger.LogInformation("Clearing blood sugar cache on server...");
-            var response = await _httpClient.DeleteAsync("/api/bloodsugar/cache", cancellationToken);
+            logger.LogInformation("Clearing blood sugar cache on server...");
+            var response = await httpClient.DeleteAsync("/api/bloodsugar/cache", cancellationToken);
             response.EnsureSuccessStatusCode();
-            
-            _logger.LogInformation("Blood sugar cache cleared successfully");
+
+            logger.LogInformation("Blood sugar cache cleared successfully");
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to clear blood sugar cache on server");
+            logger.LogError(ex, "Failed to clear blood sugar cache on server");
             return false;
         }
     }
@@ -65,25 +62,22 @@ public sealed class BloodSugarService : IBloodSugarService
     {
         try
         {
-            _logger.LogInformation("Refreshing blood sugar data from server...");
-            var response = await _httpClient.PostAsync("/api/bloodsugar/refresh", null, cancellationToken);
+            logger.LogInformation("Refreshing blood sugar data from server...");
+            var response = await httpClient.PostAsync("/api/bloodsugar/refresh", null, cancellationToken);
             response.EnsureSuccessStatusCode();
-            
+
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            var bloodSugarStatus = JsonSerializer.Deserialize<BloodSugarStatus>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-            
+            var bloodSugarStatus = JsonSerializer.Deserialize<BloodSugarStatus>(json, SerializationHelpers.PropertyNameCaseInsensitive);
+
             return bloodSugarStatus ?? new BloodSugarStatus();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to refresh blood sugar data from server");
+            logger.LogError(ex, "Failed to refresh blood sugar data from server");
             // Return a default status if the server is not available
             return new BloodSugarStatus
             {
-                LastUpdated = DateTime.Now,
+                LastUpdated = DateTime.UtcNow.ToLocalTime(),
                 IsStale = true,
                 CurrentReading = null
             };

@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build)",
+      "Bash(dotnet run:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet ef migrations:*)",
+      "Skill(update-config)",
+      "Bash(tee *.txt)",
+      "Bash(dotnet clean:*)",
+      "Bash(dotnet format:*)",
+      "Bash(grep \"HomeSpeaker.Server2\\\\\\\\\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,321 @@
+@using HomeSpeaker.Shared.Forecast
+@using HomeSpeaker.WebAssembly.Services
+@inject IForecastService ForecastService
+@inject ILogger<ForecastMonitor> Logger
+@implements IDisposable
+
+<div class="forecast-card mb-2">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-success text-white py-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-cloud-sun me-1"></i>
+                    Forecast
+                </h6>
+                <button class="btn btn-outline-light btn-sm" @onclick="ForceRefreshForecastData" disabled="@isLoading">
+                    <i class="fas fa-redo me-1"></i>
+                    @if (isLoading)
+                    {
+                        <span>Loading...</span>
+                    }
+                    else
+                    {
+                        <span>Force Refresh</span>
+                    }
+                </button>
+            </div>
+        </div>
+        <div class="card-body py-2">
+            @if (forecastStatus != null && (forecastStatus.TonightLow != null || forecastStatus.TomorrowHigh != null))
+            {
+                <div class="row g-2">
+                    @if (forecastStatus.TonightLow != null)
+                    {
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="mb-2">
+                                    <i class="fas fa-moon fa-2x" style="color: @GetTemperatureColor(forecastStatus.TonightLow.Temperature)"></i>
+                                </div>
+                                <div class="h6 text-muted mb-2">Tonight's Low</div>
+                                <div class="forecast-display">
+                                    <span class="display-1 fw-bold" style="color: @GetTemperatureColor(forecastStatus.TonightLow.Temperature)">@FormatTemperature(forecastStatus.TonightLow.Temperature)</span>
+                                </div>
+                                <div class="small text-muted mt-1">@forecastStatus.TonightLow.Conditions</div>
+                                @if (forecastStatus.TonightLow.PrecipitationChance.HasValue && forecastStatus.TonightLow.PrecipitationChance > 0)
+                                {
+                                    <div class="small text-muted">
+                                        <i class="fas fa-tint me-1"></i>@forecastStatus.TonightLow.PrecipitationChance%
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    @if (forecastStatus.TomorrowHigh != null)
+                    {
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="mb-2">
+                                    <i class="fas fa-sun fa-2x" style="color: @GetTemperatureColor(forecastStatus.TomorrowHigh.Temperature)"></i>
+                                </div>
+                                <div class="h6 text-muted mb-2">Tomorrow's High</div>
+                                <div class="forecast-display">
+                                    <span class="display-1 fw-bold" style="color: @GetTemperatureColor(forecastStatus.TomorrowHigh.Temperature)">@FormatTemperature(forecastStatus.TomorrowHigh.Temperature)</span>
+                                </div>
+                                <div class="small text-muted mt-1">@forecastStatus.TomorrowHigh.Conditions</div>
+                                @if (forecastStatus.TomorrowHigh.PrecipitationChance.HasValue && forecastStatus.TomorrowHigh.PrecipitationChance > 0)
+                                {
+                                    <div class="small text-muted">
+                                        <i class="fas fa-tint me-1"></i>@forecastStatus.TomorrowHigh.PrecipitationChance%
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="text-center mt-1">
+                    <small class="text-muted">
+                        Updated: @lastUpdated.ToString("HH:mm:ss")
+                        @if (forecastStatus.LastCachedAt != default(DateTime))
+                        {
+                            <span class="ms-1">• Cached: @FormatTimeSince(DateTime.UtcNow - forecastStatus.LastCachedAt)</span>
+                        }
+                    </small>
+                </div>
+            }
+            else if (isLoading)
+            {
+                <div class="text-center py-2">
+                    <div class="spinner-border spinner-border-sm text-success" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div class="mt-1 small">Loading...</div>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-2">
+                    <div class="text-muted small">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        Unable to load data
+                    </div>
+                    <button class="btn btn-outline-success btn-sm mt-1" @onclick="RefreshForecastData">
+                        <i class="fas fa-sync-alt me-1"></i>
+                        Retry
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .forecast-card .forecast-display {
+        margin: 0.25rem 0;
+        line-height: 0.9;
+    }
+
+    .forecast-card .forecast-display .display-1 {
+        font-size: 3.0rem !important;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
+
+    /* Extra large on smaller screens for better visibility */
+    @@media (max-width: 1024px) {
+        .forecast-card .forecast-display .display-1 {
+            font-size: 3.6rem !important;
+        }
+    }
+
+    .forecast-card .badge {
+        white-space: nowrap;
+        font-size: 0.8rem;
+    }
+
+    .forecast-card .fas {
+        margin-bottom: 4px;
+        opacity: 0.8;
+    }
+
+    .forecast-card .fas:hover {
+        opacity: 1;
+        transform: scale(1.05);
+        transition: all 0.2s ease-in-out;
+    }
+
+    .forecast-card .card-body {
+        padding: 1rem;
+    }
+
+    .forecast-card .small {
+        font-size: 0.8rem;
+    }
+</style>
+
+@code {
+    private ForecastStatus? forecastStatus;
+    private DateTime lastUpdated = DateTime.UtcNow;
+    private Timer? refreshTimer;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Logger.LogInformation("Initializing ForecastMonitor component...");
+
+        await RefreshForecastData();
+
+        // Set up auto-refresh every 30 minutes (server has 30-minute cache)
+        refreshTimer = new Timer(async _ =>
+        {
+            try
+            {
+                await InvokeAsync(RefreshForecastData);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Component was disposed, ignore
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error in forecast refresh timer");
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromMinutes(30));
+    }
+
+    private async Task RefreshForecastData()
+    {
+        Logger.LogInformation("Refreshing forecast data...");
+
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            forecastStatus = await ForecastService.GetForecastStatusAsync();
+            lastUpdated = DateTime.UtcNow;
+            isLoading = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh forecast data");
+            Console.WriteLine($"Failed to refresh forecast data: {ex.Message}");
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string FormatTemperature(double? temperature)
+    {
+        return temperature.HasValue ? $"{temperature.Value:F0}°" : "N/A";
+    }
+
+    private string GetTemperatureColor(double? temperature)
+    {
+        if (!temperature.HasValue)
+            return "#6c757d"; // Gray for no data
+
+        var temp = temperature.Value;
+
+        // Temperature ranges and color mapping
+        if (temp <= 40)
+        {
+            return "#0066cc"; // Very cold - Blue
+        }
+        else if (temp <= 50)
+        {
+            return "#3399ff"; // Cold - Light Blue
+        }
+        else if (temp <= 60)
+        {
+            return "#00cccc"; // Cool - Blue to Green
+        }
+        else if (temp <= 70)
+        {
+            return "#00cc66"; // Comfortable - Green
+        }
+        else if (temp <= 75)
+        {
+            return "#66cc00"; // Comfortable - Light Green
+        }
+        else if (temp <= 80)
+        {
+            return "#cccc00"; // Warm - Yellow-Green
+        }
+        else if (temp <= 85)
+        {
+            return "#ff9900"; // Warm - Orange
+        }
+        else if (temp <= 95)
+        {
+            return "#ff6600"; // Hot - Red-Orange
+        }
+        else
+        {
+            return "#cc0000"; // Very hot - Dark Red
+        }
+    }
+
+    private async Task ClearForecastCache()
+    {
+        Logger.LogInformation("Clearing forecast cache...");
+
+        try
+        {
+            var success = await ForecastService.ClearCacheAsync();
+            if (success)
+            {
+                Logger.LogInformation("Forecast cache cleared successfully");
+            }
+            else
+            {
+                Logger.LogWarning("Failed to clear forecast cache");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error clearing forecast cache");
+        }
+    }
+
+    private async Task ForceRefreshForecastData()
+    {
+        Logger.LogInformation("Force refreshing forecast data...");
+
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            forecastStatus = await ForecastService.RefreshAsync();
+            lastUpdated = DateTime.UtcNow;
+            isLoading = false;
+            StateHasChanged();
+
+            Logger.LogInformation("Forecast data force refreshed successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to force refresh forecast data");
+            Console.WriteLine($"Failed to force refresh forecast data: {ex.Message}");
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string FormatTimeSince(TimeSpan timeSince)
+    {
+        if (timeSince.TotalMinutes < 1)
+            return "< 1 min";
+        else if (timeSince.TotalMinutes < 60)
+            return $"{(int)timeSince.TotalMinutes} min";
+        else if (timeSince.TotalHours < 24)
+            return $"{(int)timeSince.TotalHours}h {(int)(timeSince.TotalMinutes % 60)}m";
+        else
+            return $"{(int)timeSince.TotalDays}d";
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}

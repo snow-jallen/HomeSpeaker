@@ -6,53 +6,54 @@ namespace HomeSpeaker.Server2.Services;
 
 public sealed class BloodSugarService
 {
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<BloodSugarService> _logger;
-    private readonly IConfiguration _configuration;
-    private readonly IMemoryCache _cache;
+    private readonly HttpClient httpClient;
+    private readonly ILogger<BloodSugarService> logger;
+    private readonly IConfiguration configuration;
+    private readonly IMemoryCache cache;
 
     private const string CacheKey = "blood-sugar-status";
+    private static readonly JsonSerializerOptions jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public BloodSugarService(HttpClient httpClient, ILogger<BloodSugarService> logger, IConfiguration configuration, IMemoryCache cache)
     {
-        _httpClient = httpClient;
-        _logger = logger;
-        _configuration = configuration;
-        _cache = cache;
+        this.httpClient = httpClient;
+        this.logger = logger;
+        this.configuration = configuration;
+        this.cache = cache;
     }
 
     public async Task<BloodSugarStatus> GetBloodSugarStatusAsync(CancellationToken cancellationToken = default)
     {
         // Try to get cached value and check if it needs refresh based on smart logic
-        if (_cache.TryGetValue(CacheKey, out BloodSugarStatus? cachedValue) && cachedValue != null)
+        if (cache.TryGetValue(CacheKey, out BloodSugarStatus? cachedValue) && cachedValue != null)
         {
-            var shouldRefresh = ShouldRefreshBloodSugarCache(cachedValue);
+            var shouldRefresh = shouldRefreshBloodSugarCache(cachedValue);
             if (!shouldRefresh)
             {
-                _logger.LogInformation("Returning cached blood sugar status {cachedValue}", JsonSerializer.Serialize(cachedValue));
+                logger.LogInformation("Returning cached blood sugar status {CachedValue}", JsonSerializer.Serialize(cachedValue));
                 return cachedValue;
             }
         }
 
         // Cache miss or needs refresh, fetch new data
-        _logger.LogInformation("Blood sugar cache refresh needed, fetching fresh data...");
-        var bloodSugarStatus = await GetBloodSugarStatusInternalAsync(cancellationToken);
+        logger.LogInformation("Blood sugar cache refresh needed, fetching fresh data...");
+        var bloodSugarStatus = await getBloodSugarStatusInternalAsync(cancellationToken);
 
         // Cache with smart expiration based on reading age
-        var cacheExpiration = CalculateCacheExpiration(bloodSugarStatus);
+        var cacheExpiration = calculateCacheExpiration(bloodSugarStatus);
         var cacheOptions = new MemoryCacheEntryOptions
         {
             AbsoluteExpirationRelativeToNow = cacheExpiration,
             Priority = CacheItemPriority.High
         };
 
-        _cache.Set(CacheKey, bloodSugarStatus, cacheOptions);
-        _logger.LogInformation("Blood sugar data cached for {Seconds} seconds {cachedValue}", cacheExpiration.TotalSeconds, JsonSerializer.Serialize(bloodSugarStatus));
+        cache.Set(CacheKey, bloodSugarStatus, cacheOptions);
+        logger.LogInformation("Blood sugar data cached for {Seconds} seconds {CachedValue}", cacheExpiration.TotalSeconds, JsonSerializer.Serialize(bloodSugarStatus));
 
         return bloodSugarStatus;
     }
 
-    private bool ShouldRefreshBloodSugarCache(BloodSugarStatus cachedStatus)
+    private bool shouldRefreshBloodSugarCache(BloodSugarStatus cachedStatus)
     {
         // If no current reading, refresh more frequently
         if (cachedStatus.CurrentReading == null)
@@ -79,7 +80,7 @@ public sealed class BloodSugarService
         return cacheAge.TotalSeconds >= 30;
     }
 
-    private TimeSpan CalculateCacheExpiration(BloodSugarStatus status)
+    private TimeSpan calculateCacheExpiration(BloodSugarStatus status)
     {
         // If no reading, cache for 1 minute
         if (status.CurrentReading == null)
@@ -105,17 +106,17 @@ public sealed class BloodSugarService
         return TimeSpan.FromSeconds(30);
     }
 
-    private async Task<BloodSugarStatus> GetBloodSugarStatusInternalAsync(CancellationToken cancellationToken = default)
+    private async Task<BloodSugarStatus> getBloodSugarStatusInternalAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var nightscoutUrl = _configuration["NIGHTSCOUT_URL"];
+            var nightscoutUrl = configuration["NIGHTSCOUT_URL"];
             if (string.IsNullOrEmpty(nightscoutUrl))
             {
-                _logger.LogWarning("NIGHTSCOUT_URL not configured");
+                logger.LogWarning("NIGHTSCOUT_URL not configured");
                 return new BloodSugarStatus
                 {
-                    LastUpdated = DateTime.Now,
+                    LastUpdated = DateTime.UtcNow.ToLocalTime(),
                     IsStale = true,
                     CurrentReading = null
                 };
@@ -123,23 +124,20 @@ public sealed class BloodSugarService
 
             // Get the latest entry from NightScout
             var apiUrl = $"{nightscoutUrl.TrimEnd('/')}/api/v1/entries.json?count=1";
-            _logger.LogInformation("Fetching blood sugar data from: {ApiUrl}", apiUrl);
+            logger.LogInformation("Fetching blood sugar data from: {ApiUrl}", apiUrl);
 
-            var response = await _httpClient.GetAsync(apiUrl, cancellationToken);
+            var response = await httpClient.GetAsync(apiUrl, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            var entries = JsonSerializer.Deserialize<BloodSugarReading[]>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            var entries = JsonSerializer.Deserialize<BloodSugarReading[]>(json, jsonOptions);
 
             if (entries == null || entries.Length == 0)
             {
-                _logger.LogWarning("No blood sugar entries found");
+                logger.LogWarning("No blood sugar entries found");
                 return new BloodSugarStatus
                 {
-                    LastUpdated = DateTime.Now,
+                    LastUpdated = DateTime.UtcNow.ToLocalTime(),
                     IsStale = true,
                     CurrentReading = null
                 };
@@ -163,10 +161,10 @@ public sealed class BloodSugarService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to fetch blood sugar data from NightScout");
+            logger.LogError(ex, "Failed to fetch blood sugar data from NightScout");
             return new BloodSugarStatus
             {
-                LastUpdated = DateTime.Now,
+                LastUpdated = DateTime.UtcNow.ToLocalTime(),
                 IsStale = true,
                 CurrentReading = null
             };
@@ -178,8 +176,8 @@ public sealed class BloodSugarService
     /// </summary>
     public void ClearCache()
     {
-        _cache.Remove(CacheKey);
-        _logger.LogInformation("Blood sugar cache cleared");
+        cache.Remove(CacheKey);
+        logger.LogInformation("Blood sugar cache cleared");
     }
 
     /// <summary>
@@ -187,7 +185,7 @@ public sealed class BloodSugarService
     /// </summary>
     public async Task<BloodSugarStatus> RefreshAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Refreshing blood sugar data (clearing cache and fetching fresh data)");
+        logger.LogInformation("Refreshing blood sugar data (clearing cache and fetching fresh data)");
         ClearCache();
         return await GetBloodSugarStatusAsync(cancellationToken);
     }

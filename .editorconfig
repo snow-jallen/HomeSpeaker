@@ -1,0 +1,58 @@
+[*.{cs,vb}]
+
+# IDE0009: Member access should be qualified.
+dotnet_diagnostic.IDE0009.severity = none
+
+# CA1003: Use generic event handler instances.
+dotnet_diagnostic.CA1003.severity = none
+
+# Naming rule: private fields should use camelCase without underscore prefix
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_rule.private_fields_camel_case.symbols = private_fields
+dotnet_naming_rule.private_fields_camel_case.style = camel_case_style
+dotnet_naming_rule.private_fields_camel_case.severity = warning
+
+# Naming rule: public fields should use PascalCase
+dotnet_naming_symbols.public_fields.applicable_kinds = field
+dotnet_naming_symbols.public_fields.applicable_accessibilities = public
+
+dotnet_naming_rule.public_fields_pascal_case.symbols = public_fields
+dotnet_naming_rule.public_fields_pascal_case.style = pascal_case_style
+dotnet_naming_rule.public_fields_pascal_case.severity = warning
+
+dotnet_naming_symbols.private_static_readonly_fields.applicable_kinds = field
+dotnet_naming_symbols.private_static_readonly_fields.applicable_accessibilities = private
+dotnet_naming_symbols.private_static_readonly_fields.required_modifiers = static,readonly
+
+dotnet_naming_rule.private_static_readonly_fields_camel_case.symbols = private_static_readonly_fields
+dotnet_naming_rule.private_static_readonly_fields_camel_case.style = camel_case_style
+dotnet_naming_rule.private_static_readonly_fields_camel_case.severity = warning
+
+dotnet_naming_symbols.private_async_methods.applicable_kinds = method
+dotnet_naming_symbols.private_async_methods.applicable_accessibilities = private
+dotnet_naming_symbols.private_async_methods.required_modifiers = async
+
+dotnet_naming_rule.private_async_methods_camel_case.symbols = private_async_methods
+dotnet_naming_rule.private_async_methods_camel_case.style = camel_case_style
+dotnet_naming_rule.private_async_methods_camel_case.severity = warning
+
+dotnet_naming_style.camel_case_style.capitalization = camel_case
+dotnet_naming_style.pascal_case_style.capitalization = pascal_case
+
+# Naming rule: private methods should use camelCase
+dotnet_naming_symbols.private_methods.applicable_kinds = method
+dotnet_naming_symbols.private_methods.applicable_accessibilities = private
+
+dotnet_naming_rule.private_methods_camel_case.symbols = private_methods
+dotnet_naming_rule.private_methods_camel_case.style = camel_case_style
+dotnet_naming_rule.private_methods_camel_case.severity = warning
+
+# Naming rule: public methods should use PascalCase
+dotnet_naming_symbols.public_methods.applicable_kinds = method
+dotnet_naming_symbols.public_methods.applicable_accessibilities = public
+
+dotnet_naming_rule.public_methods_pascal_case.symbols = public_methods
+dotnet_naming_rule.public_methods_pascal_case.style = pascal_case_style
+dotnet_naming_rule.public_methods_pascal_case.severity = warning

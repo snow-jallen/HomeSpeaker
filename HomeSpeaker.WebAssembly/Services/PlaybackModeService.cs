@@ -25,13 +25,13 @@ public class PlaybackModeService : IPlaybackModeService
 
     public PlaybackMode CurrentMode
     {
-        get => currentMode;
+    get => currentMode;
         set
-        {            if (currentMode != value)
+    {            if (currentMode != value)
             {
-                currentMode = value;
+        currentMode = value;
                 ModeChanged?.Invoke(this, (object)value);
-                logger.LogInformation("Playback mode changed to {mode}", value);
+        logger.LogInformation("Playback mode changed to {Mode}", value);
                 StatusMessage?.Invoke(this, $"Playback mode: {value}");
             }
         }
@@ -42,13 +42,13 @@ public class PlaybackModeService : IPlaybackModeService
         IBrowserAudioService browserAudioService,
         ILogger<PlaybackModeService> logger)
     {
-        this.homeSpeakerService = homeSpeakerService;
-        this.browserAudioService = browserAudioService;
-        this.logger = logger;
+    this.homeSpeakerService = homeSpeakerService;
+    this.browserAudioService = browserAudioService;
+    this.logger = logger;
 
         // Subscribe to browser audio events
-        this.browserAudioService.StatusChanged += OnBrowserStatusChanged;
-        this.browserAudioService.ErrorOccurred += OnBrowserError;
+    this.browserAudioService.StatusChanged += OnBrowserStatusChanged;
+    this.browserAudioService.ErrorOccurred += OnBrowserError;
     }
 
     public async Task PlaySongAsync(SongViewModel song)
@@ -75,7 +75,7 @@ public class PlaybackModeService : IPlaybackModeService
         catch (Exception ex)
         {
             Console.WriteLine($"Error in PlaySongAsync: {ex}");
-            logger.LogError(ex, "Error playing song {songName} in {mode} mode", song.Name, CurrentMode);
+            logger.LogError(ex, "Error playing song {SongName} in {Mode} mode", song.Name, CurrentMode);
             StatusMessage?.Invoke(this, $"Error playing {song.Name}: {ex.Message}");
         }
     }
@@ -100,7 +100,7 @@ public class PlaybackModeService : IPlaybackModeService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error pausing in {mode} mode", CurrentMode);
+            logger.LogError(ex, "Error pausing in {Mode} mode", CurrentMode);
             StatusMessage?.Invoke(this, $"Error pausing: {ex.Message}");
         }
     }
@@ -125,7 +125,7 @@ public class PlaybackModeService : IPlaybackModeService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error resuming in {mode} mode", CurrentMode);
+            logger.LogError(ex, "Error resuming in {Mode} mode", CurrentMode);
             StatusMessage?.Invoke(this, $"Error resuming: {ex.Message}");
         }
     }
@@ -150,7 +150,7 @@ public class PlaybackModeService : IPlaybackModeService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error stopping in {mode} mode", CurrentMode);
+            logger.LogError(ex, "Error stopping in {Mode} mode", CurrentMode);
             StatusMessage?.Invoke(this, $"Error stopping: {ex.Message}");
         }
     }
@@ -175,7 +175,7 @@ public class PlaybackModeService : IPlaybackModeService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error setting volume in {mode} mode", CurrentMode);
+            logger.LogError(ex, "Error setting volume in {Mode} mode", CurrentMode);
             StatusMessage?.Invoke(this, $"Error setting volume: {ex.Message}");
         }
     }
@@ -201,14 +201,14 @@ public class PlaybackModeService : IPlaybackModeService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error getting volume in {mode} mode", CurrentMode);
+            logger.LogError(ex, "Error getting volume in {Mode} mode", CurrentMode);
             return 50;
         }
     }
 
     private void OnBrowserStatusChanged(object? sender, BrowserPlayerStatus status)
     {
-        if (CurrentMode == PlaybackMode.Local)
+    if (CurrentMode == PlaybackMode.Local)
         {
             var statusText = status.IsPlaying ? "Playing" : status.IsPaused ? "Paused" : "Stopped";
             if (!string.IsNullOrEmpty(status.CurrentSong))
@@ -221,7 +221,7 @@ public class PlaybackModeService : IPlaybackModeService
 
     private void OnBrowserError(object? sender, string error)
     {
-        if (CurrentMode == PlaybackMode.Local)
+    if (CurrentMode == PlaybackMode.Local)
         {
             StatusMessage?.Invoke(this, $"Local playback error: {error}");
         }

@@ -7,11 +7,11 @@ namespace HomeSpeaker.Shared.BloodSugar;
 public sealed class BloodSugarStatus
 {
     public BloodSugarReading? CurrentReading { get; set; }
-    public DateTime LastUpdated { get; set; } = DateTime.Now;
+    public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
     public bool IsStale { get; set; }
     public TimeSpan TimeSinceLastReading { get; set; }
-    
-    public string StatusColor => CurrentReading?.Sgv switch
+
+    public string StatusColor => this.CurrentReading?.Sgv switch
     {
         null => "#6c757d", // Gray for no data
         var sgv when sgv < 70 => "#dc3545", // Red for low
@@ -20,8 +20,8 @@ public sealed class BloodSugarStatus
         var sgv when sgv <= 250 => "#fd7e14", // Orange for high
         _ => "#dc3545" // Red for very high
     };
-    
-    public string StatusText => CurrentReading?.Sgv switch
+
+    public string StatusText => this.CurrentReading?.Sgv switch
     {
         null => "No Data",
         var sgv when sgv < 70 => "Low",

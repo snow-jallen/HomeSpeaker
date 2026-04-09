@@ -1,15 +1,223 @@
 ﻿@inject HomeSpeakerService svc
+@inject IJSRuntime JSRuntime
+@inject PlayerStateService PlayerState
+@implements IDisposable
 
-<button @onclick=Stop title="Stop playing" class="btn btn-outline-primary"><span class="oi oi-media-stop"/></button>
-<button @onclick=Play title="Resume playing" class="btn btn-outline-primary"><span class="oi oi-media-play" /></button>
-<button @onclick=Skip title="Skip to next song" class="btn btn-outline-primary"><span class="oi oi-media-skip-forward" /></button>
-<button @onclick=Clear title="Clear queue" class="btn btn-outline-primary"><span class="oi oi-x" /></button>
-<button @onclick=Shuffle title="Shuffle queue" class="btn btn-outline-primary"><span class="oi oi-random" /></button>
+<div class="play-controls">
+    <button @onclick=Play title="Resume playing" class="btn btn-icon-lg btn-primary play-button">
+        <i class="fas fa-play"></i>
+    </button>
+    <button @onclick=Stop title="Stop playing" class="btn btn-icon btn-outline-primary">
+        <i class="fas fa-stop"></i>
+    </button>
+    <button @onclick=Skip title="Skip to next song" class="btn btn-icon btn-outline-primary">
+        <i class="fas fa-forward"></i>
+    </button>
+    <button @onclick=Shuffle title="Shuffle queue" class="btn btn-icon btn-outline-secondary">
+        <i class="fas fa-random"></i>
+    </button>
+    <button @onclick=ToggleRepeat title="@(PlayerState.RepeatMode ? "Repeat: ON" : "Repeat: OFF")" class="btn btn-icon @(PlayerState.RepeatMode ? "btn-warning" : "btn-outline-secondary")">
+        <i class="fas fa-redo"></i>
+    </button>
+    <button @onclick=Clear title="Clear queue" class="btn btn-icon btn-outline-danger">
+        <i class="fas fa-trash-alt"></i>
+    </button>
+    
+    <div class="dropdown">
+        <button class="btn btn-icon @(sleepTimerActive ? "btn-info" : "btn-outline-secondary") dropdown-toggle" 
+                type="button" 
+                id="sleepTimerDropdown" 
+                data-bs-toggle="dropdown" 
+                aria-expanded="false" 
+                title="@(sleepTimerActive ? $"Sleep timer: {sleepTimerRemaining}" : "Set sleep timer")">
+            <i class="fas fa-moon"></i>
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="sleepTimerDropdown">
+            @if (sleepTimerActive)
+            {
+                <li><h6 class="dropdown-header">Timer: @sleepTimerRemaining</h6></li>
+                <li><a class="dropdown-item" @onclick="CancelSleepTimer"><i class="fas fa-times me-2"></i>Cancel Timer</a></li>
+                <li><hr class="dropdown-divider" /></li>
+            }
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(15)">15 minutes</a></li>
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(30)">30 minutes</a></li>
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(45)">45 minutes</a></li>
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(60)">1 hour</a></li>
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(90)">1.5 hours</a></li>
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(120)">2 hours</a></li>
+        </ul>
+    </div>
+</div>
+
+<style>
+    .play-controls {
+        display: flex;
+        gap: 0.6rem;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .play-controls .btn-icon {
+        transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 50%;
+    }
+
+    .play-controls .btn-icon:active {
+        transform: scale(0.90);
+    }
+
+    /* Pulsing amber glow on the main play button */
+    @@keyframes playGlow {
+        0%, 100% {
+            box-shadow: 0 0 18px rgba(201, 152, 90, 0.45), 0 4px 16px rgba(0,0,0,0.5);
+        }
+        50% {
+            box-shadow: 0 0 32px rgba(201, 152, 90, 0.75), 0 4px 16px rgba(0,0,0,0.5);
+        }
+    }
+
+    .play-button {
+        animation: playGlow 2.8s ease-in-out infinite;
+        background: linear-gradient(135deg, var(--hs-primary) 0%, var(--hs-primary-dark) 100%) !important;
+        color: #1A1008 !important;
+    }
+
+    .play-button:active {
+        animation: none;
+        transform: scale(0.90);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
+    }
+
+    /* Touch-friendly dropdown items */
+    .dropdown-menu {
+        background: var(--hs-bg-card);
+        border: 1px solid rgba(201, 152, 90, 0.15);
+        border-radius: var(--hs-radius-md);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(12px);
+    }
+
+    .dropdown-item {
+        padding: 0.75rem 1.25rem;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        font-size: 0.95rem;
+        color: var(--hs-text-secondary);
+        transition: all 0.15s ease;
+        font-family: 'DM Sans', sans-serif;
+    }
+
+    .dropdown-item:hover {
+        background-color: var(--hs-hover-bg);
+        color: var(--hs-primary);
+    }
+
+    .dropdown-item:active {
+        background-color: rgba(201, 152, 90, 0.15);
+        color: var(--hs-primary);
+    }
+
+    .dropdown-header {
+        font-family: 'Syne', sans-serif;
+        font-size: 0.65rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--hs-primary);
+        opacity: 0.8;
+        padding: 0.5rem 1.25rem;
+    }
+
+    /* RPi 7" screen - compact but still touch-friendly */
+    @@media (max-width: 800px) and (max-height: 480px) {
+        .play-controls {
+            gap: 0.4rem;
+        }
+
+        .play-controls .btn-icon-lg {
+            width: 68px;
+            height: 68px;
+            font-size: 1.6rem;
+        }
+
+        .play-controls .btn-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 1rem;
+        }
+    }
+</style>
 
 @code {
+    bool sleepTimerActive = false;
+    string sleepTimerRemaining = "";
+    System.Threading.Timer? refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        PlayerState.StateChanged += OnStateChanged;
+        await RefreshSleepTimer();
+
+        // Refresh sleep timer display every 10 seconds
+        refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            await RefreshSleepTimer();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+    }
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    async Task RefreshSleepTimer()
+    {
+        try
+        {
+            var result = await svc.GetSleepTimerAsync();
+            sleepTimerActive = result.Active;
+            if (result.Active && result.RemainingSeconds > 0)
+            {
+                var remaining = TimeSpan.FromSeconds(result.RemainingSeconds);
+                sleepTimerRemaining = remaining.TotalHours >= 1
+                    ? $"{(int)remaining.TotalHours}h {remaining.Minutes}m"
+                    : $"{remaining.Minutes}m";
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", $"Error getting sleep timer: {ex.Message}");
+        }
+    }
+
+    async Task ToggleRepeat()
+    {
+        var newMode = !PlayerState.RepeatMode;
+        PlayerState.UpdateRepeatMode(newMode);  // optimistic update — notifies both instances
+        await svc.SetRepeatModeAsync(newMode);
+    }
+
+    async Task SetSleepTimer(int minutes)
+    {
+        await svc.SetSleepTimerAsync(minutes);
+        await RefreshSleepTimer();
+    }
+
+    async Task CancelSleepTimer()
+    {
+        await svc.CancelSleepTimerAsync();
+        sleepTimerActive = false;
+        await RefreshSleepTimer();
+    }
+
     async Task Play() => await svc.ResumePlayAsync();
     async Task Stop() => await svc.StopPlayingAsync();
     async Task Clear() => await svc.ClearQueueAsync();
     async Task Skip() => await svc.SkipToNextAsync();
     async Task Shuffle() => await svc.ShuffleQueueAsync();
+
+    public void Dispose()
+    {
+        PlayerState.StateChanged -= OnStateChanged;
+        refreshTimer?.Dispose();
+    }
 }
