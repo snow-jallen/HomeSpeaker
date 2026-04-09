@@ -1,0 +1,17 @@
+{
+  "universe_usage_history": [
+    "Firefly"
+  ],
+  "assignment_cast_snapshots": {
+    "2026-03-23": {
+      "cast": [
+        "Mal",
+        "Kaylee",
+        "Wash",
+        "Zoe"
+      ],
+      "assignment_id": "homespeaker-init",
+      "universe": "Firefly"
+    }
+  }
+}

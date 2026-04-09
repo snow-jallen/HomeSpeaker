@@ -1,0 +1,46 @@
+{
+  "agents": {
+    "mal": {
+      "status": "active",
+      "persistent_name": "Mal",
+      "universe": "Firefly",
+      "created_at": "2026-03-23T16:33:48Z",
+      "legacy_named": false
+    },
+    "scribe": {
+      "status": "active",
+      "persistent_name": "Scribe",
+      "universe": "exempt",
+      "created_at": "2026-03-23T16:33:48Z",
+      "legacy_named": false
+    },
+    "zoe": {
+      "status": "active",
+      "persistent_name": "Zoe",
+      "universe": "Firefly",
+      "created_at": "2026-03-23T16:33:48Z",
+      "legacy_named": false
+    },
+    "kaylee": {
+      "status": "active",
+      "persistent_name": "Kaylee",
+      "universe": "Firefly",
+      "created_at": "2026-03-23T16:33:48Z",
+      "legacy_named": false
+    },
+    "wash": {
+      "status": "active",
+      "persistent_name": "Wash",
+      "universe": "Firefly",
+      "created_at": "2026-03-23T16:33:48Z",
+      "legacy_named": false
+    },
+    "ralph": {
+      "status": "active",
+      "persistent_name": "Ralph",
+      "universe": "exempt",
+      "created_at": "2026-03-23T16:33:48Z",
+      "legacy_named": false
+    }
+  }
+}
