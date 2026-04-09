@@ -51,10 +51,24 @@ jobs:
       run: docker-compose pull
 
     - name: Stop containers
-      run: docker-compose down
+      env:
+        COMPOSE_HTTP_TIMEOUT: 200
+      run: |
+        for attempt in 1 2 3; do
+          echo "Stop attempt $attempt/3..."
+          docker-compose down --timeout 120 && break
+          [ $attempt -lt 3 ] && echo "Retrying in 10s..." && sleep 10
+        done
 
     - name: Start containers (no build!)
-      run: docker-compose up -d --remove-orphans
+      env:
+        COMPOSE_HTTP_TIMEOUT: 200
+      run: |
+        for attempt in 1 2 3; do
+          echo "Start attempt $attempt/3..."
+          docker-compose up -d --remove-orphans && break
+          [ $attempt -lt 3 ] && echo "Retrying in 10s..." && sleep 10
+        done
 
     - name: Wait for services to be ready
       run: |
