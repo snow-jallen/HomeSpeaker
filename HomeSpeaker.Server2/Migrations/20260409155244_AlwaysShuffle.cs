@@ -1,11 +1,11 @@
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace HomeSpeaker.Server2.Migrations
 {
     /// <inheritdoc />
-    public partial class AddAlwaysShuffleToPlaylist : Migration
+    public partial class AlwaysShuffle : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
