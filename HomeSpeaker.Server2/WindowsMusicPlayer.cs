@@ -22,7 +22,26 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
     private Song? currentSong;
     private Song? stoppedSong;
     private bool disposed;
-    public PlayerStatus Status => (status ?? new PlayerStatus()) with { CurrentSong = currentSong };
+    private DateTime? _songStartTime;
+    private TimeSpan _songDuration;
+
+    public PlayerStatus Status
+    {
+        get
+        {
+            var baseStatus = (status ?? new PlayerStatus()) with { CurrentSong = currentSong };
+            if (_songStartTime.HasValue && _songDuration > TimeSpan.Zero && currentSong != null)
+            {
+                var elapsed = DateTime.UtcNow - _songStartTime.Value;
+                if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
+                if (elapsed > _songDuration) elapsed = _songDuration;
+                var remaining = _songDuration - elapsed;
+                var percentComplete = (decimal)(elapsed.TotalSeconds / _songDuration.TotalSeconds);
+                return baseStatus with { Elapsed = elapsed, Remaining = remaining, PercentComplete = percentComplete };
+            }
+            return baseStatus;
+        }
+    }
 
     private bool startedPlaying;
 
@@ -32,6 +51,16 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         startedPlaying = true;
         stopPlaying();
         stoppedSong = null;
+
+        try
+        {
+            using var tagFile = TagLib.File.Create(song.Path);
+            _songDuration = tagFile.Properties.Duration;
+        }
+        catch
+        {
+            _songDuration = TimeSpan.Zero;
+        }
 
         playerProcess = new Process();
         playerProcess.StartInfo.FileName = VlcPath;
@@ -72,6 +101,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         PlayerEvent?.Invoke(this, "Playing " + song.Name);
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
+        _songStartTime = DateTime.UtcNow;
         playerProcess.Exited += playerProcess_Exited;
 
         playerProcess.BeginOutputReadLine();
@@ -103,6 +133,9 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
                 playerProcess = null;
             }
         }
+
+        _songStartTime = null;
+        _songDuration = TimeSpan.Zero;
 
         // Fallback: kill any remaining VLC processes that might be hanging around
         try
@@ -164,6 +197,8 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         {
             logger.LogInformation("Nothing in the queue, so Status is now empty.");
             status = new PlayerStatus();
+            _songStartTime = null;
+            _songDuration = TimeSpan.Zero;
         }
     }
     private void playNextSongInQueue()
@@ -251,7 +286,14 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 
     public void SetVolume(int level0to100)
     {
-        Audio.Volume = (level0to100 / 100.0f);
+        try
+        {
+            Audio.Volume = level0to100 / 100.0f;
+        }
+        catch (COMException ex) when (ex.HResult == unchecked((int)0x80070490))
+        {
+            logger.LogWarning("No default audio device found; cannot set volume.");
+        }
     }
 
     public void PlayStream(string streamUrl)
@@ -318,7 +360,15 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 
     public Task<int> GetVolume()
     {
-        return Task.FromResult((int)(Audio.Volume * 100));
+        try
+        {
+            return Task.FromResult((int)(Audio.Volume * 100));
+        }
+        catch (COMException ex) when (ex.HResult == unchecked((int)0x80070490))
+        {
+            logger.LogWarning("No default audio device found; returning volume as 0.");
+            return Task.FromResult(0);
+        }
     }
 
     public bool StillPlaying

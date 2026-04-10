@@ -32,7 +32,7 @@
                 }
                 <div class="progress-row mt-2">
                     <div class="progress-bar-track">
-                        <div class="progress-bar-fill" style="width: @(PlayerState.Status.PercentComplete.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                        <div class="progress-bar-fill" style="width: @((PlayerState.Status.PercentComplete * 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
                     </div>
                     <div class="volume-popup-anchor">
                         <button class="volume-icon-btn" @onclick="ToggleVolumePopup" title="Adjust volume" aria-label="Adjust volume">
