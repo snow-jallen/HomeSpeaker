@@ -52,10 +52,6 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             {
                 this.status = status;
             }
-            else
-            {
-                this.status = new PlayerStatus();
-            }
         });
         playerProcess.ErrorDataReceived += new DataReceivedEventHandler((s, e) =>
         {
@@ -67,10 +63,6 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             if (TryParsePlayerOutput(e.Data, out var status))
             {
                 this.status = status;
-            }
-            else
-            {
-                this.status = new PlayerStatus();
             }
         });
 

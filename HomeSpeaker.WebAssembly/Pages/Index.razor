@@ -34,7 +34,28 @@
                     <div class="progress-bar-track">
                         <div class="progress-bar-fill" style="width: @(PlayerState.Status.PercentComplete.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
                     </div>
-                    <span class="volume-badge"><i class="fas fa-volume-up me-1"></i>@PlayerState.Status.Volume</span>
+                    <div class="volume-popup-anchor">
+                        <button class="volume-icon-btn" @onclick="ToggleVolumePopup" title="Adjust volume" aria-label="Adjust volume">
+                            <i class="fas fa-volume-up"></i>
+                        </button>
+                        @if (showVolumePopup)
+                        {
+                            <div class="volume-dismiss-overlay" @onclick="CloseVolumePopup"></div>
+                            <div class="volume-popup-card">
+                                <span class="volume-popup-label">Vol</span>
+                                <span class="volume-popup-number">@volumeLevel</span>
+                                <div class="volume-slider-wrap">
+                                    <input type="range"
+                                           class="volume-slider-vertical"
+                                           min="0" max="100"
+                                           value="@volumeLevel"
+                                           aria-label="Volume"
+                                           @oninput="@(e => { if (int.TryParse(e.Value?.ToString(), out var v)) volumeLevel = v; })"
+                                           @onchange="OnVolumeChanged" />
+                                </div>
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
         }
@@ -81,7 +102,7 @@
             0 0 80px rgba(201, 152, 90, 0.06),
             inset 0 1px 0 rgba(255, 255, 255, 0.06);
         position: relative;
-        overflow: hidden;
+        overflow: visible;
     }
 
     /* Ambient top-left glow — the "stage light" effect */
@@ -187,12 +208,130 @@
         box-shadow: 0 0 8px rgba(201, 152, 90, 0.5);
     }
 
-    .volume-badge {
-        font-family: 'DM Mono', monospace;
-        font-size: 0.62rem;
+    .volume-popup-anchor {
+        position: relative;
+        flex-shrink: 0;
+    }
+
+    .volume-icon-btn {
+        background: none;
+        border: none;
+        padding: 0 2px;
+        cursor: pointer;
         color: var(--hs-text-muted);
-        white-space: nowrap;
-        letter-spacing: 0.03em;
+        font-size: 0.75rem;
+        line-height: 1;
+        transition: color 0.15s ease;
+    }
+
+    .volume-icon-btn:hover,
+    .volume-icon-btn:focus {
+        color: var(--hs-primary);
+        outline: none;
+    }
+
+    .volume-dismiss-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1050;
+        background: transparent;
+    }
+
+    .volume-popup-card {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        z-index: 1051;
+        background: linear-gradient(180deg, #252535 0%, #1A1A28 100%);
+        border: 1px solid rgba(201, 152, 90, 0.3);
+        border-radius: 12px;
+        padding: 6px 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75);
+        min-width: 44px;
+    }
+
+    .volume-popup-label {
+        font-family: 'Syne', sans-serif;
+        font-size: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--hs-primary);
+        line-height: 1;
+        flex-shrink: 0;
+    }
+
+    .volume-popup-number {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: var(--hs-text-primary);
+        line-height: 1;
+        flex-shrink: 0;
+    }
+
+    .volume-slider-wrap {
+        position: relative;
+        width: 20px;
+        height: 120px;
+        flex-shrink: 0;
+    }
+
+    input[type="range"].volume-slider-vertical {
+        -webkit-appearance: none;
+        appearance: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-90deg);
+        width: 120px;
+        height: 4px;
+        min-width: 120px;
+        min-height: 4px;
+        margin: 0;
+        padding: 0;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 2px;
+        outline: none;
+    }
+
+    input[type="range"].volume-slider-vertical::-webkit-slider-runnable-track {
+        height: 4px;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    input[type="range"].volume-slider-vertical::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 12px;
+        height: 12px;
+        margin-top: -4px;
+        border-radius: 50%;
+        background: var(--hs-primary);
+        cursor: pointer;
+        box-shadow: 0 0 4px rgba(201, 152, 90, 0.6);
+        transition: none;
+    }
+
+    input[type="range"].volume-slider-vertical::-moz-range-track {
+        height: 4px;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    input[type="range"].volume-slider-vertical::-moz-range-thumb {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--hs-primary);
+        border: none;
+        cursor: pointer;
+        transition: none;
     }
 
     .idle-state {
@@ -272,8 +411,12 @@
             display: none;
         }
 
-        .progress-row {
+        .progress-bar-track {
             display: none;
+        }
+
+        .progress-row {
+            justify-content: flex-end;
         }
 
         .idle-icon {
@@ -290,6 +433,8 @@
     private bool showTemperature;
     private bool showBloodSugar;
     private Timer? refreshTimer;
+    private bool showVolumePopup;
+    private int volumeLevel;
 
     private record FeaturesResponse(bool TemperatureEnabled, bool BloodSugarEnabled);
 
@@ -325,6 +470,23 @@
 
     private void OnStateChanged() => InvokeAsync(StateHasChanged);
 
+    private void ToggleVolumePopup() => showVolumePopup = !showVolumePopup;
+    private void CloseVolumePopup() => showVolumePopup = false;
+    private async Task OnVolumeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var v))
+        {
+            try
+            {
+                await svc.SetVolumeAsync(v);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to set volume");
+            }
+        }
+    }
+
     private async Task RefreshStatusAsync()
     {
         try
@@ -333,7 +495,8 @@
             bool repeatMode = await svc.GetRepeatModeAsync();
             PlayerState.UpdateStatus(status);
             PlayerState.UpdateRepeatMode(repeatMode);
-            // StateHasChanged is triggered by the event subscription above
+            volumeLevel = status?.Volume ?? volumeLevel;
+            StateHasChanged();
         }
         catch (Exception ex)
         {

@@ -94,10 +94,6 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
             {
                 this.status = status;
             }
-            else
-            {
-                this.status = new PlayerStatus();
-            }
         });
         playerProcess.ErrorDataReceived += new DataReceivedEventHandler((s, e) =>
         {
@@ -109,10 +105,6 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
             if (TryParsePlayerOutput(e.Data, out var status))
             {
                 this.status = status;
-            }
-            else
-            {
-                this.status = new PlayerStatus();
             }
         });
 
