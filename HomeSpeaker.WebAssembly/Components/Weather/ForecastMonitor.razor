@@ -29,6 +29,32 @@
             @if (forecastStatus != null && (forecastStatus.TonightLow != null || forecastStatus.TomorrowHigh != null || forecastStatus.TodayHigh != null))
             {
                 <div class="row g-2">
+                    @{
+                        var showTodayHigh = DateTime.UtcNow.ToLocalTime().Hour < 15;
+                        var highData = showTodayHigh ? forecastStatus.TodayHigh : forecastStatus.TomorrowHigh;
+                        var highLabel = showTodayHigh ? "Today's High" : "Tomorrow's High";
+                    }
+                    @if (showTodayHigh && highData != null)
+                    {
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="mb-2">
+                                    <i class="fas fa-sun fa-2x" style="color: @GetTemperatureColor(highData.Temperature)"></i>
+                                </div>
+                                <div class="h6 text-muted mb-2">@highLabel</div>
+                                <div class="forecast-display">
+                                    <span class="display-1 fw-bold" style="color: @GetTemperatureColor(highData.Temperature)">@FormatTemperature(highData.Temperature)</span>
+                                </div>
+                                <div class="small text-muted mt-1">@highData.Conditions</div>
+                                @if (highData.PrecipitationChance.HasValue && highData.PrecipitationChance > 0)
+                                {
+                                    <div class="small text-muted">
+                                        <i class="fas fa-tint me-1"></i>@highData.PrecipitationChance%
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
                     @if (forecastStatus.TonightLow != null)
                     {
                         <div class="col-6">
@@ -50,12 +76,7 @@
                             </div>
                         </div>
                     }
-                    @{
-                        var showTodayHigh = DateTime.UtcNow.ToLocalTime().Hour < 15;
-                        var highData = showTodayHigh ? forecastStatus.TodayHigh : forecastStatus.TomorrowHigh;
-                        var highLabel = showTodayHigh ? "Today's High" : "Tomorrow's High";
-                    }
-                    @if (highData != null)
+                    @if (!showTodayHigh && highData != null)
                     {
                         <div class="col-6">
                             <div class="text-center">
