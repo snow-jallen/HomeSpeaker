@@ -42,6 +42,9 @@ service HomeSpeaker {
 	rpc SetSleepTimer(SetSleepTimerRequest) returns (SetSleepTimerReply);
 	rpc CancelSleepTimer(CancelSleepTimerRequest) returns (CancelSleepTimerReply);
 	rpc GetSleepTimer(GetSleepTimerRequest) returns (GetSleepTimerReply);
+	rpc GetAmazonPlaylists(GetAmazonPlaylistsRequest) returns (GetAmazonPlaylistsReply);
+	rpc PlayAmazonPlaylist(PlayAmazonPlaylistRequest) returns (PlayAmazonPlaylistReply);
+	rpc GetAmazonMusicStatus(GetAmazonMusicStatusRequest) returns (GetAmazonMusicStatusReply);
 }
 
 message UpdateQueueRequest {
@@ -269,4 +272,35 @@ message GetSleepTimerRequest {}
 message GetSleepTimerReply {
 	bool Active = 1;
 	int32 RemainingSeconds = 2;
+}
+
+message AmazonPlaylistMessage {
+string PlaylistId = 1;
+string PlaylistName = 2;
+string PlaylistUrl = 3;
+int32 TrackCount = 4;
+}
+
+message GetAmazonPlaylistsRequest {}
+
+message GetAmazonPlaylistsReply {
+repeated AmazonPlaylistMessage Playlists = 1;
+bool IsConfigured = 2;
+}
+
+message PlayAmazonPlaylistRequest {
+string PlaylistId = 1;
+}
+
+message PlayAmazonPlaylistReply {
+bool Started = 1;
+string Message = 2;
+}
+
+message GetAmazonMusicStatusRequest {}
+
+message GetAmazonMusicStatusReply {
+bool IsConfigured = 1;
+bool CliAvailable = 2;
+string SetupInstructions = 3;
 }

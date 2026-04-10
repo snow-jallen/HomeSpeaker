@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using HomeSpeaker.WebAssembly.Models;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using static HomeSpeaker.Shared.HomeSpeaker;
 
@@ -378,6 +379,35 @@ public class HomeSpeakerService
     {
         var result = await client.GetSleepTimerAsync(new GetSleepTimerRequest());
         return (result.Active, result.RemainingSeconds);
+    }
+
+
+    // Amazon Music methods
+    public async Task<(bool IsConfigured, bool CliAvailable, string SetupInstructions)> GetAmazonMusicStatusAsync()
+    {
+        var result = await this.client.GetAmazonMusicStatusAsync(new GetAmazonMusicStatusRequest());
+        return (result.IsConfigured, result.CliAvailable, result.SetupInstructions);
+    }
+
+    public async Task<IEnumerable<AmazonPlaylistViewModel>> GetAmazonPlaylistsAsync()
+    {
+        this.logger.LogInformation("Getting Amazon Music playlists");
+        var reply = await this.client.GetAmazonPlaylistsAsync(new GetAmazonPlaylistsRequest());
+        return reply.Playlists.Select(p => new AmazonPlaylistViewModel
+        {
+            PlaylistId = p.PlaylistId,
+            PlaylistName = p.PlaylistName,
+            PlaylistUrl = p.PlaylistUrl,
+            TrackCount = p.TrackCount
+        });
+    }
+
+    public async Task<(bool Started, string Message)> PlayAmazonPlaylistAsync(string playlistId)
+    {
+        this.logger.LogInformation("Playing Amazon Music playlist: {PlaylistId}", playlistId);
+        var result = await this.client.PlayAmazonPlaylistAsync(new PlayAmazonPlaylistRequest { PlaylistId = playlistId });
+        this.QueueChanged?.Invoke(this, EventArgs.Empty);
+        return (result.Started, result.Message);
     }
 
     public event Action<string>? StatusChanged;

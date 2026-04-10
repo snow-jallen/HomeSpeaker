@@ -1,93 +1,360 @@
 @page "/amazon"
 @inject HomeSpeakerService svc
-@inject IJSRuntime JsRuntime
 @inject ILogger<Amazon> logger
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>Amazon Music</h3>
-    <button @onclick="RefreshPlaylists" class="btn btn-outline-secondary" title="Refresh playlists">
-        <span class="oi oi-reload me-1"></span>Refresh
-    </button>
+<PageTitle>Home Speaker | Amazon Music</PageTitle>
+
+<div class="amazon-header mb-4">
+    <h2 class="mb-1">
+        <i class="fab fa-amazon me-2" style="color: var(--hs-primary);"></i>
+        Amazon Music
+    </h2>
+    <p class="text-muted mb-0" style="font-size:0.9rem;">
+        Download and shuffle Amazon Music playlists
+    </p>
 </div>
 
-@if(playlists == null)
+@if (loading)
 {
-    <div class="d-flex justify-content-center p-4">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
+    <div class="loading-message">
+        <div class="loading-spinner mx-auto"></div>
+        <p class="mt-3">Checking Amazon Music configuration…</p>
     </div>
 }
-else if (!playlists.Any())
+else if (!isConfigured)
 {
-    <div class="text-center text-muted p-4">
-        <h5>No Amazon Music playlists found</h5>
-        <p>Connect your Amazon Music account to see your playlists here!</p>
+    <div class="setup-guide card border-0 p-4 mb-3">
+        <div class="mb-3">
+            <i class="fab fa-amazon fa-3x" style="color: var(--hs-primary);"></i>
+        </div>
+        <h4 class="mb-3">Set up Amazon Music</h4>
+        <p class="text-muted mb-4">
+            This feature uses the open-source
+            <a href="https://github.com/AmineSoukara/amazon-music" target="_blank" rel="noopener noreferrer">
+                <code>amazon-music</code>
+            </a>
+            Python package to download and play your Amazon Music playlists locally.
+            A <strong>Premium Amazon Music</strong> account is required.
+        </p>
+
+        <div class="setup-steps">
+            <div class="setup-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <strong>Install the CLI</strong>
+                    <code class="d-block mt-1 p-2 bg-dark text-light rounded">pip install amazon-music</code>
+                </div>
+            </div>
+
+            <div class="setup-step mt-3">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <strong>Get your authentication token</strong>
+                    <p class="text-muted mb-1">Visit <a href="https://amz.dezalty.com/login" target="_blank" rel="noopener noreferrer">amz.dezalty.com/login</a> to obtain your token.</p>
+                </div>
+            </div>
+
+            <div class="setup-step mt-3">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <strong>Add playlists to <code>appsettings.json</code></strong>
+                    <pre class="mt-1 p-2 bg-dark text-light rounded small">@@{
+  "AmazonMusic": {
+    "Token": "your-token-here",
+    "Quality": "Normal",
+    "Playlists": [
+      {
+        "Id": "favorites",
+        "Name": "My Favorites",
+        "Url": "https://music.amazon.com/playlists/B0FBL3CC8M",
+        "TrackCount": 25
+      }
+    ]
+  }
+}</pre>
+                </div>
+            </div>
+
+            <div class="setup-step mt-3">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <strong>Find your playlist URLs</strong>
+                    <p class="text-muted mb-0">
+                        Open
+                        <a href="https://music.amazon.com" target="_blank" rel="noopener noreferrer">music.amazon.com</a>,
+                        go to a playlist, and copy the URL from your browser's address bar.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        @if (!cliAvailable)
+        {
+            <div class="alert alert-warning mt-4" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>CLI not found.</strong> The <code>amz</code> command is not available on this server.
+                Run <code>pip install amazon-music</code> on the server and restart.
+            </div>
+        }
     </div>
 }
 else
 {
-    <div class="alert alert-info" role="alert">
-        <strong>Note:</strong> This is a demo feature. Click on a playlist to shuffle and play music from your local library. 
-        Full Amazon Music integration coming soon!
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="text-muted" style="font-size:0.875rem;">
+            <i class="fas fa-list-ul me-1"></i> @playlists.Count() playlist@(playlists.Count() == 1 ? "" : "s") configured
+            @if (!cliAvailable)
+            {
+                <span class="badge bg-warning text-dark ms-2">
+                    <i class="fas fa-exclamation-triangle me-1"></i>CLI unavailable
+                </span>
+            }
+        </span>
+        <button @onclick="RefreshAsync" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-sync-alt me-1"></i>Refresh
+        </button>
     </div>
-    
-    <div class="list-group">
-        @foreach(var playlist in playlists)
+
+    @if (!cliAvailable)
+    {
+        <div class="alert alert-warning" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>amz CLI not found.</strong>
+            Run <code>pip install amazon-music</code> on the server to enable playback.
+        </div>
+    }
+
+    <div class="playlist-grid">
+        @foreach (var playlist in playlists)
         {
-            <div @key="playlist.PlaylistId" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center flex-grow-1" style="cursor: pointer;" @onclick="() => PlayPlaylist(playlist.PlaylistId, playlist.PlaylistName)">
-                    <span class="oi oi-musical-note me-3 text-primary" style="font-size: 1.5rem;"></span>
-                    <div>
-                        <h5 class="mb-1">@playlist.PlaylistName</h5>
-                        <small class="text-muted">@playlist.TrackCount tracks</small>
-                    </div>
+            <div class="playlist-card @(playingId == playlist.PlaylistId ? "playing" : "")" @key="playlist.PlaylistId">
+                <div class="playlist-icon">
+                    @if (playingId == playlist.PlaylistId)
+                    {
+                        <div class="music-bars">
+                            <span></span><span></span><span></span>
+                        </div>
+                    }
+                    else
+                    {
+                        <i class="fab fa-amazon"></i>
+                    }
                 </div>
-                <button class="btn btn-primary" @onclick="() => PlayPlaylist(playlist.PlaylistId, playlist.PlaylistName)">
-                    <span class="oi oi-play-circle me-1"></span>Shuffle & Play
+                <div class="playlist-info flex-grow-1">
+                    <div class="playlist-name">@playlist.PlaylistName</div>
+                    @if (playlist.TrackCount > 0)
+                    {
+                        <div class="playlist-meta">@playlist.TrackCount tracks</div>
+                    }
+                    @if (!string.IsNullOrEmpty(playlistMessage) && playingId == playlist.PlaylistId)
+                    {
+                        <div class="playlist-status @(playSuccess ? "text-success" : "text-danger") small mt-1">
+                            <i class="fas @(playSuccess ? "fa-check-circle" : "fa-times-circle") me-1"></i>@playlistMessage
+                        </div>
+                    }
+                </div>
+                <button class="btn btn-sm @(playingId == playlist.PlaylistId ? "btn-warning" : "btn-primary")"
+                        @onclick="() => PlayPlaylistAsync(playlist.PlaylistId)"
+                        disabled="@(downloadInProgress)">
+                    @if (downloadInProgress && playingId == playlist.PlaylistId)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        <span>Downloading…</span>
+                    }
+                    else
+                    {
+                        <i class="fas fa-random me-1"></i>
+                        <span>Shuffle</span>
+                    }
                 </button>
             </div>
         }
     </div>
 }
 
+<style>
+    .amazon-header h2 {
+        font-family: 'Syne', sans-serif;
+        font-weight: 700;
+    }
+
+    .setup-guide {
+        background: var(--hs-bg-card);
+        border-radius: var(--hs-radius-lg);
+    }
+
+    .setup-steps {
+        border-left: 2px solid rgba(201, 152, 90, 0.3);
+        padding-left: 1.5rem;
+    }
+
+    .setup-step {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+    .step-number {
+        min-width: 28px;
+        height: 28px;
+        background: linear-gradient(135deg, var(--hs-primary) 0%, var(--hs-primary-dark) 100%);
+        color: #1A1008;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.8rem;
+        flex-shrink: 0;
+    }
+
+    .playlist-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .playlist-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        background: var(--hs-bg-card);
+        border-radius: var(--hs-radius-md);
+        border: 1px solid transparent;
+        transition: all 0.15s ease;
+    }
+
+    .playlist-card:hover {
+        background: var(--hs-hover-bg);
+        border-color: rgba(201, 152, 90, 0.15);
+    }
+
+    .playlist-card.playing {
+        background: rgba(201, 152, 90, 0.08);
+        border-color: rgba(201, 152, 90, 0.3);
+    }
+
+    .playlist-icon {
+        width: 44px;
+        height: 44px;
+        background: rgba(201, 152, 90, 0.1);
+        border-radius: var(--hs-radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: var(--hs-primary);
+        font-size: 1.2rem;
+    }
+
+    .playlist-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: var(--hs-text-primary);
+    }
+
+    .playlist-meta {
+        font-size: 0.8rem;
+        color: var(--hs-text-muted);
+        margin-top: 2px;
+    }
+
+    /* Animated equaliser bars when a playlist is playing */
+    .music-bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 3px;
+        height: 20px;
+    }
+
+    .music-bars span {
+        width: 4px;
+        background: var(--hs-primary);
+        border-radius: 2px;
+        animation: bar-bounce 0.8s ease-in-out infinite alternate;
+    }
+
+    .music-bars span:nth-child(1) { animation-delay: 0s;    height: 8px; }
+    .music-bars span:nth-child(2) { animation-delay: 0.15s; height: 14px; }
+    .music-bars span:nth-child(3) { animation-delay: 0.3s;  height: 10px; }
+
+    @@keyframes bar-bounce {
+        0%   { transform: scaleY(0.4); }
+        100% { transform: scaleY(1.2); }
+    }
+</style>
+
 @code {
-    IEnumerable<AmazonPlaylistViewModel>? playlists;
+    bool loading = true;
+    bool isConfigured;
+    bool cliAvailable;
+    bool downloadInProgress;
+    bool playSuccess;
+    string? playingId;
+    string? playlistMessage;
+    IEnumerable<AmazonPlaylistViewModel> playlists = [];
 
     protected override async Task OnInitializedAsync()
     {
-        await RefreshPlaylists();
+        await RefreshAsync();
     }
 
-    async Task RefreshPlaylists()
+    async Task RefreshAsync()
     {
+        loading = true;
+        playlistMessage = null;
+        StateHasChanged();
         try
         {
-            logger.LogInformation("RefreshPlaylists: Starting to refresh Amazon Music playlists");
-            playlists = await svc.GetAmazonPlaylistsAsync();
-            logger.LogInformation("RefreshPlaylists: Got {Count} playlists from server", playlists.Count());
+            (isConfigured, cliAvailable, _) = await svc.GetAmazonMusicStatusAsync();
+            if (isConfigured)
+            {
+                playlists = await svc.GetAmazonPlaylistsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to load Amazon Music status");
+            isConfigured = false;
+            cliAvailable = false;
+        }
+        finally
+        {
+            loading = false;
             StateHasChanged();
         }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "RefreshPlaylists: Error refreshing Amazon playlists: {Message}", ex.Message);
-            await JsRuntime.InvokeVoidAsync("console.error", $"RefreshPlaylists: Error refreshing playlists: {ex.Message}");
-            playlists = Enumerable.Empty<AmazonPlaylistViewModel>();
-        }
     }
 
-    async Task PlayPlaylist(string playlistId, string playlistName)
+    async Task PlayPlaylistAsync(string playlistId)
     {
+        if (downloadInProgress)
+        {
+            return;
+        }
+
+        playingId = playlistId;
+        playlistMessage = null;
+        downloadInProgress = true;
+        StateHasChanged();
+
         try
         {
-            logger.LogInformation("Playing Amazon Music playlist: {PlaylistName} ({PlaylistId})", playlistName, playlistId);
-            await svc.PlayAmazonPlaylistAsync(playlistId);
-            await JsRuntime.InvokeVoidAsync("alert", $"Now shuffling and playing: {playlistName}");
+            logger.LogInformation("User requested Amazon playlist: {Id}", playlistId);
+            var (started, message) = await svc.PlayAmazonPlaylistAsync(playlistId);
+            playSuccess = started;
+            playlistMessage = message;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error playing Amazon playlist: {Message}", ex.Message);
-            await JsRuntime.InvokeVoidAsync("alert", $"Error playing playlist: {ex.Message}");
+            logger.LogError(ex, "Error playing Amazon playlist {Id}", playlistId);
+            playSuccess = false;
+            playlistMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            downloadInProgress = false;
+            StateHasChanged();
         }
     }
 }

@@ -14,11 +14,12 @@ public class HomeSpeakerService : HomeSpeakerBase
     private readonly YoutubeService youtubeService;
     private readonly PlaylistService playlistService;
     private readonly RadioStreamService radioStreamService;
+    private readonly AmazonMusicService amazonMusicService;
     private readonly IHttpClientFactory httpClientFactory;
     private readonly List<IServerStreamWriter<StreamServerEvent>> eventClients = new();
     private readonly List<IServerStreamWriter<StreamServerEvent>> failedEvents = new();
 
-    public HomeSpeakerService(ILogger<HomeSpeakerService> logger, Mp3Library library, IMusicPlayer musicPlayer, YoutubeService youtubeService, PlaylistService playlistService, RadioStreamService radioStreamService, IHttpClientFactory httpClientFactory, IServiceProvider serviceProvider)
+    public HomeSpeakerService(ILogger<HomeSpeakerService> logger, Mp3Library library, IMusicPlayer musicPlayer, YoutubeService youtubeService, PlaylistService playlistService, RadioStreamService radioStreamService, AmazonMusicService amazonMusicService, IHttpClientFactory httpClientFactory, IServiceProvider serviceProvider)
     {
         this.logger = logger ?? throw new System.ArgumentNullException(nameof(logger));
         this.library = library ?? throw new System.ArgumentNullException(nameof(library));
@@ -26,6 +27,7 @@ public class HomeSpeakerService : HomeSpeakerBase
         this.youtubeService = youtubeService;
         this.playlistService = playlistService;
         this.radioStreamService = radioStreamService;
+        this.amazonMusicService = amazonMusicService;
         this.httpClientFactory = httpClientFactory;
         this.serviceProvider = serviceProvider;
         this.youtubeService = youtubeService;
@@ -568,4 +570,66 @@ public class HomeSpeakerService : HomeSpeakerBase
             RemainingSeconds = remaining.HasValue ? (int)remaining.Value.TotalSeconds : 0
         });
     }
+
+    public override Task<GetAmazonMusicStatusReply> GetAmazonMusicStatus(GetAmazonMusicStatusRequest request, ServerCallContext context)
+    {
+        var isConfigured = this.amazonMusicService.IsConfigured();
+        var cliAvailable = this.amazonMusicService.IsCliAvailable();
+
+        var instructions = isConfigured && cliAvailable
+            ? string.Empty
+            : buildSetupInstructions(isConfigured, cliAvailable);
+
+        return Task.FromResult(new GetAmazonMusicStatusReply
+        {
+            IsConfigured = isConfigured,
+            CliAvailable = cliAvailable,
+            SetupInstructions = instructions
+        });
+    }
+
+    public override Task<GetAmazonPlaylistsReply> GetAmazonPlaylists(GetAmazonPlaylistsRequest request, ServerCallContext context)
+    {
+        this.logger.LogInformation("GetAmazonPlaylists called");
+        var playlists = this.amazonMusicService.GetConfiguredPlaylists().ToList();
+
+        var reply = new GetAmazonPlaylistsReply { IsConfigured = playlists.Count > 0 };
+        reply.Playlists.AddRange(playlists.Select(p => new AmazonPlaylistMessage
+        {
+            PlaylistId = p.Id,
+            PlaylistName = p.Name,
+            PlaylistUrl = p.Url,
+            TrackCount = p.TrackCount
+        }));
+
+        return Task.FromResult(reply);
+    }
+
+    public override async Task<PlayAmazonPlaylistReply> PlayAmazonPlaylist(PlayAmazonPlaylistRequest request, ServerCallContext context)
+    {
+        this.logger.LogInformation("PlayAmazonPlaylist called for id '{PlaylistId}'", request.PlaylistId);
+        var (success, message) = await this.amazonMusicService.PlayAmazonPlaylistAsync(request.PlaylistId);
+        return new PlayAmazonPlaylistReply { Started = success, Message = message };
+    }
+
+    private static string buildSetupInstructions(bool isConfigured, bool cliAvailable)
+    {
+        var steps = new List<string>();
+
+        if (!cliAvailable)
+        {
+            steps.Add("1. Install the amazon-music CLI: pip install amazon-music");
+            steps.Add("2. Get your token at https://amz.dezalty.com/login");
+            steps.Add("3. Add your token to appsettings.json: \"AmazonMusic\": { \"Token\": \"<your-token>\" }");
+        }
+
+        if (!isConfigured)
+        {
+            steps.Add("4. Find your playlist URLs at https://music.amazon.com and add them to appsettings.json:");
+            steps.Add("   \"Playlists\": [{ \"Id\": \"favorites\", \"Name\": \"My Favorites\", \"Url\": \"https://music.amazon.com/playlists/B0FBL3CC8M\" }]");
+        }
+
+        return string.Join("\n", steps);
+    }
+
 }

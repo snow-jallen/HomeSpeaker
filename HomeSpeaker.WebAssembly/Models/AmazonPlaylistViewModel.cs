@@ -6,5 +6,7 @@ public class AmazonPlaylistViewModel
 
     public string PlaylistName { get; set; } = string.Empty;
 
+    public string PlaylistUrl { get; set; } = string.Empty;
+
     public int TrackCount { get; set; }
 }
