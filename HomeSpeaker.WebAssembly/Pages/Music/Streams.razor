@@ -4,6 +4,7 @@
 @inject HomeSpeakerService svc
 @inject ImagePickerService imagePicker
 @inject IJSRuntime JsRuntime
+@inject NavigationManager Nav
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h3>Internet Radio Streams</h3>
@@ -333,7 +334,7 @@ else
         try
         {
             await svc.PlayRadioStreamAsync(streamId);
-            await RefreshStreams();
+            Nav.NavigateTo("/");
         }
         catch (Exception ex)
         {
