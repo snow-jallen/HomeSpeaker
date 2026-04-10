@@ -11,7 +11,7 @@
 You have to create a certificate on the host machine
 
 ```bash
-dotnet dev-certs https -ep %USERPROFILE%\.aspnet\https\aspnetapp.pfx -p $CREDENTIAL_PLACEHOLDER$
+dotnet dev-certs https -ep %USERPROFILE%/.aspnet/https/aspnetapp.pfx -p $CREDENTIAL_PLACEHOLDER$
 dotnet dev-certs https --trust
 ```
 

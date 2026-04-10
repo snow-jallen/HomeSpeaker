@@ -2,6 +2,7 @@
 
 import "google/protobuf/empty.proto";
 import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
 
 option csharp_namespace = "HomeSpeaker.Shared";
 
@@ -27,10 +28,20 @@ service HomeSpeaker {
 	rpc RenamePlaylist(RenamePlaylistRequest) returns (RenamePlaylistReply);
 	rpc DeletePlaylist(DeletePlaylistRequest) returns (DeletePlaylistReply);
 	rpc ReorderPlaylistSongs(ReorderPlaylistSongsRequest) returns (ReorderPlaylistSongsReply);
+	rpc ShufflePlaylist(ShufflePlaylistRequest) returns (ShufflePlaylistReply);
+	rpc SetPlaylistAlwaysShuffle(SetPlaylistAlwaysShuffleRequest) returns (SetPlaylistAlwaysShuffleReply);
 	rpc UpdateQueue(UpdateQueueRequest) returns (UpdateQueueReply);
 	rpc ToggleBacklight(google.protobuf.Empty) returns (google.protobuf.Empty);
-	rpc GetAmazonPlaylists(GetAmazonPlaylistsRequest) returns (GetAmazonPlaylistsReply);
-	rpc PlayAmazonPlaylist(PlayAmazonPlaylistRequest) returns (PlayAmazonPlaylistReply);
+	rpc GetRadioStreams(GetRadioStreamsRequest) returns (GetRadioStreamsReply);
+	rpc PlayRadioStream(PlayRadioStreamRequest) returns (PlayRadioStreamReply);
+	rpc CreateRadioStream(CreateRadioStreamRequest) returns (RadioStreamMessage);
+	rpc UpdateRadioStream(UpdateRadioStreamRequest) returns (RadioStreamMessage);
+	rpc DeleteRadioStream(DeleteRadioStreamRequest) returns (DeleteRadioStreamReply);
+	rpc SetRepeatMode(SetRepeatModeRequest) returns (SetRepeatModeReply);
+	rpc GetRepeatMode(GetRepeatModeRequest) returns (GetRepeatModeReply);
+	rpc SetSleepTimer(SetSleepTimerRequest) returns (SetSleepTimerReply);
+	rpc CancelSleepTimer(CancelSleepTimerRequest) returns (CancelSleepTimerReply);
+	rpc GetSleepTimer(GetSleepTimerRequest) returns (GetSleepTimerReply);
 }
 
 message UpdateQueueRequest {
@@ -57,6 +68,7 @@ message GetPlaylistsReply{
 }
 message PlaylistMessage{
 	string PlaylistName=1;
+	bool AlwaysShuffle=2;
 	repeated SongMessage Songs=3;
 }
 message ShuffleQueueRequest {}
@@ -79,6 +91,8 @@ message GetStatusReply {
 	double PercentComplete=4;
 	SongMessage CurrentSong=5;
 	int32 Volume=6;
+	bool IsStream=7;
+	string StreamName=8;
 }
 message GetSongsRequest {
 	string Folder=1;
@@ -162,21 +176,97 @@ message ReorderPlaylistSongsRequest{
 	repeated string SongPaths=2; // Songs in the new order
 }
 message ReorderPlaylistSongsReply{}
+message ShufflePlaylistRequest{
+	string PlaylistName=1;
+}
+message ShufflePlaylistReply{
+	repeated string ShuffledSongPaths=1; // Songs in the new shuffled order
+}
+message SetPlaylistAlwaysShuffleRequest{
+	string PlaylistName=1;
+	bool AlwaysShuffle=2;
+}
+message SetPlaylistAlwaysShuffleReply{}
 
-message GetAmazonPlaylistsRequest{}
-
-message GetAmazonPlaylistsReply{
-	repeated AmazonPlaylistMessage Playlists=1;
+message RadioStreamMessage {
+	int32 Id = 1;
+	string Name = 2;
+	string Url = 3;
+	string FaviconFileName = 4;
+	int32 PlayCount = 5;
+	int32 DisplayOrder = 6;
+	google.protobuf.Timestamp CreatedAt = 7;
+	google.protobuf.Timestamp LastPlayedAt = 8;
 }
 
-message AmazonPlaylistMessage{
-	string PlaylistId=1;
-	string PlaylistName=2;
-	int32 TrackCount=3;
+message GetRadioStreamsRequest {}
+
+message GetRadioStreamsReply {
+	repeated RadioStreamMessage Streams = 1;
 }
 
-message PlayAmazonPlaylistRequest{
-	string PlaylistId=1;
+message PlayRadioStreamRequest {
+	int32 StreamId = 1;
 }
 
-message PlayAmazonPlaylistReply{}
+message PlayRadioStreamReply {
+	bool Ok = 1;
+}
+
+message CreateRadioStreamRequest {
+	string Name = 1;
+	string Url = 2;
+	string FaviconUrl = 3;
+	string FaviconFileName = 4;
+}
+
+message UpdateRadioStreamRequest {
+	int32 StreamId = 1;
+	string Name = 2;
+	string Url = 3;
+	string FaviconUrl = 4;
+	string FaviconFileName = 5;
+}
+
+message DeleteRadioStreamRequest {
+	int32 StreamId = 1;
+}
+
+message DeleteRadioStreamReply {
+	bool Success = 1;
+}
+
+message SetRepeatModeRequest {
+	bool RepeatMode = 1;
+}
+
+message SetRepeatModeReply {
+	bool Success = 1;
+}
+
+message GetRepeatModeRequest {}
+
+message GetRepeatModeReply {
+	bool RepeatMode = 1;
+}
+
+message SetSleepTimerRequest {
+	int32 Minutes = 1;
+}
+
+message SetSleepTimerReply {
+	bool Success = 1;
+}
+
+message CancelSleepTimerRequest {}
+
+message CancelSleepTimerReply {
+	bool Success = 1;
+}
+
+message GetSleepTimerRequest {}
+
+message GetSleepTimerReply {
+	bool Active = 1;
+	int32 RemainingSeconds = 2;
+}

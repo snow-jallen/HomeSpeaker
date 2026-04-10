@@ -1,32 +1,72 @@
-﻿<div class="row gx-1 p-1"><div class="d-flex align-items-center mb-1 gx-1 mx-1 py-1 bg-primary text-white rounded">
-        <div class="flex-grow-1 fs-5 ms-1" @onclick=toggleExpanded>
-            @(String.IsNullOrWhiteSpace(Content.Key) ? "[ No Artist ]" : Content.Key)
+﻿<div class="artist-card mb-3">
+    <div class="d-flex align-items-center mb-2" style="cursor: pointer;" @onclick=toggleExpanded>
+        <div class="flex-grow-1">
+            <h4 class="mb-0 text-white">
+                <i class="fas @(isExpanded ? "fa-chevron-down" : "fa-chevron-right") me-2" style="font-size: 0.85rem; opacity: 0.7;"></i>
+                @(String.IsNullOrWhiteSpace(Content?.Key) ? "[ No Artist ]" : Content.Key)
+            </h4>
+            <div class="text-muted small mt-1">@Content?.Count() songs</div>
         </div>
-        <PlayButtonWithDropdown Songs="Content.ToList()" />
-        <PlusButtonWithMenu Songs="Content.ToList()" />
+        <div class="d-flex gap-2">
+            <PlayButtonWithDropdown Songs="Content?.ToList()" />
+            <PlusButtonWithMenu Songs="Content?.ToList()" />
+        </div>
     </div>
+    
     @if (isExpanded)
     {
-        @foreach (var album in from song in Content
-                              group song by song.Album into album
-                              select album)
-        {            <div class="d-flex align-items-center mb-1 gx-1 mx-1 py-1 bg-secondary text-white rounded">
-                <div class="flex-grow-1 ms-1 fs-6">
-                    @(String.IsNullOrWhiteSpace(album.Key) ? "[ No Album ]" : album.Key)
+        <div class="albums-container mt-3">
+            @foreach (var album in from song in Content ?? Enumerable.Empty<SongViewModel>()
+                                  group song by song.Album into album
+                                  select album)
+            {
+                var albumKey = album.Key ?? "";
+                var albumExpanded = expandedAlbums.Contains(albumKey);
+                <div class="album-card mb-2" style="cursor: pointer;" @onclick="() => toggleAlbum(albumKey)" @onclick:stopPropagation>
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold text-white">
+                                <i class="fas @(albumExpanded ? "fa-chevron-down" : "fa-chevron-right") me-2" style="font-size: 0.75rem; opacity: 0.6;"></i>
+                                @(String.IsNullOrWhiteSpace(album.Key) ? "[ No Album ]" : album.Key)
+                            </div>
+                            <div class="text-muted small">@album.Count() songs</div>
+                        </div>
+                        <div class="d-flex gap-2" @onclick:stopPropagation>
+                            <PlayButtonWithDropdown Songs="album.ToList()" />
+                            <PlusButtonWithMenu Songs="album.ToList()" />
+                        </div>
+                    </div>
                 </div>
-                <PlayButtonWithDropdown Songs="album.ToList()" />
-                <PlusButtonWithMenu Songs="album.ToList()" />
-            </div>
-            <FolderDetails Name="@album.Key" Songs="@album" />
-        }
+                @if (albumExpanded)
+                {
+                    <FolderDetails Name="@album.Key" Songs="@album" />
+                }
+            }
+        </div>
     }
 </div>
 
+<style>
+    .albums-container {
+        padding-left: 1rem;
+        border-left: 2px solid rgba(201, 152, 90, 0.25);
+    }
+</style>
+
 @code {
     [Parameter]
-    public IGrouping<string, SongViewModel> Content { get; set; }
+    public IGrouping<string, SongViewModel>? Content { get; set; }
 
     private bool isExpanded = false;
+    private HashSet<string> expandedAlbums = new();
 
     void toggleExpanded() => isExpanded = !isExpanded;
+
+    void toggleAlbum(string albumKey)
+    {
+        if (expandedAlbums.Contains(albumKey))
+            expandedAlbums.Remove(albumKey);
+        else
+            expandedAlbums.Add(albumKey);
+    }
 }

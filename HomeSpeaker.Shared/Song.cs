@@ -4,9 +4,9 @@ public record Song
 {
     public int SongId { get; set; }
     public string Name { get; set; }
-    public string Path { get; set; }
-    public string Album { get; set; }
-    public string Artist { get; set; }
+    public string? Path { get; set; }
+    public string? Album { get; set; }
+    public string? Artist { get; set; }
 }
 
 public static class ProtobufExtensions
@@ -15,7 +15,7 @@ public static class ProtobufExtensions
     {
         return new PlayerStatus
         {
-            CurrentSong = reply.CurrentSong.ToSong(),
+            CurrentSong = reply.CurrentSong?.ToSong(),
             Elapsed = reply.Elapsed.ToTimeSpan(),
             PercentComplete = (decimal)reply.PercentComplete,
             Remaining = reply.Remaining.ToTimeSpan(),

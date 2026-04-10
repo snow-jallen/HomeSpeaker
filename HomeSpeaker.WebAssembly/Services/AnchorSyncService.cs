@@ -1,21 +1,20 @@
-using HomeSpeaker.Shared;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace HomeSpeaker.WebAssembly.Services;
 
 public class AnchorSyncService : IAnchorSyncService
 {
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<AnchorSyncService> _logger;
-    private HubConnection? _hubConnection;
+    private readonly IConfiguration configuration;
+    private readonly ILogger<AnchorSyncService> logger;
+    private HubConnection? hubConnection;
 
     public AnchorSyncService(IConfiguration configuration, ILogger<AnchorSyncService> logger)
     {
-        _configuration = configuration;
-        _logger = logger;
+        this.configuration = configuration;
+        this.logger = logger;
     }
 
-    public bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
+    public bool IsConnected => hubConnection?.State == HubConnectionState.Connected;
 
     public event Action<AnchorDefinition>? OnAnchorDefinitionCreated;
     public event Action<AnchorDefinition>? OnAnchorDefinitionUpdated;
@@ -28,59 +27,59 @@ public class AnchorSyncService : IAnchorSyncService
     {
         try
         {
-            var anchorsApiAddress = _configuration["AnchorsApiAddress"] ?? "http://localhost";
-            
-            _hubConnection = new HubConnectionBuilder()
+            var anchorsApiAddress = configuration["AnchorsApiAddress"] ?? "http://localhost";
+
+            hubConnection = new HubConnectionBuilder()
                 .WithUrl($"{anchorsApiAddress}/anchorHub")
                 .Build();
 
             // Subscribe to hub events
-            _hubConnection.On<AnchorDefinition>("AnchorDefinitionCreated", (anchorDefinition) =>
+            hubConnection.On<AnchorDefinition>("AnchorDefinitionCreated", (anchorDefinition) =>
             {
-                _logger.LogInformation("Received anchor definition created: {Name}", anchorDefinition.Name);
+                logger.LogInformation("Received anchor definition created: {Name}", anchorDefinition.Name);
                 OnAnchorDefinitionCreated?.Invoke(anchorDefinition);
             });
 
-            _hubConnection.On<AnchorDefinition>("AnchorDefinitionUpdated", (anchorDefinition) =>
+            hubConnection.On<AnchorDefinition>("AnchorDefinitionUpdated", (anchorDefinition) =>
             {
-                _logger.LogInformation("Received anchor definition updated: {Name}", anchorDefinition.Name);
+                logger.LogInformation("Received anchor definition updated: {Name}", anchorDefinition.Name);
                 OnAnchorDefinitionUpdated?.Invoke(anchorDefinition);
             });
 
-            _hubConnection.On<int>("AnchorDefinitionDeactivated", (anchorDefinitionId) =>
+            hubConnection.On<int>("AnchorDefinitionDeactivated", (anchorDefinitionId) =>
             {
-                _logger.LogInformation("Received anchor definition deactivated: {Id}", anchorDefinitionId);
+                logger.LogInformation("Received anchor definition deactivated: {Id}", anchorDefinitionId);
                 OnAnchorDefinitionDeactivated?.Invoke(anchorDefinitionId);
             });
 
-            _hubConnection.On<UserAnchor>("UserAnchorAssigned", (userAnchor) =>
+            hubConnection.On<UserAnchor>("UserAnchorAssigned", (userAnchor) =>
             {
-                _logger.LogInformation("Received user anchor assigned: user {UserId}, anchor {AnchorId}", userAnchor.UserId, userAnchor.AnchorDefinitionId);
+                logger.LogInformation("Received user anchor assigned: user {UserId}, anchor {AnchorId}", userAnchor.UserId, userAnchor.AnchorDefinitionId);
                 OnUserAnchorAssigned?.Invoke(userAnchor);
             });
 
-            _hubConnection.On<string, int>("UserAnchorRemoved", (userId, anchorDefinitionId) =>
+            hubConnection.On<string, int>("UserAnchorRemoved", (userId, anchorDefinitionId) =>
             {
-                _logger.LogInformation("Received user anchor removed: user {UserId}, anchor {AnchorId}", userId, anchorDefinitionId);
+                logger.LogInformation("Received user anchor removed: user {UserId}, anchor {AnchorId}", userId, anchorDefinitionId);
                 OnUserAnchorRemoved?.Invoke(userId, anchorDefinitionId);
             });
 
-            _hubConnection.On<int, bool, DateTime?>("DailyAnchorCompletionUpdated", (dailyAnchorId, isCompleted, completedAt) =>
+            hubConnection.On<int, bool, DateTime?>("DailyAnchorCompletionUpdated", (dailyAnchorId, isCompleted, completedAt) =>
             {
-                _logger.LogInformation("Received daily anchor completion updated: {DailyAnchorId}, completed: {IsCompleted}", dailyAnchorId, isCompleted);
+                logger.LogInformation("Received daily anchor completion updated: {DailyAnchorId}, completed: {IsCompleted}", dailyAnchorId, isCompleted);
                 OnDailyAnchorCompletionUpdated?.Invoke(dailyAnchorId, isCompleted, completedAt);
             });
 
             // Connection closed handler
-            _hubConnection.Closed += async (error) =>
+            hubConnection.Closed += async (error) =>
             {
                 if (error != null)
                 {
-                    _logger.LogWarning("SignalR connection closed with error: {Error}", error.Message);
+                    logger.LogWarning("SignalR connection closed with error: {Error}", error.Message);
                 }
                 else
                 {
-                    _logger.LogInformation("SignalR connection closed");
+                    logger.LogInformation("SignalR connection closed");
                 }
 
                 // Reconnect after 5 seconds
@@ -89,37 +88,46 @@ public class AnchorSyncService : IAnchorSyncService
             };
 
             // Start connection
-            await _hubConnection.StartAsync();
-            _logger.LogInformation("SignalR connection started successfully to {Url}", $"{anchorsApiAddress}/anchorHub");
+            await hubConnection.StartAsync();
+            logger.LogInformation("SignalR connection started successfully to {Url}", $"{anchorsApiAddress}/anchorHub");
 
             // Join the anchor updates group
-            await _hubConnection.SendAsync("JoinAnchorGroup");
+            await hubConnection.SendAsync("JoinAnchorGroup");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to start SignalR connection");
+            logger.LogError(ex, "Failed to start SignalR connection");
         }
     }
 
     public async Task StopAsync()
     {
-        if (_hubConnection is not null)
+        if (hubConnection is not null)
         {
             try
             {
-                await _hubConnection.SendAsync("LeaveAnchorGroup");
-                await _hubConnection.StopAsync();
-                _logger.LogInformation("SignalR connection stopped");
+                await hubConnection.SendAsync("LeaveAnchorGroup");
+                await hubConnection.StopAsync();
+                logger.LogInformation("SignalR connection stopped");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error stopping SignalR connection");
+                logger.LogError(ex, "Error stopping SignalR connection");
             }
+        }
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _ = hubConnection?.DisposeAsync();
         }
     }
 
     public void Dispose()
     {
-        _hubConnection?.DisposeAsync();
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
 }

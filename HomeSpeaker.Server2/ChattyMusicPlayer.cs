@@ -1,11 +1,11 @@
-﻿using HomeSpeaker.Shared;
+using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server2;
 
 public class ChattyMusicPlayer : IMusicPlayer, IDisposable
 {
     private readonly IMusicPlayer actualPlayer;
-    private bool _disposed;
+    private bool disposed;
 
     public ChattyMusicPlayer(IMusicPlayer actualPlayer)
     {
@@ -18,6 +18,16 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
     public PlayerStatus Status => actualPlayer.Status;
 
     public IEnumerable<Song> SongQueue => actualPlayer.SongQueue;
+
+    public bool RepeatMode
+    {
+        get => actualPlayer.RepeatMode;
+        set => actualPlayer.RepeatMode = value;
+    }
+
+    public bool SleepTimerActive => actualPlayer.SleepTimerActive;
+
+    public TimeSpan? SleepTimerRemaining => actualPlayer.SleepTimerRemaining;
 
     public event EventHandler<string>? PlayerEvent;
 
@@ -44,10 +54,10 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
         PlayerEvent?.Invoke(this, "Played: " + song.Name);
     }
 
-    public void PlayStream(string streamUrl)
+    public void PlayStream(string streamUrl, string? name = null)
     {
-        actualPlayer.PlayStream(streamUrl);
-        PlayerEvent?.Invoke(this, "Played stream: " + streamUrl);
+        actualPlayer.PlayStream(streamUrl, name);
+        PlayerEvent?.Invoke(this, "Played stream: " + (name ?? streamUrl));
     }
 
     public void ResumePlay()
@@ -74,10 +84,21 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
     {
         actualPlayer.Stop();
         PlayerEvent?.Invoke(this, "Stopped playing.");
-    }    public void UpdateQueue(IEnumerable<string> songs)
+    }
+    public void UpdateQueue(IEnumerable<string> songs)
     {
         actualPlayer.UpdateQueue(songs);
         PlayerEvent?.Invoke(this, "Updated queue.");
+    }
+
+    public void SetSleepTimer(int minutes)
+    {
+        actualPlayer.SetSleepTimer(minutes);
+    }
+
+    public void CancelSleepTimer()
+    {
+        actualPlayer.CancelSleepTimer();
     }
 
     public void Dispose()
@@ -88,13 +109,14 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!disposed)
         {
             if (disposing)
             {
                 actualPlayer?.Dispose();
             }
-            _disposed = true;
+
+            disposed = true;
         }
     }
 }

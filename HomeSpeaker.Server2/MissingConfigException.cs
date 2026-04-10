@@ -1,8 +1,8 @@
-﻿
+
 namespace HomeSpeaker.Server2;
 
 [Serializable]
-internal class MissingConfigException : Exception
+internal sealed class MissingConfigException : Exception
 {
     public MissingConfigException()
     {
@@ -15,5 +15,4 @@ internal class MissingConfigException : Exception
     public MissingConfigException(string? message, Exception? innerException) : base(message, innerException)
     {
     }
-
 }

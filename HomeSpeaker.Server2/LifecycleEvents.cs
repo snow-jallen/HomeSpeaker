@@ -1,5 +1,5 @@
-﻿using HomeSpeaker.Shared;
 using System.Text.Json;
+using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server2;
 
@@ -7,84 +7,91 @@ public class LifecycleEvents : IHostedService
 {
     public LifecycleEvents(ILogger<LifecycleEvents> logger, IMusicPlayer player, IConfiguration config)
     {
-        _logger = logger;
-        _player = player;
-        _config = config;
+        this.logger = logger;
+        this.player = player;
+        this.config = config;
+
+        if (!Path.Exists(config[ConfigKeys.MediaFolder]))
+        {
+            throw new MissingConfigException(ConfigKeys.MediaFolder);
+        }
     }
 
     //write to media folder because that exists outside of the container
-    public string LastStatePath => Path.Combine(_config[ConfigKeys.MediaFolder] ?? throw new MissingConfigException(ConfigKeys.MediaFolder), "lastState.json");
+    public string LastStatePath => Path.Combine(config[ConfigKeys.MediaFolder]!, "lastState.json");
 
-    private readonly ILogger<LifecycleEvents> _logger;
-    private readonly IMusicPlayer _player;
-    private readonly IConfiguration _config;
+    private readonly ILogger<LifecycleEvents> logger;
+    private readonly IMusicPlayer player;
+    private readonly IConfiguration config;
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Application started event raised!");
+        logger.LogInformation("Application started event raised!");
         if (File.Exists(LastStatePath))
         {
-            _logger.LogInformation("Found {LastStatePath} file, re-setting current song and queue", LastStatePath);
+            logger.LogInformation("Found {LastStatePath} file, re-setting current song and queue", LastStatePath);
 
-            var lastState = JsonSerializer.Deserialize<LastState>(await File.ReadAllTextAsync(LastStatePath));
+            var lastState = JsonSerializer.Deserialize<LastState>(await File.ReadAllTextAsync(LastStatePath, cancellationToken));
             if (lastState?.CurrentSong != null && lastState?.Queue != null)
             {
-                _player.PlaySong(lastState.CurrentSong);
+                player.PlaySong(lastState.CurrentSong);
                 foreach (var s in lastState.Queue)
                 {
-                    _player.EnqueueSong(s);
+                    player.EnqueueSong(s);
                 }
 
-                _logger.LogInformation("Restarted using {lastState}", lastState);
+                logger.LogInformation("Restarted using {LastState}", lastState);
             }
         }
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Application Stopping event raised!");
+        logger.LogInformation("Application Stopping event raised!");
         try
         {
-            if (_player.Status.StillPlaying)
+            if (player.Status.StillPlaying)
             {
-                _logger.LogInformation("Still playing music...saving current song and queue");
+                logger.LogInformation("Still playing music...saving current song and queue");
                 var lastState = new LastState
                 {
-                    CurrentSong = _player.Status.CurrentSong,
-                    Queue = _player.SongQueue
+                    CurrentSong = player.Status.CurrentSong,
+                    Queue = player.SongQueue
                 };
                 var json = JsonSerializer.Serialize(lastState);
                 await File.WriteAllTextAsync(LastStatePath, json, cancellationToken);
-                _logger.LogInformation("Saved {LastStatePath} with {LastState}", LastStatePath, lastState);
+                logger.LogInformation("Saved {LastStatePath} with {LastState}", LastStatePath, lastState);
             }
             else //if we're not playing anything right now
             {
-                _logger.LogInformation("Not playing anything, no state to save.");
+                logger.LogInformation("Not playing anything, no state to save.");
                 if (File.Exists(LastStatePath)) //don't leave behind a file as if we were.
+                {
                     File.Delete(LastStatePath);
+                }
             }
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning("Shutdown was cancelled before state could be saved");
+            logger.LogWarning("Shutdown was cancelled before state could be saved");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error saving application state during shutdown");
+            logger.LogError(ex, "Error saving application state during shutdown");
         }
         finally
         {
             // Ensure music player is properly disposed
-            if (_player is IDisposable disposablePlayer)
+            if (player is IDisposable disposablePlayer)
             {
                 try
                 {
                     disposablePlayer.Dispose();
-                    _logger.LogInformation("Music player disposed successfully");
+                    logger.LogInformation("Music player disposed successfully");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error disposing music player");
+                    logger.LogError(ex, "Error disposing music player");
                 }
             }
         }

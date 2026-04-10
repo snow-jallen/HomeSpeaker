@@ -1,4 +1,3 @@
-﻿using HomeSpeaker.Server2;
 using System.Diagnostics.CodeAnalysis;
 using TagLib;
 using YoutubeExplode;
@@ -15,28 +14,30 @@ public class YoutubeService : IDisposable
 {
     public YoutubeService(IConfiguration config, ILogger<YoutubeService> logger, Mp3Library library)
     {
-        _config = config;
-        _logger = logger;
-        _library = library;
+        this.config = config;
+        this.logger = logger;
+        this.library = library;
     }
 
-    private readonly YoutubeClient _client = new();
-    private readonly IConfiguration _config;
-    private readonly ILogger<YoutubeService> _logger;
-    private readonly Mp3Library _library;
-    private bool _disposed;
+#pragma warning disable CA2213 // YoutubeClient does not implement IDisposable — false positive
+    private readonly YoutubeClient client = new();
+#pragma warning restore CA2213
+    private readonly IConfiguration config;
+    private readonly ILogger<YoutubeService> logger;
+    private readonly Mp3Library library;
+    private bool disposed;
 
     public async Task<IEnumerable<VideoDto>> SearchAsync(string searchTerm, int maxItems = 50)
     {
         List<VideoDto> results = new();
-        await foreach (var batch in _client.Search.GetResultBatchesAsync(searchTerm))
+        await foreach (var batch in client.Search.GetResultBatchesAsync(searchTerm))
         {
             foreach (var result in batch.Items)
             {
                 switch (result)
                 {
                     case VideoSearchResult v:
-                        results.Add(new VideoDto(v.Title, v.Id, v.Url, v.Thumbnails.FirstOrDefault()?.Url, v.Author?.ChannelTitle, v.Duration));
+                        results.Add(new VideoDto(v.Title, v.Id, v.Url, v.Thumbnails.Count > 0 ? v.Thumbnails[0]?.Url : null, v.Author?.ChannelTitle, v.Duration));
                         break;
                         //case PlaylistSearchResult p:
                         //    results.Add(new Video(p.Title, p.Url, p.Thumbnails.FirstOrDefault()?.Url, p.Author?.ChannelTitle, TimeSpan.Zero));
@@ -52,20 +53,28 @@ public class YoutubeService : IDisposable
                 }
             }
         }
+
         return results;
     }
+
     public async Task CacheVideoAsync(string id, string title, IProgress<double> progress)
     {
         var fileName = string.Join("_", $"{title}.mp3".Split(Path.GetInvalidFileNameChars()));
-        var destinationPath = Path.Combine(_config[ConfigKeys.MediaFolder]!, "YouTube Cache");
+        var destinationPath = Path.Combine(config[ConfigKeys.MediaFolder]!, "YouTube Cache");
         if (!Directory.Exists(destinationPath))
+        {
             Directory.CreateDirectory(destinationPath);
+        }
+
         destinationPath = Path.Combine(destinationPath, fileName);
-        var ffmpegLocation = _config[ConfigKeys.FFMpegLocation] ?? throw new Exception("Missing ffmeg path in config: " + ConfigKeys.FFMpegLocation);
+        var ffmpegLocation = config[ConfigKeys.FFMpegLocation] ?? throw new Exception("Missing ffmeg path in config: " + ConfigKeys.FFMpegLocation);
 
-        _logger.LogInformation("Beginning to cache {title}", title);
+        logger.LogInformation("Beginning to cache {Title}", title);
 
-        await _client.Videos.DownloadAsync(VideoId.Parse(id), new ConversionRequest(ffmpegLocation, destinationPath, Container.Mp3, ConversionPreset.Medium), progress);
+        await client.Videos.DownloadAsync(VideoId.Parse(id), destinationPath, o => o
+            .SetFFmpegPath(ffmpegLocation)
+            .SetContainer(Container.Mp3)
+            .SetPreset(ConversionPreset.Medium), progress);
 
         try
         {
@@ -79,7 +88,7 @@ public class YoutubeService : IDisposable
             // Media tagging is not critical
         }
 
-        _logger.LogInformation("Finished caching {title}.  Saved to {destination}", title, destinationPath);
+        logger.LogInformation("Finished caching {Title}.  Saved to {Destination}", title, destinationPath);
     }
 
     public void Dispose()
@@ -90,14 +99,14 @@ public class YoutubeService : IDisposable
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!disposed)
         {
             if (disposing)
             {
-                // YoutubeClient doesn't implement IDisposable, so no cleanup needed
-                // Note: _client is readonly and cannot be reassigned
+                // YoutubeClient does not implement IDisposable — nothing to dispose
             }
-            _disposed = true;
+
+            disposed = true;
         }
     }
 }
@@ -177,38 +186,38 @@ public class Video : IVideo
     public override string ToString() => $"Video ({Title})";
 }
 
-internal partial class MediaFile : IDisposable
+internal sealed partial class MediaFile : IDisposable
 {
-    private readonly TagFile _file;
+    private readonly TagFile file;
 
-    public MediaFile(TagFile file) => _file = file;
+    public MediaFile(TagFile file) => this.file = file;
 
     public void SetThumbnail(byte[] thumbnailData) =>
-        _file.Tag.Pictures = new IPicture[] { new Picture(thumbnailData) };
+        file.Tag.Pictures = new IPicture[] { new Picture(thumbnailData) };
 
     public void SetArtist(string artist) =>
-        _file.Tag.Performers = new[] { artist };
+        file.Tag.Performers = new[] { artist };
 
     public void SetArtistSort(string artistSort) =>
-        _file.Tag.PerformersSort = new[] { artistSort };
+        file.Tag.PerformersSort = new[] { artistSort };
 
     public void SetTitle(string title) =>
-        _file.Tag.Title = title;
+        file.Tag.Title = title;
 
     public void SetAlbum(string album) =>
-        _file.Tag.Album = album;
+        file.Tag.Album = album;
 
     public void SetDescription(string description) =>
-        _file.Tag.Description = description;
+        file.Tag.Description = description;
 
     public void SetComment(string comment) =>
-        _file.Tag.Comment = comment;
+        file.Tag.Comment = comment;
 
     public void Dispose()
     {
-        _file.Tag.DateTagged = DateTime.Now;
-        _file.Save();
-        _file.Dispose();
+        file.Tag.DateTagged = DateTime.UtcNow.ToLocalTime();
+        file.Save();
+        file.Dispose();
     }
 
     public static MediaFile Create(string filePath) => new(TagFile.Create(filePath));

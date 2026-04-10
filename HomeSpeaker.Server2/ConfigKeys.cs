@@ -1,4 +1,4 @@
-﻿namespace HomeSpeaker.Server2;
+namespace HomeSpeaker.Server2;
 
 public static class ConfigKeys
 {

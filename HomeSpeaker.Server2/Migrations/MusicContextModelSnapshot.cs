@@ -7,15 +7,15 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace HomeSpeaker.Server2.Migrations;
-
-[DbContext(typeof(MusicContext))]
-partial class MusicContextModelSnapshot : ModelSnapshot
+namespace HomeSpeaker.Server2.Migrations
+{
+    [DbContext(typeof(MusicContext))]
+    partial class MusicContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.5");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
 
             modelBuilder.Entity("HomeSpeaker.Server2.Data.AnchorDefinitionEntity", b =>
                 {
@@ -41,6 +41,8 @@ partial class MusicContextModelSnapshot : ModelSnapshot
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IsActive", "Name");
 
                     b.ToTable("AnchorDefinitions");
                 });
@@ -80,6 +82,10 @@ partial class MusicContextModelSnapshot : ModelSnapshot
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Date", "IsCompleted");
+
+                    b.HasIndex("UserId", "Date");
+
                     b.ToTable("DailyAnchors");
                 });
 
@@ -102,6 +108,12 @@ partial class MusicContextModelSnapshot : ModelSnapshot
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PlayedBy");
+
+                    b.HasIndex("SongPath");
+
+                    b.HasIndex("Timestamp");
+
                     b.ToTable("Impressions");
                 });
 
@@ -111,11 +123,16 @@ partial class MusicContextModelSnapshot : ModelSnapshot
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("AlwaysShuffle")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Name");
 
                     b.ToTable("Playlists");
                 });
@@ -138,9 +155,52 @@ partial class MusicContextModelSnapshot : ModelSnapshot
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PlaylistId");
+                    b.HasIndex("Order");
+
+                    b.HasIndex("PlaylistId", "SongPath");
 
                     b.ToTable("PlaylistItems");
+                });
+
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.RadioStream", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FaviconFileName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastPlayedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PlayCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DisplayOrder");
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("PlayCount")
+                        .IsDescending();
+
+                    b.ToTable("RadioStreams");
                 });
 
             modelBuilder.Entity("HomeSpeaker.Server2.Data.Thumbnail", b =>
@@ -162,6 +222,8 @@ partial class MusicContextModelSnapshot : ModelSnapshot
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Artist", "Album");
 
                     b.ToTable("Thumbnails");
                 });
@@ -185,6 +247,9 @@ partial class MusicContextModelSnapshot : ModelSnapshot
                     b.HasKey("Id");
 
                     b.HasIndex("AnchorDefinitionId");
+
+                    b.HasIndex("UserId", "AnchorDefinitionId")
+                        .IsUnique();
 
                     b.ToTable("UserAnchors");
                 });
@@ -215,4 +280,5 @@ partial class MusicContextModelSnapshot : ModelSnapshot
                 });
 #pragma warning restore 612, 618
         }
+    }
 }

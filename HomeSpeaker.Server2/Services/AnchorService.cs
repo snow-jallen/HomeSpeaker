@@ -6,23 +6,24 @@ namespace HomeSpeaker.Server2.Services;
 
 public class AnchorService
 {
-    private readonly MusicContext _dbContext;
-    private readonly ILogger<AnchorService> _logger;
-    private readonly IAnchorNotificationService _notificationService;
+    private readonly MusicContext dbContext;
+    private readonly ILogger<AnchorService> logger;
+    private readonly IAnchorNotificationService notificationService;
 
     public AnchorService(MusicContext dbContext, ILogger<AnchorService> logger, IAnchorNotificationService notificationService)
     {
-        _dbContext = dbContext;
-        _logger = logger;
-        _notificationService = notificationService;
+        this.dbContext = dbContext;
+        this.logger = logger;
+        this.notificationService = notificationService;
     }
 
     // Anchor Definition Management
     public async Task<IEnumerable<AnchorDefinition>> GetActiveAnchorDefinitionsAsync()
     {
-        var definitions = await _dbContext.AnchorDefinitions
+        var definitions = await dbContext.AnchorDefinitions
             .Where(ad => ad.IsActive)
             .OrderBy(ad => ad.Name)
+            .AsNoTracking()
             .ToListAsync();
 
         return definitions.Select(d => new AnchorDefinition(d.Id, d.Name, d.Description, d.IsActive));
@@ -30,7 +31,7 @@ public class AnchorService
 
     public async Task<AnchorDefinition> CreateAnchorDefinitionAsync(CreateAnchorDefinitionRequest request)
     {
-        _logger.LogInformation("Creating anchor definition: {name}", request.Name);
+        logger.LogInformation("Creating anchor definition: {Name}", request.Name);
 
         var entity = new AnchorDefinitionEntity
         {
@@ -40,58 +41,59 @@ public class AnchorService
             CreatedAt = DateTime.UtcNow
         };
 
-        await _dbContext.AnchorDefinitions.AddAsync(entity);
-        await _dbContext.SaveChangesAsync();
+        await dbContext.AnchorDefinitions.AddAsync(entity);
+        await dbContext.SaveChangesAsync();
 
         var result = new AnchorDefinition(entity.Id, entity.Name, entity.Description, entity.IsActive);
-        await _notificationService.NotifyAnchorDefinitionCreated(result);
+        await notificationService.NotifyAnchorDefinitionCreated(result);
         return result;
     }
 
     public async Task<AnchorDefinition?> UpdateAnchorDefinitionAsync(int id, CreateAnchorDefinitionRequest request)
     {
-        var entity = await _dbContext.AnchorDefinitions.FindAsync(id);
+        var entity = await dbContext.AnchorDefinitions.FindAsync(id);
         if (entity == null)
         {
-            _logger.LogWarning("Anchor definition {id} not found for update", id);
+            logger.LogWarning("Anchor definition {Id} not found for update", id);
             return null;
         }
 
         entity.Name = request.Name;
         entity.Description = request.Description;
-        await _dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesAsync();
 
-        _logger.LogInformation("Updated anchor definition {id}: {name}", id, request.Name);
+        logger.LogInformation("Updated anchor definition {Id}: {Name}", id, request.Name);
         var result = new AnchorDefinition(entity.Id, entity.Name, entity.Description, entity.IsActive);
-        await _notificationService.NotifyAnchorDefinitionUpdated(result);
+        await notificationService.NotifyAnchorDefinitionUpdated(result);
         return result;
     }
 
     public async Task<bool> DeactivateAnchorDefinitionAsync(int id)
     {
-        var entity = await _dbContext.AnchorDefinitions.FindAsync(id);
+        var entity = await dbContext.AnchorDefinitions.FindAsync(id);
         if (entity == null)
         {
-            _logger.LogWarning("Anchor definition {id} not found for deactivation", id);
+            logger.LogWarning("Anchor definition {Id} not found for deactivation", id);
             return false;
         }
 
         entity.IsActive = false;
         entity.DeactivatedAt = DateTime.UtcNow;
-        await _dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesAsync();
 
-        _logger.LogInformation("Deactivated anchor definition {id}: {name}", id, entity.Name);
-        await _notificationService.NotifyAnchorDefinitionDeactivated(id);
+        logger.LogInformation("Deactivated anchor definition {Id}: {Name}", id, entity.Name);
+        await notificationService.NotifyAnchorDefinitionDeactivated(id);
         return true;
     }
 
     // User Anchor Management (Template Management)
     public async Task<IEnumerable<UserAnchor>> GetUserAnchorsAsync(string userId)
     {
-        var userAnchors = await _dbContext.UserAnchors
+        var userAnchors = await dbContext.UserAnchors
             .Include(ua => ua.AnchorDefinition)
             .Where(ua => ua.UserId == userId)
             .OrderBy(ua => ua.AnchorDefinition!.Name)
+            .AsNoTracking()
             .ToListAsync();
 
         return userAnchors.Select(ua => new UserAnchor(ua.Id, ua.UserId, ua.AnchorDefinitionId, ua.CreatedAt));
@@ -100,12 +102,12 @@ public class AnchorService
     public async Task<UserAnchor> AssignAnchorToUserAsync(AssignAnchorToUserRequest request)
     {
         // Check if user already has this anchor
-        var existing = await _dbContext.UserAnchors
+        var existing = await dbContext.UserAnchors
             .FirstOrDefaultAsync(ua => ua.UserId == request.UserId && ua.AnchorDefinitionId == request.AnchorDefinitionId);
 
         if (existing != null)
         {
-            _logger.LogInformation("User {userId} already has anchor {anchorId}", request.UserId, request.AnchorDefinitionId);
+            logger.LogInformation("User {UserId} already has anchor {AnchorId}", request.UserId, request.AnchorDefinitionId);
             return new UserAnchor(existing.Id, existing.UserId, existing.AnchorDefinitionId, existing.CreatedAt);
         }
 
@@ -116,31 +118,31 @@ public class AnchorService
             CreatedAt = DateTime.UtcNow
         };
 
-        await _dbContext.UserAnchors.AddAsync(entity);
-        await _dbContext.SaveChangesAsync();
+        await dbContext.UserAnchors.AddAsync(entity);
+        await dbContext.SaveChangesAsync();
 
-        _logger.LogInformation("Assigned anchor {anchorId} to user {userId}", request.AnchorDefinitionId, request.UserId);
+        logger.LogInformation("Assigned anchor {AnchorId} to user {UserId}", request.AnchorDefinitionId, request.UserId);
         var result = new UserAnchor(entity.Id, entity.UserId, entity.AnchorDefinitionId, entity.CreatedAt);
-        await _notificationService.NotifyUserAnchorAssigned(result);
+        await notificationService.NotifyUserAnchorAssigned(result);
         return result;
     }
 
     public async Task<bool> RemoveAnchorFromUserAsync(string userId, int anchorDefinitionId)
     {
-        var entity = await _dbContext.UserAnchors
+        var entity = await dbContext.UserAnchors
             .FirstOrDefaultAsync(ua => ua.UserId == userId && ua.AnchorDefinitionId == anchorDefinitionId);
 
         if (entity == null)
         {
-            _logger.LogWarning("User anchor not found for user {userId} and anchor {anchorId}", userId, anchorDefinitionId);
+            logger.LogWarning("User anchor not found for user {UserId} and anchor {AnchorId}", userId, anchorDefinitionId);
             return false;
         }
 
-        _dbContext.UserAnchors.Remove(entity);
-        await _dbContext.SaveChangesAsync();
+        dbContext.UserAnchors.Remove(entity);
+        await dbContext.SaveChangesAsync();
 
-        _logger.LogInformation("Removed anchor {anchorId} from user {userId}", anchorDefinitionId, userId);
-        await _notificationService.NotifyUserAnchorRemoved(userId, anchorDefinitionId);
+        logger.LogInformation("Removed anchor {AnchorId} from user {UserId}", anchorDefinitionId, userId);
+        await notificationService.NotifyUserAnchorRemoved(userId, anchorDefinitionId);
         return true;
     }
 
@@ -148,24 +150,25 @@ public class AnchorService
     public async Task CreateDailyAnchorsForUserAsync(string userId, DateOnly date)
     {
         // Check if daily anchors already exist for this user and date
-        var existingCount = await _dbContext.DailyAnchors
+        var existingCount = await dbContext.DailyAnchors
             .CountAsync(da => da.UserId == userId && da.Date == date);
 
         if (existingCount > 0)
         {
-            _logger.LogInformation("Daily anchors already exist for user {userId} on {date}", userId, date);
+            logger.LogInformation("Daily anchors already exist for user {UserId} on {Date}", userId, date);
             return;
         }
 
         // Get user's current anchors
-        var userAnchors = await _dbContext.UserAnchors
+        var userAnchors = await dbContext.UserAnchors
             .Include(ua => ua.AnchorDefinition)
             .Where(ua => ua.UserId == userId && ua.AnchorDefinition!.IsActive)
+            .AsNoTracking()
             .ToListAsync();
 
         if (!userAnchors.Any())
         {
-            _logger.LogInformation("No active anchors found for user {userId}", userId);
+            logger.LogInformation("No active anchors found for user {UserId}", userId);
             return;
         }
 
@@ -181,64 +184,67 @@ public class AnchorService
             CreatedAt = DateTime.UtcNow
         });
 
-        await _dbContext.DailyAnchors.AddRangeAsync(dailyAnchors);
-        await _dbContext.SaveChangesAsync();
+        await dbContext.DailyAnchors.AddRangeAsync(dailyAnchors);
+        await dbContext.SaveChangesAsync();
 
-        _logger.LogInformation("Created {count} daily anchors for user {userId} on {date}", userAnchors.Count, userId, date);
+        logger.LogInformation("Created {Count} daily anchors for user {UserId} on {Date}", userAnchors.Count, userId, date);
     }
 
     public async Task<IEnumerable<DailyAnchor>> GetDailyAnchorsAsync(string userId, DateOnly date)
     {
-        var dailyAnchors = await _dbContext.DailyAnchors
+        var dailyAnchors = await dbContext.DailyAnchors
             .Where(da => da.UserId == userId && da.Date == date)
             .OrderBy(da => da.AnchorName)
+            .AsNoTracking()
             .ToListAsync();
 
         return dailyAnchors.Select(da => new DailyAnchor(
-            da.Id, da.UserId, da.AnchorDefinitionId, da.Date, da.IsCompleted, 
+            da.Id, da.UserId, da.AnchorDefinitionId, da.Date, da.IsCompleted,
             da.CompletedAt ?? DateTime.MinValue, da.AnchorName, da.AnchorDescription));
     }
 
     public async Task<IEnumerable<DailyAnchor>> GetDailyAnchorsRangeAsync(string userId, DateOnly startDate, DateOnly endDate)
     {
-        var dailyAnchors = await _dbContext.DailyAnchors
+        var dailyAnchors = await dbContext.DailyAnchors
             .Where(da => da.UserId == userId && da.Date >= startDate && da.Date <= endDate)
             .OrderBy(da => da.Date)
             .ThenBy(da => da.AnchorName)
+            .AsNoTracking()
             .ToListAsync();
 
         return dailyAnchors.Select(da => new DailyAnchor(
-            da.Id, da.UserId, da.AnchorDefinitionId, da.Date, da.IsCompleted, 
+            da.Id, da.UserId, da.AnchorDefinitionId, da.Date, da.IsCompleted,
             da.CompletedAt ?? DateTime.MinValue, da.AnchorName, da.AnchorDescription));
     }
 
     public async Task<bool> UpdateAnchorCompletionAsync(UpdateAnchorCompletionRequest request)
     {
-        var entity = await _dbContext.DailyAnchors.FindAsync(request.DailyAnchorId);
+        var entity = await dbContext.DailyAnchors.FindAsync(request.DailyAnchorId);
         if (entity == null)
         {
-            _logger.LogWarning("Daily anchor {id} not found for completion update", request.DailyAnchorId);
+            logger.LogWarning("Daily anchor {Id} not found for completion update", request.DailyAnchorId);
             return false;
         }
 
         entity.IsCompleted = request.IsCompleted;
         entity.CompletedAt = request.IsCompleted ? DateTime.UtcNow : null;
-        await _dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesAsync();
 
-        _logger.LogInformation("Updated daily anchor {id} completion to {completed}", request.DailyAnchorId, request.IsCompleted);
-        await _notificationService.NotifyDailyAnchorCompletionUpdated(request.DailyAnchorId, request.IsCompleted, entity.CompletedAt);
+        logger.LogInformation("Updated daily anchor {Id} completion to {Completed}", request.DailyAnchorId, request.IsCompleted);
+        await notificationService.NotifyDailyAnchorCompletionUpdated(request.DailyAnchorId, request.IsCompleted, entity.CompletedAt);
         return true;
     }
 
     // Get all users with anchors
     public async Task<IEnumerable<string>> GetUsersWithAnchorsAsync()
     {
-        var users = await _dbContext.UserAnchors
+        var users = await dbContext.UserAnchors
             .Include(ua => ua.AnchorDefinition)
             .Where(ua => ua.AnchorDefinition!.IsActive)
             .Select(ua => ua.UserId)
             .Distinct()
             .OrderBy(u => u)
+            .AsNoTracking()
             .ToListAsync();
 
         return users;
@@ -250,15 +256,16 @@ public class AnchorService
         var start = startDate ?? DateOnly.FromDateTime(DateTime.Today.AddDays(-30));
         var end = endDate ?? DateOnly.FromDateTime(DateTime.Today);
 
-        var dailyAnchors = await _dbContext.DailyAnchors
+        var dailyAnchors = await dbContext.DailyAnchors
             .Where(da => da.Date >= start && da.Date <= end)
             .OrderBy(da => da.UserId)
             .ThenBy(da => da.Date)
             .ThenBy(da => da.AnchorName)
+            .AsNoTracking()
             .ToListAsync();
 
         var result = new Dictionary<string, List<DailyAnchor>>();
-        
+
         foreach (var da in dailyAnchors)
         {
             var dailyAnchor = new DailyAnchor(
@@ -272,12 +279,13 @@ public class AnchorService
                 da.AnchorDescription
             );
 
-            if (!result.ContainsKey(da.UserId))
+            if (!result.TryGetValue(da.UserId, out var userAnchors))
             {
-                result[da.UserId] = new List<DailyAnchor>();
+                userAnchors = new List<DailyAnchor>();
+                result[da.UserId] = userAnchors;
             }
-            
-            result[da.UserId].Add(dailyAnchor);
+
+            userAnchors.Add(dailyAnchor);
         }
 
         return result;
@@ -287,13 +295,14 @@ public class AnchorService
     public async Task EnsureTodayAnchorsForAllUsersAsync()
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
-        
+
         // Get all users who have active anchors
-        var usersWithAnchors = await _dbContext.UserAnchors
+        var usersWithAnchors = await dbContext.UserAnchors
             .Include(ua => ua.AnchorDefinition)
             .Where(ua => ua.AnchorDefinition!.IsActive)
             .Select(ua => ua.UserId)
             .Distinct()
+            .AsNoTracking()
             .ToListAsync();
 
         foreach (var userId in usersWithAnchors)
@@ -301,6 +310,6 @@ public class AnchorService
             await CreateDailyAnchorsForUserAsync(userId, today);
         }
 
-        _logger.LogInformation("Ensured daily anchors exist for {count} users on {date}", usersWithAnchors.Count, today);
+        logger.LogInformation("Ensured daily anchors exist for {Count} users on {Date}", usersWithAnchors.Count, today);
     }
 }

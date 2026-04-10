@@ -1,21 +1,21 @@
-﻿using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using System.Diagnostics;
+﻿using System.Diagnostics;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using static HomeSpeaker.Shared.HomeSpeaker;
 
 namespace HomeSpeaker.WebAssembly.Services;
 
 public class HomeSpeakerService
 {
-    private HomeSpeakerClient client;
-    private List<SongMessage> songs = new();
+    private readonly HomeSpeakerClient client;
     private readonly ILogger<HomeSpeakerService> logger;
-    public IEnumerable<SongMessage> Songs => songs;
-    public event EventHandler? QueueChanged; public HomeSpeakerService(IConfiguration config, ILogger<HomeSpeakerService> logger, IWebAssemblyHostEnvironment hostEnvironment)
+    public event EventHandler? QueueChanged;
+
+    public HomeSpeakerService(IConfiguration config, ILogger<HomeSpeakerService> logger, IWebAssemblyHostEnvironment hostEnvironment)
     {
-        string address = config["ServerAddress"] ?? throw new MissingConfigException("ServerAddress");
-        logger.LogInformation($"I was about to use {address}");
+        var address = config["ServerAddress"] ?? throw new MissingConfigException("ServerAddress");
+        logger.LogInformation("I was about to use {Address}", address);
         address = hostEnvironment.BaseAddress;
-    logger.LogInformation("But instead I'll use {Address}", address);
+        logger.LogInformation("But instead I'll use {Address}", address);
         var channel = GrpcChannel.ForAddress(address, new GrpcChannelOptions
         {
             HttpHandler = new GrpcWebHandler(new HttpClientHandler())
@@ -35,7 +35,7 @@ public class HomeSpeakerService
             var eventReply = client.SendEvent(new Google.Protobuf.WellKnownTypes.Empty());
             await foreach (var eventInstance in eventReply.ResponseStream.ReadAllAsync())
             {
-                StatusChanged?.Invoke(this, eventInstance.Message);
+                StatusChanged?.Invoke(eventInstance.Message);
             }
         }
         catch (Exception ex)
@@ -95,6 +95,7 @@ public class HomeSpeakerService
             .Playlists
             .Select(p => new Playlist(
                 p.PlaylistName,
+                p.AlwaysShuffle,
                 p.Songs.Select(s => s.ToSong())
             ));
 
@@ -134,18 +135,18 @@ public class HomeSpeakerService
 
     public async Task ReorderPlaylistSongsAsync(string playlistName, List<string> songPaths)
     {
-    logger.LogInformation("Calling ReorderPlaylistSongs gRPC method for playlist: {PlaylistName}", playlistName);
+        logger.LogInformation("Calling ReorderPlaylistSongs gRPC method for playlist: {PlaylistName}", playlistName);
         await client.ReorderPlaylistSongsAsync(new ReorderPlaylistSongsRequest
         {
             PlaylistName = playlistName,
             SongPaths = { songPaths }
         });
-    logger.LogInformation("Successfully called ReorderPlaylistSongs gRPC method for playlist: {PlaylistName}", playlistName);
+        logger.LogInformation("Successfully called ReorderPlaylistSongs gRPC method for playlist: {PlaylistName}", playlistName);
     }
 
     public async Task UpdateSongAsync(int songId, string name, string artist, string album)
     {
-    logger.LogInformation("Calling UpdateSong gRPC method for song: {SongId}", songId);
+        logger.LogInformation("Calling UpdateSong gRPC method for song: {SongId}", songId);
         await client.UpdateSongAsync(new UpdateSongRequest
         {
             SongId = songId,
@@ -153,10 +154,10 @@ public class HomeSpeakerService
             Artist = artist,
             Album = album
         });
-    logger.LogInformation("Successfully called UpdateSong gRPC method for song: {SongId}", songId);
+        logger.LogInformation("Successfully called UpdateSong gRPC method for song: {SongId}", songId);
     }
 
-    readonly char[] separators = new[] { '/', '\\' };
+    private readonly char[] separators = new[] { '/', '\\' };
 
     public async Task<IEnumerable<string>> GetFolders()
     {
@@ -250,6 +251,7 @@ public class HomeSpeakerService
         {
             queue.AddRange(reply.Songs.Select(s => s.ToSongViewModel()));
         }
+
         return queue;
     }
 
@@ -281,24 +283,102 @@ public class HomeSpeakerService
         QueueChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public async Task<IEnumerable<AmazonPlaylistViewModel>> GetAmazonPlaylistsAsync()
+    // Radio Stream methods
+    public async Task<IEnumerable<RadioStreamViewModel>> GetRadioStreamsAsync()
     {
-        this.logger.LogInformation("Getting Amazon Music playlists");
-        var reply = await this.client.GetAmazonPlaylistsAsync(new GetAmazonPlaylistsRequest());
-        return reply.Playlists.Select(p => new AmazonPlaylistViewModel
+        var reply = await client.GetRadioStreamsAsync(new GetRadioStreamsRequest());
+        return reply.Streams.Select(s => new RadioStreamViewModel
         {
-            PlaylistId = p.PlaylistId,
-            PlaylistName = p.PlaylistName,
-            TrackCount = p.TrackCount
+            Id = s.Id,
+            Name = s.Name,
+            Url = s.Url,
+            FaviconFileName = string.IsNullOrWhiteSpace(s.FaviconFileName) ? null : s.FaviconFileName,
+            PlayCount = s.PlayCount,
+            DisplayOrder = s.DisplayOrder
         });
     }
 
-    public async Task PlayAmazonPlaylistAsync(string playlistId)
+    public async Task PlayRadioStreamAsync(int streamId)
     {
-        this.logger.LogInformation("Playing Amazon Music playlist: {PlaylistId}", playlistId);
-        await this.client.PlayAmazonPlaylistAsync(new PlayAmazonPlaylistRequest { PlaylistId = playlistId });
-        this.QueueChanged?.Invoke(this, EventArgs.Empty);
+        await client.PlayRadioStreamAsync(new PlayRadioStreamRequest { StreamId = streamId });
     }
 
-    public event EventHandler<string>? StatusChanged;
+    public async Task<RadioStreamViewModel> CreateRadioStreamAsync(string name, string url, string faviconUrl = "", string faviconFileName = "")
+    {
+        var result = await client.CreateRadioStreamAsync(new CreateRadioStreamRequest
+        {
+            Name = name,
+            Url = url,
+            FaviconUrl = faviconUrl,
+            FaviconFileName = faviconFileName
+        });
+
+        return new RadioStreamViewModel
+        {
+            Id = result.Id,
+            Name = result.Name,
+            Url = result.Url,
+            FaviconFileName = string.IsNullOrWhiteSpace(result.FaviconFileName) ? null : result.FaviconFileName,
+            PlayCount = result.PlayCount,
+            DisplayOrder = result.DisplayOrder
+        };
+    }
+
+    public async Task<RadioStreamViewModel> UpdateRadioStreamAsync(int streamId, string name, string url, string faviconUrl = "", string faviconFileName = "")
+    {
+        var result = await client.UpdateRadioStreamAsync(new UpdateRadioStreamRequest
+        {
+            StreamId = streamId,
+            Name = name,
+            Url = url,
+            FaviconUrl = faviconUrl,
+            FaviconFileName = faviconFileName
+        });
+
+        return new RadioStreamViewModel
+        {
+            Id = result.Id,
+            Name = result.Name,
+            Url = result.Url,
+            FaviconFileName = string.IsNullOrWhiteSpace(result.FaviconFileName) ? null : result.FaviconFileName,
+            PlayCount = result.PlayCount,
+            DisplayOrder = result.DisplayOrder
+        };
+    }
+
+    public async Task DeleteRadioStreamAsync(int streamId)
+    {
+        await client.DeleteRadioStreamAsync(new DeleteRadioStreamRequest { StreamId = streamId });
+    }
+
+    // Repeat Mode methods
+    public async Task SetRepeatModeAsync(bool repeatMode)
+    {
+        await client.SetRepeatModeAsync(new SetRepeatModeRequest { RepeatMode = repeatMode });
+    }
+
+    public async Task<bool> GetRepeatModeAsync()
+    {
+        var result = await client.GetRepeatModeAsync(new GetRepeatModeRequest());
+        return result.RepeatMode;
+    }
+
+    // Sleep Timer methods
+    public async Task SetSleepTimerAsync(int minutes)
+    {
+        await client.SetSleepTimerAsync(new SetSleepTimerRequest { Minutes = minutes });
+    }
+
+    public async Task CancelSleepTimerAsync()
+    {
+        await client.CancelSleepTimerAsync(new CancelSleepTimerRequest());
+    }
+
+    public async Task<(bool Active, int RemainingSeconds)> GetSleepTimerAsync()
+    {
+        var result = await client.GetSleepTimerAsync(new GetSleepTimerRequest());
+        return (result.Active, result.RemainingSeconds);
+    }
+
+    public event Action<string>? StatusChanged;
 }

@@ -1,13 +1,13 @@
 @inject HomeSpeakerService svc
 @inject IJSRuntime JsRuntime
 
-<div class="dropdown-menu show" style="position: static; z-index: 10001; max-height: 250px; overflow-y: auto; min-width: 220px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); border: 1px solid #dee2e6;">
+<div class="dropdown-menu show" style="position: static; z-index: 10001; max-height: 350px; overflow-y: auto; min-width: 220px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); border: 1px solid #dee2e6;">
     <h6 class="dropdown-header">Add to...</h6>
     <button class="dropdown-item" @onclick="AddToQueue">
         <span class="oi oi-list-rich me-2"></span>Queue
     </button>
     <div class="dropdown-divider"></div>
-    
+
     @if (allPlaylists == null)
     {
         <div class="dropdown-item-text">Loading playlists...</div>
@@ -36,33 +36,33 @@
     }
 </div>
 
-@if (showCreatePlaylistModal)
-{
-    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.7); z-index: 10100; position: fixed; top: 0; left: 0; width: 100%; height: 100%;">
-        <div class="modal-dialog modal-sm" style="margin-top: 10%; margin-left: auto; margin-right: auto;">
-            <div class="modal-content" style="background: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                <div class="modal-header" style="padding: 1rem; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center;">
-                    <h5 class="modal-title" style="margin: 0; color: #333; font-weight: 500;">Create New Playlist</h5>
-                    <button type="button" class="btn-close" @onclick="CancelCreatePlaylist" style="background: none; border: none; font-size: 1.5rem; line-height: 1; cursor: pointer;">&times;</button>
-                </div>
-                <div class="modal-body" style="padding: 1rem;">
-                    <div class="mb-3">
-                        <label for="playlistName" class="form-label" style="display: block; margin-bottom: 0.5rem; color: #333; font-weight: 500;">Playlist Name</label>
-                        <input type="text" class="form-control" id="playlistName" @bind="newPlaylistName" @onkeypress="OnKeyPress" autofocus 
-                               style="width: 100%; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 0.25rem; font-size: 1rem;" 
-                               placeholder="Enter playlist name..." />
-                    </div>
-                </div>
-                <div class="modal-footer" style="padding: 1rem; border-top: 1px solid #dee2e6; display: flex; justify-content: flex-end; gap: 0.5rem;">
-                    <button type="button" class="btn btn-secondary" @onclick="CancelCreatePlaylist" 
-                            style="padding: 0.5rem 1rem; border: 1px solid #6c757d; background-color: #6c757d; color: white; border-radius: 0.25rem; cursor: pointer;">Cancel</button>
-                    <button type="button" class="btn btn-primary" @onclick="SaveNewPlaylist"
-                            style="padding: 0.5rem 1rem; border: 1px solid #007bff; background-color: #007bff; color: white; border-radius: 0.25rem; cursor: pointer;">Create</button>
-                </div>
-            </div>
-        </div>
+<!-- Native <dialog> renders in the browser top layer — above all z-index and stacking contexts -->
+<dialog id="@_dialogId"
+        style="border: none; border-radius: 0.5rem; padding: 1.25rem; min-width: 280px; max-width: 90vw;
+               background: white; box-shadow: 0 8px 32px rgba(0,0,0,0.35);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <strong style="color: #333; font-size: 1rem;">New Playlist</strong>
+        <button type="button" @onclick="CancelCreatePlaylist"
+                style="background: none; border: none; cursor: pointer; font-size: 1.3rem; line-height: 1; color: #666; padding: 0;">&times;</button>
     </div>
-}
+    <input type="text" id="@_inputId"
+           @bind="newPlaylistName" @bind:event="oninput" @onkeydown="OnKeyPress"
+           placeholder="Playlist name..."
+           style="display: block; width: 100%; box-sizing: border-box; padding: 0.4rem 0.6rem; margin-bottom: 0.75rem;
+                  background: #fff; color: #333; border: 1px solid #adb5bd; border-radius: 0.25rem; font-size: 0.9rem;" />
+    <div style="display: flex; gap: 0.5rem;">
+        <button type="button" @onclick="CancelCreatePlaylist"
+                style="flex: 1; padding: 0.45rem 0; background: #6c757d; color: white;
+                       border: none; border-radius: 0.25rem; font-size: 0.875rem; cursor: pointer;">
+            Cancel
+        </button>
+        <button type="button" @onclick="SaveNewPlaylist"
+                style="flex: 1; padding: 0.45rem 0; background: #0d6efd; color: white;
+                       border: none; border-radius: 0.25rem; font-size: 0.875rem; cursor: pointer;">
+            Create
+        </button>
+    </div>
+</dialog>
 
 @code {
     [Parameter] public List<SongViewModel>? Songs { get; set; }
@@ -70,8 +70,11 @@
     [Parameter] public EventCallback OnClosed { get; set; }
 
     private IEnumerable<Playlist>? allPlaylists;
-    private bool showCreatePlaylistModal = false;
     private string newPlaylistName = "";
+
+    // Unique IDs so multiple instances on the page don't collide
+    private readonly string _dialogId = $"pd{Guid.NewGuid():N}";
+    private readonly string _inputId  = $"pi{Guid.NewGuid():N}";
 
     protected override async Task OnInitializedAsync()
     {
@@ -86,6 +89,18 @@
         }
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Prevent the browser closing the dialog on Escape without us updating Blazor state
+            await JsRuntime.InvokeVoidAsync("eval", $@"
+                document.getElementById('{_dialogId}')
+                    .addEventListener('cancel', function(e) {{ e.preventDefault(); }});
+            ");
+        }
+    }
+
     private async Task AddToQueue()
     {
         try
@@ -93,9 +108,7 @@
             if (Songs != null && Songs.Any())
             {
                 foreach (var song in Songs)
-                {
                     await svc.EnqueueSongAsync(song.SongId);
-                }
             }
             else if (Song != null)
             {
@@ -112,7 +125,8 @@
     private async Task AddToPlaylist(string playlistName)
     {
         try
-        {            if (Songs != null && Songs.Any())
+        {
+            if (Songs != null && Songs.Any())
             {
                 foreach (var song in Songs)
                 {
@@ -132,17 +146,21 @@
         }
     }
 
-    private void CreateNewPlaylist()
+    private async Task CreateNewPlaylist()
     {
         newPlaylistName = "";
-        showCreatePlaylistModal = true;
         StateHasChanged();
+        await JsRuntime.InvokeVoidAsync("eval", $@"
+            document.getElementById('{_dialogId}').showModal();
+            setTimeout(function() {{ document.getElementById('{_inputId}')?.focus(); }}, 0);
+        ");
     }
 
-    private void CancelCreatePlaylist()
+    private async Task CancelCreatePlaylist()
     {
-        showCreatePlaylistModal = false;
         newPlaylistName = "";
+        StateHasChanged();
+        await JsRuntime.InvokeVoidAsync("eval", $"document.getElementById('{_dialogId}').close()");
     }
 
     private async Task SaveNewPlaylist()
@@ -154,7 +172,8 @@
         }
 
         try
-        {            if (Songs != null && Songs.Any())
+        {
+            if (Songs != null && Songs.Any())
             {
                 foreach (var song in Songs)
                 {
@@ -166,8 +185,9 @@
             {
                 await svc.AddToPlaylistAsync(newPlaylistName.Trim(), Song.Path);
             }
-            
-            showCreatePlaylistModal = false;
+
+            newPlaylistName = "";
+            await JsRuntime.InvokeVoidAsync("eval", $"document.getElementById('{_dialogId}').close()");
             await OnClosed.InvokeAsync();
         }
         catch (Exception ex)
@@ -179,12 +199,8 @@
     private async Task OnKeyPress(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
-        {
             await SaveNewPlaylist();
-        }
         else if (e.Key == "Escape")
-        {
-            CancelCreatePlaylist();
-        }
+            await CancelCreatePlaylist();
     }
 }

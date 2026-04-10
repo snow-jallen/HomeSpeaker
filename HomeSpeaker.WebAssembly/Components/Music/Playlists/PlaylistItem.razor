@@ -194,7 +194,7 @@
             songs.Insert(toIndex, song);
             
             // Create the new order list
-            var reorderedSongPaths = songs.Select(s => s.Path).ToList();
+            var reorderedSongPaths = songs.Select(s => s.Path).Where(p => p != null).Select(p => p!).ToList();
             
             Console.WriteLine($"Calling ReorderPlaylistSongsAsync with {reorderedSongPaths.Count} songs");
             await svc.ReorderPlaylistSongsAsync(Playlist.Name, reorderedSongPaths);
