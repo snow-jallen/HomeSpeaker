@@ -26,6 +26,8 @@ public class PlaylistService
 
         // Performance: Build dictionary once instead of O(n) lookup for each song
         var songsByPath = mp3Library.Songs.Where(s => s.Path != null).ToDictionary(s => s.Path!, s => s);
+
+        return dbPlaylists.Select(p => new Shared.Playlist(
             p.Name,
             p.AlwaysShuffle,
             p.Songs.OrderBy(s => s.Order)
@@ -230,7 +232,7 @@ public class PlaylistService
 
         // Implement artist-aware shuffling
         var shuffledSongs = ShuffleWithArtistDistribution(songsWithArtists);
-        
+
         // Update the order in the database
         for (int i = 0; i < shuffledSongs.Count; i++)
         {
@@ -239,13 +241,14 @@ public class PlaylistService
 
         await dbContext.SaveChangesAsync();
         logger.LogInformation("Successfully shuffled {count} songs in playlist {playlistName}", shuffledSongs.Count, playlistName);
-        
+
         return shuffledSongs.Select(s => s.Item.SongPath).ToList();
     }
 
     private List<T> ShuffleWithArtistDistribution<T>(List<T> items) where T : class
     {
-        if (items.Count <= 1) return items;
+        if (items.Count <= 1)
+            return items;
 
         var random = new Random();
         var result = new List<T>();
@@ -266,10 +269,10 @@ public class PlaylistService
         while (remaining.Count > 0)
         {
             var lastArtist = GetArtist(result.Last());
-            
+
             // Try to find a song from a different artist
             var differentArtistSongs = remaining.Where(s => GetArtist(s) != lastArtist).ToList();
-            
+
             T nextSong;
             if (differentArtistSongs.Any())
             {
@@ -281,7 +284,7 @@ public class PlaylistService
                 // If all remaining songs are from the same artist, pick randomly
                 nextSong = remaining[random.Next(remaining.Count)];
             }
-            
+
             result.Add(nextSong);
             remaining.Remove(nextSong);
         }
