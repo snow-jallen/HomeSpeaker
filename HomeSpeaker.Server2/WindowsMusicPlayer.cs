@@ -2,16 +2,23 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server2;
 
 public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 {
-    public WindowsMusicPlayer(ILogger<WindowsMusicPlayer> logger, Mp3Library library)
+    public WindowsMusicPlayer(ILogger<WindowsMusicPlayer> logger, Mp3Library library, ILoggerFactory loggerFactory)
     {
         this.logger = logger;
         this.library = library;
+        _icyReader = new IcyMetadataReader(loggerFactory.CreateLogger<IcyMetadataReader>());
+        _icyReader.TitleChanged += title =>
+        {
+            if (currentSong != null)
+                currentSong = currentSong with { Name = title };
+        };
     }
 
     private const string VlcPath = @"c:\program files\videolan\vlc\vlc.exe";
@@ -24,13 +31,16 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
     private bool disposed;
     private DateTime? _songStartTime;
     private TimeSpan _songDuration;
+    private bool _isStream;
+    private string? _streamName;
+    private readonly IcyMetadataReader _icyReader;
 
     public PlayerStatus Status
     {
         get
         {
-            var baseStatus = (status ?? new PlayerStatus()) with { CurrentSong = currentSong };
-            if (_songStartTime.HasValue && _songDuration > TimeSpan.Zero && currentSong != null)
+            var baseStatus = (status ?? new PlayerStatus()) with { CurrentSong = currentSong, IsStream = _isStream, StreamName = _streamName };
+            if (!_isStream && _songStartTime.HasValue && _songDuration > TimeSpan.Zero && currentSong != null)
             {
                 var elapsed = DateTime.UtcNow - _songStartTime.Value;
                 if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
@@ -48,6 +58,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
     public void PlaySong(Song song)
     {
         currentSong = song;
+        _isStream = false;
         startedPlaying = true;
         stopPlaying();
         stoppedSong = null;
@@ -136,6 +147,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 
         _songStartTime = null;
         _songDuration = TimeSpan.Zero;
+        _icyReader.Stop();
 
         // Fallback: kill any remaining VLC processes that might be hanging around
         try
@@ -172,6 +184,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
                 logger.LogInformation("Disposing WindowsMusicPlayer");
                 stopPlaying();
                 sleepTimerCts?.Dispose();
+                _icyReader.Dispose();
             }
 
             disposed = true;
@@ -282,6 +295,10 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
     {
         stoppedSong = currentSong;
         stopPlaying();
+        currentSong = null;
+        status = new PlayerStatus();
+        _isStream = false;
+        _streamName = null;
     }
 
     public void SetVolume(int level0to100)
@@ -296,7 +313,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         }
     }
 
-    public void PlayStream(string streamUrl)
+    public void PlayStream(string streamUrl, string? name = null)
     {
         logger.LogInformation("Asked to play stream: {StreamUrl}", streamUrl);
 
@@ -306,16 +323,11 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         logger.LogInformation("After converting to a Uri: {StreamUrl}", url);
 
         stopPlaying();
-        status = new PlayerStatus
-        {
-            CurrentSong = new Song
-            {
-                Album = url,
-                Artist = url,
-                Name = url,
-                Path = url
-            }
-        };
+        currentSong = new Song { Name = name ?? url, Path = url };
+        _isStream = true;
+        _streamName = name ?? url;
+        status = new PlayerStatus { StillPlaying = true };
+        _icyReader.Start(url);
         playerProcess = new Process();
         playerProcess.StartInfo.FileName = VlcPath;
         playerProcess.StartInfo.Arguments = $"\"{streamUrl}\"";

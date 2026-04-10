@@ -5,7 +5,7 @@ namespace HomeSpeaker.Server2;
 public interface IMusicPlayer : IDisposable
 {
     void PlaySong(Song song);
-    void PlayStream(string streamUrl);
+    void PlayStream(string streamUrl, string? name = null);
     bool StillPlaying { get; }
     void EnqueueSong(Song song);
     PlayerStatus Status { get; }

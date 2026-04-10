@@ -91,6 +91,8 @@ message GetStatusReply {
 	double PercentComplete=4;
 	SongMessage CurrentSong=5;
 	int32 Volume=6;
+	bool IsStream=7;
+	string StreamName=8;
 }
 message GetSongsRequest {
 	string Folder=1;

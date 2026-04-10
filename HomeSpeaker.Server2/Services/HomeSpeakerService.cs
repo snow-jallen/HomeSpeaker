@@ -296,7 +296,9 @@ public class HomeSpeakerService : HomeSpeakerBase
             Remaining = Duration.FromTimeSpan(status.Remaining),
             StilPlaying = status.StillPlaying,
             CurrentSong = status.CurrentSong != null ? translateSong(status.CurrentSong) : null,
-            Volume = currentVolume
+            Volume = currentVolume,
+            IsStream = status.IsStream,
+            StreamName = status.StreamName ?? string.Empty
         };
     }
 
@@ -466,7 +468,7 @@ public class HomeSpeakerService : HomeSpeakerBase
         await radioStreamService.IncrementPlayCountAsync(request.StreamId);
 
         // Play the stream
-        musicPlayer.PlayStream(stream.Url);
+        musicPlayer.PlayStream(stream.Url, stream.Name);
 
         return new PlayRadioStreamReply { Ok = true };
     }

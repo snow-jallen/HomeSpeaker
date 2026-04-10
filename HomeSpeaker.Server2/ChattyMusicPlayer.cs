@@ -54,10 +54,10 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
         PlayerEvent?.Invoke(this, "Played: " + song.Name);
     }
 
-    public void PlayStream(string streamUrl)
+    public void PlayStream(string streamUrl, string? name = null)
     {
-        actualPlayer.PlayStream(streamUrl);
-        PlayerEvent?.Invoke(this, "Played stream: " + streamUrl);
+        actualPlayer.PlayStream(streamUrl, name);
+        PlayerEvent?.Invoke(this, "Played stream: " + (name ?? streamUrl));
     }
 
     public void ResumePlay()

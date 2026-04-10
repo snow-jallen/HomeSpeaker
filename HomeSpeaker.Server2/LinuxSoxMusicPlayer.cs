@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
 using CliWrap.Buffered;
+using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server2;
@@ -13,20 +14,29 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     private Process? playerProcess;
     private bool disposed;
 
-    public LinuxSoxMusicPlayer(ILogger<LinuxSoxMusicPlayer> logger, Mp3Library library)
+    public LinuxSoxMusicPlayer(ILogger<LinuxSoxMusicPlayer> logger, Mp3Library library, ILoggerFactory loggerFactory)
     {
         this.logger = logger;
         this.library = library;
+        _icyReader = new IcyMetadataReader(loggerFactory.CreateLogger<IcyMetadataReader>());
+        _icyReader.TitleChanged += title =>
+        {
+            if (currentSong != null)
+                currentSong = currentSong with { Name = title };
+        };
     }
 
     private PlayerStatus status = new();
     private Song? currentSong;
-    public PlayerStatus Status => (status ?? new PlayerStatus()) with { CurrentSong = currentSong };
+    private bool _isStream;
+    private string? _streamName;
+    private readonly IcyMetadataReader _icyReader;
+    public PlayerStatus Status => (status ?? new PlayerStatus()) with { CurrentSong = currentSong, IsStream = _isStream, StreamName = _streamName };
 
     private bool startedPlaying;
     private Song? stoppedSong;
 
-    public void PlayStream(string streamUrl)
+    public void PlayStream(string streamUrl, string? name = null)
     {
         logger.LogInformation("Asked to play stream: {StreamUrl}", streamUrl);
 
@@ -36,16 +46,11 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         logger.LogInformation("After converting to a Uri: {StreamUrl}", url);
 
         stopPlaying();
-        status = new PlayerStatus
-        {
-            CurrentSong = new Song
-            {
-                Album = url,
-                Artist = url,
-                Name = url,
-                Path = url
-            }
-        };
+        currentSong = new Song { Name = name ?? url, Path = url };
+        _isStream = true;
+        _streamName = name ?? url;
+        status = new PlayerStatus { StillPlaying = true };
+        _icyReader.Start(url);
         playerProcess = new Process();
         playerProcess.StartInfo.FileName = "cvlc";
         playerProcess.StartInfo.Arguments = $"\"{streamUrl}\"";
@@ -73,6 +78,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     {
         startedPlaying = true;
         currentSong = song;
+        _isStream = false;
         stopPlaying();
         stoppedSong = null;
 
@@ -143,6 +149,8 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
             }
         }
 
+        _icyReader.Stop();
+
         // Fallback: kill any remaining processes that might be hanging around
         try
         {
@@ -178,6 +186,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
                 logger.LogInformation("Disposing LinuxSoxMusicPlayer");
                 stopPlaying();
                 sleepTimerCts?.Dispose();
+                _icyReader.Dispose();
             }
 
             disposed = true;
@@ -203,6 +212,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         {
             logger.LogInformation("Nothing in the queue, so Status is now empty.");
             status = new PlayerStatus();
+            _isStream = false;
         }
     }
 
@@ -285,6 +295,10 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     {
         stoppedSong = currentSong;
         stopPlaying();
+        currentSong = null;
+        status = new PlayerStatus();
+        _isStream = false;
+        _streamName = null;
     }
 
     public async Task<int> GetVolume() =>

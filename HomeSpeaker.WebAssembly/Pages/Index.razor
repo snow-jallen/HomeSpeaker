@@ -8,32 +8,45 @@
 <PageTitle>Home Speaker</PageTitle>
 
 <!-- Section A: Now Playing -->
-<div class="now-playing-card mb-3">
-    <div class="now-playing-label">
-        <i class="fas fa-headphones me-2"></i>Now Playing
-    </div>
-    <div class="now-playing-status">
-        @if (PlayerState.Status == null)
-        {
-            <div class="loading-spinner mx-auto mb-2"></div>
-            <span class="status-text text-muted">Connecting...</span>
-        }
-        else if (PlayerState.Status.StilPlaying && PlayerState.Status.CurrentSong != null)
-        {
+@{
+    var isPlaying = PlayerState.Status?.StilPlaying == true && PlayerState.Status?.CurrentSong != null;
+    var isStream = PlayerState.Status?.IsStream == true;
+    var streamName = PlayerState.Status?.StreamName ?? string.Empty;
+    var songName = PlayerState.Status?.CurrentSong?.Name ?? string.Empty;
+    var icyActive = isStream && !string.IsNullOrEmpty(songName) && songName != streamName;
+    var displayName = isStream && !icyActive ? $"{streamName} · live" : songName;
+    // For streams: show the configured stream name as "artist" once ICY gives us a track title
+    var artist = isStream
+        ? (icyActive ? streamName : null)
+        : PlayerState.Status?.CurrentSong?.Artist;
+    var album = isStream ? null : PlayerState.Status?.CurrentSong?.Album;
+    var showArtist = !string.IsNullOrEmpty(artist) && artist != "[ No Artist ]" && artist != "[Artist Unknown]";
+    var showAlbum = !string.IsNullOrEmpty(album) && album != "[ No Album ]";
+}
+<div class="now-playing-card mb-3 @(isPlaying ? "" : "now-playing-card--idle")">
+    @if (isPlaying)
+    {
+        <div class="now-playing-label">
+            <i class="fas fa-headphones me-2"></i>Now Playing
+        </div>
+        <div class="now-playing-status">
             <div class="song-info">
-                <div class="song-title">@PlayerState.Status.CurrentSong.Name</div>
-                @if (!string.IsNullOrEmpty(PlayerState.Status.CurrentSong.Artist))
+                <div class="song-title">@displayName</div>
+                @if (showArtist)
                 {
-                    <div class="song-artist">@PlayerState.Status.CurrentSong.Artist</div>
+                    <div class="song-artist">@artist</div>
                 }
-                @if (!string.IsNullOrEmpty(PlayerState.Status.CurrentSong.Album))
+                @if (showAlbum)
                 {
-                    <div class="song-album">@PlayerState.Status.CurrentSong.Album</div>
+                    <div class="song-album">@album</div>
                 }
                 <div class="progress-row mt-2">
-                    <div class="progress-bar-track">
-                        <div class="progress-bar-fill" style="width: @((PlayerState.Status.PercentComplete * 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
-                    </div>
+                    @if (!isStream)
+                    {
+                        <div class="progress-bar-track">
+                            <div class="progress-bar-fill" style="width: @((PlayerState.Status!.PercentComplete * 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                        </div>
+                    }
                     <div class="volume-popup-anchor">
                         <button class="volume-icon-btn" @onclick="ToggleVolumePopup" title="Adjust volume" aria-label="Adjust volume">
                             <i class="fas fa-volume-up"></i>
@@ -58,18 +71,17 @@
                     </div>
                 </div>
             </div>
-        }
-        else
-        {
-            <div class="idle-state">
-                <i class="fas fa-music idle-icon"></i>
-                <span class="status-text">Stopped</span>
-            </div>
-        }
-    </div>
-    <div class="now-playing-controls">
-        <PlayControls />
-    </div>
+        </div>
+        <div class="now-playing-controls">
+            <PlayControls />
+        </div>
+    }
+    else
+    {
+        <div class="now-playing-controls">
+            <PlayControls />
+        </div>
+    }
 </div>
 
 <!-- Section B: Health Monitors (feature-flagged) -->
@@ -127,6 +139,19 @@
         height: 1px;
         background: linear-gradient(90deg, transparent, rgba(201, 152, 90, 0.4), transparent);
         pointer-events: none;
+    }
+
+    .now-playing-card--idle {
+        padding: var(--hs-space-sm) var(--hs-space-md);
+        border-color: rgba(201, 152, 90, 0.08);
+        box-shadow:
+            0 4px 16px rgba(0, 0, 0, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
+
+    .now-playing-card--idle::before,
+    .now-playing-card--idle::after {
+        display: none;
     }
 
     .now-playing-label {
@@ -204,13 +229,14 @@
         height: 100%;
         background: linear-gradient(90deg, var(--hs-primary-dark) 0%, var(--hs-primary) 100%);
         border-radius: 2px;
-        transition: width 1s linear;
+        transition: width 5s linear;
         box-shadow: 0 0 8px rgba(201, 152, 90, 0.5);
     }
 
     .volume-popup-anchor {
         position: relative;
         flex-shrink: 0;
+        margin-left: auto;
     }
 
     .volume-icon-btn {
@@ -361,6 +387,11 @@
         position: relative;
     }
 
+    .now-playing-card--idle .now-playing-controls {
+        border-top: none;
+        padding-top: 0;
+    }
+
     /* Sidebar already shows PlayControls — no need to duplicate on desktop */
     @@media (min-width: 992px) {
         .now-playing-controls {
@@ -493,6 +524,7 @@
         {
             var status = await svc.GetStatusAsync();
             bool repeatMode = await svc.GetRepeatModeAsync();
+
             PlayerState.UpdateStatus(status);
             PlayerState.UpdateRepeatMode(repeatMode);
             volumeLevel = status?.Volume ?? volumeLevel;
