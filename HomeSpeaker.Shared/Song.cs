@@ -15,7 +15,7 @@ public static class ProtobufExtensions
     {
         return new PlayerStatus
         {
-            CurrentSong = reply.CurrentSong.ToSong(),
+            CurrentSong = reply.CurrentSong?.ToSong(),
             Elapsed = reply.Elapsed.ToTimeSpan(),
             PercentComplete = (decimal)reply.PercentComplete,
             Remaining = reply.Remaining.ToTimeSpan(),

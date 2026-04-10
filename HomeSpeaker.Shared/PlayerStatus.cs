@@ -1,5 +1,4 @@
-﻿#nullable enable
-using System;
+﻿using System;
 
 namespace HomeSpeaker.Shared;
 
@@ -11,5 +10,5 @@ public record PlayerStatus
     public bool StillPlaying { get; init; }
     public bool IsStream { get; init; }
     public string? StreamName { get; init; }
-    public Song CurrentSong { get; init; }
+    public Song? CurrentSong { get; init; }
 }
