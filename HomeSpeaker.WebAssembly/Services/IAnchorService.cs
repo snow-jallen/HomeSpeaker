@@ -68,7 +68,13 @@ public class AnchorService : IAnchorService
             var json = JsonSerializer.Serialize(request, jsonOptions);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
             var response = await httpClient.PostAsync("/api/anchors/definitions", content);
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                throw new HttpRequestException(
+                    $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}: {errorBody}",
+                    null, response.StatusCode);
+            }
             var responseJson = await response.Content.ReadAsStringAsync();
             return JsonSerializer.Deserialize<AnchorDefinition>(responseJson, jsonOptions)!;
         }
@@ -92,7 +98,14 @@ public class AnchorService : IAnchorService
                 return null;
             }
 
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                throw new HttpRequestException(
+                    $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}: {errorBody}",
+                    null, response.StatusCode);
+            }
+
             var responseJson = await response.Content.ReadAsStringAsync();
             return JsonSerializer.Deserialize<AnchorDefinition>(responseJson, jsonOptions);
         }

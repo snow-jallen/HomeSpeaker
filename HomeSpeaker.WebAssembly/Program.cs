@@ -24,8 +24,10 @@ builder.Services.AddScoped<IForecastService, ForecastService>();
 builder.Services.AddHttpClient<IAnchorService, AnchorService>((serviceProvider, client) =>
 {
     var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-    var anchorsApiAddress = configuration["AnchorsApiAddress"] ?? builder.HostEnvironment.BaseAddress;
-    client.BaseAddress = new Uri(anchorsApiAddress);
+    var anchorsApiAddress = configuration["AnchorsApiAddress"];
+    client.BaseAddress = new Uri(string.IsNullOrWhiteSpace(anchorsApiAddress)
+        ? builder.HostEnvironment.BaseAddress
+        : anchorsApiAddress);
 });
 builder.Services.AddScoped<IAnchorSyncService, AnchorSyncService>();
 builder.Services.AddScoped<IBrowserAudioService, BrowserAudioService>();

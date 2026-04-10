@@ -39,6 +39,9 @@
     --hs-radius-lg: 16px;
     --hs-radius-full: 500px;
 
+    /* Borders */
+    --hs-border-color: rgba(255, 255, 255, 0.08);
+
     /* Shadows */
     --hs-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.5);
     --hs-shadow-md: 0 4px 20px rgba(0, 0, 0, 0.6);
@@ -623,10 +626,11 @@ a:hover, .btn-link:hover {
 
 input[type="text"],
 input[type="search"],
+textarea,
 .form-control {
     background-color: var(--hs-bg-elevated);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    color: var(--hs-text-primary);
+    color: var(--hs-text-primary) !important;
     border-radius: var(--hs-radius-md);
     padding: 0.75rem 1rem;
     font-size: 0.95rem;
@@ -635,17 +639,20 @@ input[type="search"],
 
 input[type="text"]:focus,
 input[type="search"]:focus,
+textarea:focus,
 .form-control:focus {
     background-color: var(--hs-bg-card);
     border-color: rgba(201, 152, 90, 0.5);
     box-shadow: 0 0 0 3px rgba(201, 152, 90, 0.12);
     outline: none;
+    color: var(--hs-text-primary) !important;
 }
 
 input[type="text"]::placeholder,
 input[type="search"]::placeholder,
+textarea::placeholder,
 .form-control::placeholder {
-    color: var(--hs-text-muted);
+    color: var(--hs-text-muted) !important;
 }
 
 /* Range slider (volume control) - touch optimized */
@@ -759,6 +766,130 @@ input[type="range"]::-moz-range-thumb:active {
     color: var(--hs-text-secondary);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* ===== THEME-AWARE BOOTSTRAP COMPONENT OVERRIDES ===== */
+/* All colors reference --hs-* variables so a single token change re-themes everything */
+
+/* Modal */
+.modal-content {
+    background-color: var(--hs-bg-elevated);
+    color: var(--hs-text-primary);
+    border-color: var(--hs-border-color);
+}
+
+.modal-header {
+    background-color: var(--hs-bg-card);
+    border-bottom-color: var(--hs-border-color);
+    color: var(--hs-text-primary);
+}
+
+.modal-footer {
+    background-color: var(--hs-bg-card);
+    border-top-color: var(--hs-border-color);
+}
+
+.modal-title {
+    color: var(--hs-text-primary);
+}
+
+/* Invert the default dark close button so it's visible on dark modal header */
+.btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+    opacity: 0.6;
+}
+
+.btn-close:hover {
+    opacity: 1;
+}
+
+/* List group */
+.list-group-item {
+    background-color: var(--hs-bg-elevated);
+    color: var(--hs-text-primary);
+    border-color: var(--hs-border-color);
+}
+
+.list-group-item:hover {
+    background-color: var(--hs-hover-bg);
+    color: var(--hs-text-primary);
+}
+
+.list-group-flush .list-group-item {
+    border-color: var(--hs-border-color);
+}
+
+/* Table */
+.table {
+    color: var(--hs-text-primary);
+    --bs-table-border-color: var(--hs-border-color);
+}
+
+.table > :not(caption) > * > * {
+    background-color: transparent;
+    color: inherit;
+    border-bottom-color: var(--hs-border-color);
+}
+
+/* Override Bootstrap's .table-light which hardcodes a light background */
+.table-light,
+.table-light > th,
+.table-light > td,
+thead.table-light > tr > th,
+thead.table-light > tr > td {
+    background-color: var(--hs-bg-card) !important;
+    color: var(--hs-text-secondary) !important;
+    border-color: var(--hs-border-color) !important;
+}
+
+.table-hover > tbody > tr:hover > * {
+    background-color: var(--hs-hover-bg);
+    color: var(--hs-text-primary);
+}
+
+/* Select / form-select dark theme (not covered by the .form-control rule above) */
+select,
+.form-select {
+    background-color: var(--hs-bg-elevated);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--hs-text-primary);
+    border-radius: var(--hs-radius-md);
+}
+
+select:focus,
+.form-select:focus {
+    background-color: var(--hs-bg-card);
+    border-color: rgba(201, 152, 90, 0.5);
+    box-shadow: 0 0 0 3px rgba(201, 152, 90, 0.12);
+    outline: none;
+    color: var(--hs-text-primary);
+}
+
+/* Alert variants */
+.alert-info {
+    background-color: rgba(123, 108, 246, 0.1);
+    border-color: rgba(123, 108, 246, 0.3);
+    color: var(--hs-text-primary);
+}
+
+.alert-success {
+    background-color: rgba(40, 167, 69, 0.1);
+    border-color: rgba(40, 167, 69, 0.3);
+    color: var(--hs-text-primary);
+}
+
+.alert-warning {
+    background-color: rgba(201, 152, 90, 0.12);
+    border-color: rgba(201, 152, 90, 0.35);
+    color: var(--hs-text-primary);
+}
+
+.alert-danger {
+    background-color: rgba(224, 92, 122, 0.12);
+    border-color: rgba(224, 92, 122, 0.35);
+    color: var(--hs-text-primary);
+}
+
+/* ===================================================== */
 
 /* RPi 7" touch screen optimization - 800×480 landscape */
 @media (max-width: 800px) and (max-height: 480px),
