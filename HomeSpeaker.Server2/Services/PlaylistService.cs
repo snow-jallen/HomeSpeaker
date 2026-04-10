@@ -25,9 +25,7 @@ public class PlaylistService
         logger.LogInformation("Found {Count} playlists in database.", dbPlaylists.Count);
 
         // Performance: Build dictionary once instead of O(n) lookup for each song
-        var songsByPath = mp3Library.Songs.ToDictionary(s => s.Path, s => s);
-
-        return dbPlaylists.Select(p => new Shared.Playlist(
+        var songsByPath = mp3Library.Songs.Where(s => s.Path != null).ToDictionary(s => s.Path!, s => s);
             p.Name,
             p.AlwaysShuffle,
             p.Songs.OrderBy(s => s.Order)
@@ -93,9 +91,7 @@ public class PlaylistService
 
         logger.LogInformation("Beginning to play playlist {PlaylistName}", playlistName);
         // Performance: Build dictionary once instead of O(n) lookup for each song
-        var songsByPath = mp3Library.Songs.ToDictionary(s => s.Path, s => s);
-
-        player.Stop();
+        var songsByPath = mp3Library.Songs.Where(s => s.Path != null).ToDictionary(s => s.Path!, s => s);
 
         IEnumerable<PlaylistItem> songsToPlay;
         if (playlist.AlwaysShuffle)
