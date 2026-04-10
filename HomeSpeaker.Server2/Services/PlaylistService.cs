@@ -32,6 +32,7 @@ public class PlaylistService
             p.AlwaysShuffle,
             p.Songs.OrderBy(s => s.Order)
                    .Select(i => songsByPath.GetValueOrDefault(i.SongPath))
+                   .OfType<Shared.Song>()
         ));
     }
 
