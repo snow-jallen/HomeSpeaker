@@ -433,6 +433,7 @@
     private bool showTemperature;
     private bool showBloodSugar;
     private Timer? refreshTimer;
+    private Timer? progressTimer;
     private bool showVolumePopup;
     private int volumeLevel;
 
@@ -454,6 +455,7 @@
         PlayerState.StateChanged += OnStateChanged;
         await RefreshStatusAsync();
 
+        // Full refresh (repeat mode, volume, current song) every 5 seconds
         refreshTimer = new Timer(async _ =>
         {
             try
@@ -466,6 +468,20 @@
                 logger.LogError(ex, "Error in status refresh timer");
             }
         }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+
+        // Progress-only refresh every second so the bar advances smoothly while playing
+        progressTimer = new Timer(async _ =>
+        {
+            try
+            {
+                await InvokeAsync(RefreshProgressAsync);
+            }
+            catch (ObjectDisposedException) { }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error in progress refresh timer");
+            }
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
 
     private void OnStateChanged() => InvokeAsync(StateHasChanged);
@@ -484,6 +500,22 @@
             {
                 logger.LogWarning(ex, "Failed to set volume");
             }
+        }
+    }
+
+    private async Task RefreshProgressAsync()
+    {
+        if (PlayerState.Status?.StilPlaying != true)
+            return;
+
+        try
+        {
+            var status = await svc.GetStatusAsync();
+            PlayerState.UpdateStatus(status);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to refresh playback progress");
         }
     }
 
@@ -508,5 +540,6 @@
     {
         PlayerState.StateChanged -= OnStateChanged;
         refreshTimer?.Dispose();
+        progressTimer?.Dispose();
     }
 }
