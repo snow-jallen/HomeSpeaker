@@ -17,7 +17,6 @@ services:
     volumes:
     - "/home/piuser/music:/music"
     - "/home/piuser/cert:/certs"
-    - "/sys/class/backlight/10-0045:/sys/class/backlight/10-0045"
     - airplay-shared:/tmp/airplay-shared  # Shared volume for AirPlay state
     - /run/user/1000/pulse:/run/user/1000/pulse:rw
     # Persistent secrets file — create this once on each Pi, never committed to git.
