@@ -85,22 +85,13 @@
 </div>
 
 <!-- Section B: Health Monitors (feature-flagged) -->
-@if (showTemperature || showBloodSugar)
+@if (showBloodSugar)
 {
-    <div class="row g-2 mb-4">
-        @if (showTemperature)
-        {
-            <div class="@(showBloodSugar ? "col-md-6 col-12" : "col-12")">
-                <TemperatureMonitor />
-            </div>
-        }
-        @if (showBloodSugar)
-        {
-            <div class="@(showTemperature ? "col-md-6 col-12" : "col-12")">
-                <BloodSugarMonitor />
-            </div>
-        }
-    </div>
+    <BloodSugarMonitor />
+}
+@if (showTemperature)
+{
+    <TemperatureMonitor />
 }
 
 <style>

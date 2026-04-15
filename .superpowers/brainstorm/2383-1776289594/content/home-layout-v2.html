@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HomeSpeaker Mockups v2</title>
+<style>
+  :root {
+    --hs-bg: #0E0E1B;
+    --hs-bg2: #1C1C2E;
+    --hs-bg3: #13131F;
+    --hs-card: #18182A;
+    --hs-primary: #C9985A;
+    --hs-primary-dk: #A67845;
+    --hs-text: #F0EEE8;
+    --hs-text2: #B8B4AC;
+    --hs-muted: #7A7870;
+    --hs-border: rgba(255,255,255,0.05);
+    --hs-border-gold: rgba(201,152,90,0.2);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #06060E;
+    color: var(--hs-text);
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    padding: 24px;
+    min-height: 100vh;
+  }
+  h1 { font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.18em; color: var(--hs-primary); margin-bottom: 4px; }
+  .subtitle { font-size: 0.78rem; color: var(--hs-muted); margin-bottom: 20px; }
+
+  .option-card { cursor: pointer; border: 2px solid transparent; border-radius: 14px; overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s; }
+  .option-card:hover { border-color: rgba(201,152,90,0.35); }
+  .option-card.selected { border-color: var(--hs-primary); box-shadow: 0 0 28px rgba(201,152,90,0.25); }
+  .option-label { background: var(--hs-bg2); padding: 7px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--hs-border); }
+  .option-letter { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.2em; color: var(--hs-primary); }
+  .option-title { font-size: 0.75rem; font-weight: 600; color: var(--hs-text); }
+  .option-desc { font-size: 0.65rem; color: var(--hs-muted); }
+
+  .mockups-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 28px; }
+
+  /* 1024×600 simulation frame */
+  .sim-frame {
+    width: 100%;
+    aspect-ratio: 1024 / 600;
+    background: var(--hs-bg);
+    display: flex;
+    overflow: hidden;
+    font-size: 9.5px;
+  }
+
+  /* ── Sidebar — now narrower (simulating ~210px real → 115px here) ── */
+  .sim-sidebar {
+    width: 115px;
+    flex-shrink: 0;
+    background: linear-gradient(180deg, var(--hs-bg2) 0%, var(--hs-bg3) 100%);
+    border-right: 1px solid var(--hs-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sim-brand {
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--hs-border);
+    display: flex; align-items: center; gap: 4px;
+    color: var(--hs-text); font-weight: 800; font-size: 8px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .sim-brand-icon { color: var(--hs-primary); }
+  .sim-playback-section { padding: 5px 7px; border-bottom: 1px solid var(--hs-border); }
+  .sim-sec-label { font-size: 5.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.22em; color: var(--hs-muted); margin-bottom: 4px; }
+  .sim-controls-row { display: flex; gap: 2px; align-items: center; justify-content: center; margin-bottom: 3px; }
+  .sim-btn { width: 17px; height: 17px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 6.5px; }
+  .sim-btn-play { width: 22px; height: 22px; background: linear-gradient(135deg, var(--hs-primary), var(--hs-primary-dk)); color: #1A1008; font-size: 8px; box-shadow: 0 0 10px rgba(201,152,90,0.5); }
+  .sim-btn-outline { border: 1px solid rgba(201,152,90,0.5); color: var(--hs-primary); }
+  .sim-btn-secondary { border: 1px solid rgba(255,255,255,0.15); color: var(--hs-muted); }
+  .sim-btn-danger { border: 1px solid rgba(220,53,69,0.45); color: rgba(220,53,69,0.8); }
+
+  .sim-nav { padding: 4px 0; flex: 1; overflow: hidden; }
+  .sim-nav-item {
+    display: flex; align-items: center; gap: 5px;
+    padding: 4px 7px; border-radius: 4px;
+    color: var(--hs-text2); font-size: 8px; font-weight: 500;
+    margin: 1px 5px; min-height: 0; position: relative;
+  }
+  .sim-nav-item.active { background: rgba(201,152,90,0.09); color: var(--hs-primary); font-weight: 600; }
+  .sim-nav-item.active::before {
+    content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 2px; height: 12px; background: var(--hs-primary); border-radius: 0 2px 2px 0;
+  }
+  .sim-nav-icon { width: 10px; text-align: center; font-size: 7.5px; opacity: 0.65; }
+  .sim-nav-item.active .sim-nav-icon { opacity: 1; }
+
+  /* ── Main content ── */
+  .sim-content { flex: 1; padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; overflow: hidden; }
+
+  /* Now Playing */
+  .sim-np-card {
+    background: linear-gradient(160deg, #1C1C2E 0%, #13131F 60%, #0E0E1B 100%);
+    border: 1px solid var(--hs-border-gold); border-radius: 10px;
+    padding: 6px 9px; flex-shrink: 0;
+  }
+  .sim-np-label { font-size: 5.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.22em; color: var(--hs-primary); opacity: 0.85; margin-bottom: 3px; }
+  .sim-song-title { font-size: 13px; font-style: italic; font-weight: 700; color: var(--hs-text); line-height: 1.1; }
+  .sim-song-artist { font-size: 6px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--hs-primary); font-weight: 600; margin-top: 1px; }
+  .sim-progress-track { height: 2px; background: rgba(255,255,255,0.07); border-radius: 1px; margin-top: 4px; overflow: hidden; }
+  .sim-progress-fill { height: 100%; width: 42%; background: linear-gradient(90deg, var(--hs-primary-dk), var(--hs-primary)); border-radius: 1px; }
+
+  /* Blood Sugar card — Option B style with bigger numbers */
+  .sim-bs-card { background: var(--hs-card); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+  .sim-bs-header {
+    background: linear-gradient(90deg, #1a4a2e, #1a5c3a);
+    padding: 3px 8px; font-size: 6.5px; font-weight: 700; color: #fff;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .sim-bs-body { padding: 4px 10px; display: flex; align-items: center; gap: 7px; }
+  .sim-bs-value { font-size: 28px; font-weight: 800; line-height: 1; }
+  .sim-bs-arrow { font-size: 22px; font-weight: 700; line-height: 1; }
+  .sim-bs-meta { display: flex; flex-direction: column; gap: 1px; }
+  .sim-bs-dir { font-size: 12px; font-weight: 700; }
+  .sim-bs-time { font-size: 6px; color: var(--hs-muted); }
+  .sim-bs-link { margin-left: auto; font-size: 8px; color: rgba(201,152,90,0.65); cursor: pointer; flex-shrink: 0; }
+
+  /* Temperature card */
+  .sim-temp-card { flex: 1; background: var(--hs-card); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; overflow: hidden; min-height: 0; display: flex; flex-direction: column; }
+  .sim-temp-header { background: #1a3a5c; padding: 4px 8px; font-size: 7px; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .sim-temp-body { flex: 1; display: flex; flex-direction: column; padding: 4px 5px; gap: 3px; min-height: 0; }
+
+  /* ── Temperature cell styles (icon-before-value) ── */
+  .sim-temp-cell {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 2px;
+  }
+  .sim-temp-inline { display: flex; align-items: center; gap: 3px; }
+  .sim-temp-icon-small { font-size: 9px; }
+  .sim-temp-label { font-size: 5.5px; color: var(--hs-muted); margin-top: 1px; }
+
+  /* 4-column sensor row */
+  .sim-sensors-row { display: grid; gap: 3px; flex: 1; }
+  /* 2-column forecast row */
+  .sim-forecast-row { display: grid; gap: 3px; flex: 1; }
+</style>
+</head>
+<body>
+
+<h1>HomeSpeaker — Refined Mockups (v2)</h1>
+<p class="subtitle">Option B blood sugar with bigger numbers · Narrower nav (~210px) · Three temperature grid arrangements — forecast on its own row, icon before value.</p>
+
+<div class="mockups-grid">
+
+  <!-- ══ OPTION A: 4-sensor row + 2-wide forecast row ══ -->
+  <div class="option-card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="option-label">
+      <span class="option-letter">Option A</span>
+      <span class="option-title">4 sensors · 2 forecast (wide)</span>
+    </div>
+    <div class="sim-frame">
+      <div class="sim-sidebar">
+        <div class="sim-brand"><span class="sim-brand-icon">♪</span> Home Speaker</div>
+        <div class="sim-playback-section">
+          <div class="sim-sec-label">Playback</div>
+          <div class="sim-controls-row">
+            <div class="sim-btn sim-btn-play">▶</div>
+            <div class="sim-btn sim-btn-outline">■</div>
+            <div class="sim-btn sim-btn-outline">⏭</div>
+          </div>
+          <div class="sim-controls-row">
+            <div class="sim-btn sim-btn-secondary">🌙</div>
+            <div class="sim-btn sim-btn-danger">🗑</div>
+          </div>
+        </div>
+        <div class="sim-nav">
+          <div class="sim-nav-item active"><span class="sim-nav-icon">♪</span> Music</div>
+          <div class="sim-nav-item"><span class="sim-nav-icon">≡</span> Queue</div>
+          <div class="sim-nav-item"><span class="sim-nav-icon">📡</span> Streams</div>
+          <div class="sim-nav-item"><span class="sim-nav-icon">▤</span> Playlists</div>
+          <div class="sim-nav-item"><span class="sim-nav-icon">▶</span> YouTube</div>
+          <div class="sim-nav-item"><span class="sim-nav-icon">⚓</span> Anchors</div>
+        </div>
+      </div>
+      <div class="sim-content">
+        <div class="sim-np-card">
+          <div class="sim-np-label">⟡ Now Playing</div>
+          <div class="sim-song-title">Dreams of the Desert</div>
+          <div class="sim-song-artist">The Midnight · Monsters</div>
+          <div class="sim-progress-track"><div class="sim-progress-fill"></div></div>
+        </div>
+
+        <div class="sim-bs-card">
+          <div class="sim-bs-header">
+            <span>💉 Blood Sugar</span>
+            <span style="cursor:pointer;opacity:0.8">🔗 NightScout</span>
+          </div>
+          <div class="sim-bs-body">
+            <span class="sim-bs-value" style="color:#28a745">170</span>
+            <span class="sim-bs-arrow" style="color:#28a745">→</span>
+            <div class="sim-bs-meta">
+              <span class="sim-bs-dir" style="color:#28a745">Stable</span>
+              <span class="sim-bs-time">4 min ago</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sim-temp-card">
+          <div class="sim-temp-header">
+            <span>🌡 Temperature Monitor</span>
+            <span style="font-size:6px;background:rgba(40,167,69,0.3);padding:1px 5px;border-radius:3px;">Open Window</span>
+          </div>
+          <div class="sim-temp-body">
+            <!-- Sensors: 4 cols -->
+            <div class="sim-sensors-row" style="grid-template-columns:repeat(4,1fr)">
+              <div class="sim-temp-cell">
+                <div class="sim-temp-inline"><span class="sim-temp-icon-small" style="color:#3399ff">☁</span><span style="font-size:18px;font-weight:700;color:#3399ff">62°</span></div>
+                <div class="sim-temp-label">Outside</div>
+              </div>
+              <div class="sim-temp-cell">
+                <div class="sim-temp-inline"><span class="sim-temp-icon-small" style="color:#00cc66">♀</span><span style="font-size:18px;font-weight:700;color:#00cc66">71°</span></div>
+                <div class="sim-temp-label">Girl's Room</div>
+              </div>
+              <div class="sim-temp-cell">
+                <div class="sim-temp-inline"><span class="sim-temp-icon-small" style="color:#00cc66">♂</span><span style="font-size:18px;font-weight:700;color:#00cc66">70°</span></div>
+                <div class="sim-temp-label">Boy's Room</div>
+              </div>
+              <div class="sim-temp-cell">
+                <div class="sim-temp-inline"><span class="sim-temp-icon-small" style="color:#66cc00">🌿</span><span style="font-size:18px;font-weight:700;color:#66cc00">74°</span></div>
+                <div class="sim-temp-label">Greenhouse</div>
+              </div>
+            </div>
+            <!-- Forecast: 2 wide cols -->
+            <div class="sim-forecast-row" style="grid-template-columns:repeat(2,1fr)">
+              <div class="sim-temp-cell" style="background:rgba(255,153,0,0.06);border-radius:5px;padding:3px 6px;align-items:flex-start;flex-direction:row;justify-content:flex-start;gap:6px">
+                <div class="sim-temp-inline" style="align-items:center"><span style="font-size:10px;color:#ff9900">☀</span><span style="font-size:18px;font-weight:700;color:#ff9900;margin-left:3px">81°</span></div>
+                <div style="display:flex;flex-direction:column;justify-content:center">
+                  <div style="font-size:6.5px;color:var(--hs-text2);font-weight:600">Today's High</div>
+                  <div style="font-size:5.5px;color:var(--hs-muted)">Partly Cloudy</div>
+                </div>
+              </div>
+              <div class="sim-temp-cell" style="background:rgba(51,153,255,0.06);border-radius:5px;padding:3px 6px;align-items:flex-start;flex-direction:row;justify-content:flex-start;gap:6px">
+                <div class="sim-temp-inline" style="align-items:center"><span style="font-size:10px;color:#3399ff">🌙</span><span style="font-size:18px;font-weight:700;color:#3399ff;margin-left:3px">55°</span></div>
+                <div style="display:flex;flex-direction:column;justify-content:center">
+                  <div style="font-size:6.5px;color:var(--hs-text2);font-weight:600">Tonight's Low</div>
+                  <div style="font-size:5.5px;color:var(--hs-muted)">Clear</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:8px 12px;background:var(--hs-bg2);border-top:1px solid var(--hs-border)">
+      <p class="option-desc">Sensors in equal 4-col row. Forecast cells are wide, with label + conditions text beside the value. Feels weather-app-like.</p>
+    </div>
+  </div>
+
+  <!-- ══ OPTION B: 4-sensor row + 4-col forecast (same size cells) ══ -->
+  <div class="option-card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="option-label">
+      <span class="option-letter">Option B</span>
+      <span class="option-title">4 sensors · 4-col forecast (uniform)</span>
+    </div>
+    <div class="sim-frame">
+      <div class="sim-sidebar">
+        <div class="sim-brand"><span class="sim-brand-icon">♪</span> Home Speaker</div>
+        <div class="sim-playback-section">
+          <div class="sim-sec-label">Playback</div>
+          <div class="sim-controls-row">
+            <div class="sim-btn sim-btn-play">▶</div>
+            <div class="sim-btn sim-btn-outline">■</div>
+            <div class="sim-btn sim-btn-outline">⏭</div>
+          </div>
+          <div class="sim-controls-row">
+            <div class="sim-btn sim-btn-secondary">🌙</div>
+            <div class="sim-btn sim-btn-danger">🗑</div>
+          </div>
+        </div>
+        <div class="sim-nav">
+          <div class="sim-nav-item active"><span class="sim-nav-icon">♪</span> Music</div>
+          <div class="sim-nav-item"><span class="sim-nav-icon">≡</span> Queue</div>
+          <div class="sim-nav-item"><span class="sim-nav-icon">📡</span> Streams</div>
+          <div class="sim-nav-item"><span class="sim-nav-icon">▤</span> Playlists</div>
+          <div class="sim-nav-item"><span class="sim-nav-icon">▶</span> YouTube</div>
+          <div class="sim-nav-item"><span class="sim-nav-icon">⚓</span> Anchors</div>
+        </div>
+      </div>
+      <div class="sim-content">
+        <div class="sim-np-card">
+          <div class="sim-np-label">⟡ Now Playing</div>
+          <div class="sim-song-title">Dreams of the Desert</div>
+          <div class="sim-song-artist">The Midnight · Monsters</div>
+          <div class="sim-progress-track"><div class="sim-progress-fill"></div></div>
+        </div>
+
+        <div class="sim-bs-card">
+          <div class="sim-bs-header">
+            <span>💉 Blood Sugar</span>
+            <span style="cursor:pointer;opacity:0.8">🔗 NightScout</span>
+          </div>
+          <div class="sim-bs-body">
+            <span class="sim-bs-value" style="color:#28a745">170</span>
+            <span class="sim-bs-arrow" style="color:#28a745">→</span>
+            <div class="sim-bs-meta">
+              <span class="sim-bs-dir" style="color:#28a745">Stable</span>
+              <span class="sim-bs-time">4 min ago</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sim-temp-card">
+          <div class="sim-temp-header">
+            <span>🌡 Temperature Monitor</span>
+            <span style="font-size:6px;background:rgba(40,167,69,0.3);padding:1px 5px;border-radius:3px;">Open Window</span>
+          </div>
+          <div class="sim-temp-body">
+            <!-- Sensors: 4 cols, uniform size -->
+            <div class="sim-sensors-row" style="grid-template-columns:repeat(4,1fr)">
+              <div class="sim-temp-cell">
+                <div class="sim-temp-inline"><span class="sim-temp-icon-small" style="color:#3399ff">☁</span><span style="font-size:18px;font-weight:700;color:#3399ff">62°</span></div>
+                <div class="sim-temp-label">Outside</div>
+              </div>
+              <div class="sim-temp-cell">
+                <div class="sim-temp-inline"><span class="sim-temp-icon-small" style="color:#00cc66">♀</span><span style="font-size:18px;font-weight:700;color:#00cc66">71°</span></div>
+                <div class="sim-temp-label">Girl's Room</div>
+              </div>
+              <div class="sim-temp-cell">
+                <div class="sim-temp-inline"><span class="sim-temp-icon-small" style="color:#00cc66">♂</span><span style="font-size:18px;font-weight:700;color:#00cc66">70°</span></div>
+                <div class="sim-temp-label">Boy's Room</div>
+              </div>
+              <div class="sim-temp-cell">
+                <div class="sim-temp-inline"><span class="sim-temp-icon-small" style="color:#66cc00">🌿</span><span style="font-size:18px;font-weight:700;color:#66cc00">74°</span></div>
+                <div class="sim-temp-label">Greenhouse</div>
+              </div>
+            </div>
+            <!-- Forecast: same 4-col grid, 2 cells centered -->
+            <div class="sim-forecast-row" style="grid-template-columns:repeat(4,1fr)">
+              <div class="sim-temp-cell">
+                <div class="sim-temp-inline"><span class="sim-temp-icon-small" style="color:#ff9900">☀</span><span style="font-size:18px;font-weight:700;color:#ff9900">81°</span></div>
+                <div class="sim-temp-label">Today's High</div>
+              </div>
+              <div class="sim-temp-cell">
+                <div class="sim-temp-inline"><span class="sim-temp-icon-small" style="color:#3399ff">🌙</span><span style="font-size:18px;font-weight:700;color:#3399ff">55°</span></div>
+                <div class="sim-temp-label">Tonight's Low</div>
+              </div>
+              <!-- empty cells to maintain grid alignment -->
+              <div></div><div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:8px 12px;background:var(--hs-bg2);border-top:1px solid var(--hs-border)">
+      <p class="option-desc">Both rows use the same 4-column grid. Forecast cells match sensor size exactly — consistent rhythm, leaves some space on the right.</p>
+    </div>
+  </div>
+
+  <!-- ══ OPTION C: 2×2 sensors + 2-wide forecast ══ -->
+  <div class="option-card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="option-label">
+      <span class="option-letter">Option C</span>
+      <span class="option-title">2×2 sensors · 2 forecast (large)</span>
+    </div>
+    <div class="sim-frame">
+      <div class="sim-sidebar">
+        <div class="sim-brand"><span class="sim-brand-icon">♪</span> Home Speaker</div>
+        <div class="sim-playback-section">
+          <div class="sim-sec-label">Playback</div>
+          <div class="sim-controls-row">
+            <div class="sim-btn sim-btn-play">▶</div>
+            <div class="sim-btn sim-btn-outline">■</div>
+            <div class="sim-btn sim-btn-outline">⏭</div>
+          </div>
+          <div class="sim-controls-row">
+            <div class="sim-btn sim-btn-secondary">🌙</div>
+            <div class="sim-btn sim-btn-danger">🗑</div>
+          </div>
+        </div>
+        <div class="sim-nav">
+          <div class="sim-nav-item active"><span class="sim-nav-icon">♪</span> Music</div>
+          <div class="sim-nav-item"><span class="sim-nav-icon">≡</span> Queue</div>
+          <div class="sim-nav-item"><span class="sim-nav-icon">📡</span> Streams</div>
+          <div class="sim-nav-item"><span class="sim-nav-icon">▤</span> Playlists</div>
+          <div class="sim-nav-item"><span class="sim-nav-icon">▶</span> YouTube</div>
+          <div class="sim-nav-item"><span class="sim-nav-icon">⚓</span> Anchors</div>
+        </div>
+      </div>
+      <div class="sim-content">
+        <div class="sim-np-card">
+          <div class="sim-np-label">⟡ Now Playing</div>
+          <div class="sim-song-title">Dreams of the Desert</div>
+          <div class="sim-song-artist">The Midnight · Monsters</div>
+          <div class="sim-progress-track"><div class="sim-progress-fill"></div></div>
+        </div>
+
+        <div class="sim-bs-card">
+          <div class="sim-bs-header">
+            <span>💉 Blood Sugar</span>
+            <span style="cursor:pointer;opacity:0.8">🔗 NightScout</span>
+          </div>
+          <div class="sim-bs-body">
+            <span class="sim-bs-value" style="color:#28a745">170</span>
+            <span class="sim-bs-arrow" style="color:#28a745">→</span>
+            <div class="sim-bs-meta">
+              <span class="sim-bs-dir" style="color:#28a745">Stable</span>
+              <span class="sim-bs-time">4 min ago</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sim-temp-card">
+          <div class="sim-temp-header">
+            <span>🌡 Temperature Monitor</span>
+            <span style="font-size:6px;background:rgba(40,167,69,0.3);padding:1px 5px;border-radius:3px;">Open Window</span>
+          </div>
+          <!-- 2-column outer split: sensors left, forecast right -->
+          <div style="flex:1;display:grid;grid-template-columns:3fr 2fr;gap:3px;padding:4px 5px;min-height:0">
+            <!-- Left: 2×2 sensor grid -->
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:3px">
+              <div class="sim-temp-cell">
+                <div class="sim-temp-inline"><span class="sim-temp-icon-small" style="color:#3399ff">☁</span><span style="font-size:20px;font-weight:700;color:#3399ff">62°</span></div>
+                <div class="sim-temp-label">Outside</div>
+              </div>
+              <div class="sim-temp-cell">
+                <div class="sim-temp-inline"><span class="sim-temp-icon-small" style="color:#00cc66">♀</span><span style="font-size:20px;font-weight:700;color:#00cc66">71°</span></div>
+                <div class="sim-temp-label">Girl's Room</div>
+              </div>
+              <div class="sim-temp-cell">
+                <div class="sim-temp-inline"><span class="sim-temp-icon-small" style="color:#00cc66">♂</span><span style="font-size:20px;font-weight:700;color:#00cc66">70°</span></div>
+                <div class="sim-temp-label">Boy's Room</div>
+              </div>
+              <div class="sim-temp-cell">
+                <div class="sim-temp-inline"><span class="sim-temp-icon-small" style="color:#66cc00">🌿</span><span style="font-size:20px;font-weight:700;color:#66cc00">74°</span></div>
+                <div class="sim-temp-label">Greenhouse</div>
+              </div>
+            </div>
+            <!-- Right: forecast stacked -->
+            <div style="display:grid;grid-template-rows:repeat(2,1fr);gap:3px;border-left:1px solid rgba(255,255,255,0.05);padding-left:5px">
+              <div class="sim-temp-cell" style="background:rgba(255,153,0,0.05);border-radius:4px">
+                <div class="sim-temp-inline"><span style="font-size:11px;color:#ff9900">☀</span><span style="font-size:20px;font-weight:700;color:#ff9900;margin-left:3px">81°</span></div>
+                <div class="sim-temp-label">Today's High</div>
+              </div>
+              <div class="sim-temp-cell" style="background:rgba(51,153,255,0.05);border-radius:4px">
+                <div class="sim-temp-inline"><span style="font-size:11px;color:#3399ff">🌙</span><span style="font-size:20px;font-weight:700;color:#3399ff;margin-left:3px">55°</span></div>
+                <div class="sim-temp-label">Tonight's Low</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:8px 12px;background:var(--hs-bg2);border-top:1px solid var(--hs-border)">
+      <p class="option-desc">Sensors in a 2×2 grid on the left (bigger numbers), forecast stacked on the right side. Sensors and forecast share the same visual band.</p>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:8px;background:rgba(28,28,46,0.6);border:1px solid var(--hs-border);border-radius:10px;padding:12px 16px">
+  <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.18em;color:var(--hs-primary);margin-bottom:8px">Shared across all options</div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;font-size:0.65rem;color:var(--hs-text2)">
+    <div><strong style="color:var(--hs-text);display:block;margin-bottom:4px">Blood Sugar</strong>170 value at 28px · → arrow at 22px · "Stable" at 12px · "4 min ago" smaller · 🔗 link in header</div>
+    <div><strong style="color:var(--hs-text);display:block;margin-bottom:4px">Nav (~210px)</strong>Music · Queue · Streams · Playlists · YouTube · Anchors · Home hidden on home page</div>
+    <div><strong style="color:var(--hs-text);display:block;margin-bottom:4px">Play Controls</strong>Row 1: Play · Stop · Skip &nbsp;|&nbsp; Row 2: Sleep · Delete (Shuffle &amp; Repeat removed)</div>
+  </div>
+</div>
+
+<p style="font-size:0.65rem;color:var(--hs-muted);text-align:center;margin-top:14px">Click an option to select, then let me know your pick (or any tweaks) in the terminal.</p>
+
+<script>
+function toggleSelect(el) {
+  document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  if (window.recordChoice) recordChoice(el.dataset.choice, el.querySelector('.option-title').textContent);
+}
+</script>
+</body>
+</html>

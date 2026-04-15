@@ -1,6 +1,5 @@
 ﻿@inject HomeSpeakerService svc
 @inject IJSRuntime JSRuntime
-@inject PlayerStateService PlayerState
 @implements IDisposable
 
 <div class="play-controls">
@@ -13,22 +12,13 @@
     <button @onclick=Skip title="Skip to next song" class="btn btn-icon btn-outline-primary">
         <i class="fas fa-forward"></i>
     </button>
-    <button @onclick=Shuffle title="Shuffle queue" class="btn btn-icon btn-outline-secondary">
-        <i class="fas fa-random"></i>
-    </button>
-    <button @onclick=ToggleRepeat title="@(PlayerState.RepeatMode ? "Repeat: ON" : "Repeat: OFF")" class="btn btn-icon @(PlayerState.RepeatMode ? "btn-warning" : "btn-outline-secondary")">
-        <i class="fas fa-redo"></i>
-    </button>
-    <button @onclick=Clear title="Clear queue" class="btn btn-icon btn-outline-danger">
-        <i class="fas fa-trash-alt"></i>
-    </button>
-    
+
     <div class="dropdown">
-        <button class="btn btn-icon @(sleepTimerActive ? "btn-info" : "btn-outline-secondary") dropdown-toggle" 
-                type="button" 
-                id="sleepTimerDropdown" 
-                data-bs-toggle="dropdown" 
-                aria-expanded="false" 
+        <button class="btn btn-icon @(sleepTimerActive ? "btn-info" : "btn-outline-secondary") dropdown-toggle"
+                type="button"
+                id="sleepTimerDropdown"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
                 title="@(sleepTimerActive ? $"Sleep timer: {sleepTimerRemaining}" : "Set sleep timer")">
             <i class="fas fa-moon"></i>
         </button>
@@ -136,9 +126,9 @@
         }
 
         .play-controls .btn-icon-lg {
-            width: 68px;
-            height: 68px;
-            font-size: 1.6rem;
+            width: 58px;
+            height: 58px;
+            font-size: 1.2rem;
         }
 
         .play-controls .btn-icon {
@@ -156,18 +146,14 @@
 
     protected override async Task OnInitializedAsync()
     {
-        PlayerState.StateChanged += OnStateChanged;
         await RefreshSleepTimer();
 
-        // Refresh sleep timer display every 10 seconds
         refreshTimer = new System.Threading.Timer(async _ =>
         {
             await RefreshSleepTimer();
             await InvokeAsync(StateHasChanged);
         }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
     }
-
-    private void OnStateChanged() => InvokeAsync(StateHasChanged);
 
     async Task RefreshSleepTimer()
     {
@@ -189,13 +175,6 @@
         }
     }
 
-    async Task ToggleRepeat()
-    {
-        var newMode = !PlayerState.RepeatMode;
-        PlayerState.UpdateRepeatMode(newMode);  // optimistic update — notifies both instances
-        await svc.SetRepeatModeAsync(newMode);
-    }
-
     async Task SetSleepTimer(int minutes)
     {
         await svc.SetSleepTimerAsync(minutes);
@@ -211,13 +190,10 @@
 
     async Task Play() => await svc.ResumePlayAsync();
     async Task Stop() => await svc.StopPlayingAsync();
-    async Task Clear() => await svc.ClearQueueAsync();
     async Task Skip() => await svc.SkipToNextAsync();
-    async Task Shuffle() => await svc.ShuffleQueueAsync();
 
     public void Dispose()
     {
-        PlayerState.StateChanged -= OnStateChanged;
         refreshTimer?.Dispose();
     }
 }
