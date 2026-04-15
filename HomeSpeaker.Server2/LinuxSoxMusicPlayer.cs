@@ -11,19 +11,52 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
 {
     private readonly ILogger<LinuxSoxMusicPlayer> logger;
     private readonly Mp3Library library;
+    private readonly AudioDeviceDetector audioDeviceDetector;
     private Process? playerProcess;
     private bool disposed;
+    private bool _deviceDetectionComplete;
 
-    public LinuxSoxMusicPlayer(ILogger<LinuxSoxMusicPlayer> logger, Mp3Library library, ILoggerFactory loggerFactory)
+    public LinuxSoxMusicPlayer(ILogger<LinuxSoxMusicPlayer> logger, Mp3Library library, ILoggerFactory loggerFactory, AudioDeviceDetector audioDeviceDetector)
     {
         this.logger = logger;
         this.library = library;
+        this.audioDeviceDetector = audioDeviceDetector;
         _icyReader = new IcyMetadataReader(loggerFactory.CreateLogger<IcyMetadataReader>());
         _icyReader.TitleChanged += title =>
         {
             if (currentSong != null)
                 currentSong = currentSong with { Name = title };
         };
+
+        // Start device detection in background
+        _ = InitializeAudioDeviceAsync();
+    }
+
+    private async Task InitializeAudioDeviceAsync()
+    {
+        try
+        {
+            await audioDeviceDetector.DetectAndSelectDeviceAsync();
+            _deviceDetectionComplete = true;
+            logger.LogInformation("Audio device initialization complete. Using card: {Card}, mixer: {Mixer}",
+                audioDeviceDetector.SelectedCard ?? "(default)",
+                audioDeviceDetector.SelectedMixerControl ?? "(default)");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to initialize audio device, will use system defaults");
+            _deviceDetectionComplete = true;
+        }
+    }
+
+    private async Task EnsureDeviceDetectedAsync()
+    {
+        // Wait up to 5 seconds for device detection to complete
+        var timeout = DateTime.UtcNow.AddSeconds(5);
+        while (!_deviceDetectionComplete && DateTime.UtcNow < timeout)
+        {
+            await Task.Delay(100);
+        }
     }
 
     private PlayerStatus status = new();
@@ -53,7 +86,12 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         _icyReader.Start(url);
         playerProcess = new Process();
         playerProcess.StartInfo.FileName = "cvlc";
-        playerProcess.StartInfo.Arguments = $"\"{streamUrl}\"";
+
+        // Use detected audio device for VLC via ALSA
+        var vlcAudioArgs = audioDeviceDetector.SelectedCard != null
+            ? $"--aout=alsa --alsa-audio-device=hw:{audioDeviceDetector.SelectedCard}"
+            : "";
+        playerProcess.StartInfo.Arguments = $"{vlcAudioArgs} \"{streamUrl}\"";
         playerProcess.StartInfo.UseShellExecute = false;
         playerProcess.StartInfo.RedirectStandardOutput = true;
         playerProcess.StartInfo.RedirectStandardError = true;
@@ -88,6 +126,13 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         playerProcess.StartInfo.UseShellExecute = false;
         playerProcess.StartInfo.RedirectStandardOutput = true;
         playerProcess.StartInfo.RedirectStandardError = true;
+
+        // Set the audio device for sox/play via AUDIODEV environment variable
+        if (audioDeviceDetector.SelectedCard != null)
+        {
+            playerProcess.StartInfo.EnvironmentVariables["AUDIODEV"] = $"hw:{audioDeviceDetector.SelectedCard}";
+            logger.LogInformation("Using audio device: hw:{Card}", audioDeviceDetector.SelectedCard);
+        }
 
         playerProcess.OutputDataReceived += new DataReceivedEventHandler((s, e) =>
         {
@@ -301,28 +346,66 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         _streamName = null;
     }
 
-    public async Task<int> GetVolume() =>
-        (
-            await CliWrap.Cli.Wrap("amixer")
-                             .WithArguments("sget PCM,0")
-                             .ExecuteBufferedAsync()
-        ).StandardOutput
-        .Split(Environment.NewLine)
-        .First(l => l.Contains("Mono:"))
-        .Split('[', ']', '%')
-        .Skip(1)
-        .Select(p => int.Parse(p))
-        .First();
-
-    public void SetVolume(int level0to100)
+    public async Task<int> GetVolume()
     {
+        await EnsureDeviceDetectedAsync();
+
+        var card = audioDeviceDetector.SelectedCard ?? "0";
+        var mixer = audioDeviceDetector.SelectedMixerControl ?? "PCM";
+
+        try
+        {
+            var result = await CliWrap.Cli.Wrap("amixer")
+                                 .WithArguments($"-c {card} sget {mixer}")
+                                 .ExecuteBufferedAsync();
+
+            // Try to find a line with volume percentage
+            var lines = result.StandardOutput.Split(Environment.NewLine);
+            var volumeLine = lines.FirstOrDefault(l => l.Contains("Mono:"))
+                          ?? lines.FirstOrDefault(l => l.Contains("Front Left:"))
+                          ?? lines.FirstOrDefault(l => l.Contains('%'));
+
+            if (volumeLine != null)
+            {
+                return volumeLine
+                    .Split('[', ']', '%')
+                    .Skip(1)
+                    .Select(p => int.TryParse(p, out var v) ? v : -1)
+                    .FirstOrDefault(v => v >= 0);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to get volume from card {Card} mixer {Mixer}", card, mixer);
+        }
+
+        return 50; // Default fallback
+    }
+
+    public async void SetVolume(int level0to100)
+    {
+        await EnsureDeviceDetectedAsync();
+
+        var card = audioDeviceDetector.SelectedCard ?? "0";
+        var mixer = audioDeviceDetector.SelectedMixerControl ?? "PCM";
+
         var actualMin = 40;
         var actualMax = 100;
         var percent = Math.Max(0, Math.Min(100, level0to100)) / 100M;
         var newLevel = (actualMax - actualMin) * percent + actualMin;
-        logger.LogInformation("Desired volume: {Level0to100}; newLevel {NewLevel} = (actualMax {ActualMax} - actual Min {ActualMin}) * percent {Percent} + actualMin {ActualMin}",
-            level0to100, newLevel, actualMax, actualMin, percent, actualMin);
-        Process.Start("amixer", $"sset PCM,0 {newLevel}%");
+        logger.LogInformation("Setting volume on card {Card} mixer {Mixer}: {Level0to100}% -> {NewLevel}%",
+            card, mixer, level0to100, newLevel);
+
+        try
+        {
+            Process.Start("amixer", $"-c {card} sset {mixer} {newLevel}%");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to set volume, trying fallback");
+            // Fallback to default card
+            Process.Start("amixer", $"sset PCM,0 {newLevel}%");
+        }
     }
 
     public void ShuffleQueue()

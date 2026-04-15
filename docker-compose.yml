@@ -28,7 +28,8 @@ services:
     - aspire    
     environment:
     - MediaFolder=/music
-    - ALSA_CARD=Headphones
+    # ALSA_CARD is now auto-detected. Uncomment to override:
+    # - ALSA_CARD=Headphones
     - SqliteConnectionString=Data Source=/music/HomeSpeaker.db
     - ASPNETCORE_URLS=https://+443;http://+:80
     - ASPNETCORE_Kestrel__Certificates__Default__Path=/certs/certificate.pfx

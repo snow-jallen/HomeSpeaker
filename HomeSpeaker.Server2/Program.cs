@@ -51,6 +51,7 @@ if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 }
 else
 {
+    builder.Services.AddSingleton<AudioDeviceDetector>();
     builder.Services.AddSingleton<LinuxSoxMusicPlayer>();
 }
 
