@@ -894,7 +894,7 @@ select:focus,
 /* 1024x600 displays: double base font size for better readability */
 @media screen and (width: 1024px) and (height: 600px) {
     html, body {
-        font-size: 32px;
+        font-size: 24px;
     }
 }
 
