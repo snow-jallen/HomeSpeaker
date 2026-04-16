@@ -873,6 +873,51 @@ input[type="range"]::-moz-range-thumb:active {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* ===== DROPDOWN MENUS ===== */
+
+.dropdown-menu {
+  background: var(--hs-bg-card);
+  border: 1px solid rgba(201, 152, 90, 0.15);
+  border-radius: var(--hs-radius-md);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+}
+
+.dropdown-item {
+  padding: 0.75rem 1.25rem;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 0.95rem;
+  color: var(--hs-text-secondary);
+  transition: all 0.15s ease;
+  font-family: var(--hs-font-body);
+}
+
+.dropdown-item:hover {
+  background-color: var(--hs-hover-bg);
+  color: var(--hs-primary);
+}
+
+.dropdown-item:active {
+  background-color: rgba(201, 152, 90, 0.15);
+  color: var(--hs-primary);
+}
+
+.dropdown-header {
+  font-family: var(--hs-font-heading);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--hs-primary);
+  opacity: 0.8;
+  padding: 0.5rem 1.25rem;
+}
+
+.dropdown-divider {
+  border-top-color: var(--hs-border-color);
+}
+
 /* ===== THEME-AWARE BOOTSTRAP COMPONENT OVERRIDES ===== */
 /* All colors reference --hs-* variables so a single token change re-themes everything */
 

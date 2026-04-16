@@ -87,30 +87,6 @@ else
     }
 }
 
-<style>
-    .search-header {
-        background: linear-gradient(135deg, var(--hs-bg-elevated) 0%, var(--hs-bg-card) 100%);
-        padding: var(--hs-space-lg);
-        border-radius: var(--hs-radius-lg);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-    
-    .pagination-header {
-        padding: var(--hs-space-md);
-        background-color: var(--hs-bg-elevated);
-        border-radius: var(--hs-radius-md);
-    }
-    
-    .artists-list {
-        animation: fadeIn 0.3s ease-in;
-    }
-    
-    @@keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-</style>
-
 @code {
     private int pageNum = 0;
     private int pageSize = 200;

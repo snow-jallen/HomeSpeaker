@@ -91,6 +91,53 @@
             }
         };
 
+        // Grow title + artist font sizes to fill available vertical space in the now-playing card.
+        // Text wraps up to 2 lines each; font is as large as possible within that constraint.
+        window.fitNowPlaying = function () {
+            const title = document.getElementById('now-playing-title');
+            const artist = document.getElementById('now-playing-artist');
+            const status = document.querySelector('.now-playing-status');
+            if (!title || !status) return;
+
+            const progressRow = status.querySelector('.progress-row');
+            const progressH = progressRow ? progressRow.offsetHeight + 8 : 0;
+            const available = status.clientHeight - progressH;
+            if (available < 20) return;
+
+            const artistRatio = 0.38;
+            const lineHeight = 1.18;
+
+            // Temporarily remove line-clamp so scrollHeight reflects true wrapped height
+            title.style.webkitLineClamp = 'unset';
+            if (artist) artist.style.webkitLineClamp = 'unset';
+
+            let low = 10, high = 160;
+            while (high - low > 0.5) {
+                const mid = (low + high) / 2;
+                title.style.fontSize = mid + 'px';
+                if (artist) artist.style.fontSize = (mid * artistRatio) + 'px';
+
+                // Cap each element at 2-lines worth of height
+                const maxTitleH = mid * lineHeight * 2 + 2;
+                const maxArtistH = mid * artistRatio * lineHeight * 2 + 2;
+                const effectiveTitleH = Math.min(title.scrollHeight, maxTitleH);
+                const effectiveArtistH = artist ? Math.min(artist.scrollHeight, maxArtistH) : 0;
+
+                if (effectiveTitleH + effectiveArtistH <= available) {
+                    low = mid;
+                } else {
+                    high = mid;
+                }
+            }
+
+            // Re-apply line-clamp and set final sizes
+            title.style.webkitLineClamp = '2';
+            if (artist) artist.style.webkitLineClamp = '2';
+            const finalSize = Math.floor(low);
+            title.style.fontSize = finalSize + 'px';
+            if (artist) artist.style.fontSize = Math.floor(finalSize * artistRatio) + 'px';
+        };
+
         // Shrink/grow an element's font-size so its text fills (but does not overflow) its parent.
         window.fitText = function (elementId, minPx, maxPx) {
             const el = document.getElementById(elementId);

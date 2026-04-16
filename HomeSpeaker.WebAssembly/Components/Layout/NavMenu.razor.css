@@ -1,10 +1,217 @@
+/* ===== Navigation Menu ===== */
+
+.nav-header {
+    padding: var(--hs-space-md) var(--hs-space-md) var(--hs-space-md);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.brand-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    text-decoration: none;
+    color: var(--hs-text-primary);
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 0.76rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: color 0.2s ease;
+}
+
+.brand-logo:hover {
+    color: var(--hs-primary);
+}
+
+/* Brand icon — small amber gem */
+.brand-logo i {
+    color: var(--hs-primary);
+    font-size: 0.9rem;
+    filter: drop-shadow(0 0 6px rgba(201, 152, 90, 0.5));
+}
+
+.aspire-link {
+    opacity: 0.45;
+    transition: opacity 0.2s ease;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.aspire-link:hover,
+.aspire-link:active {
+    opacity: 0.9;
+}
+
+.playback-section {
+    padding: var(--hs-space-md);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.section-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--hs-text-muted);
+    margin-bottom: 0.5rem;
+    padding: 0 var(--hs-space-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
 .navbar-toggler {
-    background-color: rgba(255, 255, 255, 0.1);
+    position: fixed;
+    top: var(--hs-space-md);
+    right: var(--hs-space-md);
+    z-index: 1001;
+    background: linear-gradient(135deg, var(--hs-primary) 0%, var(--hs-primary-dark) 100%);
+    color: #1A1008;
+    border: none;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 20px rgba(201, 152, 90, 0.4);
+    transition: all 0.15s ease;
+}
+
+.navbar-toggler:active {
+    transform: scale(0.94);
+    box-shadow: 0 2px 10px rgba(201, 152, 90, 0.3);
+}
+
+.nav-menu {
+    padding: var(--hs-space-sm) 0;
+    overflow-y: auto;
+    max-height: calc(100vh - 300px);
+}
+
+.nav-menu::-webkit-scrollbar {
+    width: 3px;
+}
+
+.nav-menu::-webkit-scrollbar-thumb {
+    background-color: rgba(201, 152, 90, 0.2);
+    border-radius: 2px;
+}
+
+.nav-section {
+    margin-bottom: var(--hs-space-md);
+    padding: 0 var(--hs-space-sm);
+}
+
+/* NavLink renders <a> as a child component — ::deep is required so the
+   scope attribute on .nav-section reaches into NavLink's rendered output */
+.nav-section ::deep .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.1rem 0.5rem;
+    margin-bottom: 2px;
+    border-radius: var(--hs-radius-md);
+    color: var(--hs-text-secondary);
+    text-decoration: none;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    font-size: 0.92rem;
+    transition: all 0.16s ease;
+    position: relative;
+    min-height: 52px;
+}
+
+.nav-section ::deep .nav-item i {
+    width: 20px;
+    text-align: center;
+    font-size: 0.95rem;
+    opacity: 0.6;
+    transition: all 0.16s ease;
+}
+
+.nav-section ::deep .nav-item:hover {
+    background-color: var(--hs-hover-bg);
+    color: var(--hs-text-primary);
+}
+
+.nav-section ::deep .nav-item:hover i {
+    opacity: 0.9;
+}
+
+.nav-section ::deep .nav-item:active {
+    background-color: var(--hs-active-bg);
+}
+
+.nav-section ::deep .nav-item.active {
+    background: rgba(201, 152, 90, 0.09);
+    color: var(--hs-primary);
+    font-weight: 600;
+}
+
+.nav-section ::deep .nav-item.active i {
+    opacity: 1;
+    filter: drop-shadow(0 0 4px rgba(201, 152, 90, 0.4));
+}
+
+.nav-section ::deep .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 24px;
+    background: linear-gradient(180deg, var(--hs-primary-hover) 0%, var(--hs-primary-dark) 100%);
+    border-radius: 0 2px 2px 0;
+    box-shadow: 2px 0 10px rgba(201, 152, 90, 0.45);
+}
+
+/* Playback controls styling */
+.playback-controls {
+    flex: 1;
+    justify-content: center;
+    gap: 0.25rem;
+    overflow: hidden;
+}
+
+.playback-controls ::deep .btn {
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+    min-width: 2.25rem;
+    height: 2.5rem;
+    flex-shrink: 0;
+}
+
+.playback-controls ::deep .btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.playback-controls ::deep .btn:focus {
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
 }
 
 .top-row {
     height: 3.5rem;
-    background-color: rgba(0,0,0,0.4);
+    background-color: rgba(0, 0, 0, 0.4);
 }
 
 .navbar-brand {
@@ -18,72 +225,35 @@
     top: -2px;
 }
 
-.nav-item {
-    font-size: 0.85rem;
-    padding-bottom: 0.4rem;
-}
-
-    .nav-item:first-of-type {
-        padding-top: 1rem;
+/* 1024x600 small screen (e.g. netbooks) */
+@media (max-width: 1024px) and (max-height: 600px) {
+    .nav-header {
+        padding: var(--hs-space-sm) var(--hs-space-sm) var(--hs-space-sm);
     }
-
-    .nav-item:last-of-type {
-        padding-bottom: 1rem;
-    }
-
-    .nav-item ::deep a {
-        color: #d7d7d7;
-        border-radius: 4px;
-        height: 3rem;
-        display: flex;
-        align-items: center;
-        line-height: 3rem;
-    }
-
-.nav-item ::deep a.active {
-    background-color: rgba(255,255,255,0.25);
-    color: white;
-}
-
-.nav-item ::deep a:hover {
-    background-color: rgba(255,255,255,0.1);
-    color: white;
-}
-
-/* Playback controls styling */
-.playback-controls {
-    flex: 1;
-    justify-content: center;
-    gap: 0.25rem;
-    overflow: hidden; /* Prevent buttons from breaking the layout */
-}
-
-.playback-controls ::deep .btn {
-    border: none;
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-    padding: 0.375rem 0.5rem;
-    font-size: 0.875rem;
-    min-width: 2.25rem;
-    height: 2.5rem;
-    flex-shrink: 0; /* Prevent buttons from shrinking too much */
-}
-
-.playback-controls ::deep .btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-}
-
-.playback-controls ::deep .btn:focus {
-    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
 }
 
 /* Responsive design for playback controls */
 @media (max-width: 991.98px) {
+    .navbar-toggler {
+        display: none;
+    }
+
+    .nav-header {
+        padding: var(--hs-space-sm);
+    }
+
+    .playback-section {
+        padding: var(--hs-space-sm);
+    }
+
+    .nav-menu {
+        max-height: none;
+    }
+
     .playback-controls {
         gap: 0.125rem;
     }
-    
+
     .playback-controls ::deep .btn {
         padding: 0.25rem 0.375rem;
         font-size: 0.75rem;
@@ -94,7 +264,6 @@
 
 /* Hide buttons only when there's really not enough space */
 @media (max-width: 540px) {
-    /* Hide Clear and Shuffle buttons on smaller screens */
     .playback-controls ::deep .btn:nth-child(4),
     .playback-controls ::deep .btn:nth-child(5) {
         display: none;
@@ -102,7 +271,6 @@
 }
 
 @media (max-width: 420px) {
-    /* Hide Skip button on very small screens */
     .playback-controls ::deep .btn:nth-child(3) {
         display: none;
     }
@@ -118,18 +286,23 @@
     }
 }
 
+/* Desktop sidebar */
+@media (min-width: 992px) {
+    .nav-menu.collapse {
+        display: block !important;
+    }
+}
+
 @media (min-width: 1024px) {
     .navbar-toggler {
         display: none;
     }
 
     .collapse {
-        /* Never collapse the sidebar for wide screens */
         display: block !important;
     }
 
     .nav-scrollable {
-        /* Allow sidebar to scroll for tall menus */
         height: calc(100vh - 3.5rem);
         overflow-y: auto;
     }

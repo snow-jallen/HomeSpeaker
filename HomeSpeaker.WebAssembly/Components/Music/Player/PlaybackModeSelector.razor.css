@@ -1,0 +1,10 @@
+/* ===== Playback Mode Selector ===== */
+
+.playback-mode-selector {
+    background-color: var(--hs-bg-elevated);
+    border: 1px solid var(--hs-border-color);
+    border-radius: var(--hs-radius-sm);
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}

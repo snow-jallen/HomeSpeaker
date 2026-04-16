@@ -1,0 +1,70 @@
+/* ===== Play Controls ===== */
+
+.play-controls {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.play-controls .btn-icon {
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 50%;
+}
+
+.play-controls .btn-icon:active {
+    transform: scale(0.90);
+}
+
+.play-controls .btn-icon i,
+.play-controls .btn-icon-lg i {
+    line-height: 1;
+    display: block;
+}
+
+.play-button .fa-play {
+    width: 1em;
+    text-align: center;
+}
+
+/* Pulsing amber glow on the main play button */
+@keyframes playGlow {
+    0%, 100% {
+        box-shadow: 0 0 18px rgba(201, 152, 90, 0.45), 0 4px 16px rgba(0, 0, 0, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 32px rgba(201, 152, 90, 0.75), 0 4px 16px rgba(0, 0, 0, 0.5);
+    }
+}
+
+.play-button {
+    animation: playGlow 2.8s ease-in-out infinite;
+    background: linear-gradient(135deg, var(--hs-primary) 0%, var(--hs-primary-dark) 100%) !important;
+    color: #1A1008 !important;
+}
+
+.play-button:active {
+    animation: none;
+    transform: scale(0.90);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* RPi 7" screen — compact but still touch-friendly */
+@media (max-width: 800px) and (max-height: 480px) {
+    .play-controls {
+        gap: 0.4rem;
+    }
+
+    .play-controls .btn-icon-lg {
+        width: 58px;
+        height: 58px;
+        font-size: 1.2rem;
+    }
+
+    .play-controls .btn-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1rem;
+    }
+}
