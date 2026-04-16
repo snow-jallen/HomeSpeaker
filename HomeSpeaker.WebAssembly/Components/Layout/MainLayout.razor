@@ -2,7 +2,7 @@
 @inject IJSRuntime JSRuntime
 @inject HomeSpeakerService HomeSpeaker
 @inject ILogger<MainLayout> Logger
-@implements IDisposable
+@implements IAsyncDisposable
 
 <div class="page-container">
     <!-- Desktop: Traditional sidebar layout -->
@@ -57,6 +57,11 @@
                 </div>
             </div>
         </div>
+    }
+
+    @if (_overlayVisible)
+    {
+        <div class="sleepy-overlay" @onclick="OnOverlayClicked"></div>
     }
 </div>
 
@@ -218,6 +223,15 @@
             max-width: 210px;
         }
     }
+
+    /* Sleepy-time overlay */
+    .sleepy-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.97);
+        z-index: 9999;
+        cursor: pointer;
+    }
 </style>
 
 <MudThemeProvider />
@@ -240,6 +254,34 @@
             {
                 Logger.LogError(ex, "Error initializing keyboard shortcuts");
             }
+
+            // Start the sleepy-time window checker (fires immediately, then every 60s)
+            _windowTimer = new Timer(async _ =>
+            {
+                if (IsInSleepWindow())
+                {
+                    if (!_watching)
+                    {
+                        _watching = true;
+                        await JSRuntime.InvokeVoidAsync("sleepyTime.startWatching", dotNetHelper);
+                        StartIdleTimer();
+                    }
+                }
+                else
+                {
+                    if (_watching)
+                    {
+                        _watching = false;
+                        _idleTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+                        await JSRuntime.InvokeVoidAsync("sleepyTime.stopWatching");
+                        await InvokeAsync(() =>
+                        {
+                            _overlayVisible = false;
+                            StateHasChanged();
+                        });
+                    }
+                }
+            }, null, TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(1));
         }
     }
 
@@ -327,6 +369,41 @@
     }
 
     [JSInvokable]
+    public async Task OnUserActivity()
+    {
+        if (!_watching) return;
+
+        await InvokeAsync(() =>
+        {
+            _overlayVisible = false;
+            // Restart the idle timer: cancel existing, schedule new one-shot
+            _idleTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            _idleTimer?.Change(TimeSpan.FromMinutes(1), Timeout.InfiniteTimeSpan);
+            StateHasChanged();
+        });
+    }
+
+    private void StartIdleTimer()
+    {
+        if (_idleTimer == null)
+        {
+            _idleTimer = new Timer(async _ =>
+            {
+                await InvokeAsync(() =>
+                {
+                    _overlayVisible = true;
+                    StateHasChanged();
+                });
+            }, null, TimeSpan.FromMinutes(1), Timeout.InfiniteTimeSpan);
+        }
+        else
+        {
+            // Reset to fire again in 1 minute
+            _idleTimer.Change(TimeSpan.FromMinutes(1), Timeout.InfiniteTimeSpan);
+        }
+    }
+
+    [JSInvokable]
     public async Task OnVolumeDown()
     {
         try
@@ -342,14 +419,47 @@
     }
     
     private bool showMobileMenu = false;
+
+    // Sleepy-time overlay
+    private bool _overlayVisible = false;
+    private bool _watching = false;
+    private Timer? _windowTimer;
+    private Timer? _idleTimer;
     
     private void ToggleMobileMenu()
     {
         showMobileMenu = !showMobileMenu;
     }
 
-    public void Dispose()
+    private static bool IsInSleepWindow()
     {
+        var now = DateTime.Now.TimeOfDay;
+        var start = new TimeSpan(22, 0, 0);
+        var end   = new TimeSpan(6, 30, 0);
+        // Window wraps midnight: active if >= 22:00 OR < 06:30
+        return now >= start || now < end;
+    }
+
+    private void OnOverlayClicked()
+    {
+        _ = OnUserActivity();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _windowTimer?.Dispose();
+        _idleTimer?.Dispose();
+        if (_watching)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("sleepyTime.stopWatching");
+            }
+            catch (Exception ex) when (ex is JSDisconnectedException or TaskCanceledException or OperationCanceledException)
+            {
+                // JS interop channel is already closed; safe to ignore during teardown
+            }
+        }
         dotNetHelper?.Dispose();
     }
 }
