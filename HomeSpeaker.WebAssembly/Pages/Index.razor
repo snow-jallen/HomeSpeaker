@@ -23,72 +23,78 @@
     var showArtist = !string.IsNullOrEmpty(artist) && artist != "[ No Artist ]" && artist != "[Artist Unknown]";
     var showAlbum = !string.IsNullOrEmpty(album) && album != "[ No Album ]";
 }
-<div class="now-playing-card mb-3 @(isPlaying ? "" : "now-playing-card--idle")">
-    @if (isPlaying)
-    {
-        <div class="now-playing-label">
-            <i class="fas fa-headphones me-2"></i>Now Playing
-        </div>
-        <div class="now-playing-status">
-            <div class="song-info">
-                <div class="song-title">@displayName</div>
-                @if (showArtist)
-                {
-                    <div class="song-artist">@artist</div>
-                }
-                @if (showAlbum)
-                {
-                    <div class="song-album">@album</div>
-                }
-                <div class="progress-row mt-2">
-                    @if (!isStream)
-                    {
-                        <div class="progress-bar-track">
-                            <div class="progress-bar-fill" style="width: @((PlayerState.Status!.PercentComplete * 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
-                        </div>
-                    }
-                    <div class="volume-popup-anchor">
-                        <button class="volume-icon-btn" @onclick="ToggleVolumePopup" title="Adjust volume" aria-label="Adjust volume">
-                            <i class="fas fa-volume-up"></i>
-                        </button>
-                        @if (showVolumePopup)
+<div class="home-primary-panels @(isPlaying && showBloodSugar ? "home-primary-panels--dense" : "")">
+    <div>
+        <div class="now-playing-card mb-3 @(isPlaying ? "" : "now-playing-card--idle")">
+            @if (isPlaying)
+            {
+                <div class="now-playing-label">
+                    <i class="fas fa-headphones me-2"></i>Now Playing
+                </div>
+                <div class="now-playing-status">
+                    <div class="song-info">
+                        <div class="song-title">@displayName</div>
+                        @if (showArtist)
                         {
-                            <div class="volume-dismiss-overlay" @onclick="CloseVolumePopup"></div>
-                            <div class="volume-popup-card">
-                                <span class="volume-popup-label">Vol</span>
-                                <span class="volume-popup-number">@volumeLevel</span>
-                                <div class="volume-slider-wrap">
-                                    <input type="range"
-                                           class="volume-slider-vertical"
-                                           min="0" max="100"
-                                           value="@volumeLevel"
-                                           aria-label="Volume"
-                                           @oninput="@(e => { if (int.TryParse(e.Value?.ToString(), out var v)) volumeLevel = v; })"
-                                           @onchange="OnVolumeChanged" />
-                                </div>
-                            </div>
+                            <div class="song-artist">@artist</div>
                         }
+                        @if (showAlbum)
+                        {
+                            <div class="song-album">@album</div>
+                        }
+                        <div class="progress-row mt-2">
+                            @if (!isStream)
+                            {
+                                <div class="progress-bar-track">
+                                    <div class="progress-bar-fill" style="width: @((PlayerState.Status!.PercentComplete * 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                                </div>
+                            }
+                            <div class="volume-popup-anchor">
+                                <button class="volume-icon-btn" @onclick="ToggleVolumePopup" title="Adjust volume" aria-label="Adjust volume">
+                                    <i class="fas fa-volume-up"></i>
+                                </button>
+                                @if (showVolumePopup)
+                                {
+                                    <div class="volume-dismiss-overlay" @onclick="CloseVolumePopup"></div>
+                                    <div class="volume-popup-card">
+                                        <span class="volume-popup-label">Vol</span>
+                                        <span class="volume-popup-number">@volumeLevel</span>
+                                        <div class="volume-slider-wrap">
+                                            <input type="range"
+                                                   class="volume-slider-vertical"
+                                                   min="0" max="100"
+                                                   value="@volumeLevel"
+                                                   aria-label="Volume"
+                                                   @oninput="@(e => { if (int.TryParse(e.Value?.ToString(), out var v)) volumeLevel = v; })"
+                                                   @onchange="OnVolumeChanged" />
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
+                <div class="now-playing-controls">
+                    <PlayControls />
+                </div>
+            }
+            else
+            {
+                <div class="now-playing-controls">
+                    <PlayControls />
+                </div>
+            }
         </div>
-        <div class="now-playing-controls">
-            <PlayControls />
-        </div>
-    }
-    else
+    </div>
+    @if (showBloodSugar)
     {
-        <div class="now-playing-controls">
-            <PlayControls />
+        <div>
+            <BloodSugarMonitor />
         </div>
     }
 </div>
 
 <!-- Section B: Health Monitors (feature-flagged) -->
-@if (showBloodSugar)
-{
-    <BloodSugarMonitor />
-}
 @if (showTemperature)
 {
     <TemperatureMonitor />
@@ -383,6 +389,11 @@
         padding-top: 0;
     }
 
+    .home-primary-panels--dense {
+        display: grid;
+        gap: var(--hs-space-sm);
+    }
+
     /* Sidebar already shows PlayControls — no need to duplicate on desktop */
     @@media (min-width: 992px) {
         .now-playing-controls {
@@ -447,6 +458,50 @@
 
         .now-playing-controls {
             padding-top: 0.25rem;
+        }
+    }
+
+    /* 1024x600 home screen density: align now-playing and blood sugar on one row */
+    @@media (width: 1024px) and (max-height: 600px) {
+        .home-primary-panels--dense {
+            grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+            align-items: stretch;
+        }
+
+        .home-primary-panels--dense .now-playing-card {
+            margin-bottom: 0;
+            padding: var(--hs-space-xs) var(--hs-space-sm);
+            border-radius: 14px;
+        }
+
+        .home-primary-panels--dense .now-playing-label {
+            margin-bottom: var(--hs-space-xs);
+            font-size: 0.56rem;
+            letter-spacing: 0.18em;
+        }
+
+        .home-primary-panels--dense .now-playing-status {
+            min-height: 40px;
+            margin-bottom: 0;
+        }
+
+        .home-primary-panels--dense .song-title {
+            font-size: 1.02rem;
+            line-height: 1.08;
+            margin-bottom: var(--hs-space-xs);
+        }
+
+        .home-primary-panels--dense .song-artist {
+            font-size: 0.66rem;
+            margin-bottom: 0;
+        }
+
+        .home-primary-panels--dense .song-album {
+            display: none;
+        }
+
+        .home-primary-panels--dense .progress-row {
+            margin-top: var(--hs-space-xs);
         }
     }
 </style>
