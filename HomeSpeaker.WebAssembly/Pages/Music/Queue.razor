@@ -33,18 +33,21 @@
     <div class="tab-pane fade show active" id="server-queue" role="tabpanel" aria-labelledby="server-tab">
         <div class="p-3">
             <!-- Now Playing Card -->
+            @if (PlayerState.Status?.CurrentSong != null)
+            {
             <div class="now-playing-card mb-4">
                 <div class="now-playing-header">
                     <i class="fas fa-play-circle me-2"></i>
                     Now Playing
                 </div>
                 <div class="now-playing-title">
-                    @(PlayerState.Status?.CurrentSong?.Name ?? "[ Not playing anything ]")
+                    @PlayerState.Status.CurrentSong.Name
                 </div>
                 <div class="now-playing-controls mt-3">
                     <PlayControls />
                 </div>
             </div>
+            }
 
             <!-- Volume Control Card -->
             <div class="hs-card mb-4">

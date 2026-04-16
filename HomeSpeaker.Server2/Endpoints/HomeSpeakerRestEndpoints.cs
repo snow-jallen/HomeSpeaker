@@ -182,6 +182,18 @@ public static class HomeSpeakerRestEndpoints
             .WithSummary("Search YouTube videos")
             .WithDescription("Searches YouTube for videos matching the search term");
 
+        // GET /api/homespeaker/youtube/ffmpeg-status
+        group.MapGet("/youtube/ffmpeg-status", GetFfmpegStatus)
+            .WithName("GetFfmpegStatus")
+            .WithSummary("Check if ffmpeg is available")
+            .WithDescription("Returns whether ffmpeg is installed and accessible on the server");
+
+        // POST /api/homespeaker/youtube/{videoId}/play
+        group.MapPost("/youtube/{videoId}/play", PlayYouTubeStream)
+            .WithName("PlayYouTubeStream")
+            .WithSummary("Stream a YouTube video for immediate playback")
+            .WithDescription("Resolves the best audio stream URL for the video and starts playback immediately");
+
         // POST /api/homespeaker/youtube/cache
         group.MapPost("/youtube/cache", CacheVideo)
             .WithName("CacheVideo")
@@ -846,6 +858,47 @@ public static class HomeSpeakerRestEndpoints
             logger.LogError(ex, "Failed to clear queue");
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to clear queue: {ex.Message}");
+        }
+    }
+
+    private static IResult GetFfmpegStatus(
+        [FromServices] YoutubeService youtubeService,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        var available = youtubeService.IsFfmpegAvailable();
+        logger.LogInformation("FFmpeg availability check: {available}", available);
+        return Results.Ok(new { available });
+    }
+
+    private static async Task<IResult> PlayYouTubeStream(
+        [FromRoute] string videoId,
+        [FromQuery] string? title,
+        [FromServices] YoutubeService youtubeService,
+        [FromServices] IMusicPlayer musicPlayer,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        using var activity = Activity.Current?.Source.StartActivity("PlayYouTubeStream");
+        activity?.SetTag("video_id", videoId);
+
+        try
+        {
+            logger.LogInformation("Resolving audio stream for YouTube video {videoId}", videoId);
+            var streamUrl = await youtubeService.GetBestAudioStreamUrlAsync(videoId);
+            if (streamUrl is null)
+            {
+                logger.LogWarning("No audio stream found for video {videoId}", videoId);
+                return Results.NotFound("No audio stream available for this video");
+            }
+
+            musicPlayer.PlayStream(streamUrl, title);
+            logger.LogInformation("Started streaming YouTube video {videoId} ({title})", videoId, title);
+            return Results.Ok(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to stream YouTube video {videoId}", videoId);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            return Results.Problem($"Failed to stream video: {ex.Message}");
         }
     }
 

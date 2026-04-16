@@ -57,6 +57,50 @@ public class YoutubeService : IDisposable
         return results;
     }
 
+    public bool IsFfmpegAvailable()
+    {
+        var ffmpegLocation = config[ConfigKeys.FFMpegLocation];
+        if (string.IsNullOrWhiteSpace(ffmpegLocation))
+        {
+            return false;
+        }
+
+        // Check absolute path first, then fall back to PATH resolution
+        if (Path.IsPathRooted(ffmpegLocation))
+        {
+            return System.IO.File.Exists(ffmpegLocation);
+        }
+
+        // For relative/name-only values like "ffmpeg.exe", check via PATH
+        try
+        {
+            using var process = new System.Diagnostics.Process();
+            process.StartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = ffmpegLocation,
+                Arguments = "-version",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            process.Start();
+            process.WaitForExit(2000);
+            return process.ExitCode == 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<string?> GetBestAudioStreamUrlAsync(string videoId)
+    {
+        var manifest = await client.Videos.Streams.GetManifestAsync(VideoId.Parse(videoId));
+        var audioStream = manifest.GetAudioOnlyStreams().GetWithHighestBitrate();
+        return audioStream?.Url;
+    }
+
     public async Task CacheVideoAsync(string id, string title, IProgress<double> progress)
     {
         var fileName = string.Join("_", $"{title}.mp3".Split(Path.GetInvalidFileNameChars()));

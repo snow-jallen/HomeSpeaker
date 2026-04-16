@@ -34,6 +34,7 @@ builder.Services.AddScoped<IBrowserAudioService, BrowserAudioService>();
 builder.Services.AddScoped<ILocalQueueService, LocalQueueService>();
 builder.Services.AddScoped<IPlaybackModeService, PlaybackModeService>();
 builder.Services.AddScoped<ImagePickerService>();
+builder.Services.AddSingleton<YouTubeStateService>();
 
 builder.Services.AddFluentUIComponents();
 builder.Services.AddMudServices();

@@ -25,7 +25,9 @@
 }
 <div class="home-primary-panels @(isPlaying && showBloodSugar ? "home-primary-panels--dense" : "")">
     <div>
-        <div class="now-playing-card mb-3 @(isPlaying ? "" : "now-playing-card--idle")">
+        @if (isPlaying)
+        {
+        <div class="now-playing-card mb-3">
             @if (isPlaying)
             {
                 <div class="now-playing-label">
@@ -33,16 +35,16 @@
                 </div>
                 <div class="now-playing-status">
                     <div class="song-info">
-                        <div class="song-title">@displayName</div>
+                        <div id="now-playing-title" class="song-title">@displayName</div>
                         @if (showArtist)
                         {
-                            <div class="song-artist">@artist</div>
+                            <div id="now-playing-artist" class="song-artist">@artist</div>
                         }
                         @if (showAlbum)
                         {
                             <div class="song-album">@album</div>
                         }
-                        <div class="progress-row mt-2">
+                        <div class="progress-row">
                             @if (!isStream)
                             {
                                 <div class="progress-bar-track">
@@ -78,13 +80,8 @@
                     <PlayControls />
                 </div>
             }
-            else
-            {
-                <div class="now-playing-controls">
-                    <PlayControls />
-                </div>
-            }
         </div>
+        }
     </div>
     @if (showBloodSugar)
     {
@@ -112,6 +109,9 @@
             inset 0 1px 0 rgba(255, 255, 255, 0.06);
         position: relative;
         overflow: visible;
+        display: flex;
+        flex-direction: column;
+        container-type: inline-size;
     }
 
     /* Ambient top-left glow — the "stage light" effect */
@@ -172,16 +172,20 @@
         text-align: center;
         margin-bottom: var(--hs-space-sm);
         position: relative;
+        flex: 1;
     }
 
     .song-info {
         width: 100%;
         text-align: center;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
     }
 
     .song-title {
         font-family: 'Playfair Display', Georgia, serif;
-        font-size: 1.4rem;
+        font-size: clamp(1.2rem, 8cqi, 3.5rem);
         font-weight: 700;
         font-style: italic;
         color: var(--hs-text-primary);
@@ -192,7 +196,7 @@
 
     .song-artist {
         font-family: 'Syne', sans-serif;
-        font-size: 0.72rem;
+        font-size: clamp(0.65rem, 3.5cqi, 1.1rem);
         color: var(--hs-primary);
         font-weight: 600;
         text-transform: uppercase;
@@ -211,7 +215,8 @@
         display: flex;
         align-items: center;
         gap: var(--hs-space-sm);
-        margin-top: 0.6rem;
+        margin-top: auto;
+        padding-top: 0.6rem;
     }
 
     .progress-bar-track {
@@ -468,21 +473,37 @@
             align-items: stretch;
         }
 
+        /* Make the grid cell wrapper propagate height to the card */
+        .home-primary-panels--dense > div:first-child {
+            display: flex;
+            flex-direction: column;
+        }
+
         .home-primary-panels--dense .now-playing-card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
             margin-bottom: 0;
             padding: var(--hs-space-xs) var(--hs-space-sm);
             border-radius: 14px;
+        }
+
+        .home-primary-panels--dense .now-playing-status {
+            flex: 1;
+            align-items: stretch;
+            min-height: 40px;
+            margin-bottom: 0;
+        }
+
+        /* Pin controls to the bottom */
+        .home-primary-panels--dense .now-playing-controls {
+            margin-top: auto;
         }
 
         .home-primary-panels--dense .now-playing-label {
             margin-bottom: var(--hs-space-xs);
             font-size: 0.56rem;
             letter-spacing: 0.18em;
-        }
-
-        .home-primary-panels--dense .now-playing-status {
-            min-height: 40px;
-            margin-bottom: 0;
         }
 
         .home-primary-panels--dense .song-title {
@@ -501,9 +522,15 @@
         }
 
         .home-primary-panels--dense .progress-row {
-            margin-top: var(--hs-space-xs);
+            margin-top: auto;
         }
-    }
+
+        .home-primary-panels--dense .song-info {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            width: 100%;
+        }
 </style>
 
 @code {

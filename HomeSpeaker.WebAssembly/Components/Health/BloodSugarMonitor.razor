@@ -16,9 +16,18 @@
                         <span class="badge bg-warning ms-1" style="font-size:0.6rem">⚠ Stale</span>
                     }
                 </h6>
-                <a href="nightscout" class="nightscout-link" title="Open NightScout">
-                    <i class="fas fa-external-link-alt"></i>
-                </a>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm py-0 px-1 nightscout-link"
+                            @onclick="ForceRefreshBloodSugarData"
+                            disabled="@isLoading"
+                            title="Force refresh"
+                            aria-label="Force refresh blood sugar data">
+                        <i class="fas fa-sync-alt" style="font-size:0.8rem"></i>
+                    </button>
+                    <a href="nightscout" class="nightscout-link d-flex align-items-center" title="Open NightScout">
+                        <i class="fas fa-external-link-alt"></i>
+                    </a>
+                </div>
             </div>
         </div>
         <div class="card-body py-2 px-3">
@@ -28,22 +37,15 @@
                     <span class="bs-value" style="color: @bloodSugarStatus.StatusColor">
                         @bloodSugarStatus.CurrentReading.Sgv
                     </span>
-                    <span class="bs-arrow" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">
-                        @bloodSugarStatus.CurrentReading.DirectionIcon
-                    </span>
                     <div class="bs-meta">
+                        <span class="bs-arrow" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">
+                            @bloodSugarStatus.CurrentReading.DirectionIcon
+                        </span>
                         <span class="bs-direction" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">
                             @bloodSugarStatus.CurrentReading.DirectionDescription
                         </span>
                         <span class="bs-time">@FormatTimeSince(bloodSugarStatus.TimeSinceLastReading)</span>
                     </div>
-                    <button class="btn btn-sm ms-auto py-0 px-1 text-muted"
-                            @onclick="ForceRefreshBloodSugarData"
-                            disabled="@isLoading"
-                            title="Force refresh"
-                            aria-label="Force refresh blood sugar data">
-                        <i class="fas fa-sync-alt" style="font-size:0.65rem"></i>
-                    </button>
                 </div>
             }
             else if (isLoading)
@@ -104,17 +106,17 @@
     }
 
     .bs-value {
-        font-size: 3.8rem;
-        font-weight: 900;
-        line-height: 1.5;
-        letter-spacing: .1em;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        font-size: 5rem;
+        font-weight: 950;
+        line-height: 1.1;
+        letter-spacing: 0em;
+        text-shadow: 4px 4px 8px rgba(0,0,0,0.6);
     }
 
     .bs-arrow {
-        font-size: 2rem;
-        font-weight: 800;
-        line-height: 1.5;
+        font-size: 2.5rem;
+        font-weight: 900;
+        line-height: .8em;
     }
 
     .bs-meta {
@@ -130,7 +132,7 @@
     }
 
     .bs-time {
-        font-size: 0.72rem;
+        font-size: 0.6rem;
         color: var(--bs-secondary-color, #6c757d);
     }
 </style>

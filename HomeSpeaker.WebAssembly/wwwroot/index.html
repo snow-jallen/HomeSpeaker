@@ -90,6 +90,32 @@
                 return 0.5; // Default middle luminance
             }
         };
+
+        // Shrink/grow an element's font-size so its text fills (but does not overflow) its parent.
+        window.fitText = function (elementId, minPx, maxPx) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            const parent = el.parentElement;
+            if (!parent) return;
+            const available = parent.clientWidth;
+            if (available === 0) return;
+
+            // Start at max and binary-search down to the largest size that fits.
+            let low = minPx, high = maxPx;
+            el.style.fontSize = high + 'px';
+            if (el.scrollWidth <= available) return; // already fits at max
+
+            while (high - low > 0.5) {
+                const mid = (low + high) / 2;
+                el.style.fontSize = mid + 'px';
+                if (el.scrollWidth <= available) {
+                    low = mid;
+                } else {
+                    high = mid;
+                }
+            }
+            el.style.fontSize = Math.floor(low) + 'px';
+        };
     </script>
 </body>
 
