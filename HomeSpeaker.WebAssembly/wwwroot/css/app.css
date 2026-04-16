@@ -891,6 +891,13 @@ select:focus,
 
 /* ===================================================== */
 
+/* 1024x600 displays: double base font size for better readability */
+@media screen and (width: 1024px) and (height: 600px) {
+    html, body {
+        font-size: 24px;
+    }
+}
+
 /* RPi 7" touch screen optimization - 800×480 landscape */
 @media (max-width: 800px) and (max-height: 480px),
        (max-width: 600px) {
