@@ -136,6 +136,10 @@ main {
     padding: var(--hs-space-md);
 }
 
+.mobile-menu-content ::deep .nav-menu.collapse {
+    display: block;
+}
+
 /* Sidebar: hidden on mobile, shown on desktop */
 .hs-sidebar {
     display: none;
