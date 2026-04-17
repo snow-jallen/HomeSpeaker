@@ -99,91 +99,88 @@ public sealed class ForecastService
                 return new ForecastStatus { LastUpdated = DateTime.UtcNow };
             }
 
-            var now = DateTime.UtcNow;
+            var now = getForecastNow(weatherData.Timezone);
             var forecastStatus = new ForecastStatus
             {
                 LastUpdated = DateTime.UtcNow
             };
 
-            // Find tonight's low (remaining hours of today)
-            var todayEnd = now.Date.AddDays(1);
-            var tonightTemps = new List<(DateTime time, double temp)>();
+            // Find tonight's low (remaining hours of today in forecast timezone)
+            var todayStart = now.Date;
+            var todayEnd = todayStart.AddDays(1);
+            var tonightTemps = new List<(DateTime time, double temp, int index)>();
 
             for (var i = 0; i < weatherData.Hourly.Time.Length; i++)
             {
                 var time = DateTime.Parse(weatherData.Hourly.Time[i]);
                 if (time >= now && time < todayEnd)
                 {
-                    tonightTemps.Add((time, weatherData.Hourly.Temperature2m[i]));
+                    tonightTemps.Add((time, weatherData.Hourly.Temperature2m[i], i));
                 }
             }
 
             if (tonightTemps.Any())
             {
                 var lowestTemp = tonightTemps.MinBy(t => t.temp);
-                var lowestTempIndex = Array.IndexOf(weatherData.Hourly.Time, lowestTemp.time.ToString("yyyy-MM-ddTHH:00"));
 
                 forecastStatus.TonightLow = new ForecastData
                 {
                     DateTime = lowestTemp.time,
                     Temperature = lowestTemp.temp,
-                    Conditions = getConditionDescription(weatherData.Hourly.WeatherCode[lowestTempIndex]),
-                    PrecipitationChance = weatherData.Hourly.PrecipitationProbability?[lowestTempIndex]
+                    Conditions = getConditionDescription(weatherData.Hourly.WeatherCode[lowestTemp.index]),
+                    PrecipitationChance = weatherData.Hourly.PrecipitationProbability?[lowestTemp.index]
                 };
             }
 
-            // Find today's high (all hours of today)
-            var todayStart = now.Date;
-            var todayTemps = new List<(DateTime time, double temp)>();
+            // Find today's high (all hours of today in forecast timezone)
+            var todayTemps = new List<(DateTime time, double temp, int index)>();
 
             for (var i = 0; i < weatherData.Hourly.Time.Length; i++)
             {
                 var time = DateTime.Parse(weatherData.Hourly.Time[i]);
                 if (time >= todayStart && time < todayEnd)
                 {
-                    todayTemps.Add((time, weatherData.Hourly.Temperature2m[i]));
+                    todayTemps.Add((time, weatherData.Hourly.Temperature2m[i], i));
                 }
             }
 
             if (todayTemps.Any())
             {
                 var highestTodayTemp = todayTemps.MaxBy(t => t.temp);
-                var highestTodayTempIndex = Array.IndexOf(weatherData.Hourly.Time, highestTodayTemp.time.ToString("yyyy-MM-ddTHH:00"));
 
                 forecastStatus.TodayHigh = new ForecastData
                 {
                     DateTime = highestTodayTemp.time,
                     Temperature = highestTodayTemp.temp,
-                    Conditions = getConditionDescription(weatherData.Hourly.WeatherCode[highestTodayTempIndex]),
-                    PrecipitationChance = weatherData.Hourly.PrecipitationProbability?[highestTodayTempIndex]
+                    Conditions = getConditionDescription(weatherData.Hourly.WeatherCode[highestTodayTemp.index]),
+                    PrecipitationChance = weatherData.Hourly.PrecipitationProbability?[highestTodayTemp.index]
                 };
             }
 
-            // Find tomorrow's high
+            // Find tomorrow's high in forecast timezone
             var tomorrowStart = todayEnd;
             var tomorrowEnd = tomorrowStart.AddDays(1);
-            var tomorrowTemps = new List<(DateTime time, double temp)>();
+            var tomorrowTemps = new List<(DateTime time, double temp, int index)>();
 
             for (var i = 0; i < weatherData.Hourly.Time.Length; i++)
             {
                 var time = DateTime.Parse(weatherData.Hourly.Time[i]);
                 if (time >= tomorrowStart && time < tomorrowEnd)
                 {
-                    tomorrowTemps.Add((time, weatherData.Hourly.Temperature2m[i]));
+                    tomorrowTemps.Add((time, weatherData.Hourly.Temperature2m[i], i));
                 }
             }
 
             if (tomorrowTemps.Any())
             {
                 var highestTemp = tomorrowTemps.MaxBy(t => t.temp);
-                var highestTempIndex = Array.IndexOf(weatherData.Hourly.Time, highestTemp.time.ToString("yyyy-MM-ddTHH:00"));
 
                 forecastStatus.TomorrowHigh = new ForecastData
                 {
                     DateTime = highestTemp.time,
                     Temperature = highestTemp.temp,
-                    Conditions = getConditionDescription(weatherData.Hourly.WeatherCode[highestTempIndex]),
-                    PrecipitationChance = weatherData.Hourly.PrecipitationProbability?[highestTempIndex]
+                    Conditions = getConditionDescription(weatherData.Hourly.WeatherCode[highestTemp.index]),
+                    PrecipitationChance = weatherData.Hourly.PrecipitationProbability?[highestTemp.index]
                 };
             }
 
@@ -248,6 +245,9 @@ public sealed class ForecastService
     // Response models for Open-Meteo API
     private sealed class OpenMeteoResponse
     {
+        [JsonPropertyName("timezone")]
+        public string? Timezone { get; set; }
+
         [JsonPropertyName("hourly")]
         public HourlyData? Hourly { get; set; }
     }
@@ -265,5 +265,27 @@ public sealed class ForecastService
 
         [JsonPropertyName("weather_code")]
         public int[] WeatherCode { get; set; } = Array.Empty<int>();
+    }
+
+    private static DateTime getForecastNow(string? timezone)
+    {
+        if (string.IsNullOrWhiteSpace(timezone))
+        {
+            return DateTime.Now;
+        }
+
+        try
+        {
+            var timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById(timezone);
+            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZoneInfo);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return DateTime.Now;
+        }
+        catch (InvalidTimeZoneException)
+        {
+            return DateTime.Now;
+        }
     }
 }
