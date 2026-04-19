@@ -99,6 +99,10 @@
             const status = document.querySelector('.now-playing-status');
             if (!title || !status) return;
 
+            // Reset to stylesheet defaults before measuring so repeated calls are stable
+            title.style.fontSize = '';
+            if (artist) artist.style.fontSize = '';
+
             const progressRow = status.querySelector('.progress-row');
             const progressH = progressRow ? progressRow.offsetHeight + 8 : 0;
             const available = status.clientHeight - progressH;
