@@ -87,7 +87,7 @@
 
                     <!-- Right: stacked forecast -->
                     <div class="temp-forecast">
-                        @if (highData != null)
+                        @if (showTodayHigh && highData != null)
                         {
                             <div class="temp-cell forecast-cell">
                                 <div class="temp-inline">
@@ -112,6 +112,20 @@
                                 @if (!string.IsNullOrEmpty(forecastStatus.TonightLow.Conditions))
                                 {
                                     <div class="temp-conditions">@forecastStatus.TonightLow.Conditions</div>
+                                }
+                            </div>
+                        }
+                        @if (!showTodayHigh && highData != null)
+                        {
+                            <div class="temp-cell forecast-cell">
+                                <div class="temp-inline">
+                                    <i class="fas fa-sun" style="color: @GetTemperatureColor(highData.Temperature)"></i>
+                                    <span class="temp-value" style="color: @GetTemperatureColor(highData.Temperature)">@FormatForecastTemperature(highData.Temperature)</span>
+                                </div>
+                                <div class="temp-label">@highLabel</div>
+                                @if (!string.IsNullOrEmpty(highData.Conditions))
+                                {
+                                    <div class="temp-conditions">@highData.Conditions</div>
                                 }
                             </div>
                         }
