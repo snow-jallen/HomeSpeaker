@@ -27,6 +27,9 @@ public static class HomeSpeakerRestEndpoints
         // YouTube Integration Endpoints
         MapYouTubeEndpoints(homeSpeakerGroup);
 
+        // Radio Stream Endpoints
+        MapRadioEndpoints(homeSpeakerGroup);
+
         return homeSpeakerGroup;
     }
 
@@ -100,6 +103,24 @@ public static class HomeSpeakerRestEndpoints
             .WithName("ToggleBacklight")
             .WithSummary("Toggle device backlight")
             .WithDescription("Toggles the backlight on/off for connected devices");
+
+        // POST /api/homespeaker/player/sleep
+        group.MapPost("/player/sleep", SetSleepTimer)
+            .WithName("SetSleepTimer")
+            .WithSummary("Set a sleep timer")
+            .WithDescription("Schedules the player to stop after the specified number of minutes");
+
+        // DELETE /api/homespeaker/player/sleep
+        group.MapDelete("/player/sleep", CancelSleepTimer)
+            .WithName("CancelSleepTimer")
+            .WithSummary("Cancel the sleep timer")
+            .WithDescription("Cancels any active sleep timer");
+
+        // PUT /api/homespeaker/player/repeat
+        group.MapPut("/player/repeat", SetRepeatMode)
+            .WithName("SetRepeatMode")
+            .WithSummary("Set repeat mode")
+            .WithDescription("Enables or disables repeat mode for the player");
     }
 
     private static void MapPlaylistEndpoints(RouteGroupBuilder group)
@@ -383,7 +404,10 @@ public static class HomeSpeakerRestEndpoints
                 stillPlaying = musicPlayer.StillPlaying,
                 percentComplete = status.PercentComplete,
                 currentSong = status.CurrentSong,
-                volume = volume
+                volume = volume,
+                sleepTimerActive = musicPlayer.SleepTimerActive,
+                sleepTimerRemainingMinutes = musicPlayer.SleepTimerRemaining?.TotalMinutes,
+                repeatMode = musicPlayer.RepeatMode
             };
 
             logger.LogInformation("Player status retrieved: playing={stillPlaying}, song={currentSong}", 
@@ -979,6 +1003,205 @@ public static class HomeSpeakerRestEndpoints
         }
     }
 
+    private static void MapRadioEndpoints(RouteGroupBuilder group)
+    {
+        group.MapGet("/radio", GetRadioStreams)
+            .WithName("GetRadioStreams")
+            .WithSummary("Get all radio streams")
+            .WithDescription("Returns all saved internet radio streams");
+
+        group.MapPost("/radio/{streamId:int}/play", PlayRadioStream)
+            .WithName("PlayRadioStream")
+            .WithSummary("Play a radio stream")
+            .WithDescription("Starts playing the specified internet radio stream");
+
+        group.MapPost("/radio", CreateRadioStream)
+            .WithName("CreateRadioStream")
+            .WithSummary("Create a radio stream")
+            .WithDescription("Adds a new internet radio stream to the library");
+
+        group.MapPut("/radio/{streamId:int}", UpdateRadioStream)
+            .WithName("UpdateRadioStream")
+            .WithSummary("Update a radio stream")
+            .WithDescription("Updates the name and URL of an existing radio stream");
+
+        group.MapDelete("/radio/{streamId:int}", DeleteRadioStream)
+            .WithName("DeleteRadioStream")
+            .WithSummary("Delete a radio stream")
+            .WithDescription("Removes a radio stream from the library");
+    }
+
+    private static async Task<IResult> GetRadioStreams(
+        [FromServices] RadioStreamService radioStreamService,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        try
+        {
+            var streams = await radioStreamService.GetAllStreamsAsync();
+            return Results.Ok(streams.Select(s => new
+            {
+                id = s.Id,
+                name = s.Name,
+                url = s.Url,
+                faviconFileName = s.FaviconFileName,
+                playCount = s.PlayCount,
+                displayOrder = s.DisplayOrder
+            }));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to get radio streams");
+            return Results.Problem($"Failed to get radio streams: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> PlayRadioStream(
+        [FromRoute] int streamId,
+        [FromServices] RadioStreamService radioStreamService,
+        [FromServices] IMusicPlayer musicPlayer,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        try
+        {
+            var stream = await radioStreamService.GetStreamByIdAsync(streamId);
+            if (stream == null)
+                return Results.NotFound($"Stream {streamId} not found");
+
+            await radioStreamService.IncrementPlayCountAsync(streamId);
+            musicPlayer.PlayStream(stream.Url, stream.Name);
+            return Results.Ok(new { success = true, streamId, name = stream.Name });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to play radio stream {streamId}", streamId);
+            return Results.Problem($"Failed to play radio stream: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> CreateRadioStream(
+        [FromBody] CreateRadioStreamRequest request,
+        [FromServices] RadioStreamService radioStreamService,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        try
+        {
+            var stream = await radioStreamService.CreateStreamAsync(request.Name, request.Url, null, null);
+            return Results.Created($"/api/homespeaker/radio/{stream.Id}", new
+            {
+                id = stream.Id,
+                name = stream.Name,
+                url = stream.Url,
+                faviconFileName = stream.FaviconFileName,
+                playCount = stream.PlayCount,
+                displayOrder = stream.DisplayOrder
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to create radio stream");
+            return Results.Problem($"Failed to create radio stream: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> UpdateRadioStream(
+        [FromRoute] int streamId,
+        [FromBody] UpdateRadioStreamRequest request,
+        [FromServices] RadioStreamService radioStreamService,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        try
+        {
+            await radioStreamService.UpdateStreamAsync(streamId, request.Name, request.Url, null, null);
+            var stream = await radioStreamService.GetStreamByIdAsync(streamId);
+            if (stream == null)
+                return Results.NotFound();
+            return Results.Ok(new
+            {
+                id = stream.Id,
+                name = stream.Name,
+                url = stream.Url,
+                faviconFileName = stream.FaviconFileName,
+                playCount = stream.PlayCount,
+                displayOrder = stream.DisplayOrder
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to update radio stream {streamId}", streamId);
+            return Results.Problem($"Failed to update radio stream: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> DeleteRadioStream(
+        [FromRoute] int streamId,
+        [FromServices] RadioStreamService radioStreamService,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        try
+        {
+            await radioStreamService.DeleteStreamAsync(streamId);
+            return Results.NoContent();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to delete radio stream {streamId}", streamId);
+            return Results.Problem($"Failed to delete radio stream: {ex.Message}");
+        }
+    }
+
+    private static Task<IResult> SetSleepTimer(
+        [FromBody] SetSleepTimerRequest request,
+        [FromServices] IMusicPlayer musicPlayer,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        try
+        {
+            musicPlayer.SetSleepTimer(request.Minutes);
+            logger.LogInformation("Sleep timer set to {minutes} minutes", request.Minutes);
+            return Task.FromResult(Results.Ok(new { success = true, minutes = request.Minutes }));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to set sleep timer");
+            return Task.FromResult(Results.Problem($"Failed to set sleep timer: {ex.Message}"));
+        }
+    }
+
+    private static Task<IResult> CancelSleepTimer(
+        [FromServices] IMusicPlayer musicPlayer,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        try
+        {
+            musicPlayer.CancelSleepTimer();
+            logger.LogInformation("Sleep timer cancelled");
+            return Task.FromResult(Results.Ok(new { success = true }));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to cancel sleep timer");
+            return Task.FromResult(Results.Problem($"Failed to cancel sleep timer: {ex.Message}"));
+        }
+    }
+
+    private static Task<IResult> SetRepeatMode(
+        [FromBody] SetRepeatModeRequest request,
+        [FromServices] IMusicPlayer musicPlayer,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        try
+        {
+            musicPlayer.RepeatMode = request.Enabled;
+            logger.LogInformation("Repeat mode set to {enabled}", request.Enabled);
+            return Task.FromResult(Results.Ok(new { success = true, repeatMode = request.Enabled }));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to set repeat mode");
+            return Task.FromResult(Results.Problem($"Failed to set repeat mode: {ex.Message}"));
+        }
+    }
+
     #endregion
 
     #region Request/Response Models
@@ -992,6 +1215,10 @@ public static class HomeSpeakerRestEndpoints
     public record ReorderPlaylistSongsRequest(IEnumerable<string> SongPaths);
     public record UpdateQueueRequest(IEnumerable<string> Songs);
     public record CacheVideoRequest(VideoDto Video);
+    public record CreateRadioStreamRequest(string Name, string Url);
+    public record UpdateRadioStreamRequest(string Name, string Url);
+    public record SetSleepTimerRequest(int Minutes);
+    public record SetRepeatModeRequest(bool Enabled);
 
     #endregion
 
