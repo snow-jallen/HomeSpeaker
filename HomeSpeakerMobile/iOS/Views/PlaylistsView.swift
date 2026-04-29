@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PlaylistsView: View {
     @Environment(ConnectionStore.self) private var store
+    @Environment(LocalPlayer.self) private var localPlayer
     @State private var playlists: [Playlist] = []
     @State private var isLoading = false
     @State private var renamingPlaylist: Playlist?
@@ -25,6 +26,11 @@ struct PlaylistsView: View {
                 }
             }
             .navigationTitle("Playlists")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    destinationToggle
+                }
+            }
             .refreshable { await load() }
             .task { await load() }
             .overlay(alignment: .bottom) {
@@ -45,6 +51,23 @@ struct PlaylistsView: View {
                 Button("Rename") { Task { await rename() } }
                 Button("Cancel", role: .cancel) { renamingPlaylist = nil }
             }
+        }
+    }
+
+    private var destinationToggle: some View {
+        Menu {
+            Button {
+                localPlayer.destination = .speaker
+            } label: {
+                Label("Speaker", systemImage: "hifispeaker.fill")
+            }
+            Button {
+                localPlayer.destination = .device
+            } label: {
+                Label("This iPhone", systemImage: "iphone")
+            }
+        } label: {
+            Image(systemName: localPlayer.destination == .speaker ? "hifispeaker.fill" : "iphone")
         }
     }
 
@@ -103,6 +126,12 @@ struct PlaylistsView: View {
     }
 
     private func play(playlist: Playlist) async {
+        if localPlayer.destination == .device {
+            guard let baseURL = store.selectedConnection?.baseURL else { return }
+            localPlayer.play(songs: playlist.songs, from: 0, baseURL: baseURL)
+            showMessage("Playing on this iPhone: \(playlist.name)")
+            return
+        }
         guard let api = store.api else { return }
         try? await api.playPlaylist(name: playlist.name)
         showMessage("Playing: \(playlist.name)")
@@ -135,6 +164,7 @@ struct PlaylistDetailView: View {
     let onChanged: () -> Void
 
     @Environment(ConnectionStore.self) private var store
+    @Environment(LocalPlayer.self) private var localPlayer
     @State private var songs: [Song]
     @State private var isEditingOrder = false
 
@@ -199,11 +229,21 @@ struct PlaylistDetailView: View {
     }
 
     private func play() async {
+        if localPlayer.destination == .device {
+            guard let baseURL = store.selectedConnection?.baseURL else { return }
+            localPlayer.play(songs: songs, from: 0, baseURL: baseURL)
+            return
+        }
         guard let api = store.api else { return }
         try? await api.playPlaylist(name: playlist.name)
     }
 
     private func enqueueSong(_ song: Song) async {
+        if localPlayer.destination == .device {
+            guard let baseURL = store.selectedConnection?.baseURL else { return }
+            localPlayer.enqueue(songs: [song], baseURL: baseURL)
+            return
+        }
         guard let api = store.api else { return }
         try? await api.enqueueSong(song.songId)
     }

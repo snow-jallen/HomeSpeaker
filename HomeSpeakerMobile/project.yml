@@ -43,6 +43,8 @@ targets:
       - target: HomeSpeakerWatch
         embed: true
       - sdk: WatchConnectivity.framework
+      - sdk: AVFoundation.framework
+      - sdk: MediaPlayer.framework
 
   HomeSpeakerWatch:
     type: application

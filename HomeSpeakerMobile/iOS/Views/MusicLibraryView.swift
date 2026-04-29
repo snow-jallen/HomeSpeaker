@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MusicLibraryView: View {
     @Environment(ConnectionStore.self) private var store
+    @Environment(LocalPlayer.self) private var localPlayer
     @State private var songs: [Song] = []
     @State private var searchText = ""
     @State private var isLoading = false
@@ -68,6 +69,11 @@ struct MusicLibraryView: View {
                 }
             }
             .refreshable { await loadSongs() }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    destinationToggle
+                }
+            }
             .overlay(alignment: .bottom) {
                 if let msg = actionMessage {
                     Text(msg)
@@ -79,6 +85,23 @@ struct MusicLibraryView: View {
                 }
             }
             .task { await loadSongs() }
+        }
+    }
+
+    private var destinationToggle: some View {
+        Menu {
+            Button {
+                localPlayer.destination = .speaker
+            } label: {
+                Label("Speaker", systemImage: "hifispeaker.fill")
+            }
+            Button {
+                localPlayer.destination = .device
+            } label: {
+                Label("This iPhone", systemImage: "iphone")
+            }
+        } label: {
+            Image(systemName: localPlayer.destination == .speaker ? "hifispeaker.fill" : "iphone")
         }
     }
 
@@ -151,6 +174,18 @@ struct MusicLibraryView: View {
     }
 
     private func handleAction(_ action: SongAction, song: Song) async {
+        if localPlayer.destination == .device {
+            guard let baseURL = store.selectedConnection?.baseURL else { return }
+            switch action {
+            case .play:
+                localPlayer.play(songs: [song], from: 0, baseURL: baseURL)
+                showMessage("Playing on this iPhone: \(song.displayTitle)")
+            case .enqueue:
+                localPlayer.enqueue(songs: [song], baseURL: baseURL)
+                showMessage("Added to iPhone queue")
+            }
+            return
+        }
         guard let api = store.api else { return }
         do {
             switch action {
@@ -167,6 +202,21 @@ struct MusicLibraryView: View {
     }
 
     private func handleArtistAction(_ action: SongAction, artist: String) async {
+        if localPlayer.destination == .device {
+            guard let baseURL = store.selectedConnection?.baseURL else { return }
+            let artistSongs = groupedByArtistAndAlbum
+                .first(where: { $0.artist == artist })?
+                .albums.flatMap(\.songs) ?? []
+            switch action {
+            case .play:
+                localPlayer.play(songs: artistSongs, from: 0, baseURL: baseURL)
+                showMessage("Playing on this iPhone: \(artist)")
+            case .enqueue:
+                localPlayer.enqueue(songs: artistSongs, baseURL: baseURL)
+                showMessage("Added \(artist) to iPhone queue")
+            }
+            return
+        }
         guard let api = store.api else { return }
         do {
             switch action {
@@ -183,6 +233,22 @@ struct MusicLibraryView: View {
     }
 
     private func handleAlbumAction(_ action: SongAction, album: String) async {
+        if localPlayer.destination == .device {
+            guard let baseURL = store.selectedConnection?.baseURL else { return }
+            let albumSongs = groupedByArtistAndAlbum
+                .flatMap(\.albums)
+                .first(where: { $0.album == album })?
+                .songs ?? []
+            switch action {
+            case .play:
+                localPlayer.play(songs: albumSongs, from: 0, baseURL: baseURL)
+                showMessage("Playing on this iPhone: \(album)")
+            case .enqueue:
+                localPlayer.enqueue(songs: albumSongs, baseURL: baseURL)
+                showMessage("Added \(album) to iPhone queue")
+            }
+            return
+        }
         guard let api = store.api else { return }
         do {
             switch action {
