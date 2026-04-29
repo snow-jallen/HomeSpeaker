@@ -2,28 +2,6 @@ using HomeSpeaker.WebAssembly.Models;
 
 namespace HomeSpeaker.WebAssembly.Services;
 
-public interface ILocalQueueService
-{
-    event EventHandler? QueueChanged;
-    event EventHandler<SongViewModel>? CurrentSongChanged;
-    
-    IReadOnlyList<SongViewModel> Queue { get; }
-    SongViewModel? CurrentSong { get; }
-    int CurrentIndex { get; }
-    
-    Task AddSongAsync(SongViewModel song);
-    Task AddSongsAsync(IEnumerable<SongViewModel> songs);
-    Task PlaySongAsync(SongViewModel song);
-    Task PlaySongsAsync(IEnumerable<SongViewModel> songs);
-    Task RemoveSongAsync(int index);
-    Task ClearQueueAsync();
-    Task MoveSongAsync(int fromIndex, int toIndex);
-    Task PlayNextAsync();
-    Task PlayPreviousAsync();
-    Task PlaySongAtIndexAsync(int index);
-    Task ShuffleQueueAsync();
-}
-
 public class LocalQueueService : ILocalQueueService
 {
     private readonly IBrowserAudioService audioService;
@@ -202,7 +180,12 @@ public class LocalQueueService : ILocalQueueService
         }
     }
 
-    private async void OnAudioStatusChanged(object? sender, BrowserPlayerStatus status)
+    private void OnAudioStatusChanged(object? sender, BrowserPlayerStatus status)
+    {
+        _ = HandleAudioStatusChangedAsync(status);
+    }
+
+    private async Task HandleAudioStatusChangedAsync(BrowserPlayerStatus status)
     {
         // Check if the current song has ended
         if (status.Duration > 0 && Math.Abs(status.CurrentTime - status.Duration) < 1.0 && !status.IsPlaying)
