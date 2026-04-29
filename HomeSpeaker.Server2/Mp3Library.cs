@@ -68,7 +68,7 @@ public class Mp3Library
     internal void DeleteSong(int songId)
     {
         var song = Songs.Where(s => s.SongId == songId).FirstOrDefault();
-        if (song == null)
+        if (song?.Path == null)
         {
             return;
         }
@@ -86,7 +86,7 @@ public class Mp3Library
 
             // Find the song to get its file path
             var song = Songs.Where(s => s.SongId == songId).FirstOrDefault();
-            if (song == null)
+            if (song?.Path == null)
             {
                 logger.LogWarning("Song with ID {SongId} not found", songId);
                 return;

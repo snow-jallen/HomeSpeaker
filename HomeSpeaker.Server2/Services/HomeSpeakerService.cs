@@ -37,7 +37,7 @@ public class HomeSpeakerService : HomeSpeakerBase
         // Track song plays as impressions
         musicPlayer.PlayerEvent += async (sender, msg) =>
         {
-            if (msg.StartsWith("Played: "))
+            if (msg.StartsWith("Played: ", StringComparison.Ordinal))
             {
                 var songName = msg.Substring(8);
                 try
@@ -62,7 +62,12 @@ public class HomeSpeakerService : HomeSpeakerBase
 
     private readonly IServiceProvider serviceProvider;
 
-    private async void musicPlayer_PlayerEvent(object? sender, string message)
+    private void musicPlayer_PlayerEvent(object? sender, string message)
+    {
+        _ = notifyClientsAsync(message);
+    }
+
+    private async Task notifyClientsAsync(string message)
     {
         foreach (var client in eventClients)
         {
@@ -123,10 +128,10 @@ public class HomeSpeakerService : HomeSpeakerBase
 
     public override async Task<ShufflePlaylistReply> ShufflePlaylist(ShufflePlaylistRequest request, ServerCallContext context)
     {
-        logger.LogInformation("Received ShufflePlaylist request for playlist: {playlistName}", request.PlaylistName);
+        logger.LogInformation("Received ShufflePlaylist request for playlist: {PlaylistName}", request.PlaylistName);
         var shuffledPaths = await playlistService.ShufflePlaylistAsync(request.PlaylistName);
-        logger.LogInformation("Successfully shuffled playlist: {playlistName}", request.PlaylistName);
-        
+        logger.LogInformation("Successfully shuffled playlist: {PlaylistName}", request.PlaylistName);
+
         var reply = new ShufflePlaylistReply();
         reply.ShuffledSongPaths.AddRange(shuffledPaths);
         return reply;
@@ -134,10 +139,10 @@ public class HomeSpeakerService : HomeSpeakerBase
 
     public override async Task<SetPlaylistAlwaysShuffleReply> SetPlaylistAlwaysShuffle(SetPlaylistAlwaysShuffleRequest request, ServerCallContext context)
     {
-        logger.LogInformation("Received SetPlaylistAlwaysShuffle request for playlist: {playlistName}, alwaysShuffle: {alwaysShuffle}", 
+        logger.LogInformation("Received SetPlaylistAlwaysShuffle request for playlist: {PlaylistName}, alwaysShuffle: {AlwaysShuffle}",
             request.PlaylistName, request.AlwaysShuffle);
         await playlistService.SetPlaylistAlwaysShuffleAsync(request.PlaylistName, request.AlwaysShuffle);
-        logger.LogInformation("Successfully set AlwaysShuffle for playlist: {playlistName}", request.PlaylistName);
+        logger.LogInformation("Successfully set AlwaysShuffle for playlist: {PlaylistName}", request.PlaylistName);
         return new SetPlaylistAlwaysShuffleReply();
     }
 
@@ -221,7 +226,7 @@ public class HomeSpeakerService : HomeSpeakerBase
             if (!string.IsNullOrEmpty(request.Folder))
             {
                 logger.LogInformation("Filtering songs to just those in the {Folder} folder", request.Folder);
-                songs = songs.Where(s => s.Path.Contains(request.Folder));
+                songs = songs.Where(s => s.Path?.Contains(request.Folder, StringComparison.OrdinalIgnoreCase) == true);
             }
 
             logger.LogInformation("Found songs!  Sending to client.");
@@ -233,7 +238,7 @@ public class HomeSpeakerService : HomeSpeakerBase
             logger.LogInformation("No songs found.  Sending back empty list.");
         }
 
-        await responseStream.WriteAsync(reply);
+        await responseStream.WriteAsync(reply, context.CancellationToken);
     }
 
     public override Task<PlaySongReply> PlaySong(PlaySongRequest request, ServerCallContext context)
@@ -246,7 +251,7 @@ public class HomeSpeakerService : HomeSpeakerBase
         if (song != null)
         {
             _ = Task.Run(() =>
-                musicPlayer.PlaySong(song)
+                musicPlayer.PlaySong(song), context.CancellationToken
             );
             reply.Ok = true;
         }
@@ -316,7 +321,7 @@ public class HomeSpeakerService : HomeSpeakerBase
             logger.LogInformation("No songs in queue.  Sending back empty list.");
         }
 
-        await responseStream.WriteAsync(reply);
+        await responseStream.WriteAsync(reply, context.CancellationToken);
     }
 
     private IEnumerable<SongMessage> translateSongs(IEnumerable<Song> songQueue)
@@ -379,7 +384,7 @@ public class HomeSpeakerService : HomeSpeakerBase
 
     public override Task<EnqueueFolderReply> EnqueueFolder(EnqueueFolderRequest request, ServerCallContext context)
     {
-        foreach (var song in library.Songs.Where(s => s.Path.Contains(request.FolderPath)))
+        foreach (var song in library.Songs.Where(s => s.Path?.Contains(request.FolderPath, StringComparison.OrdinalIgnoreCase) == true))
         {
             musicPlayer.EnqueueSong(song);
         }
@@ -390,7 +395,7 @@ public class HomeSpeakerService : HomeSpeakerBase
     public override Task<PlayFolderReply> PlayFolder(PlayFolderRequest request, ServerCallContext context)
     {
         musicPlayer.Stop();
-        foreach (var song in library.Songs.Where(s => s.Path.Contains(request.FolderPath)))
+        foreach (var song in library.Songs.Where(s => s.Path?.Contains(request.FolderPath, StringComparison.OrdinalIgnoreCase) == true))
         {
             musicPlayer.EnqueueSong(song);
         }
@@ -401,7 +406,7 @@ public class HomeSpeakerService : HomeSpeakerBase
     public override async Task SendEvent(Empty request, IServerStreamWriter<StreamServerEvent> responseStream, ServerCallContext context)
     {
         eventClients.Add(responseStream);
-        await responseStream.WriteAsync(new StreamServerEvent { Message = "Client connected." });
+        await responseStream.WriteAsync(new StreamServerEvent { Message = "Client connected." }, context.CancellationToken);
         await Task.Delay(TimeSpan.FromMinutes(180), context.CancellationToken);
     }
 

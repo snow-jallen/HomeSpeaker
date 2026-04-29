@@ -22,7 +22,7 @@ public class DefaultTagParser : ITagParser
     {
         var fileName = Path.GetFileName(fullPath);
         using var mp3 = new Mp3(fullPath);
-        var tag = mp3.GetTag(Id3TagFamily.Version2X) ?? mp3.GetTag(Id3TagFamily.Version1X) ?? throw new ApplicationException("Unable to find MP3 tags for " + fullPath);
+        var tag = mp3.GetTag(Id3TagFamily.Version2X) ?? mp3.GetTag(Id3TagFamily.Version1X) ?? throw new InvalidOperationException("Unable to find MP3 tags for " + fullPath);
         var title = tag.Title?.Value?.Replace("\0", string.Empty) ?? string.Empty;
         if (title.Length == 0)
         {

@@ -13,11 +13,13 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
     {
         this.logger = logger;
         this.library = library;
-        _icyReader = new IcyMetadataReader(loggerFactory.CreateLogger<IcyMetadataReader>());
-        _icyReader.TitleChanged += title =>
+        icyReader = new IcyMetadataReader(loggerFactory.CreateLogger<IcyMetadataReader>());
+        icyReader.TitleChanged += title =>
         {
             if (currentSong != null)
+            {
                 currentSong = currentSong with { Name = title };
+            }
         };
     }
 
@@ -29,26 +31,35 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
     private Song? currentSong;
     private Song? stoppedSong;
     private bool disposed;
-    private DateTime? _songStartTime;
-    private TimeSpan _songDuration;
-    private bool _isStream;
-    private string? _streamName;
-    private readonly IcyMetadataReader _icyReader;
+    private DateTime? songStartTime;
+    private TimeSpan songDuration;
+    private bool isStream;
+    private string? streamName;
+    private readonly IcyMetadataReader icyReader;
 
     public PlayerStatus Status
     {
         get
         {
-            var baseStatus = (status ?? new PlayerStatus()) with { CurrentSong = currentSong, IsStream = _isStream, StreamName = _streamName };
-            if (!_isStream && _songStartTime.HasValue && _songDuration > TimeSpan.Zero && currentSong != null)
+            var baseStatus = (status ?? new PlayerStatus()) with { CurrentSong = currentSong, IsStream = isStream, StreamName = streamName };
+            if (!isStream && songStartTime.HasValue && songDuration > TimeSpan.Zero && currentSong != null)
             {
-                var elapsed = DateTime.UtcNow - _songStartTime.Value;
-                if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
-                if (elapsed > _songDuration) elapsed = _songDuration;
-                var remaining = _songDuration - elapsed;
-                var percentComplete = (decimal)(elapsed.TotalSeconds / _songDuration.TotalSeconds);
+                var elapsed = DateTime.UtcNow - songStartTime.Value;
+                if (elapsed < TimeSpan.Zero)
+                {
+                    elapsed = TimeSpan.Zero;
+                }
+
+                if (elapsed > songDuration)
+                {
+                    elapsed = songDuration;
+                }
+
+                var remaining = songDuration - elapsed;
+                var percentComplete = (decimal)(elapsed.TotalSeconds / songDuration.TotalSeconds);
                 return baseStatus with { Elapsed = elapsed, Remaining = remaining, PercentComplete = percentComplete };
             }
+
             return baseStatus;
         }
     }
@@ -58,7 +69,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
     public void PlaySong(Song song)
     {
         currentSong = song;
-        _isStream = false;
+        isStream = false;
         startedPlaying = true;
         stopPlaying();
         stoppedSong = null;
@@ -66,11 +77,11 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         try
         {
             using var tagFile = TagLib.File.Create(song.Path);
-            _songDuration = tagFile.Properties.Duration;
+            songDuration = tagFile.Properties.Duration;
         }
         catch
         {
-            _songDuration = TimeSpan.Zero;
+            songDuration = TimeSpan.Zero;
         }
 
         playerProcess = new Process();
@@ -112,7 +123,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         PlayerEvent?.Invoke(this, "Playing " + song.Name);
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
-        _songStartTime = DateTime.UtcNow;
+        songStartTime = DateTime.UtcNow;
         playerProcess.Exited += playerProcess_Exited;
 
         playerProcess.BeginOutputReadLine();
@@ -145,9 +156,9 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             }
         }
 
-        _songStartTime = null;
-        _songDuration = TimeSpan.Zero;
-        _icyReader.Stop();
+        songStartTime = null;
+        songDuration = TimeSpan.Zero;
+        icyReader.Stop();
 
         // Fallback: kill any remaining VLC processes that might be hanging around
         try
@@ -184,7 +195,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
                 logger.LogInformation("Disposing WindowsMusicPlayer");
                 stopPlaying();
                 sleepTimerCts?.Dispose();
-                _icyReader.Dispose();
+                icyReader.Dispose();
             }
 
             disposed = true;
@@ -210,8 +221,8 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         {
             logger.LogInformation("Nothing in the queue, so Status is now empty.");
             status = new PlayerStatus();
-            _songStartTime = null;
-            _songDuration = TimeSpan.Zero;
+            songStartTime = null;
+            songDuration = TimeSpan.Zero;
         }
     }
     private void playNextSongInQueue()
@@ -297,8 +308,8 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         stopPlaying();
         currentSong = null;
         status = new PlayerStatus();
-        _isStream = false;
-        _streamName = null;
+        isStream = false;
+        streamName = null;
     }
 
     public void SetVolume(int level0to100)
@@ -324,10 +335,10 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 
         stopPlaying();
         currentSong = new Song { Name = name ?? url, Path = url };
-        _isStream = true;
-        _streamName = name ?? url;
+        isStream = true;
+        streamName = name ?? url;
         status = new PlayerStatus { StillPlaying = true };
-        _icyReader.Start(url);
+        icyReader.Start(url);
         playerProcess = new Process();
         playerProcess.StartInfo.FileName = VlcPath;
         playerProcess.StartInfo.Arguments = $"\"{streamUrl}\"";
@@ -456,7 +467,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
                 sleepTimerCts?.Dispose();
                 sleepTimerCts = null;
             }
-        });
+        }, sleepTimerCts.Token);
     }
 
     public void CancelSleepTimer()

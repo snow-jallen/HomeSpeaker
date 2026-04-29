@@ -98,7 +98,7 @@ public class PlaylistService
         IEnumerable<PlaylistItem> songsToPlay;
         if (playlist.AlwaysShuffle)
         {
-            logger.LogInformation("Playlist {playlistName} has AlwaysShuffle enabled, shuffling before playing", playlistName);
+            logger.LogInformation("Playlist {PlaylistName} has AlwaysShuffle enabled, shuffling before playing", playlistName);
             await ShufflePlaylistAsync(playlistName);
             // Reload playlist to get shuffled order
             playlist = await dbContext.Playlists.Include(p => p.Songs).FirstOrDefaultAsync(p => p.Name == playlistName);
@@ -199,11 +199,11 @@ public class PlaylistService
         var playlist = await dbContext.Playlists.FirstOrDefaultAsync(p => p.Name == playlistName);
         if (playlist == null)
         {
-            logger.LogWarning("Asked to set AlwaysShuffle for playlist {playlistName} but it doesn't exist.", playlistName);
+            logger.LogWarning("Asked to set AlwaysShuffle for playlist {PlaylistName} but it doesn't exist.", playlistName);
             return;
         }
 
-        logger.LogInformation("Setting AlwaysShuffle to {alwaysShuffle} for playlist {playlistName}", alwaysShuffle, playlistName);
+        logger.LogInformation("Setting AlwaysShuffle to {AlwaysShuffle} for playlist {PlaylistName}", alwaysShuffle, playlistName);
         playlist.AlwaysShuffle = alwaysShuffle;
         await dbContext.SaveChangesAsync();
     }
@@ -213,13 +213,13 @@ public class PlaylistService
         var playlist = await dbContext.Playlists.Include(p => p.Songs).FirstOrDefaultAsync(p => p.Name == playlistName);
         if (playlist == null)
         {
-            logger.LogWarning("Asked to shuffle playlist {playlistName} but it doesn't exist.", playlistName);
+            logger.LogWarning("Asked to shuffle playlist {PlaylistName} but it doesn't exist.", playlistName);
             return Enumerable.Empty<string>();
         }
 
         if (playlist.Songs.Count <= 1)
         {
-            logger.LogInformation("Playlist {playlistName} has {count} songs, no need to shuffle", playlistName, playlist.Songs.Count);
+            logger.LogInformation("Playlist {PlaylistName} has {Count} songs, no need to shuffle", playlistName, playlist.Songs.Count);
             return playlist.Songs.Select(s => s.SongPath).ToList();
         }
 
@@ -231,24 +231,26 @@ public class PlaylistService
         }).ToList();
 
         // Implement artist-aware shuffling
-        var shuffledSongs = ShuffleWithArtistDistribution(songsWithArtists);
+        var shuffledSongs = shuffleWithArtistDistribution(songsWithArtists);
 
         // Update the order in the database
-        for (int i = 0; i < shuffledSongs.Count; i++)
+        for (var i = 0; i < shuffledSongs.Count; i++)
         {
             shuffledSongs[i].Item.Order = i;
         }
 
         await dbContext.SaveChangesAsync();
-        logger.LogInformation("Successfully shuffled {count} songs in playlist {playlistName}", shuffledSongs.Count, playlistName);
+        logger.LogInformation("Successfully shuffled {Count} songs in playlist {PlaylistName}", shuffledSongs.Count, playlistName);
 
         return shuffledSongs.Select(s => s.Item.SongPath).ToList();
     }
 
-    private List<T> ShuffleWithArtistDistribution<T>(List<T> items) where T : class
+    private List<T> shuffleWithArtistDistribution<T>(List<T> items) where T : class
     {
         if (items.Count <= 1)
+        {
             return items;
+        }
 
         var random = new Random();
         var result = new List<T>();

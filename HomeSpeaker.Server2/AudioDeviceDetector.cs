@@ -9,24 +9,24 @@ namespace HomeSpeaker.Server2;
 /// </summary>
 public class AudioDeviceDetector
 {
-    private readonly ILogger<AudioDeviceDetector> _logger;
-    private string? _selectedCard;
-    private string? _selectedMixerControl;
+    private readonly ILogger<AudioDeviceDetector> logger;
+    private string? selectedCard;
+    private string? selectedMixerControl;
 
     public AudioDeviceDetector(ILogger<AudioDeviceDetector> logger)
     {
-        _logger = logger;
+        this.logger = logger;
     }
 
     /// <summary>
     /// The ALSA card name/number to use for playback (e.g., "Headphones", "0", "UACDemoV10")
     /// </summary>
-    public string? SelectedCard => _selectedCard;
+    public string? SelectedCard => selectedCard;
 
     /// <summary>
     /// The mixer control name to use for volume (e.g., "PCM", "Master", "Speaker")
     /// </summary>
-    public string? SelectedMixerControl => _selectedMixerControl;
+    public string? SelectedMixerControl => selectedMixerControl;
 
     /// <summary>
     /// Detects available audio devices and selects the best one.
@@ -34,30 +34,30 @@ public class AudioDeviceDetector
     /// </summary>
     public async Task DetectAndSelectDeviceAsync()
     {
-        _logger.LogInformation("Starting audio device detection...");
+        logger.LogInformation("Starting audio device detection...");
 
         // Check for environment variable override
         var envCard = Environment.GetEnvironmentVariable("ALSA_CARD");
         if (!string.IsNullOrWhiteSpace(envCard))
         {
-            _logger.LogInformation("Using ALSA_CARD environment variable: {Card}", envCard);
-            _selectedCard = envCard;
-            _selectedMixerControl = await DetectMixerControlAsync(envCard);
-            _logger.LogInformation("Selected mixer control: {MixerControl}", _selectedMixerControl ?? "(none found)");
+            logger.LogInformation("Using ALSA_CARD environment variable: {Card}", envCard);
+            selectedCard = envCard;
+            selectedMixerControl = await detectMixerControlAsync(envCard);
+            logger.LogInformation("Selected mixer control: {MixerControl}", selectedMixerControl ?? "(none found)");
             return;
         }
 
-        var devices = await GetAvailableDevicesAsync();
+        var devices = await getAvailableDevicesAsync();
 
         if (devices.Count == 0)
         {
-            _logger.LogWarning("No audio devices found!");
+            logger.LogWarning("No audio devices found!");
             return;
         }
 
         foreach (var device in devices)
         {
-            _logger.LogInformation("Found audio device: Card {CardNumber} [{CardName}]: {Description}",
+            logger.LogInformation("Found audio device: Card {CardNumber} [{CardName}]: {Description}",
                 device.CardNumber, device.CardName, device.Description);
         }
 
@@ -76,16 +76,16 @@ public class AudioDeviceDetector
             .ThenBy(d => d.CardNumber)
             .First();
 
-        _selectedCard = selected.CardName;
-        _logger.LogInformation("Selected audio device: Card {CardNumber} [{CardName}]: {Description}",
+        selectedCard = selected.CardName;
+        logger.LogInformation("Selected audio device: Card {CardNumber} [{CardName}]: {Description}",
             selected.CardNumber, selected.CardName, selected.Description);
 
         // Detect the appropriate mixer control for this card
-        _selectedMixerControl = await DetectMixerControlAsync(selected.CardName);
-        _logger.LogInformation("Selected mixer control: {MixerControl}", _selectedMixerControl ?? "(none found)");
+        selectedMixerControl = await detectMixerControlAsync(selected.CardName);
+        logger.LogInformation("Selected mixer control: {MixerControl}", selectedMixerControl ?? "(none found)");
     }
 
-    private async Task<List<AudioDevice>> GetAvailableDevicesAsync()
+    private async Task<List<AudioDevice>> getAvailableDevicesAsync()
     {
         var devices = new List<AudioDevice>();
 
@@ -121,7 +121,9 @@ public class AudioDeviceDetector
 
                 // Skip duplicates (aplay -l shows each card multiple times for each device)
                 if (devices.Any(d => d.CardNumber == cardNumber))
+                {
                     continue;
+                }
 
                 devices.Add(new AudioDevice
                 {
@@ -136,13 +138,13 @@ public class AudioDeviceDetector
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to enumerate audio devices");
+            logger.LogError(ex, "Failed to enumerate audio devices");
         }
 
         return devices;
     }
 
-    private async Task<string?> DetectMixerControlAsync(string cardName)
+    private async Task<string?> detectMixerControlAsync(string cardName)
     {
         // Try common mixer control names in order of preference
         var controlsToTry = new[] { "PCM", "Master", "Speaker", "Headphone", "Digital" };
@@ -165,7 +167,7 @@ public class AudioDeviceDetector
             var output = await process.StandardOutput.ReadToEndAsync();
             await process.WaitForExitAsync();
 
-            _logger.LogDebug("Available mixer controls for card {Card}: {Output}", cardName, output);
+            logger.LogDebug("Available mixer controls for card {Card}: {Output}", cardName, output);
 
             // Parse output like:
             // Simple mixer control 'PCM',0
@@ -188,13 +190,13 @@ public class AudioDeviceDetector
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to detect mixer controls for card {Card}", cardName);
+            logger.LogError(ex, "Failed to detect mixer controls for card {Card}", cardName);
         }
 
         return null;
     }
 
-    private class AudioDevice
+    private sealed class AudioDevice
     {
         public int CardNumber { get; set; }
         public string CardName { get; set; } = "";

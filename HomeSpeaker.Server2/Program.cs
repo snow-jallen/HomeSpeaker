@@ -626,7 +626,7 @@ app.MapGet("/api/streams/image-search", async (string q, ImageSearchService imag
 {
     if (string.IsNullOrWhiteSpace(q))
     {
-        return Results.BadRequest(new { error = "Query is required" });
+        return Results.BadRequest(new { Error = "Query is required" });
     }
 
     var results = await imageSearch.SearchAsync(q);
@@ -644,12 +644,12 @@ app.MapPost("/api/streams/upload-image", async (IFormFile file, RadioStreamServi
 
     if (!allowedTypes.Contains(file.ContentType))
     {
-        return Results.BadRequest(new { error = "File must be an image (PNG, JPG, GIF, ICO, WebP)" });
+        return Results.BadRequest(new { Error = "File must be an image (PNG, JPG, GIF, ICO, WebP)" });
     }
 
     if (file.Length > 2 * 1024 * 1024)
     {
-        return Results.BadRequest(new { error = "File must be under 2MB" });
+        return Results.BadRequest(new { Error = "File must be under 2MB" });
     }
 
     var filename = await radioStreamService.UploadFaviconAsync(file);
@@ -658,7 +658,7 @@ app.MapPost("/api/streams/upload-image", async (IFormFile file, RadioStreamServi
         return Results.Problem("Failed to save image");
     }
 
-    return Results.Ok(new { filename });
+    return Results.Ok(new { Filename = filename });
 }).DisableAntiforgery();
 
 app.MapFallbackToFile("index.html");

@@ -87,7 +87,7 @@ public class Playlist
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
-    public bool AlwaysShuffle { get; set; } = false;
+    public bool AlwaysShuffle { get; set; }
     public List<PlaylistItem> Songs { get; set; } = new();
 }
 

@@ -271,7 +271,7 @@ public sealed class ForecastService
     {
         if (string.IsNullOrWhiteSpace(timezone))
         {
-            return DateTime.Now;
+            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.Local);
         }
 
         try
@@ -281,11 +281,11 @@ public sealed class ForecastService
         }
         catch (TimeZoneNotFoundException)
         {
-            return DateTime.Now;
+            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.Local);
         }
         catch (InvalidTimeZoneException)
         {
-            return DateTime.Now;
+            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.Local);
         }
     }
 }

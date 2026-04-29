@@ -14,30 +14,32 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     private readonly AudioDeviceDetector audioDeviceDetector;
     private Process? playerProcess;
     private bool disposed;
-    private bool _deviceDetectionComplete;
+    private bool deviceDetectionComplete;
 
     public LinuxSoxMusicPlayer(ILogger<LinuxSoxMusicPlayer> logger, Mp3Library library, ILoggerFactory loggerFactory, AudioDeviceDetector audioDeviceDetector)
     {
         this.logger = logger;
         this.library = library;
         this.audioDeviceDetector = audioDeviceDetector;
-        _icyReader = new IcyMetadataReader(loggerFactory.CreateLogger<IcyMetadataReader>());
-        _icyReader.TitleChanged += title =>
+        icyReader = new IcyMetadataReader(loggerFactory.CreateLogger<IcyMetadataReader>());
+        icyReader.TitleChanged += title =>
         {
             if (currentSong != null)
+            {
                 currentSong = currentSong with { Name = title };
+            }
         };
 
         // Start device detection in background
-        _ = InitializeAudioDeviceAsync();
+        _ = initializeAudioDeviceAsync();
     }
 
-    private async Task InitializeAudioDeviceAsync()
+    private async Task initializeAudioDeviceAsync()
     {
         try
         {
             await audioDeviceDetector.DetectAndSelectDeviceAsync();
-            _deviceDetectionComplete = true;
+            deviceDetectionComplete = true;
             logger.LogInformation("Audio device initialization complete. Using card: {Card}, mixer: {Mixer}",
                 audioDeviceDetector.SelectedCard ?? "(default)",
                 audioDeviceDetector.SelectedMixerControl ?? "(default)");
@@ -45,26 +47,26 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to initialize audio device, will use system defaults");
-            _deviceDetectionComplete = true;
+            deviceDetectionComplete = true;
         }
     }
 
-    private async Task EnsureDeviceDetectedAsync()
+    private async Task ensureDeviceDetectedAsync()
     {
         // Wait up to 5 seconds for device detection to complete
         var timeout = DateTime.UtcNow.AddSeconds(5);
-        while (!_deviceDetectionComplete && DateTime.UtcNow < timeout)
+        while (!deviceDetectionComplete && DateTime.UtcNow < timeout)
         {
-            await Task.Delay(100);
+            await Task.Delay(100, CancellationToken.None);
         }
     }
 
     private PlayerStatus status = new();
     private Song? currentSong;
-    private bool _isStream;
-    private string? _streamName;
-    private readonly IcyMetadataReader _icyReader;
-    public PlayerStatus Status => (status ?? new PlayerStatus()) with { CurrentSong = currentSong, IsStream = _isStream, StreamName = _streamName };
+    private bool isStream;
+    private string? streamName;
+    private readonly IcyMetadataReader icyReader;
+    public PlayerStatus Status => (status ?? new PlayerStatus()) with { CurrentSong = currentSong, IsStream = isStream, StreamName = streamName };
 
     private bool startedPlaying;
     private Song? stoppedSong;
@@ -80,10 +82,10 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
 
         stopPlaying();
         currentSong = new Song { Name = name ?? url, Path = url };
-        _isStream = true;
-        _streamName = name ?? url;
+        isStream = true;
+        streamName = name ?? url;
         status = new PlayerStatus { StillPlaying = true };
-        _icyReader.Start(url);
+        icyReader.Start(url);
         playerProcess = new Process();
         playerProcess.StartInfo.FileName = "cvlc";
 
@@ -116,7 +118,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     {
         startedPlaying = true;
         currentSong = song;
-        _isStream = false;
+        isStream = false;
         stopPlaying();
         stoppedSong = null;
 
@@ -194,7 +196,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
             }
         }
 
-        _icyReader.Stop();
+        icyReader.Stop();
 
         // Fallback: kill any remaining processes that might be hanging around
         try
@@ -231,7 +233,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
                 logger.LogInformation("Disposing LinuxSoxMusicPlayer");
                 stopPlaying();
                 sleepTimerCts?.Dispose();
-                _icyReader.Dispose();
+                icyReader.Dispose();
             }
 
             disposed = true;
@@ -257,7 +259,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         {
             logger.LogInformation("Nothing in the queue, so Status is now empty.");
             status = new PlayerStatus();
-            _isStream = false;
+            isStream = false;
         }
     }
 
@@ -342,13 +344,13 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         stopPlaying();
         currentSong = null;
         status = new PlayerStatus();
-        _isStream = false;
-        _streamName = null;
+        isStream = false;
+        streamName = null;
     }
 
     public async Task<int> GetVolume()
     {
-        await EnsureDeviceDetectedAsync();
+        await ensureDeviceDetectedAsync();
 
         var card = audioDeviceDetector.SelectedCard ?? "0";
         var mixer = audioDeviceDetector.SelectedMixerControl ?? "PCM";
@@ -357,7 +359,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         {
             var result = await CliWrap.Cli.Wrap("amixer")
                                  .WithArguments($"-c {card} sget {mixer}")
-                                 .ExecuteBufferedAsync();
+                                  .ExecuteBufferedAsync(CancellationToken.None);
 
             // Try to find a line with volume percentage
             var lines = result.StandardOutput.Split(Environment.NewLine);
@@ -382,9 +384,14 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         return 50; // Default fallback
     }
 
-    public async void SetVolume(int level0to100)
+    public void SetVolume(int level0to100)
     {
-        await EnsureDeviceDetectedAsync();
+        _ = setVolumeAsync(level0to100);
+    }
+
+    private async Task setVolumeAsync(int level0to100)
+    {
+        await ensureDeviceDetectedAsync();
 
         var card = audioDeviceDetector.SelectedCard ?? "0";
         var mixer = audioDeviceDetector.SelectedMixerControl ?? "PCM";
@@ -496,7 +503,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
                 sleepTimerCts?.Dispose();
                 sleepTimerCts = null;
             }
-        });
+        }, sleepTimerCts.Token);
     }
 
     public void CancelSleepTimer()

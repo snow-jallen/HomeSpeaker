@@ -6,11 +6,11 @@ public class AnchorHub : Hub
 {
     public async Task JoinAnchorGroup()
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, "AnchorUpdates");
+        await Groups.AddToGroupAsync(Context.ConnectionId, "AnchorUpdates", Context.ConnectionAborted);
     }
 
     public async Task LeaveAnchorGroup()
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, "AnchorUpdates");
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, "AnchorUpdates", Context.ConnectionAborted);
     }
 }

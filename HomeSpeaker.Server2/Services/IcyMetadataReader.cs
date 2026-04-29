@@ -5,31 +5,31 @@ namespace HomeSpeaker.Server2.Services;
 
 public sealed partial class IcyMetadataReader : IDisposable
 {
-    private CancellationTokenSource? _cts;
-    private readonly ILogger<IcyMetadataReader> _logger;
+    private CancellationTokenSource? cts;
+    private readonly ILogger<IcyMetadataReader> logger;
 
     public event Action<string>? TitleChanged;
 
     public IcyMetadataReader(ILogger<IcyMetadataReader> logger)
     {
-        _logger = logger;
+        this.logger = logger;
     }
 
     public void Start(string streamUrl)
     {
         Stop();
-        _cts = new CancellationTokenSource();
-        _ = Task.Run(() => ReadAsync(streamUrl, _cts.Token));
+        cts = new CancellationTokenSource();
+        _ = Task.Run(() => readAsync(streamUrl, cts.Token), cts.Token);
     }
 
     public void Stop()
     {
-        _cts?.Cancel();
-        _cts?.Dispose();
-        _cts = null;
+        cts?.Cancel();
+        cts?.Dispose();
+        cts = null;
     }
 
-    private async Task ReadAsync(string streamUrl, CancellationToken ct)
+    private async Task readAsync(string streamUrl, CancellationToken ct)
     {
         try
         {
@@ -44,11 +44,11 @@ public sealed partial class IcyMetadataReader : IDisposable
                 || !int.TryParse(values.FirstOrDefault(), out var metaint)
                 || metaint <= 0)
             {
-                _logger.LogInformation("Stream {Url} does not support ICY metadata", streamUrl);
+                logger.LogInformation("Stream {Url} does not support ICY metadata", streamUrl);
                 return;
             }
 
-            _logger.LogInformation("Reading ICY metadata from {Url} with metaint={Metaint}", streamUrl, metaint);
+            logger.LogInformation("Reading ICY metadata from {Url} with metaint={Metaint}", streamUrl, metaint);
 
             using var stream = await response.Content.ReadAsStreamAsync(ct);
             var skipBuffer = new byte[4096];
@@ -63,15 +63,26 @@ public sealed partial class IcyMetadataReader : IDisposable
                 {
                     var toRead = Math.Min(remaining, skipBuffer.Length);
                     var read = await stream.ReadAsync(skipBuffer.AsMemory(0, toRead), ct);
-                    if (read == 0) return;
+                    if (read == 0)
+                    {
+                        return;
+                    }
+
                     remaining -= read;
                 }
 
                 // Read the 1-byte metadata length indicator (actual length = byte * 16)
-                if (await stream.ReadAsync(lengthBuf.AsMemory(0, 1), ct) == 0) return;
+                if (await stream.ReadAsync(lengthBuf.AsMemory(0, 1), ct) == 0)
+                {
+                    return;
+                }
+
                 var metaLength = lengthBuf[0] * 16;
 
-                if (metaLength == 0) continue;
+                if (metaLength == 0)
+                {
+                    continue;
+                }
 
                 // Read the metadata block
                 var metaBuffer = new byte[metaLength];
@@ -79,26 +90,36 @@ public sealed partial class IcyMetadataReader : IDisposable
                 while (metaOffset < metaLength)
                 {
                     var read = await stream.ReadAsync(metaBuffer.AsMemory(metaOffset, metaLength - metaOffset), ct);
-                    if (read == 0) return;
+                    if (read == 0)
+                    {
+                        return;
+                    }
+
                     metaOffset += read;
                 }
 
                 var metadata = Encoding.UTF8.GetString(metaBuffer).TrimEnd('\0');
                 var match = StreamTitleRegex().Match(metadata);
-                if (!match.Success) continue;
+                if (!match.Success)
+                {
+                    continue;
+                }
 
                 var title = match.Groups[1].Value.Trim();
-                if (string.IsNullOrEmpty(title) || title == lastTitle) continue;
+                if (string.IsNullOrEmpty(title) || title == lastTitle)
+                {
+                    continue;
+                }
 
                 lastTitle = title;
-                _logger.LogInformation("ICY stream title changed: {Title}", title);
+                logger.LogInformation("ICY stream title changed: {Title}", title);
                 TitleChanged?.Invoke(title);
             }
         }
         catch (OperationCanceledException) { /* expected on Stop() */ }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "ICY metadata reader stopped for {Url}", streamUrl);
+            logger.LogWarning(ex, "ICY metadata reader stopped for {Url}", streamUrl);
         }
     }
 

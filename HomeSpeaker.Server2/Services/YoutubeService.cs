@@ -111,7 +111,7 @@ public class YoutubeService : IDisposable
         }
 
         destinationPath = Path.Combine(destinationPath, fileName);
-        var ffmpegLocation = config[ConfigKeys.FFMpegLocation] ?? throw new Exception("Missing ffmeg path in config: " + ConfigKeys.FFMpegLocation);
+        var ffmpegLocation = config[ConfigKeys.FFMpegLocation] ?? throw new InvalidOperationException("Missing ffmeg path in config: " + ConfigKeys.FFMpegLocation);
 
         logger.LogInformation("Beginning to cache {Title}", title);
 

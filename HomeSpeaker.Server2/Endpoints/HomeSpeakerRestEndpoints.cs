@@ -15,246 +15,246 @@ public static class HomeSpeakerRestEndpoints
             .WithTags("HomeSpeaker");
 
         // Song Management Endpoints
-        MapSongEndpoints(homeSpeakerGroup);
-        
+        mapSongEndpoints(homeSpeakerGroup);
+
         // Player Control Endpoints
-        MapPlayerEndpoints(homeSpeakerGroup);
-        
+        mapPlayerEndpoints(homeSpeakerGroup);
+
         // Playlist Management Endpoints
-        MapPlaylistEndpoints(homeSpeakerGroup);
-        
+        mapPlaylistEndpoints(homeSpeakerGroup);
+
         // Queue Management Endpoints
-        MapQueueEndpoints(homeSpeakerGroup);
-        
+        mapQueueEndpoints(homeSpeakerGroup);
+
         // YouTube Integration Endpoints
-        MapYouTubeEndpoints(homeSpeakerGroup);
+        mapYouTubeEndpoints(homeSpeakerGroup);
 
         // Radio Stream Endpoints
-        MapRadioEndpoints(homeSpeakerGroup);
+        mapRadioEndpoints(homeSpeakerGroup);
 
         return homeSpeakerGroup;
     }
 
-    private static void MapSongEndpoints(RouteGroupBuilder group)
+    private static void mapSongEndpoints(RouteGroupBuilder group)
     {
         // GET /api/homespeaker/songs?folder={folder}
-        group.MapGet("/songs", GetSongs)
+        group.MapGet("/songs", getSongs)
             .WithName("GetSongs")
             .WithSummary("Get all songs or songs from a specific folder")
             .WithDescription("Returns a list of all songs in the library, optionally filtered by folder path");
 
         // PUT /api/homespeaker/songs/{songId}
-        group.MapPut("/songs/{songId:int}", UpdateSong)
+        group.MapPut("/songs/{songId:int}", updateSong)
             .WithName("UpdateSong")
             .WithSummary("Update song metadata")
             .WithDescription("Updates the name, artist, and album information for a song");
 
         // DELETE /api/homespeaker/songs/{songId}
-        group.MapDelete("/songs/{songId:int}", DeleteSong)
+        group.MapDelete("/songs/{songId:int}", deleteSong)
             .WithName("DeleteSong")
             .WithSummary("Delete a song")
             .WithDescription("Removes a song from the library");
 
         // POST /api/homespeaker/songs/{songId}/play
-        group.MapPost("/songs/{songId:int}/play", PlaySong)
+        group.MapPost("/songs/{songId:int}/play", playSong)
             .WithName("PlaySong")
             .WithSummary("Play a specific song")
             .WithDescription("Starts playing the specified song immediately");
 
         // POST /api/homespeaker/songs/{songId}/enqueue
-        group.MapPost("/songs/{songId:int}/enqueue", EnqueueSong)
+        group.MapPost("/songs/{songId:int}/enqueue", enqueueSong)
             .WithName("EnqueueSong")
             .WithSummary("Add song to queue")
             .WithDescription("Adds the specified song to the playback queue");
 
         // POST /api/homespeaker/songs/enqueue-by-artist?artist={name}
-        group.MapPost("/songs/enqueue-by-artist", EnqueueByArtist)
+        group.MapPost("/songs/enqueue-by-artist", enqueueByArtist)
             .WithName("EnqueueByArtist")
             .WithSummary("Add all songs by an artist to queue")
             .WithDescription("Adds all songs matching the given artist to the playback queue");
 
         // POST /api/homespeaker/songs/play-by-artist?artist={name}
-        group.MapPost("/songs/play-by-artist", PlayByArtist)
+        group.MapPost("/songs/play-by-artist", playByArtist)
             .WithName("PlayByArtist")
             .WithSummary("Play all songs by an artist")
             .WithDescription("Clears the queue and plays all songs matching the given artist");
 
         // POST /api/homespeaker/songs/enqueue-by-album?album={name}
-        group.MapPost("/songs/enqueue-by-album", EnqueueByAlbum)
+        group.MapPost("/songs/enqueue-by-album", enqueueByAlbum)
             .WithName("EnqueueByAlbum")
             .WithSummary("Add all songs from an album to queue")
             .WithDescription("Adds all songs matching the given album to the playback queue");
 
         // POST /api/homespeaker/songs/play-by-album?album={name}
-        group.MapPost("/songs/play-by-album", PlayByAlbum)
+        group.MapPost("/songs/play-by-album", playByAlbum)
             .WithName("PlayByAlbum")
             .WithSummary("Play all songs from an album")
             .WithDescription("Clears the queue and plays all songs matching the given album");
 
         // GET /api/homespeaker/songs/{songId}/art
-        group.MapGet("/songs/{songId:int}/art", GetSongArt)
+        group.MapGet("/songs/{songId:int}/art", getSongArt)
             .WithName("GetSongArt")
             .WithSummary("Get album art for a song")
             .WithDescription("Returns the embedded album art image for the specified song");
 
         // PUT /api/homespeaker/albums/art?album={name}
-        group.MapPut("/albums/art", UpdateAlbumArt)
+        group.MapPut("/albums/art", updateAlbumArt)
             .WithName("UpdateAlbumArt")
             .WithSummary("Update album art for all songs in an album")
             .WithDescription("Replaces the embedded album art for all songs in the specified album");
     }
 
-    private static void MapPlayerEndpoints(RouteGroupBuilder group)
+    private static void mapPlayerEndpoints(RouteGroupBuilder group)
     {
         // GET /api/homespeaker/player/status
-        group.MapGet("/player/status", GetPlayerStatus)
+        group.MapGet("/player/status", getPlayerStatus)
             .WithName("GetPlayerStatus")
             .WithSummary("Get current player status")
             .WithDescription("Returns current playback status including elapsed time, current song, and volume");
 
         // POST /api/homespeaker/player/control
-        group.MapPost("/player/control", PlayerControl)
+        group.MapPost("/player/control", playerControl)
             .WithName("PlayerControl")
             .WithSummary("Control player playback")
             .WithDescription("Control player operations like play, pause, stop, skip, and volume");
 
         // POST /api/homespeaker/folders/{*folderPath}/play
-        group.MapPost("/folders/{folderPath}/play", PlayFolder)
+        group.MapPost("/folders/{folderPath}/play", playFolder)
             .WithName("PlayFolder")
             .WithSummary("Play all songs in a folder")
             .WithDescription("Starts playing all songs from the specified folder");
 
         // POST /api/homespeaker/folders/{*folderPath}/enqueue
-        group.MapPost("/folders/{folderPath}/enqueue", EnqueueFolder)
+        group.MapPost("/folders/{folderPath}/enqueue", enqueueFolder)
             .WithName("EnqueueFolder")
             .WithSummary("Add folder to queue")
             .WithDescription("Adds all songs from the specified folder to the playback queue");
 
         // POST /api/homespeaker/stream/play
-        group.MapPost("/stream/play", PlayStream)
+        group.MapPost("/stream/play", playStream)
             .WithName("PlayStream")
             .WithSummary("Play a stream URL")
             .WithDescription("Starts playing audio from the specified stream URL");
 
         // POST /api/homespeaker/backlight/toggle
-        group.MapPost("/backlight/toggle", ToggleBacklight)
+        group.MapPost("/backlight/toggle", toggleBacklight)
             .WithName("ToggleBacklight")
             .WithSummary("Toggle device backlight")
             .WithDescription("Toggles the backlight on/off for connected devices");
 
         // POST /api/homespeaker/player/sleep
-        group.MapPost("/player/sleep", SetSleepTimer)
+        group.MapPost("/player/sleep", setSleepTimer)
             .WithName("SetSleepTimer")
             .WithSummary("Set a sleep timer")
             .WithDescription("Schedules the player to stop after the specified number of minutes");
 
         // DELETE /api/homespeaker/player/sleep
-        group.MapDelete("/player/sleep", CancelSleepTimer)
+        group.MapDelete("/player/sleep", cancelSleepTimer)
             .WithName("CancelSleepTimer")
             .WithSummary("Cancel the sleep timer")
             .WithDescription("Cancels any active sleep timer");
 
         // PUT /api/homespeaker/player/repeat
-        group.MapPut("/player/repeat", SetRepeatMode)
+        group.MapPut("/player/repeat", setRepeatMode)
             .WithName("SetRepeatMode")
             .WithSummary("Set repeat mode")
             .WithDescription("Enables or disables repeat mode for the player");
     }
 
-    private static void MapPlaylistEndpoints(RouteGroupBuilder group)
+    private static void mapPlaylistEndpoints(RouteGroupBuilder group)
     {
         // GET /api/homespeaker/playlists
-        group.MapGet("/playlists", GetPlaylists)
+        group.MapGet("/playlists", getPlaylists)
             .WithName("GetPlaylists")
             .WithSummary("Get all playlists")
             .WithDescription("Returns all playlists with their songs");
 
         // POST /api/homespeaker/playlists/{playlistName}/play
-        group.MapPost("/playlists/{playlistName}/play", PlayPlaylist)
+        group.MapPost("/playlists/{playlistName}/play", playPlaylist)
             .WithName("PlayPlaylist")
             .WithSummary("Play a playlist")
             .WithDescription("Starts playing all songs from the specified playlist");
 
         // PUT /api/homespeaker/playlists/{oldName}/rename
-        group.MapPut("/playlists/{oldName}/rename", RenamePlaylist)
+        group.MapPut("/playlists/{oldName}/rename", renamePlaylist)
             .WithName("RenamePlaylist")
             .WithSummary("Rename a playlist")
             .WithDescription("Changes the name of an existing playlist");
 
         // DELETE /api/homespeaker/playlists/{playlistName}
-        group.MapDelete("/playlists/{playlistName}", DeletePlaylist)
+        group.MapDelete("/playlists/{playlistName}", deletePlaylist)
             .WithName("DeletePlaylist")
             .WithSummary("Delete a playlist")
             .WithDescription("Removes the specified playlist and all its contents");
 
         // POST /api/homespeaker/playlists/{playlistName}/songs
-        group.MapPost("/playlists/{playlistName}/songs", AddSongToPlaylist)
+        group.MapPost("/playlists/{playlistName}/songs", addSongToPlaylist)
             .WithName("AddSongToPlaylist")
             .WithSummary("Add song to playlist")
             .WithDescription("Adds a song to the specified playlist");
 
         // DELETE /api/homespeaker/playlists/{playlistName}/songs
-        group.MapDelete("/playlists/{playlistName}/songs", RemoveSongFromPlaylist)
+        group.MapDelete("/playlists/{playlistName}/songs", removeSongFromPlaylist)
             .WithName("RemoveSongFromPlaylist")
             .WithSummary("Remove song from playlist")
             .WithDescription("Removes a song from the specified playlist");
 
         // PUT /api/homespeaker/playlists/{playlistName}/reorder
-        group.MapPut("/playlists/{playlistName}/reorder", ReorderPlaylistSongs)
+        group.MapPut("/playlists/{playlistName}/reorder", reorderPlaylistSongs)
             .WithName("ReorderPlaylistSongs")
             .WithSummary("Reorder playlist songs")
             .WithDescription("Changes the order of songs in a playlist");
     }
 
-    private static void MapQueueEndpoints(RouteGroupBuilder group)
+    private static void mapQueueEndpoints(RouteGroupBuilder group)
     {
         // GET /api/homespeaker/queue
-        group.MapGet("/queue", GetPlayQueue)
+        group.MapGet("/queue", getPlayQueue)
             .WithName("GetPlayQueue")
             .WithSummary("Get current play queue")
             .WithDescription("Returns all songs currently in the playback queue");
 
         // PUT /api/homespeaker/queue
-        group.MapPut("/queue", UpdateQueue)
+        group.MapPut("/queue", updateQueue)
             .WithName("UpdateQueue")
             .WithSummary("Update entire queue")
             .WithDescription("Replaces the current queue with the provided list of songs");
 
         // POST /api/homespeaker/queue/shuffle
-        group.MapPost("/queue/shuffle", ShuffleQueue)
+        group.MapPost("/queue/shuffle", shuffleQueue)
             .WithName("ShuffleQueue")
             .WithSummary("Shuffle the queue")
             .WithDescription("Randomly reorders all songs in the current queue");
 
         // DELETE /api/homespeaker/queue
-        group.MapDelete("/queue", ClearQueue)
+        group.MapDelete("/queue", clearQueue)
             .WithName("ClearQueue")
             .WithSummary("Clear the queue")
             .WithDescription("Removes all songs from the playback queue");
     }
 
-    private static void MapYouTubeEndpoints(RouteGroupBuilder group)
+    private static void mapYouTubeEndpoints(RouteGroupBuilder group)
     {
         // GET /api/homespeaker/youtube/search?q={searchTerm}
-        group.MapGet("/youtube/search", SearchVideo)
+        group.MapGet("/youtube/search", searchVideo)
             .WithName("SearchVideo")
             .WithSummary("Search YouTube videos")
             .WithDescription("Searches YouTube for videos matching the search term");
 
         // GET /api/homespeaker/youtube/ffmpeg-status
-        group.MapGet("/youtube/ffmpeg-status", GetFfmpegStatus)
+        group.MapGet("/youtube/ffmpeg-status", getFfmpegStatus)
             .WithName("GetFfmpegStatus")
             .WithSummary("Check if ffmpeg is available")
             .WithDescription("Returns whether ffmpeg is installed and accessible on the server");
 
         // POST /api/homespeaker/youtube/{videoId}/play
-        group.MapPost("/youtube/{videoId}/play", PlayYouTubeStream)
+        group.MapPost("/youtube/{videoId}/play", playYouTubeStream)
             .WithName("PlayYouTubeStream")
             .WithSummary("Stream a YouTube video for immediate playback")
             .WithDescription("Resolves the best audio stream URL for the video and starts playback immediately");
 
         // POST /api/homespeaker/youtube/cache
-        group.MapPost("/youtube/cache", CacheVideo)
+        group.MapPost("/youtube/cache", cacheVideo)
             .WithName("CacheVideo")
             .WithSummary("Cache a YouTube video")
             .WithDescription("Downloads and caches a YouTube video for offline playback");
@@ -262,7 +262,7 @@ public static class HomeSpeakerRestEndpoints
 
     #region Endpoint Implementations
 
-    private static async Task<IResult> GetSongs(
+    private static async Task<IResult> getSongs(
         [FromServices] Mp3Library library,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger,
         [FromQuery] string? folder = null)
@@ -272,21 +272,21 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Getting songs from library, folder filter: {folder}", folder ?? "all");
-            
+            logger.LogInformation("Getting songs from library, folder filter: {Folder}", folder ?? "all");
+
             if (library?.Songs?.Any() ?? false)
             {
-                IEnumerable<Song> songs = library.Songs;
+                var songs = library.Songs;
                 if (!string.IsNullOrEmpty(folder))
                 {
-                    logger.LogInformation("Filtering songs to just those in the {folder} folder", folder);
-                    songs = songs.Where(s => s.Path.Contains(folder, StringComparison.OrdinalIgnoreCase));
+                    logger.LogInformation("Filtering songs to just those in the {Folder} folder", folder);
+                    songs = songs.Where(s => s.Path?.Contains(folder, StringComparison.OrdinalIgnoreCase) == true);
                 }
-                
+
                 var songList = songs.ToList();
-                logger.LogInformation("Found {count} songs", songList.Count);
+                logger.LogInformation("Found {Count} songs", songList.Count);
                 activity?.SetTag("song_count", songList.Count);
-                
+
                 return Results.Ok(songList);
             }
             else
@@ -303,7 +303,7 @@ public static class HomeSpeakerRestEndpoints
         }
     }
 
-    private static async Task<IResult> UpdateSong(
+    private static async Task<IResult> updateSong(
         [FromRoute] int songId,
         [FromBody] UpdateSongRequest request,
         [FromServices] Mp3Library library,
@@ -317,26 +317,28 @@ public static class HomeSpeakerRestEndpoints
         {
             var song = library.Songs?.FirstOrDefault(s => s.SongId == songId);
             if (song?.Path == null)
+            {
                 return Results.NotFound($"Song with ID {songId} not found");
+            }
 
-            logger.LogInformation("Updating song {songId} ({path}) with name: {name}, artist: {artist}, album: {album}",
+            logger.LogInformation("Updating song {SongId} ({Path}) with name: {Name}, artist: {Artist}, album: {Album}",
                 songId, song.Path, request.Name, request.Artist, request.Album);
 
             tagParser.UpdateSongTags(song.Path, request.Name, request.Artist, request.Album);
             library.IsDirty = true;
 
-            logger.LogInformation("Song {songId} updated successfully", songId);
+            logger.LogInformation("Song {SongId} updated successfully", songId);
             return Results.Ok();
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to update song {songId}", songId);
+            logger.LogError(ex, "Failed to update song {SongId}", songId);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to update song: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> DeleteSong(
+    private static async Task<IResult> deleteSong(
         [FromRoute] int songId,
         [FromServices] Mp3Library library,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
@@ -346,21 +348,21 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Deleting song {songId}", songId);
-            
+            logger.LogInformation("Deleting song {SongId}", songId);
+
             // Note: This would need to be implemented in the Mp3Library or a dedicated service
-            logger.LogInformation("Song {songId} deleted successfully", songId);
+            logger.LogInformation("Song {SongId} deleted successfully", songId);
             return Results.Ok();
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to delete song {songId}", songId);
+            logger.LogError(ex, "Failed to delete song {SongId}", songId);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to delete song: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> PlaySong(
+    private static async Task<IResult> playSong(
         [FromRoute] int songId,
         [FromServices] Mp3Library library,
         [FromServices] IMusicPlayer musicPlayer,
@@ -371,30 +373,30 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Playing song {songId}", songId);
-            
+            logger.LogInformation("Playing song {SongId}", songId);
+
             var song = library.Songs?.FirstOrDefault(s => s.SongId == songId);
             if (song == null)
             {
-                logger.LogWarning("Song {songId} not found", songId);
+                logger.LogWarning("Song {SongId} not found", songId);
                 return Results.NotFound($"Song with ID {songId} not found");
             }
 
             musicPlayer.PlaySong(song);
-            logger.LogInformation("Successfully started playing song {songId}: {songName}", songId, song.Name);
+            logger.LogInformation("Successfully started playing song {SongId}: {SongName}", songId, song.Name);
             activity?.SetTag("song_name", song.Name);
-            
-            return Results.Ok(new { success = true, song = song.Name });
+
+            return Results.Ok(new { Success = true, Song = song.Name });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to play song {songId}", songId);
+            logger.LogError(ex, "Failed to play song {SongId}", songId);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to play song: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> EnqueueSong(
+    private static async Task<IResult> enqueueSong(
         [FromRoute] int songId,
         [FromServices] Mp3Library library,
         [FromServices] IMusicPlayer musicPlayer,
@@ -405,30 +407,30 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Enqueuing song {songId}", songId);
-            
+            logger.LogInformation("Enqueuing song {SongId}", songId);
+
             var song = library.Songs?.FirstOrDefault(s => s.SongId == songId);
             if (song == null)
             {
-                logger.LogWarning("Song {songId} not found", songId);
+                logger.LogWarning("Song {SongId} not found", songId);
                 return Results.NotFound($"Song with ID {songId} not found");
             }
 
             musicPlayer.EnqueueSong(song);
-            logger.LogInformation("Successfully enqueued song {songId}: {songName}", songId, song.Name);
+            logger.LogInformation("Successfully enqueued song {SongId}: {SongName}", songId, song.Name);
             activity?.SetTag("song_name", song.Name);
-            
-            return Results.Ok(new { success = true, song = song.Name });
+
+            return Results.Ok(new { Success = true, Song = song.Name });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to enqueue song {songId}", songId);
+            logger.LogError(ex, "Failed to enqueue song {SongId}", songId);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to enqueue song: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> EnqueueByArtist(
+    private static async Task<IResult> enqueueByArtist(
         [FromQuery] string artist,
         [FromServices] Mp3Library library,
         [FromServices] IMusicPlayer musicPlayer,
@@ -445,22 +447,26 @@ public static class HomeSpeakerRestEndpoints
                 .ToList();
 
             if (songs == null || songs.Count == 0)
+            {
                 return Results.NotFound($"No songs found for artist: {artist}");
+            }
 
             foreach (var song in songs)
+            {
                 musicPlayer.EnqueueSong(song);
+            }
 
-            logger.LogInformation("Enqueued {count} songs by artist {artist}", songs.Count, artist);
-            return Results.Ok(new { success = true, songCount = songs.Count, artist });
+            logger.LogInformation("Enqueued {Count} songs by artist {Artist}", songs.Count, artist);
+            return Results.Ok(new { Success = true, SongCount = songs.Count, Artist = artist });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to enqueue artist {artist}", artist);
+            logger.LogError(ex, "Failed to enqueue artist {Artist}", artist);
             return Results.Problem($"Failed to enqueue artist: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> PlayByArtist(
+    private static async Task<IResult> playByArtist(
         [FromQuery] string artist,
         [FromServices] Mp3Library library,
         [FromServices] IMusicPlayer musicPlayer,
@@ -477,24 +483,28 @@ public static class HomeSpeakerRestEndpoints
                 .ToList();
 
             if (songs == null || songs.Count == 0)
+            {
                 return Results.NotFound($"No songs found for artist: {artist}");
+            }
 
             musicPlayer.ClearQueue();
             musicPlayer.PlaySong(songs.First());
             foreach (var song in songs.Skip(1))
+            {
                 musicPlayer.EnqueueSong(song);
+            }
 
-            logger.LogInformation("Playing {count} songs by artist {artist}", songs.Count, artist);
-            return Results.Ok(new { success = true, songCount = songs.Count, artist });
+            logger.LogInformation("Playing {Count} songs by artist {Artist}", songs.Count, artist);
+            return Results.Ok(new { Success = true, SongCount = songs.Count, Artist = artist });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to play artist {artist}", artist);
+            logger.LogError(ex, "Failed to play artist {Artist}", artist);
             return Results.Problem($"Failed to play artist: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> EnqueueByAlbum(
+    private static async Task<IResult> enqueueByAlbum(
         [FromQuery] string album,
         [FromServices] Mp3Library library,
         [FromServices] IMusicPlayer musicPlayer,
@@ -511,22 +521,26 @@ public static class HomeSpeakerRestEndpoints
                 .ToList();
 
             if (songs == null || songs.Count == 0)
+            {
                 return Results.NotFound($"No songs found for album: {album}");
+            }
 
             foreach (var song in songs)
+            {
                 musicPlayer.EnqueueSong(song);
+            }
 
-            logger.LogInformation("Enqueued {count} songs from album {album}", songs.Count, album);
-            return Results.Ok(new { success = true, songCount = songs.Count, album });
+            logger.LogInformation("Enqueued {Count} songs from album {Album}", songs.Count, album);
+            return Results.Ok(new { Success = true, SongCount = songs.Count, Album = album });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to enqueue album {album}", album);
+            logger.LogError(ex, "Failed to enqueue album {Album}", album);
             return Results.Problem($"Failed to enqueue album: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> PlayByAlbum(
+    private static async Task<IResult> playByAlbum(
         [FromQuery] string album,
         [FromServices] Mp3Library library,
         [FromServices] IMusicPlayer musicPlayer,
@@ -543,24 +557,28 @@ public static class HomeSpeakerRestEndpoints
                 .ToList();
 
             if (songs == null || songs.Count == 0)
+            {
                 return Results.NotFound($"No songs found for album: {album}");
+            }
 
             musicPlayer.ClearQueue();
             musicPlayer.PlaySong(songs.First());
             foreach (var song in songs.Skip(1))
+            {
                 musicPlayer.EnqueueSong(song);
+            }
 
-            logger.LogInformation("Playing {count} songs from album {album}", songs.Count, album);
-            return Results.Ok(new { success = true, songCount = songs.Count, album });
+            logger.LogInformation("Playing {Count} songs from album {Album}", songs.Count, album);
+            return Results.Ok(new { Success = true, SongCount = songs.Count, Album = album });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to play album {album}", album);
+            logger.LogError(ex, "Failed to play album {Album}", album);
             return Results.Problem($"Failed to play album: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> GetPlayerStatus(
+    private static async Task<IResult> getPlayerStatus(
         [FromServices] IMusicPlayer musicPlayer,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
@@ -569,29 +587,29 @@ public static class HomeSpeakerRestEndpoints
         try
         {
             logger.LogInformation("Getting player status");
-            
+
             var status = musicPlayer.Status;
             var volume = await musicPlayer.GetVolume();
-            
+
             var playerStatus = new
             {
-                elapsed = status.Elapsed,
-                remaining = status.Remaining,
-                stillPlaying = musicPlayer.StillPlaying,
-                percentComplete = status.PercentComplete,
-                currentSong = status.CurrentSong,
-                volume = volume,
-                sleepTimerActive = musicPlayer.SleepTimerActive,
-                sleepTimerRemainingMinutes = musicPlayer.SleepTimerRemaining?.TotalMinutes,
-                repeatMode = musicPlayer.RepeatMode
+                Elapsed = status.Elapsed,
+                Remaining = status.Remaining,
+                StillPlaying = musicPlayer.StillPlaying,
+                PercentComplete = status.PercentComplete,
+                CurrentSong = status.CurrentSong,
+                Volume = volume,
+                SleepTimerActive = musicPlayer.SleepTimerActive,
+                SleepTimerRemainingMinutes = musicPlayer.SleepTimerRemaining?.TotalMinutes,
+                RepeatMode = musicPlayer.RepeatMode
             };
 
-            logger.LogInformation("Player status retrieved: playing={stillPlaying}, song={currentSong}", 
-                playerStatus.stillPlaying, playerStatus.currentSong?.Name ?? "none");
-            
-            activity?.SetTag("is_playing", playerStatus.stillPlaying);
-            activity?.SetTag("current_song", playerStatus.currentSong?.Name ?? "none");
-            
+            logger.LogInformation("Player status retrieved: playing={StillPlaying}, song={CurrentSong}",
+                playerStatus.StillPlaying, playerStatus.CurrentSong?.Name ?? "none");
+
+            activity?.SetTag("is_playing", playerStatus.StillPlaying);
+            activity?.SetTag("current_song", playerStatus.CurrentSong?.Name ?? "none");
+
             return Results.Ok(playerStatus);
         }
         catch (Exception ex)
@@ -602,7 +620,7 @@ public static class HomeSpeakerRestEndpoints
         }
     }
 
-    private static async Task<IResult> PlayerControl(
+    private static async Task<IResult> playerControl(
         [FromBody] PlayerControlRequest request,
         [FromServices] IMusicPlayer musicPlayer,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
@@ -611,7 +629,7 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Player control request: stop={stop}, play={play}, clearQueue={clearQueue}, skipToNext={skipToNext}, setVolume={setVolume}, volumeLevel={volumeLevel}",
+            logger.LogInformation("Player control request: stop={Stop}, play={Play}, clearQueue={ClearQueue}, skipToNext={SkipToNext}, setVolume={SetVolume}, volumeLevel={VolumeLevel}",
                 request.Stop, request.Play, request.ClearQueue, request.SkipToNext, request.SetVolume, request.VolumeLevel);
 
             if (request.Stop)
@@ -619,25 +637,25 @@ public static class HomeSpeakerRestEndpoints
                 musicPlayer.Stop();
                 activity?.AddEvent(new ActivityEvent("Player stopped"));
             }
-            
+
             if (request.Play)
             {
                 musicPlayer.ResumePlay();
                 activity?.AddEvent(new ActivityEvent("Player resumed"));
             }
-            
+
             if (request.ClearQueue)
             {
                 musicPlayer.ClearQueue();
                 activity?.AddEvent(new ActivityEvent("Queue cleared"));
             }
-            
+
             if (request.SkipToNext)
             {
                 musicPlayer.SkipToNext();
                 activity?.AddEvent(new ActivityEvent("Skipped to next"));
             }
-            
+
             if (request.SetVolume)
             {
                 musicPlayer.SetVolume(request.VolumeLevel);
@@ -656,7 +674,7 @@ public static class HomeSpeakerRestEndpoints
         }
     }
 
-    private static async Task<IResult> PlayFolder(
+    private static async Task<IResult> playFolder(
         [FromRoute] string folderPath,
         [FromServices] Mp3Library library,
         [FromServices] IMusicPlayer musicPlayer,
@@ -667,12 +685,12 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Playing folder: {folderPath}", folderPath);
-            
-            var songs = library.Songs?.Where(s => s.Path.Contains(folderPath, StringComparison.OrdinalIgnoreCase)).ToList();
-            if (songs == null || !songs.Any())
+            logger.LogInformation("Playing folder: {FolderPath}", folderPath);
+
+            var songs = (library.Songs ?? []).Where(s => s.Path?.Contains(folderPath, StringComparison.OrdinalIgnoreCase) == true).ToList();
+            if (songs.Count == 0)
             {
-                logger.LogWarning("No songs found in folder: {folderPath}", folderPath);
+                logger.LogWarning("No songs found in folder: {FolderPath}", folderPath);
                 return Results.NotFound($"No songs found in folder: {folderPath}");
             }
 
@@ -683,20 +701,20 @@ public static class HomeSpeakerRestEndpoints
                 musicPlayer.EnqueueSong(song);
             }
 
-            logger.LogInformation("Successfully started playing folder {folderPath} with {count} songs", folderPath, songs.Count);
+            logger.LogInformation("Successfully started playing folder {FolderPath} with {Count} songs", folderPath, songs.Count);
             activity?.SetTag("song_count", songs.Count);
-            
-            return Results.Ok(new { success = true, songCount = songs.Count, folder = folderPath });
+
+            return Results.Ok(new { Success = true, SongCount = songs.Count, Folder = folderPath });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to play folder {folderPath}", folderPath);
+            logger.LogError(ex, "Failed to play folder {FolderPath}", folderPath);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to play folder: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> EnqueueFolder(
+    private static async Task<IResult> enqueueFolder(
         [FromRoute] string folderPath,
         [FromServices] Mp3Library library,
         [FromServices] IMusicPlayer musicPlayer,
@@ -707,12 +725,12 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Enqueuing folder: {folderPath}", folderPath);
-            
-            var songs = library.Songs?.Where(s => s.Path.Contains(folderPath, StringComparison.OrdinalIgnoreCase)).ToList();
-            if (songs == null || !songs.Any())
+            logger.LogInformation("Enqueuing folder: {FolderPath}", folderPath);
+
+            var songs = (library.Songs ?? []).Where(s => s.Path?.Contains(folderPath, StringComparison.OrdinalIgnoreCase) == true).ToList();
+            if (songs.Count == 0)
             {
-                logger.LogWarning("No songs found in folder: {folderPath}", folderPath);
+                logger.LogWarning("No songs found in folder: {FolderPath}", folderPath);
                 return Results.NotFound($"No songs found in folder: {folderPath}");
             }
 
@@ -721,20 +739,20 @@ public static class HomeSpeakerRestEndpoints
                 musicPlayer.EnqueueSong(song);
             }
 
-            logger.LogInformation("Successfully enqueued folder {folderPath} with {count} songs", folderPath, songs.Count);
+            logger.LogInformation("Successfully enqueued folder {FolderPath} with {Count} songs", folderPath, songs.Count);
             activity?.SetTag("song_count", songs.Count);
-            
-            return Results.Ok(new { success = true, songCount = songs.Count, folder = folderPath });
+
+            return Results.Ok(new { Success = true, SongCount = songs.Count, Folder = folderPath });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to enqueue folder {folderPath}", folderPath);
+            logger.LogError(ex, "Failed to enqueue folder {FolderPath}", folderPath);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to enqueue folder: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> PlayStream(
+    private static async Task<IResult> playStream(
         [FromBody] PlayStreamRequest request,
         [FromServices] IMusicPlayer musicPlayer,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
@@ -744,22 +762,22 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Playing stream: {streamUrl}", request.StreamUrl);
-            
+            logger.LogInformation("Playing stream: {StreamUrl}", request.StreamUrl);
+
             musicPlayer.PlayStream(request.StreamUrl);
-            
-            logger.LogInformation("Successfully started playing stream: {streamUrl}", request.StreamUrl);
-            return Results.Ok(new { success = true, streamUrl = request.StreamUrl });
+
+            logger.LogInformation("Successfully started playing stream: {StreamUrl}", request.StreamUrl);
+            return Results.Ok(new { Success = true, StreamUrl = request.StreamUrl });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to play stream {streamUrl}", request.StreamUrl);
+            logger.LogError(ex, "Failed to play stream {StreamUrl}", request.StreamUrl);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to play stream: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> ToggleBacklight(
+    private static async Task<IResult> toggleBacklight(
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("ToggleBacklight");
@@ -767,11 +785,11 @@ public static class HomeSpeakerRestEndpoints
         try
         {
             logger.LogInformation("Toggling backlight");
-            
+
             // Note: Implementation would depend on the specific hardware interface
             // For now, just log the action
             logger.LogInformation("Backlight toggled successfully");
-            return Results.Ok(new { success = true, message = "Backlight toggled" });
+            return Results.Ok(new { Success = true, Message = "Backlight toggled" });
         }
         catch (Exception ex)
         {
@@ -781,7 +799,7 @@ public static class HomeSpeakerRestEndpoints
         }
     }
 
-    private static async Task<IResult> GetPlaylists(
+    private static async Task<IResult> getPlaylists(
         [FromServices] PlaylistService playlistService,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
@@ -790,13 +808,13 @@ public static class HomeSpeakerRestEndpoints
         try
         {
             logger.LogInformation("Getting all playlists");
-            
+
             var playlists = await playlistService.GetPlaylistsAsync();
             var playlistList = playlists.ToList();
-            
-            logger.LogInformation("Retrieved {count} playlists", playlistList.Count);
+
+            logger.LogInformation("Retrieved {Count} playlists", playlistList.Count);
             activity?.SetTag("playlist_count", playlistList.Count);
-            
+
             return Results.Ok(playlistList);
         }
         catch (Exception ex)
@@ -807,7 +825,7 @@ public static class HomeSpeakerRestEndpoints
         }
     }
 
-    private static async Task<IResult> PlayPlaylist(
+    private static async Task<IResult> playPlaylist(
         [FromRoute] string playlistName,
         [FromServices] PlaylistService playlistService,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
@@ -817,22 +835,22 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Playing playlist: {playlistName}", playlistName);
-            
+            logger.LogInformation("Playing playlist: {PlaylistName}", playlistName);
+
             await playlistService.PlayPlaylistAsync(playlistName);
-            
-            logger.LogInformation("Successfully started playing playlist: {playlistName}", playlistName);
-            return Results.Ok(new { success = true, playlistName });
+
+            logger.LogInformation("Successfully started playing playlist: {PlaylistName}", playlistName);
+            return Results.Ok(new { Success = true, PlaylistName = playlistName });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to play playlist {playlistName}", playlistName);
+            logger.LogError(ex, "Failed to play playlist {PlaylistName}", playlistName);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to play playlist: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> RenamePlaylist(
+    private static async Task<IResult> renamePlaylist(
         [FromRoute] string oldName,
         [FromBody] RenamePlaylistRequest request,
         [FromServices] PlaylistService playlistService,
@@ -844,22 +862,22 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Renaming playlist: {oldName} -> {newName}", oldName, request.NewName);
-            
+            logger.LogInformation("Renaming playlist: {OldName} -> {NewName}", oldName, request.NewName);
+
             await playlistService.RenamePlaylistAsync(oldName, request.NewName);
-            
-            logger.LogInformation("Successfully renamed playlist: {oldName} -> {newName}", oldName, request.NewName);
-            return Results.Ok(new { success = true, oldName, newName = request.NewName });
+
+            logger.LogInformation("Successfully renamed playlist: {OldName} -> {NewName}", oldName, request.NewName);
+            return Results.Ok(new { Success = true, OldName = oldName, NewName = request.NewName });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to rename playlist {oldName} to {newName}", oldName, request.NewName);
+            logger.LogError(ex, "Failed to rename playlist {OldName} to {NewName}", oldName, request.NewName);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to rename playlist: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> DeletePlaylist(
+    private static async Task<IResult> deletePlaylist(
         [FromRoute] string playlistName,
         [FromServices] PlaylistService playlistService,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
@@ -869,22 +887,22 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Deleting playlist: {playlistName}", playlistName);
-            
+            logger.LogInformation("Deleting playlist: {PlaylistName}", playlistName);
+
             await playlistService.DeletePlaylistAsync(playlistName);
-            
-            logger.LogInformation("Successfully deleted playlist: {playlistName}", playlistName);
-            return Results.Ok(new { success = true, playlistName });
+
+            logger.LogInformation("Successfully deleted playlist: {PlaylistName}", playlistName);
+            return Results.Ok(new { Success = true, PlaylistName = playlistName });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to delete playlist {playlistName}", playlistName);
+            logger.LogError(ex, "Failed to delete playlist {PlaylistName}", playlistName);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to delete playlist: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> AddSongToPlaylist(
+    private static async Task<IResult> addSongToPlaylist(
         [FromRoute] string playlistName,
         [FromBody] AddSongToPlaylistRequest request,
         [FromServices] PlaylistService playlistService,
@@ -896,22 +914,22 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Adding song {songPath} to playlist {playlistName}", request.SongPath, playlistName);
-            
+            logger.LogInformation("Adding song {SongPath} to playlist {PlaylistName}", request.SongPath, playlistName);
+
             await playlistService.AppendSongToPlaylistAsync(playlistName, request.SongPath);
-            
-            logger.LogInformation("Successfully added song {songPath} to playlist {playlistName}", request.SongPath, playlistName);
-            return Results.Ok(new { success = true, playlistName, songPath = request.SongPath });
+
+            logger.LogInformation("Successfully added song {SongPath} to playlist {PlaylistName}", request.SongPath, playlistName);
+            return Results.Ok(new { Success = true, PlaylistName = playlistName, SongPath = request.SongPath });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to add song {songPath} to playlist {playlistName}", request.SongPath, playlistName);
+            logger.LogError(ex, "Failed to add song {SongPath} to playlist {PlaylistName}", request.SongPath, playlistName);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to add song to playlist: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> RemoveSongFromPlaylist(
+    private static async Task<IResult> removeSongFromPlaylist(
         [FromRoute] string playlistName,
         [FromBody] RemoveSongFromPlaylistRequest request,
         [FromServices] PlaylistService playlistService,
@@ -923,22 +941,22 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Removing song {songPath} from playlist {playlistName}", request.SongPath, playlistName);
-            
+            logger.LogInformation("Removing song {SongPath} from playlist {PlaylistName}", request.SongPath, playlistName);
+
             await playlistService.RemoveSongFromPlaylistAsync(playlistName, request.SongPath);
-            
-            logger.LogInformation("Successfully removed song {songPath} from playlist {playlistName}", request.SongPath, playlistName);
-            return Results.Ok(new { success = true, playlistName, songPath = request.SongPath });
+
+            logger.LogInformation("Successfully removed song {SongPath} from playlist {PlaylistName}", request.SongPath, playlistName);
+            return Results.Ok(new { Success = true, PlaylistName = playlistName, SongPath = request.SongPath });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to remove song {songPath} from playlist {playlistName}", request.SongPath, playlistName);
+            logger.LogError(ex, "Failed to remove song {SongPath} from playlist {PlaylistName}", request.SongPath, playlistName);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to remove song from playlist: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> ReorderPlaylistSongs(
+    private static async Task<IResult> reorderPlaylistSongs(
         [FromRoute] string playlistName,
         [FromBody] ReorderPlaylistSongsRequest request,
         [FromServices] PlaylistService playlistService,
@@ -950,22 +968,22 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Reordering songs in playlist {playlistName} with {count} songs", playlistName, request.SongPaths?.Count() ?? 0);
-            
+            logger.LogInformation("Reordering songs in playlist {PlaylistName} with {Count} songs", playlistName, request.SongPaths?.Count() ?? 0);
+
             await playlistService.ReorderPlaylistSongsAsync(playlistName, request.SongPaths?.ToList() ?? new List<string>());
-            
-            logger.LogInformation("Successfully reordered songs in playlist {playlistName}", playlistName);
-            return Results.Ok(new { success = true, playlistName, songCount = request.SongPaths?.Count() ?? 0 });
+
+            logger.LogInformation("Successfully reordered songs in playlist {PlaylistName}", playlistName);
+            return Results.Ok(new { Success = true, PlaylistName = playlistName, SongCount = request.SongPaths?.Count() ?? 0 });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to reorder songs in playlist {playlistName}", playlistName);
+            logger.LogError(ex, "Failed to reorder songs in playlist {PlaylistName}", playlistName);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to reorder playlist songs: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> GetPlayQueue(
+    private static async Task<IResult> getPlayQueue(
         [FromServices] IMusicPlayer musicPlayer,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
@@ -974,12 +992,12 @@ public static class HomeSpeakerRestEndpoints
         try
         {
             logger.LogInformation("Getting current play queue");
-            
+
             var queue = musicPlayer.SongQueue.ToList();
-            
-            logger.LogInformation("Retrieved play queue with {count} songs", queue.Count);
+
+            logger.LogInformation("Retrieved play queue with {Count} songs", queue.Count);
             activity?.SetTag("queue_length", queue.Count);
-            
+
             return Results.Ok(queue);
         }
         catch (Exception ex)
@@ -990,7 +1008,7 @@ public static class HomeSpeakerRestEndpoints
         }
     }
 
-    private static async Task<IResult> UpdateQueue(
+    private static async Task<IResult> updateQueue(
         [FromBody] UpdateQueueRequest request,
         [FromServices] IMusicPlayer musicPlayer,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
@@ -1000,12 +1018,12 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Updating queue with {count} songs", request.Songs?.Count() ?? 0);
-            
+            logger.LogInformation("Updating queue with {Count} songs", request.Songs?.Count() ?? 0);
+
             musicPlayer.UpdateQueue(request.Songs ?? new List<string>());
-            
-            logger.LogInformation("Successfully updated queue with {count} songs", request.Songs?.Count() ?? 0);
-            return Results.Ok(new { success = true, songCount = request.Songs?.Count() ?? 0 });
+
+            logger.LogInformation("Successfully updated queue with {Count} songs", request.Songs?.Count() ?? 0);
+            return Results.Ok(new { Success = true, SongCount = request.Songs?.Count() ?? 0 });
         }
         catch (Exception ex)
         {
@@ -1015,7 +1033,7 @@ public static class HomeSpeakerRestEndpoints
         }
     }
 
-    private static async Task<IResult> ShuffleQueue(
+    private static async Task<IResult> shuffleQueue(
         [FromServices] IMusicPlayer musicPlayer,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
@@ -1024,11 +1042,11 @@ public static class HomeSpeakerRestEndpoints
         try
         {
             logger.LogInformation("Shuffling play queue");
-            
+
             musicPlayer.ShuffleQueue();
-            
+
             logger.LogInformation("Successfully shuffled play queue");
-            return Results.Ok(new { success = true, message = "Queue shuffled" });
+            return Results.Ok(new { Success = true, Message = "Queue shuffled" });
         }
         catch (Exception ex)
         {
@@ -1038,7 +1056,7 @@ public static class HomeSpeakerRestEndpoints
         }
     }
 
-    private static async Task<IResult> ClearQueue(
+    private static async Task<IResult> clearQueue(
         [FromServices] IMusicPlayer musicPlayer,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
@@ -1047,11 +1065,11 @@ public static class HomeSpeakerRestEndpoints
         try
         {
             logger.LogInformation("Clearing play queue");
-            
+
             musicPlayer.ClearQueue();
-            
+
             logger.LogInformation("Successfully cleared play queue");
-            return Results.Ok(new { success = true, message = "Queue cleared" });
+            return Results.Ok(new { Success = true, Message = "Queue cleared" });
         }
         catch (Exception ex)
         {
@@ -1061,16 +1079,16 @@ public static class HomeSpeakerRestEndpoints
         }
     }
 
-    private static IResult GetFfmpegStatus(
+    private static IResult getFfmpegStatus(
         [FromServices] YoutubeService youtubeService,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         var available = youtubeService.IsFfmpegAvailable();
-        logger.LogInformation("FFmpeg availability check: {available}", available);
-        return Results.Ok(new { available });
+        logger.LogInformation("FFmpeg availability check: {Available}", available);
+        return Results.Ok(new { Available = available });
     }
 
-    private static async Task<IResult> PlayYouTubeStream(
+    private static async Task<IResult> playYouTubeStream(
         [FromRoute] string videoId,
         [FromQuery] string? title,
         [FromServices] YoutubeService youtubeService,
@@ -1082,27 +1100,27 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Resolving audio stream for YouTube video {videoId}", videoId);
+            logger.LogInformation("Resolving audio stream for YouTube video {VideoId}", videoId);
             var streamUrl = await youtubeService.GetBestAudioStreamUrlAsync(videoId);
             if (streamUrl is null)
             {
-                logger.LogWarning("No audio stream found for video {videoId}", videoId);
+                logger.LogWarning("No audio stream found for video {VideoId}", videoId);
                 return Results.NotFound("No audio stream available for this video");
             }
 
             musicPlayer.PlayStream(streamUrl, title);
-            logger.LogInformation("Started streaming YouTube video {videoId} ({title})", videoId, title);
-            return Results.Ok(new { success = true });
+            logger.LogInformation("Started streaming YouTube video {VideoId} ({Title})", videoId, title);
+            return Results.Ok(new { Success = true });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to stream YouTube video {videoId}", videoId);
+            logger.LogError(ex, "Failed to stream YouTube video {VideoId}", videoId);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to stream video: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> SearchVideo(
+    private static async Task<IResult> searchVideo(
         [FromQuery] string q,
         [FromServices] YoutubeService youtubeService,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
@@ -1112,25 +1130,25 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Searching YouTube for: {searchTerm}", q);
-            
+            logger.LogInformation("Searching YouTube for: {SearchTerm}", q);
+
             var results = await youtubeService.SearchAsync(q);
             var videoList = results.ToList();
-            
-            logger.LogInformation("Found {count} YouTube results for: {searchTerm}", videoList.Count, q);
+
+            logger.LogInformation("Found {Count} YouTube results for: {SearchTerm}", videoList.Count, q);
             activity?.SetTag("result_count", videoList.Count);
-            
+
             return Results.Ok(videoList);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to search YouTube for: {searchTerm}", q);
+            logger.LogError(ex, "Failed to search YouTube for: {SearchTerm}", q);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to search YouTube: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> CacheVideo(
+    private static async Task<IResult> cacheVideo(
         [FromBody] CacheVideoRequest request,
         [FromServices] YoutubeService youtubeService,
         [FromServices] Mp3Library library,
@@ -1142,8 +1160,8 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Caching YouTube video: {title} ({id})", request.Video?.Title, request.Video?.Id);
-            
+            logger.LogInformation("Caching YouTube video: {Title} ({Id})", request.Video?.Title, request.Video?.Id);
+
             if (request.Video == null)
             {
                 return Results.BadRequest("Video information is required");
@@ -1158,58 +1176,58 @@ public static class HomeSpeakerRestEndpoints
                 {
                     var progress = new Progress<double>(percent =>
                     {
-                        logger.LogDebug("Caching progress for {title}: {percent:P}", request.Video.Title, percent);
+                        logger.LogDebug("Caching progress for {Title}: {Percent:P}", request.Video.Title, percent);
                     });
                     await youtubeService.CacheVideoAsync(request.Video.Id, request.Video.Title, progress);
                     library.IsDirty = true;
-                    logger.LogInformation("Successfully cached video: {title}", request.Video.Title);
+                    logger.LogInformation("Successfully cached video: {Title}", request.Video.Title);
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Failed to cache video: {title}", request.Video.Title);
+                    logger.LogError(ex, "Failed to cache video: {Title}", request.Video.Title);
                 }
             });
-            
-            logger.LogInformation("Started caching video: {title}", request.Video.Title);
-            return Results.Accepted(uri: null, new { success = true, message = "Video caching started", title = request.Video.Title });
+
+            logger.LogInformation("Started caching video: {Title}", request.Video.Title);
+            return Results.Accepted(uri: null, new { Success = true, Message = "Video caching started", Title = request.Video.Title });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to start caching video: {title}", request.Video?.Title);
+            logger.LogError(ex, "Failed to start caching video: {Title}", request.Video?.Title);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to cache video: {ex.Message}");
         }
     }
 
-    private static void MapRadioEndpoints(RouteGroupBuilder group)
+    private static void mapRadioEndpoints(RouteGroupBuilder group)
     {
-        group.MapGet("/radio", GetRadioStreams)
+        group.MapGet("/radio", getRadioStreams)
             .WithName("GetRadioStreams")
             .WithSummary("Get all radio streams")
             .WithDescription("Returns all saved internet radio streams");
 
-        group.MapPost("/radio/{streamId:int}/play", PlayRadioStream)
+        group.MapPost("/radio/{streamId:int}/play", playRadioStream)
             .WithName("PlayRadioStream")
             .WithSummary("Play a radio stream")
             .WithDescription("Starts playing the specified internet radio stream");
 
-        group.MapPost("/radio", CreateRadioStream)
+        group.MapPost("/radio", createRadioStream)
             .WithName("CreateRadioStream")
             .WithSummary("Create a radio stream")
             .WithDescription("Adds a new internet radio stream to the library");
 
-        group.MapPut("/radio/{streamId:int}", UpdateRadioStream)
+        group.MapPut("/radio/{streamId:int}", updateRadioStream)
             .WithName("UpdateRadioStream")
             .WithSummary("Update a radio stream")
             .WithDescription("Updates the name and URL of an existing radio stream");
 
-        group.MapDelete("/radio/{streamId:int}", DeleteRadioStream)
+        group.MapDelete("/radio/{streamId:int}", deleteRadioStream)
             .WithName("DeleteRadioStream")
             .WithSummary("Delete a radio stream")
             .WithDescription("Removes a radio stream from the library");
     }
 
-    private static async Task<IResult> GetRadioStreams(
+    private static async Task<IResult> getRadioStreams(
         [FromServices] RadioStreamService radioStreamService,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
@@ -1233,7 +1251,7 @@ public static class HomeSpeakerRestEndpoints
         }
     }
 
-    private static async Task<IResult> PlayRadioStream(
+    private static async Task<IResult> playRadioStream(
         [FromRoute] int streamId,
         [FromServices] RadioStreamService radioStreamService,
         [FromServices] IMusicPlayer musicPlayer,
@@ -1243,20 +1261,22 @@ public static class HomeSpeakerRestEndpoints
         {
             var stream = await radioStreamService.GetStreamByIdAsync(streamId);
             if (stream == null)
+            {
                 return Results.NotFound($"Stream {streamId} not found");
+            }
 
             await radioStreamService.IncrementPlayCountAsync(streamId);
             musicPlayer.PlayStream(stream.Url, stream.Name);
-            return Results.Ok(new { success = true, streamId, name = stream.Name });
+            return Results.Ok(new { Success = true, StreamId = streamId, Name = stream.Name });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to play radio stream {streamId}", streamId);
+            logger.LogError(ex, "Failed to play radio stream {StreamId}", streamId);
             return Results.Problem($"Failed to play radio stream: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> CreateRadioStream(
+    private static async Task<IResult> createRadioStream(
         [FromBody] CreateRadioStreamRequest request,
         [FromServices] RadioStreamService radioStreamService,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
@@ -1266,12 +1286,12 @@ public static class HomeSpeakerRestEndpoints
             var stream = await radioStreamService.CreateStreamAsync(request.Name, request.Url, null, null);
             return Results.Created($"/api/homespeaker/radio/{stream.Id}", new
             {
-                id = stream.Id,
-                name = stream.Name,
-                url = stream.Url,
-                faviconFileName = stream.FaviconFileName,
-                playCount = stream.PlayCount,
-                displayOrder = stream.DisplayOrder
+                Id = stream.Id,
+                Name = stream.Name,
+                Url = stream.Url,
+                FaviconFileName = stream.FaviconFileName,
+                PlayCount = stream.PlayCount,
+                DisplayOrder = stream.DisplayOrder
             });
         }
         catch (Exception ex)
@@ -1281,7 +1301,7 @@ public static class HomeSpeakerRestEndpoints
         }
     }
 
-    private static async Task<IResult> UpdateRadioStream(
+    private static async Task<IResult> updateRadioStream(
         [FromRoute] int streamId,
         [FromBody] UpdateRadioStreamRequest request,
         [FromServices] RadioStreamService radioStreamService,
@@ -1292,25 +1312,28 @@ public static class HomeSpeakerRestEndpoints
             await radioStreamService.UpdateStreamAsync(streamId, request.Name, request.Url, null, null);
             var stream = await radioStreamService.GetStreamByIdAsync(streamId);
             if (stream == null)
+            {
                 return Results.NotFound();
+            }
+
             return Results.Ok(new
             {
-                id = stream.Id,
-                name = stream.Name,
-                url = stream.Url,
-                faviconFileName = stream.FaviconFileName,
-                playCount = stream.PlayCount,
-                displayOrder = stream.DisplayOrder
+                Id = stream.Id,
+                Name = stream.Name,
+                Url = stream.Url,
+                FaviconFileName = stream.FaviconFileName,
+                PlayCount = stream.PlayCount,
+                DisplayOrder = stream.DisplayOrder
             });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to update radio stream {streamId}", streamId);
+            logger.LogError(ex, "Failed to update radio stream {StreamId}", streamId);
             return Results.Problem($"Failed to update radio stream: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> DeleteRadioStream(
+    private static async Task<IResult> deleteRadioStream(
         [FromRoute] int streamId,
         [FromServices] RadioStreamService radioStreamService,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
@@ -1322,12 +1345,12 @@ public static class HomeSpeakerRestEndpoints
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to delete radio stream {streamId}", streamId);
+            logger.LogError(ex, "Failed to delete radio stream {StreamId}", streamId);
             return Results.Problem($"Failed to delete radio stream: {ex.Message}");
         }
     }
 
-    private static Task<IResult> SetSleepTimer(
+    private static Task<IResult> setSleepTimer(
         [FromBody] SetSleepTimerRequest request,
         [FromServices] IMusicPlayer musicPlayer,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
@@ -1335,8 +1358,8 @@ public static class HomeSpeakerRestEndpoints
         try
         {
             musicPlayer.SetSleepTimer(request.Minutes);
-            logger.LogInformation("Sleep timer set to {minutes} minutes", request.Minutes);
-            return Task.FromResult(Results.Ok(new { success = true, minutes = request.Minutes }));
+            logger.LogInformation("Sleep timer set to {Minutes} minutes", request.Minutes);
+            return Task.FromResult(Results.Ok(new { Success = true, Minutes = request.Minutes }));
         }
         catch (Exception ex)
         {
@@ -1345,7 +1368,7 @@ public static class HomeSpeakerRestEndpoints
         }
     }
 
-    private static Task<IResult> CancelSleepTimer(
+    private static Task<IResult> cancelSleepTimer(
         [FromServices] IMusicPlayer musicPlayer,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
@@ -1353,7 +1376,7 @@ public static class HomeSpeakerRestEndpoints
         {
             musicPlayer.CancelSleepTimer();
             logger.LogInformation("Sleep timer cancelled");
-            return Task.FromResult(Results.Ok(new { success = true }));
+            return Task.FromResult(Results.Ok(new { Success = true }));
         }
         catch (Exception ex)
         {
@@ -1362,32 +1385,36 @@ public static class HomeSpeakerRestEndpoints
         }
     }
 
-    private static IResult GetSongArt(
+    private static IResult getSongArt(
         [FromRoute] int songId,
         [FromServices] Mp3Library library,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         var song = library.Songs?.FirstOrDefault(s => s.SongId == songId);
         if (song?.Path == null)
+        {
             return Results.NotFound($"Song with ID {songId} not found");
+        }
 
         try
         {
             using var tagFile = TagFile.Create(song.Path);
             var picture = tagFile.Tag.Pictures?.FirstOrDefault();
             if (picture == null)
+            {
                 return Results.NotFound("No album art found for this song");
+            }
 
             return Results.Bytes(picture.Data.Data, picture.MimeType ?? "image/jpeg");
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to read album art for song {songId}", songId);
+            logger.LogWarning(ex, "Failed to read album art for song {SongId}", songId);
             return Results.NotFound("No album art available");
         }
     }
 
-    private static async Task<IResult> UpdateAlbumArt(
+    private static async Task<IResult> updateAlbumArt(
         [FromQuery] string album,
         HttpRequest httpRequest,
         [FromServices] Mp3Library library,
@@ -1398,17 +1425,21 @@ public static class HomeSpeakerRestEndpoints
             .ToList();
 
         if (songs == null || songs.Count == 0)
+        {
             return Results.NotFound($"No songs found for album: {album}");
+        }
 
         using var ms = new MemoryStream();
         await httpRequest.Body.CopyToAsync(ms, httpRequest.HttpContext.RequestAborted);
         var imageBytes = ms.ToArray();
 
         if (imageBytes.Length == 0)
+        {
             return Results.BadRequest("No image data provided");
+        }
 
         var contentType = httpRequest.ContentType ?? "image/jpeg";
-        int updated = 0;
+        var updated = 0;
 
         foreach (var song in songs)
         {
@@ -1426,16 +1457,16 @@ public static class HomeSpeakerRestEndpoints
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Failed to update album art for {path}", song.Path);
+                logger.LogWarning(ex, "Failed to update album art for {Path}", song.Path);
             }
         }
 
         library.IsDirty = true;
-        logger.LogInformation("Updated album art for {updated}/{total} songs in album {album}", updated, songs.Count, album);
-        return Results.Ok(new { success = true, songsUpdated = updated, album });
+        logger.LogInformation("Updated album art for {Updated}/{Total} songs in album {Album}", updated, songs.Count, album);
+        return Results.Ok(new { Success = true, SongsUpdated = updated, Album = album });
     }
 
-    private static Task<IResult> SetRepeatMode(
+    private static Task<IResult> setRepeatMode(
         [FromBody] SetRepeatModeRequest request,
         [FromServices] IMusicPlayer musicPlayer,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
@@ -1443,8 +1474,8 @@ public static class HomeSpeakerRestEndpoints
         try
         {
             musicPlayer.RepeatMode = request.Enabled;
-            logger.LogInformation("Repeat mode set to {enabled}", request.Enabled);
-            return Task.FromResult(Results.Ok(new { success = true, repeatMode = request.Enabled }));
+            logger.LogInformation("Repeat mode set to {Enabled}", request.Enabled);
+            return Task.FromResult(Results.Ok(new { Success = true, RepeatMode = request.Enabled }));
         }
         catch (Exception ex)
         {

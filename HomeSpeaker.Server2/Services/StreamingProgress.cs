@@ -17,7 +17,9 @@ internal sealed class StreamingProgress : IProgress<double>
         this.logger = logger;
     }
 
-    public async void Report(double value)
+    public void Report(double value) => _ = reportAsync(value);
+
+    private async Task reportAsync(double value)
     {
         logger.LogInformation("Progress of {Title} is {Value}", title, value);
         if (value > lastProgress + .01)
