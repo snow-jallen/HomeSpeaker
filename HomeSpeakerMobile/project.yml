@@ -39,6 +39,7 @@ targets:
         INFOPLIST_FILE: iOS/Resources/Info.plist
         TARGETED_DEVICE_FAMILY: "1,2"
         ENABLE_PREVIEWS: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - target: HomeSpeakerWatch
         embed: true
@@ -64,6 +65,7 @@ targets:
         INFOPLIST_FILE: watchOS/Resources/Info.plist
         TARGETED_DEVICE_FAMILY: "4"
         ENABLE_PREVIEWS: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         WK_COMPANION_APP_BUNDLE_IDENTIFIER: com.homespeaker.ios
         WK_APP_BUNDLE_IDENTIFIER: com.homespeaker.ios.watchos
         CODE_SIGN_ENTITLEMENTS: watchOS/HomeSpeakerWatch.entitlements
