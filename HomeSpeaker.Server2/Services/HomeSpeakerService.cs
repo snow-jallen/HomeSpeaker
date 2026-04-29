@@ -402,14 +402,14 @@ public class HomeSpeakerService : HomeSpeakerBase
     {
         eventClients.Add(responseStream);
         await responseStream.WriteAsync(new StreamServerEvent { Message = "Client connected." });
-        await Task.Delay(TimeSpan.FromMinutes(180));
+        await Task.Delay(TimeSpan.FromMinutes(180), context.CancellationToken);
     }
 
     public override async Task<Empty> ToggleBacklight(Empty request, ServerCallContext context)
     {
         var client = httpClientFactory.CreateClient("BacklightClient");
 
-        var currentBrightnessStr = await client.GetStringAsync("/get");
+        var currentBrightnessStr = await client.GetStringAsync("/get", context.CancellationToken);
         if (!int.TryParse(currentBrightnessStr, out var currentBrightness))
         {
             logger.LogWarning("Failed to parse brightness value: {Value}", currentBrightnessStr);
@@ -422,7 +422,7 @@ public class HomeSpeakerService : HomeSpeakerBase
             _ => 255
         };
         logger.LogInformation("Trying to set brightness to {Brightness}", newBrightness);
-        var response = await client.GetAsync($"/set?brightness={newBrightness}");
+        var response = await client.GetAsync($"/set?brightness={newBrightness}", context.CancellationToken);
         logger.LogInformation("response: {Response}", response);
 
         return new Empty();

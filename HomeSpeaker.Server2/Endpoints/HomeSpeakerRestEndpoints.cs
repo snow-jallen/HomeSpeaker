@@ -1401,7 +1401,7 @@ public static class HomeSpeakerRestEndpoints
             return Results.NotFound($"No songs found for album: {album}");
 
         using var ms = new MemoryStream();
-        await httpRequest.Body.CopyToAsync(ms);
+        await httpRequest.Body.CopyToAsync(ms, httpRequest.HttpContext.RequestAborted);
         var imageBytes = ms.ToArray();
 
         if (imageBytes.Length == 0)

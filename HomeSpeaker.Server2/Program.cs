@@ -181,7 +181,7 @@ app.MapHealthChecks("/health", new HealthCheckOptions
             totalDuration = report.TotalDuration.TotalMilliseconds,
             timestamp = DateTime.UtcNow
         };
-        await context.Response.WriteAsJsonAsync(response);
+        await context.Response.WriteAsJsonAsync(response, context.RequestAborted);
     }
 });
 app.UseRouting();
@@ -575,7 +575,7 @@ app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, Htt
 
     // Handle range requests for audio seeking
     var rangeHeader = context.Request.Headers["Range"].FirstOrDefault();
-    if (!string.IsNullOrEmpty(rangeHeader) && rangeHeader.StartsWith("bytes="))
+    if (!string.IsNullOrEmpty(rangeHeader) && rangeHeader.StartsWith("bytes=", StringComparison.OrdinalIgnoreCase))
     {
         var range = rangeHeader.Substring(6).Split('-');
         if (long.TryParse(range[0], out var start))
