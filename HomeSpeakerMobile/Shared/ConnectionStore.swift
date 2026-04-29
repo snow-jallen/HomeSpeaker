@@ -5,6 +5,11 @@ import Observation
 class ConnectionStore {
     private let connectionsKey = "hs_connections"
     private let selectedIdKey = "hs_selectedId"
+    #if os(watchOS)
+    private let defaults = UserDefaults(suiteName: "group.com.homespeaker") ?? .standard
+    #else
+    private let defaults: UserDefaults = .standard
+    #endif
 
     var connections: [ServerConnection] = []
     var selectedConnection: ServerConnection?
@@ -49,19 +54,32 @@ class ConnectionStore {
         save()
     }
 
+    func receiveFromPhone(_ connections: [ServerConnection], selectedId: UUID?) {
+        self.connections = connections
+        if let id = selectedId, let match = connections.first(where: { $0.id == id }) {
+            selectedConnection = match
+        } else if selectedConnection == nil || !connections.contains(where: { $0.id == selectedConnection?.id }) {
+            selectedConnection = connections.first
+        }
+        save()
+    }
+
     private func save() {
         if let data = try? JSONEncoder().encode(connections) {
-            UserDefaults.standard.set(data, forKey: connectionsKey)
+            defaults.set(data, forKey: connectionsKey)
         }
-        UserDefaults.standard.set(selectedConnection?.id.uuidString, forKey: selectedIdKey)
+        defaults.set(selectedConnection?.id.uuidString, forKey: selectedIdKey)
+        #if os(iOS)
+        WatchSync.shared.send(connections: connections, selectedId: selectedConnection?.id)
+        #endif
     }
 
     private func load() {
-        if let data = UserDefaults.standard.data(forKey: connectionsKey),
+        if let data = defaults.data(forKey: connectionsKey),
            let saved = try? JSONDecoder().decode([ServerConnection].self, from: data) {
             connections = saved
         }
-        if let idStr = UserDefaults.standard.string(forKey: selectedIdKey),
+        if let idStr = defaults.string(forKey: selectedIdKey),
            let id = UUID(uuidString: idStr) {
             selectedConnection = connections.first { $0.id == id }
         } else {

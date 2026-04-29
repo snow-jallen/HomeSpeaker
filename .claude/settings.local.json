@@ -27,7 +27,11 @@
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\)['devices']; iphones=[\\(k,v\\) for k,v in d.items\\(\\) if any\\('iPhone' in dev['name'] for dev in v\\)]; [print\\(k, [\\(dev['name'],dev['udid'],dev['state']\\) for dev in v if 'iPhone' in dev['name']]\\) for k,v in iphones[-3:]]\")",
       "Bash(xcodebuild -project HomeSpeakerMobile.xcodeproj -scheme HomeSpeakerMobile -destination 'id=8E4C4739-C668-4D96-A680-9DC10C40B4C1' -configuration Debug build)",
       "Bash(xcodebuild -project HomeSpeakerMobile.xcodeproj -list)",
-      "Bash(xcodebuild -project HomeSpeakerMobile.xcodeproj -scheme HomeSpeaker -destination 'id=8E4C4739-C668-4D96-A680-9DC10C40B4C1' -configuration Debug build)"
+      "Bash(xcodebuild -project HomeSpeakerMobile.xcodeproj -scheme HomeSpeaker -destination 'id=8E4C4739-C668-4D96-A680-9DC10C40B4C1' -configuration Debug build)",
+      "Bash(dotnet --info)",
+      "Bash(dotnet package *)",
+      "Bash(xcodegen generate *)",
+      "Bash(xcodebuild -project HomeSpeakerMobile.xcodeproj -scheme HomeSpeaker -destination \"id=8E4C4739-C668-4D96-A680-9DC10C40B4C1\" -configuration Debug build)"
     ],
     "deny": [],
     "ask": []

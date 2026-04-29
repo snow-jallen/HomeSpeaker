@@ -957,6 +957,7 @@ public static class HomeSpeakerRestEndpoints
     private static async Task<IResult> CacheVideo(
         [FromBody] CacheVideoRequest request,
         [FromServices] YoutubeService youtubeService,
+        [FromServices] Mp3Library library,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("CacheVideo");
@@ -984,6 +985,7 @@ public static class HomeSpeakerRestEndpoints
                         logger.LogDebug("Caching progress for {title}: {percent:P}", request.Video.Title, percent);
                     });
                     await youtubeService.CacheVideoAsync(request.Video.Id, request.Video.Title, progress);
+                    library.IsDirty = true;
                     logger.LogInformation("Successfully cached video: {title}", request.Video.Title);
                 }
                 catch (Exception ex)

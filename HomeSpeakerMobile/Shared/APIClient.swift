@@ -222,8 +222,9 @@ class APIClient {
         return try await request("api/homespeaker/youtube/search?q=\(enc)")
     }
 
-    func playYouTubeVideo(id: String) async throws {
-        try await requestVoid("api/homespeaker/youtube/\(id)/play", method: "POST")
+    func playYouTubeVideo(id: String, title: String) async throws {
+        let enc = title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? title
+        try await requestVoid("api/homespeaker/youtube/\(id)/play?title=\(enc)", method: "POST")
     }
 
     func cacheYouTubeVideo(_ video: VideoDto) async throws {

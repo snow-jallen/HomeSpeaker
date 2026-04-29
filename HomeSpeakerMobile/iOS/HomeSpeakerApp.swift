@@ -8,6 +8,10 @@ struct HomeSpeakerApp: App {
         WindowGroup {
             ContentView()
                 .environment(store)
+                .onAppear {
+                    WatchSync.shared.activate()
+                    WatchSync.shared.send(connections: store.connections, selectedId: store.selectedConnection?.id)
+                }
         }
     }
 }

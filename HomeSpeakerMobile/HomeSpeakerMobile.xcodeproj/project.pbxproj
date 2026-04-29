@@ -9,25 +9,40 @@
 /* Begin PBXBuildFile section */
 		10258C83F88F6E77B1FEA837 /* HomeSpeakerWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79DF5D1CE59F6944F0B2B812 /* HomeSpeakerWatchApp.swift */; };
 		1AC5BD96E6D7BC208D94897F /* NowPlayingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16F2A1CA99C67EB4935F82B4 /* NowPlayingView.swift */; };
+		1B5A2C58A13005BB7A96EA14 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F27C12BCCE016B6AC25E97E5 /* WatchConnectivity.framework */; };
+		20DFA6475513423EC7C432A2 /* HomeSpeakerWatchWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7FA88887D56058624D3959C9 /* HomeSpeakerWatchWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		211F727D91953107DB0A5371 /* RadioStreamsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAE825C6CA30C690E37852BB /* RadioStreamsView.swift */; };
 		292C764312EA87DCAE62E163 /* HomeSpeakerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1C3B78E7383B49C16C349A3 /* HomeSpeakerApp.swift */; };
 		35E15319F2930366E1238C96 /* ServerPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 719AD39AF69258B48ABFB67D /* ServerPickerView.swift */; };
 		4BA5FB8B5FE0E93D029DC294 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0387EAEB26350D3D2A73FB79 /* Models.swift */; };
 		5DBB028FCF8D559EA3178DC6 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE39C0DB8FFD7DBDEC6E984 /* ContentView.swift */; };
+		6557F6C93F2FE3F713A9DE79 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1859B12913E4087DC6C8AE6D /* APIClient.swift */; };
+		66B6A956286916679528F1F1 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F27C12BCCE016B6AC25E97E5 /* WatchConnectivity.framework */; };
 		687EB1F65D3FD4831CF9D102 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1859B12913E4087DC6C8AE6D /* APIClient.swift */; };
 		716E81D5609BFE112919F15F /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1859B12913E4087DC6C8AE6D /* APIClient.swift */; };
+		72CB3C0A15A20A1D470A2892 /* HomeSpeakerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE860A8EC2BC7A3510B7D5BE /* HomeSpeakerWidget.swift */; };
 		7AB23637168FDA6113A1E116 /* YouTubeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742488CE44FEEA3523C46654 /* YouTubeView.swift */; };
 		8BA769F8273F5002C64F9957 /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE72379FA5E35A1E24338A72 /* QueueView.swift */; };
 		90BDA85488C40C638B27DEF3 /* RadioStreamsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97987F210143A29FA1EA204 /* RadioStreamsView.swift */; };
+		97D4A59656382C9B54FD48D9 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F4223DA2F0CDF7DF37CB1511 /* SwiftUI.framework */; };
+		991824C7DE36205AB120A845 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F241EFDB1BBC7B42BF8AD924 /* WidgetKit.framework */; };
+		9C5C4BA3EC5EB7A7A650895B /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16D6F1E4E46A26F966D05A65 /* LibraryView.swift */; };
 		A08875BB22B217481D8F8A2B /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 991398AE4AA449825359CD71 /* QueueView.swift */; };
 		A2FCE01C84D30A8E2F20E610 /* VolumeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D03CEE4EBF33F56CE6560A47 /* VolumeView.swift */; };
 		A9B7146EC9427277CF98A290 /* HomeSpeakerWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 3E6E950B3D6D2B30EA71133D /* HomeSpeakerWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AFBC50135B32EEDDB784AC73 /* MusicLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5362492C8FDA890DA502B7AE /* MusicLibraryView.swift */; };
 		B4920B1AB331FAD8F211E305 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0387EAEB26350D3D2A73FB79 /* Models.swift */; };
 		BC18B967C3D72E4E311A3A36 /* ConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8049584149E66D488080E43 /* ConnectionStore.swift */; };
+		CD02ED43DB2AB4DEA6E6D892 /* WidgetIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F4F22A2E9A3EBC7B2594BF4 /* WidgetIntents.swift */; };
+		D03D1C8F483822096AD105C4 /* WatchSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA9B6AB8BBD67679356966D6 /* WatchSync.swift */; };
 		D5262AFCA33339C74FD86834 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 972E6F741153B0F923CEB1D8 /* ContentView.swift */; };
+		D5E9B351F36941F8BD43F65E /* WatchSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA9B6AB8BBD67679356966D6 /* WatchSync.swift */; };
 		DB776F605977B61BC0570A8C /* ConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8049584149E66D488080E43 /* ConnectionStore.swift */; };
+		DE6051148FA4909B497ECA63 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0387EAEB26350D3D2A73FB79 /* Models.swift */; };
 		E67C1946D2602902FAEF6B24 /* PlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1ED18F91C6D18A84AC2CE2D /* PlaylistsView.swift */; };
 		E9CFA7C6C54884491EE42B74 /* ServerListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAA123689971EE3504312BBE /* ServerListView.swift */; };
+		ED6AA397244C91B925E949AF /* PlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B0125C146E59A5A2A1943C /* PlaylistsView.swift */; };
+		EE56A00AE4A62D3A70F3C141 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 348CD51028183AD1583AC3BC /* AppIntents.framework */; };
 		F4089D82DB9CCF24A58D7150 /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC249750CEAD1C046D5E9F8 /* MoreView.swift */; };
 		FF6AC4DBAC26C4591175E5C6 /* NowPlayingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD72D0C245433BA64B16115 /* NowPlayingView.swift */; };
 /* End PBXBuildFile section */
@@ -40,9 +55,27 @@
 			remoteGlobalIDString = D0F3F38AD55547F90D067CFA;
 			remoteInfo = HomeSpeakerWatch;
 		};
+		852A7052B9EAB190763D1B03 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 336C22859EC68CB2185E0C6F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2A9C51AE16AD79AE38C00127;
+			remoteInfo = HomeSpeakerWatchWidget;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		AAF725393CA4D0FF39E0B04E /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				20DFA6475513423EC7C432A2 /* HomeSpeakerWatchWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B6B47B9463A65B9921ED1A19 /* Embed Watch Content */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -58,27 +91,69 @@
 
 /* Begin PBXFileReference section */
 		0387EAEB26350D3D2A73FB79 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		16D6F1E4E46A26F966D05A65 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		16F2A1CA99C67EB4935F82B4 /* NowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingView.swift; sourceTree = "<group>"; };
 		1859B12913E4087DC6C8AE6D /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		2F4F22A2E9A3EBC7B2594BF4 /* WidgetIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetIntents.swift; sourceTree = "<group>"; };
+		348CD51028183AD1583AC3BC /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
 		3E6E950B3D6D2B30EA71133D /* HomeSpeakerWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HomeSpeakerWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		447D6C55CE8A9FA57984E129 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		5362492C8FDA890DA502B7AE /* MusicLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicLibraryView.swift; sourceTree = "<group>"; };
 		719AD39AF69258B48ABFB67D /* ServerPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerPickerView.swift; sourceTree = "<group>"; };
 		742488CE44FEEA3523C46654 /* YouTubeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeView.swift; sourceTree = "<group>"; };
 		79DF5D1CE59F6944F0B2B812 /* HomeSpeakerWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerWatchApp.swift; sourceTree = "<group>"; };
 		7DC249750CEAD1C046D5E9F8 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
+		7FA88887D56058624D3959C9 /* HomeSpeakerWatchWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = HomeSpeakerWatchWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		972E6F741153B0F923CEB1D8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		991398AE4AA449825359CD71 /* QueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueView.swift; sourceTree = "<group>"; };
-		9FDA0E7B88A5BE2BDCD91EBA /* HomeSpeaker.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = HomeSpeaker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9FDA0E7B88A5BE2BDCD91EBA /* HomeSpeaker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HomeSpeaker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9FE39C0DB8FFD7DBDEC6E984 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A1ED18F91C6D18A84AC2CE2D /* PlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistsView.swift; sourceTree = "<group>"; };
+		AA9B6AB8BBD67679356966D6 /* WatchSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSync.swift; sourceTree = "<group>"; };
+		AAE825C6CA30C690E37852BB /* RadioStreamsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioStreamsView.swift; sourceTree = "<group>"; };
 		B97987F210143A29FA1EA204 /* RadioStreamsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioStreamsView.swift; sourceTree = "<group>"; };
 		CAA123689971EE3504312BBE /* ServerListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerListView.swift; sourceTree = "<group>"; };
+		CE5E33A6DF228F089492D54D /* HomeSpeakerWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HomeSpeakerWatch.entitlements; sourceTree = "<group>"; };
 		D03CEE4EBF33F56CE6560A47 /* VolumeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeView.swift; sourceTree = "<group>"; };
 		D1C3B78E7383B49C16C349A3 /* HomeSpeakerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerApp.swift; sourceTree = "<group>"; };
+		D3B0125C146E59A5A2A1943C /* PlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistsView.swift; sourceTree = "<group>"; };
+		DE860A8EC2BC7A3510B7D5BE /* HomeSpeakerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerWidget.swift; sourceTree = "<group>"; };
 		E8049584149E66D488080E43 /* ConnectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionStore.swift; sourceTree = "<group>"; };
+		F241EFDB1BBC7B42BF8AD924 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		F27C12BCCE016B6AC25E97E5 /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = System/Library/Frameworks/WatchConnectivity.framework; sourceTree = SDKROOT; };
+		F4223DA2F0CDF7DF37CB1511 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		FAD72D0C245433BA64B16115 /* NowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingView.swift; sourceTree = "<group>"; };
 		FE72379FA5E35A1E24338A72 /* QueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		5C7B0C881CA301692B91F12A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				991824C7DE36205AB120A845 /* WidgetKit.framework in Frameworks */,
+				97D4A59656382C9B54FD48D9 /* SwiftUI.framework in Frameworks */,
+				EE56A00AE4A62D3A70F3C141 /* AppIntents.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9D3C1D01DCB3FC50803ACCA9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1B5A2C58A13005BB7A96EA14 /* WatchConnectivity.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B8F3E48F6020C37DF3D5BBB2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				66B6A956286916679528F1F1 /* WatchConnectivity.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		0DBEAC656ECC20E9DCAEC3E9 /* Products */ = {
@@ -86,6 +161,7 @@
 			children = (
 				9FDA0E7B88A5BE2BDCD91EBA /* HomeSpeaker.app */,
 				3E6E950B3D6D2B30EA71133D /* HomeSpeakerWatch.app */,
+				7FA88887D56058624D3959C9 /* HomeSpeakerWatchWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -93,20 +169,46 @@
 		3312E1806B817D8B9EE70910 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				16D6F1E4E46A26F966D05A65 /* LibraryView.swift */,
 				16F2A1CA99C67EB4935F82B4 /* NowPlayingView.swift */,
+				D3B0125C146E59A5A2A1943C /* PlaylistsView.swift */,
 				FE72379FA5E35A1E24338A72 /* QueueView.swift */,
+				AAE825C6CA30C690E37852BB /* RadioStreamsView.swift */,
 				719AD39AF69258B48ABFB67D /* ServerPickerView.swift */,
 				D03CEE4EBF33F56CE6560A47 /* VolumeView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
 		};
+		4553B2634B3DE9FF5AF310E3 /* Widget */ = {
+			isa = PBXGroup;
+			children = (
+				DE860A8EC2BC7A3510B7D5BE /* HomeSpeakerWidget.swift */,
+				447D6C55CE8A9FA57984E129 /* Info.plist */,
+				2F4F22A2E9A3EBC7B2594BF4 /* WidgetIntents.swift */,
+			);
+			path = Widget;
+			sourceTree = "<group>";
+		};
+		610BA3BD93B4819A04668901 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				348CD51028183AD1583AC3BC /* AppIntents.framework */,
+				F4223DA2F0CDF7DF37CB1511 /* SwiftUI.framework */,
+				F27C12BCCE016B6AC25E97E5 /* WatchConnectivity.framework */,
+				F241EFDB1BBC7B42BF8AD924 /* WidgetKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		6560DD7DD1DF3FA30198488E /* watchOS */ = {
 			isa = PBXGroup;
 			children = (
 				972E6F741153B0F923CEB1D8 /* ContentView.swift */,
+				CE5E33A6DF228F089492D54D /* HomeSpeakerWatch.entitlements */,
 				79DF5D1CE59F6944F0B2B812 /* HomeSpeakerWatchApp.swift */,
 				3312E1806B817D8B9EE70910 /* Views */,
+				4553B2634B3DE9FF5AF310E3 /* Widget */,
 			);
 			path = watchOS;
 			sourceTree = "<group>";
@@ -127,6 +229,7 @@
 				1859B12913E4087DC6C8AE6D /* APIClient.swift */,
 				E8049584149E66D488080E43 /* ConnectionStore.swift */,
 				0387EAEB26350D3D2A73FB79 /* Models.swift */,
+				AA9B6AB8BBD67679356966D6 /* WatchSync.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -152,6 +255,7 @@
 				771C982BB7C6CED494318CEA /* iOS */,
 				83C1AC4DB55E146C065824E8 /* Shared */,
 				6560DD7DD1DF3FA30198488E /* watchOS */,
+				610BA3BD93B4819A04668901 /* Frameworks */,
 				0DBEAC656ECC20E9DCAEC3E9 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -159,11 +263,30 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		2A9C51AE16AD79AE38C00127 /* HomeSpeakerWatchWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1A7A3D366D69B4826994618E /* Build configuration list for PBXNativeTarget "HomeSpeakerWatchWidget" */;
+			buildPhases = (
+				4ECA88CCE47B450126548416 /* Sources */,
+				5C7B0C881CA301692B91F12A /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HomeSpeakerWatchWidget;
+			packageProductDependencies = (
+			);
+			productName = HomeSpeakerWatchWidget;
+			productReference = 7FA88887D56058624D3959C9 /* HomeSpeakerWatchWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		A15168F97BCC9E467C5F6200 /* HomeSpeaker */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 82215EEF575EFD543522C406 /* Build configuration list for PBXNativeTarget "HomeSpeaker" */;
 			buildPhases = (
 				7984D897AA7DD367B5D1F218 /* Sources */,
+				B8F3E48F6020C37DF3D5BBB2 /* Frameworks */,
 				B6B47B9463A65B9921ED1A19 /* Embed Watch Content */,
 			);
 			buildRules = (
@@ -183,10 +306,13 @@
 			buildConfigurationList = C23BEA36EAF9CE7E033361BC /* Build configuration list for PBXNativeTarget "HomeSpeakerWatch" */;
 			buildPhases = (
 				DD29519CF2E35A423C377A4E /* Sources */,
+				9D3C1D01DCB3FC50803ACCA9 /* Frameworks */,
+				AAF725393CA4D0FF39E0B04E /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				759DB2342B2B8DC2472F576C /* PBXTargetDependency */,
 			);
 			name = HomeSpeakerWatch;
 			packageProductDependencies = (
@@ -203,14 +329,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1600;
-				TargetAttributes = {
-					A15168F97BCC9E467C5F6200 = {
-						DevelopmentTeam = "";
-					};
-					D0F3F38AD55547F90D067CFA = {
-						DevelopmentTeam = "";
-					};
-				};
 			};
 			buildConfigurationList = E3B9BE366A907B393F85208E /* Build configuration list for PBXProject "HomeSpeakerMobile" */;
 			developmentRegion = en;
@@ -228,11 +346,23 @@
 			targets = (
 				A15168F97BCC9E467C5F6200 /* HomeSpeaker */,
 				D0F3F38AD55547F90D067CFA /* HomeSpeakerWatch */,
+				2A9C51AE16AD79AE38C00127 /* HomeSpeakerWatchWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
+		4ECA88CCE47B450126548416 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6557F6C93F2FE3F713A9DE79 /* APIClient.swift in Sources */,
+				72CB3C0A15A20A1D470A2892 /* HomeSpeakerWidget.swift in Sources */,
+				DE6051148FA4909B497ECA63 /* Models.swift in Sources */,
+				CD02ED43DB2AB4DEA6E6D892 /* WidgetIntents.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7984D897AA7DD367B5D1F218 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -249,6 +379,7 @@
 				A08875BB22B217481D8F8A2B /* QueueView.swift in Sources */,
 				90BDA85488C40C638B27DEF3 /* RadioStreamsView.swift in Sources */,
 				E9CFA7C6C54884491EE42B74 /* ServerListView.swift in Sources */,
+				D03D1C8F483822096AD105C4 /* WatchSync.swift in Sources */,
 				7AB23637168FDA6113A1E116 /* YouTubeView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -261,17 +392,26 @@
 				DB776F605977B61BC0570A8C /* ConnectionStore.swift in Sources */,
 				D5262AFCA33339C74FD86834 /* ContentView.swift in Sources */,
 				10258C83F88F6E77B1FEA837 /* HomeSpeakerWatchApp.swift in Sources */,
+				9C5C4BA3EC5EB7A7A650895B /* LibraryView.swift in Sources */,
 				B4920B1AB331FAD8F211E305 /* Models.swift in Sources */,
 				1AC5BD96E6D7BC208D94897F /* NowPlayingView.swift in Sources */,
+				ED6AA397244C91B925E949AF /* PlaylistsView.swift in Sources */,
 				8BA769F8273F5002C64F9957 /* QueueView.swift in Sources */,
+				211F727D91953107DB0A5371 /* RadioStreamsView.swift in Sources */,
 				35E15319F2930366E1238C96 /* ServerPickerView.swift in Sources */,
 				A2FCE01C84D30A8E2F20E610 /* VolumeView.swift in Sources */,
+				D5E9B351F36941F8BD43F65E /* WatchSync.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		759DB2342B2B8DC2472F576C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2A9C51AE16AD79AE38C00127 /* HomeSpeakerWatchWidget */;
+			targetProxy = 852A7052B9EAB190763D1B03 /* PBXContainerItemProxy */;
+		};
 		B53484BFD5A9F7912A0F17F3 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = D0F3F38AD55547F90D067CFA /* HomeSpeakerWatch */;
@@ -280,6 +420,44 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		0798B2D823AB81C1E127063A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = watchOS/Widget/HomeSpeakerWidget.entitlements;
+				DEVELOPMENT_TEAM = UCSTTHUC8Z;
+				INFOPLIST_FILE = watchOS/Widget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.homespeaker.ios.watchos.widget;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		0C11E10BF6AE0D80D84A3799 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = watchOS/Widget/HomeSpeakerWidget.entitlements;
+				DEVELOPMENT_TEAM = UCSTTHUC8Z;
+				INFOPLIST_FILE = watchOS/Widget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.homespeaker.ios.watchos.widget;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
 		5E7FE15A1468F7D726F828BB /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -410,6 +588,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = iOS/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -428,6 +607,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = iOS/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -445,13 +625,16 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = watchOS/HomeSpeakerWatch.entitlements;
+				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = watchOS/Resources/Info.plist;
-				PRODUCT_BUNDLE_IDENTIFIER = com.homespeaker.watchos;
+				PRODUCT_BUNDLE_IDENTIFIER = com.homespeaker.ios.watchos;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 4;
 				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+				WK_APP_BUNDLE_IDENTIFIER = com.homespeaker.ios.watchos;
 				WK_COMPANION_APP_BUNDLE_IDENTIFIER = com.homespeaker.ios;
 			};
 			name = Release;
@@ -460,13 +643,16 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = watchOS/HomeSpeakerWatch.entitlements;
+				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = watchOS/Resources/Info.plist;
-				PRODUCT_BUNDLE_IDENTIFIER = com.homespeaker.watchos;
+				PRODUCT_BUNDLE_IDENTIFIER = com.homespeaker.ios.watchos;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 4;
 				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+				WK_APP_BUNDLE_IDENTIFIER = com.homespeaker.ios.watchos;
 				WK_COMPANION_APP_BUNDLE_IDENTIFIER = com.homespeaker.ios;
 			};
 			name = Debug;
@@ -474,6 +660,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		1A7A3D366D69B4826994618E /* Build configuration list for PBXNativeTarget "HomeSpeakerWatchWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0798B2D823AB81C1E127063A /* Debug */,
+				0C11E10BF6AE0D80D84A3799 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		82215EEF575EFD543522C406 /* Build configuration list for PBXNativeTarget "HomeSpeaker" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

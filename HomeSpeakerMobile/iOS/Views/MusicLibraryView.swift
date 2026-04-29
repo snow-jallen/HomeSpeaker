@@ -7,6 +7,8 @@ struct MusicLibraryView: View {
     @State private var isLoading = false
     @State private var error: String?
     @State private var actionMessage: String?
+    @State private var expandedArtists: Set<String> = []
+    @State private var expandedAlbums: Set<String> = []
 
     var filteredSongs: [Song] {
         if searchText.isEmpty { return songs }
@@ -17,9 +19,19 @@ struct MusicLibraryView: View {
         }
     }
 
-    var groupedByArtist: [(String, [Song])] {
-        let grouped = Dictionary(grouping: filteredSongs, by: \.displayArtist)
-        return grouped.sorted { $0.key < $1.key }
+    var groupedByArtistAndAlbum: [(artist: String, albums: [(album: String, songs: [Song])])] {
+        let byArtist = Dictionary(grouping: filteredSongs, by: \.displayArtist)
+        return byArtist
+            .map { artist, artistSongs in
+                let byAlbum = Dictionary(grouping: artistSongs, by: \.displayAlbum)
+                let albums = byAlbum
+                    .map { album, albumSongs in
+                        (album: album, songs: albumSongs.sorted { $0.displayTitle < $1.displayTitle })
+                    }
+                    .sorted { $0.album < $1.album }
+                return (artist: artist, albums: albums)
+            }
+            .sorted { $0.artist < $1.artist }
     }
 
     var body: some View {
@@ -46,6 +58,15 @@ struct MusicLibraryView: View {
             }
             .navigationTitle("Library")
             .searchable(text: $searchText, prompt: "Search songs, artists, albums")
+            .onChange(of: searchText) { _, newValue in
+                if !newValue.isEmpty {
+                    let tree = groupedByArtistAndAlbum
+                    expandedArtists = Set(tree.map(\.artist))
+                    expandedAlbums = Set(tree.flatMap { artistEntry in
+                        artistEntry.albums.map { "\($0.album)|\(artistEntry.artist)" }
+                    })
+                }
+            }
             .refreshable { await loadSongs() }
             .overlay(alignment: .bottom) {
                 if let msg = actionMessage {
@@ -63,13 +84,41 @@ struct MusicLibraryView: View {
 
     private var songList: some View {
         List {
-            ForEach(groupedByArtist, id: \.0) { artist, artistSongs in
-                Section(header: Text(artist).bold()) {
-                    ForEach(artistSongs) { song in
-                        SongRow(song: song) { action in
-                            await handleAction(action, song: song)
+            ForEach(groupedByArtistAndAlbum, id: \.artist) { artistEntry in
+                DisclosureGroup(
+                    isExpanded: Binding(
+                        get: { expandedArtists.contains(artistEntry.artist) },
+                        set: { expanded in
+                            if expanded { expandedArtists.insert(artistEntry.artist) }
+                            else { expandedArtists.remove(artistEntry.artist) }
+                        }
+                    )
+                ) {
+                    ForEach(artistEntry.albums, id: \.album) { albumEntry in
+                        let albumKey = "\(albumEntry.album)|\(artistEntry.artist)"
+                        DisclosureGroup(
+                            isExpanded: Binding(
+                                get: { expandedAlbums.contains(albumKey) },
+                                set: { expanded in
+                                    if expanded { expandedAlbums.insert(albumKey) }
+                                    else { expandedAlbums.remove(albumKey) }
+                                }
+                            )
+                        ) {
+                            ForEach(albumEntry.songs) { song in
+                                SongRow(song: song) { action in
+                                    await handleAction(action, song: song)
+                                }
+                            }
+                        } label: {
+                            Text(albumEntry.album)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                         }
                     }
+                } label: {
+                    Text(artistEntry.artist)
+                        .font(.headline)
                 }
             }
         }

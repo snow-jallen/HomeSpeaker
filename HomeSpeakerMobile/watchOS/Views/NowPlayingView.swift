@@ -6,14 +6,12 @@ struct WatchNowPlayingView: View {
     @State private var volume: Int = 50
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 8) {
-                songInfo
-                progressBar
-                transportControls
-            }
-            .padding(.horizontal, 4)
+        VStack(spacing: 8) {
+            songInfo
+            progressBar
+            transportControls
         }
+        .padding(.horizontal, 4)
         .navigationTitle("Now Playing")
         .task {
             while !Task.isCancelled {

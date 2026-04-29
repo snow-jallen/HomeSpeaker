@@ -13,7 +13,7 @@ settings:
     SWIFT_VERSION: "5.9"
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: "53VT2BR349"
 
 configs:
   Debug: debug
@@ -42,6 +42,7 @@ targets:
     dependencies:
       - target: HomeSpeakerWatch
         embed: true
+      - sdk: WatchConnectivity.framework
 
   HomeSpeakerWatch:
     type: application
@@ -54,12 +55,49 @@ targets:
         createIntermediateGroups: true
         excludes:
           - Resources
+          - Widget
     resources:
       - path: watchOS/Resources/Assets.xcassets
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.homespeaker.watchos
+        PRODUCT_BUNDLE_IDENTIFIER: com.homespeaker.ios.watchos
         INFOPLIST_FILE: watchOS/Resources/Info.plist
         TARGETED_DEVICE_FAMILY: "4"
         ENABLE_PREVIEWS: YES
         WK_COMPANION_APP_BUNDLE_IDENTIFIER: com.homespeaker.ios
+        WK_APP_BUNDLE_IDENTIFIER: com.homespeaker.ios.watchos
+        CODE_SIGN_ENTITLEMENTS: watchOS/HomeSpeakerWatch.entitlements
+    dependencies:
+      - sdk: WatchConnectivity.framework
+      - target: HomeSpeakerWatchWidget
+        embed: true
+
+  HomeSpeakerWatchWidget:
+    type: app-extension
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: Shared
+        createIntermediateGroups: true
+        excludes:
+          - ConnectionStore.swift
+          - WatchSync.swift
+      - path: watchOS/Widget
+        createIntermediateGroups: true
+        excludes:
+          - HomeSpeakerWidget.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.homespeaker.ios.watchos.widget
+        TARGETED_DEVICE_FAMILY: "4"
+        CODE_SIGN_ENTITLEMENTS: watchOS/Widget/HomeSpeakerWidget.entitlements
+    info:
+      path: watchOS/Widget/Info.plist
+      properties:
+        CFBundleDisplayName: HomeSpeaker Widget
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+      - sdk: AppIntents.framework

@@ -117,7 +117,7 @@ struct YouTubeView: View {
 
     private func play(video: VideoDto) async {
         guard let api = store.api else { return }
-        try? await api.playYouTubeVideo(id: video.id)
+        try? await api.playYouTubeVideo(id: video.id, title: video.title)
         showMessage("Streaming: \(video.title)")
     }
 
