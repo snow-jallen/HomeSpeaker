@@ -2,6 +2,8 @@ using System.Diagnostics;
 using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Shared;
 using Microsoft.AspNetCore.Mvc;
+using TagLib;
+using TagFile = TagLib.File;
 
 namespace HomeSpeaker.Server2.Endpoints;
 
@@ -88,6 +90,18 @@ public static class HomeSpeakerRestEndpoints
             .WithName("PlayByAlbum")
             .WithSummary("Play all songs from an album")
             .WithDescription("Clears the queue and plays all songs matching the given album");
+
+        // GET /api/homespeaker/songs/{songId}/art
+        group.MapGet("/songs/{songId:int}/art", GetSongArt)
+            .WithName("GetSongArt")
+            .WithSummary("Get album art for a song")
+            .WithDescription("Returns the embedded album art image for the specified song");
+
+        // PUT /api/homespeaker/albums/art?album={name}
+        group.MapPut("/albums/art", UpdateAlbumArt)
+            .WithName("UpdateAlbumArt")
+            .WithSummary("Update album art for all songs in an album")
+            .WithDescription("Replaces the embedded album art for all songs in the specified album");
     }
 
     private static void MapPlayerEndpoints(RouteGroupBuilder group)
@@ -293,6 +307,7 @@ public static class HomeSpeakerRestEndpoints
         [FromRoute] int songId,
         [FromBody] UpdateSongRequest request,
         [FromServices] Mp3Library library,
+        [FromServices] ITagParser tagParser,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("UpdateSong");
@@ -300,11 +315,16 @@ public static class HomeSpeakerRestEndpoints
 
         try
         {
-            logger.LogInformation("Updating song {songId} with name: {name}, artist: {artist}, album: {album}", 
-                songId, request.Name, request.Artist, request.Album);
+            var song = library.Songs?.FirstOrDefault(s => s.SongId == songId);
+            if (song?.Path == null)
+                return Results.NotFound($"Song with ID {songId} not found");
 
-            // Note: This would need to be implemented in the Mp3Library or a dedicated service
-            // For now, return success as the gRPC implementation might handle this differently
+            logger.LogInformation("Updating song {songId} ({path}) with name: {name}, artist: {artist}, album: {album}",
+                songId, song.Path, request.Name, request.Artist, request.Album);
+
+            tagParser.UpdateSongTags(song.Path, request.Name, request.Artist, request.Album);
+            library.IsDirty = true;
+
             logger.LogInformation("Song {songId} updated successfully", songId);
             return Results.Ok();
         }
@@ -1340,6 +1360,79 @@ public static class HomeSpeakerRestEndpoints
             logger.LogError(ex, "Failed to cancel sleep timer");
             return Task.FromResult(Results.Problem($"Failed to cancel sleep timer: {ex.Message}"));
         }
+    }
+
+    private static IResult GetSongArt(
+        [FromRoute] int songId,
+        [FromServices] Mp3Library library,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        var song = library.Songs?.FirstOrDefault(s => s.SongId == songId);
+        if (song?.Path == null)
+            return Results.NotFound($"Song with ID {songId} not found");
+
+        try
+        {
+            using var tagFile = TagFile.Create(song.Path);
+            var picture = tagFile.Tag.Pictures?.FirstOrDefault();
+            if (picture == null)
+                return Results.NotFound("No album art found for this song");
+
+            return Results.Bytes(picture.Data.Data, picture.MimeType ?? "image/jpeg");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to read album art for song {songId}", songId);
+            return Results.NotFound("No album art available");
+        }
+    }
+
+    private static async Task<IResult> UpdateAlbumArt(
+        [FromQuery] string album,
+        HttpRequest httpRequest,
+        [FromServices] Mp3Library library,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        var songs = library.Songs?
+            .Where(s => string.Equals(s.Album, album, StringComparison.OrdinalIgnoreCase) && s.Path != null)
+            .ToList();
+
+        if (songs == null || songs.Count == 0)
+            return Results.NotFound($"No songs found for album: {album}");
+
+        using var ms = new MemoryStream();
+        await httpRequest.Body.CopyToAsync(ms);
+        var imageBytes = ms.ToArray();
+
+        if (imageBytes.Length == 0)
+            return Results.BadRequest("No image data provided");
+
+        var contentType = httpRequest.ContentType ?? "image/jpeg";
+        int updated = 0;
+
+        foreach (var song in songs)
+        {
+            try
+            {
+                using var tagFile = TagFile.Create(song.Path!);
+                var picture = new Picture(new ByteVector(imageBytes))
+                {
+                    Type = PictureType.FrontCover,
+                    MimeType = contentType
+                };
+                tagFile.Tag.Pictures = new IPicture[] { picture };
+                tagFile.Save();
+                updated++;
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to update album art for {path}", song.Path);
+            }
+        }
+
+        library.IsDirty = true;
+        logger.LogInformation("Updated album art for {updated}/{total} songs in album {album}", updated, songs.Count, album);
+        return Results.Ok(new { success = true, songsUpdated = updated, album });
     }
 
     private static Task<IResult> SetRepeatMode(

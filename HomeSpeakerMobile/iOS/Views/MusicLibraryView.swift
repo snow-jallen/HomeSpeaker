@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct MusicLibraryView: View {
     @Environment(ConnectionStore.self) private var store
@@ -10,6 +11,8 @@ struct MusicLibraryView: View {
     @State private var actionMessage: String?
     @State private var expandedArtists: Set<String> = []
     @State private var expandedAlbums: Set<String> = []
+    @State private var editingSong: Song?
+    @State private var editingAlbumArt: AlbumArtEditTarget?
 
     var filteredSongs: [Song] {
         if searchText.isEmpty { return songs }
@@ -85,6 +88,22 @@ struct MusicLibraryView: View {
                 }
             }
             .task { await loadSongs() }
+            .sheet(item: $editingSong) { song in
+                if let api = store.api {
+                    EditSongSheet(song: song, api: api) { updated in
+                        if let idx = songs.firstIndex(where: { $0.songId == updated.songId }) {
+                            songs[idx] = updated
+                        }
+                    }
+                }
+            }
+            .sheet(item: $editingAlbumArt) { target in
+                if let api = store.api {
+                    EditAlbumArtSheet(target: target, api: api) {
+                        await loadSongs()
+                    }
+                }
+            }
         }
     }
 
@@ -134,21 +153,42 @@ struct MusicLibraryView: View {
                                 }
                             }
                         } label: {
-                            Text(albumEntry.album)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .contextMenu {
-                                    Button {
-                                        Task { await handleAlbumAction(.play, album: albumEntry.album) }
-                                    } label: {
-                                        Label("Play Album", systemImage: "play.fill")
+                            HStack(spacing: 8) {
+                                if let firstSong = albumEntry.songs.first, let api = store.api {
+                                    AsyncImage(url: api.albumArtURL(songId: firstSong.songId)) { image in
+                                        image.resizable().scaledToFill()
+                                    } placeholder: {
+                                        RoundedRectangle(cornerRadius: 4).fill(Color(.systemGray5))
                                     }
+                                    .frame(width: 32, height: 32)
+                                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                                }
+                                Text(albumEntry.album)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .contextMenu {
+                                Button {
+                                    Task { await handleAlbumAction(.play, album: albumEntry.album) }
+                                } label: {
+                                    Label("Play Album", systemImage: "play.fill")
+                                }
+                                Button {
+                                    Task { await handleAlbumAction(.enqueue, album: albumEntry.album) }
+                                } label: {
+                                    Label("Add Album to Queue", systemImage: "text.badge.plus")
+                                }
+                                if let firstSong = albumEntry.songs.first {
                                     Button {
-                                        Task { await handleAlbumAction(.enqueue, album: albumEntry.album) }
+                                        editingAlbumArt = AlbumArtEditTarget(
+                                            album: albumEntry.album,
+                                            representativeSongId: firstSong.songId
+                                        )
                                     } label: {
-                                        Label("Add Album to Queue", systemImage: "text.badge.plus")
+                                        Label("Edit Album Art", systemImage: "photo")
                                     }
                                 }
+                            }
                         }
                     }
                 } label: {
@@ -174,6 +214,10 @@ struct MusicLibraryView: View {
     }
 
     private func handleAction(_ action: SongAction, song: Song) async {
+        if action == .editInfo {
+            editingSong = song
+            return
+        }
         if localPlayer.destination == .device {
             guard let baseURL = store.selectedConnection?.baseURL else { return }
             switch action {
@@ -183,6 +227,7 @@ struct MusicLibraryView: View {
             case .enqueue:
                 localPlayer.enqueue(songs: [song], baseURL: baseURL)
                 showMessage("Added to iPhone queue")
+            case .editInfo: break
             }
             return
         }
@@ -195,6 +240,7 @@ struct MusicLibraryView: View {
             case .enqueue:
                 try await api.enqueueSong(song.songId)
                 showMessage("Added to queue")
+            case .editInfo: break
             }
         } catch {
             showMessage("Error: \(error.localizedDescription)")
@@ -214,6 +260,7 @@ struct MusicLibraryView: View {
             case .enqueue:
                 localPlayer.enqueue(songs: artistSongs, baseURL: baseURL)
                 showMessage("Added \(artist) to iPhone queue")
+            case .editInfo: break
             }
             return
         }
@@ -226,6 +273,7 @@ struct MusicLibraryView: View {
             case .enqueue:
                 try await api.enqueueArtist(artist)
                 showMessage("Added \(artist) to queue")
+            case .editInfo: break
             }
         } catch {
             showMessage("Error: \(error.localizedDescription)")
@@ -246,6 +294,7 @@ struct MusicLibraryView: View {
             case .enqueue:
                 localPlayer.enqueue(songs: albumSongs, baseURL: baseURL)
                 showMessage("Added \(album) to iPhone queue")
+            case .editInfo: break
             }
             return
         }
@@ -258,6 +307,7 @@ struct MusicLibraryView: View {
             case .enqueue:
                 try await api.enqueueAlbum(album)
                 showMessage("Added \(album) to queue")
+            case .editInfo: break
             }
         } catch {
             showMessage("Error: \(error.localizedDescription)")
@@ -284,7 +334,7 @@ struct MusicLibraryView: View {
     }
 }
 
-enum SongAction { case play, enqueue }
+enum SongAction { case play, enqueue, editInfo }
 
 struct SongRow: View {
     let song: Song
@@ -302,24 +352,197 @@ struct SongRow: View {
                     .lineLimit(1)
             }
             Spacer()
-            HStack(spacing: 16) {
-                Button {
-                    Task { await onAction(.enqueue) }
-                } label: {
-                    Image(systemName: "text.badge.plus")
-                        .foregroundStyle(Color.accentColor)
-                }
-                .buttonStyle(.borderless)
-
-                Button {
-                    Task { await onAction(.play) }
-                } label: {
-                    Image(systemName: "play.fill")
-                        .foregroundStyle(Color.accentColor)
-                }
-                .buttonStyle(.borderless)
+            Button {
+                Task { await onAction(.play) }
+            } label: {
+                Image(systemName: "play.fill")
+                    .foregroundStyle(Color.accentColor)
             }
+            .buttonStyle(.borderless)
         }
         .contentShape(Rectangle())
+        .contextMenu {
+            Button {
+                Task { await onAction(.enqueue) }
+            } label: {
+                Label("Add to Queue", systemImage: "text.badge.plus")
+            }
+            Button {
+                Task { await onAction(.editInfo) }
+            } label: {
+                Label("Edit Song Info", systemImage: "pencil")
+            }
+        }
     }
+}
+
+struct EditSongSheet: View {
+    let song: Song
+    let api: APIClient
+    let onSaved: (Song) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var name: String
+    @State private var artist: String
+    @State private var album: String
+    @State private var isSaving = false
+    @State private var error: String?
+
+    init(song: Song, api: APIClient, onSaved: @escaping (Song) -> Void) {
+        self.song = song
+        self.api = api
+        self.onSaved = onSaved
+        _name = State(initialValue: song.name)
+        _artist = State(initialValue: song.artist ?? "")
+        _album = State(initialValue: song.album ?? "")
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Song Details") {
+                    TextField("Title", text: $name)
+                    TextField("Artist", text: $artist)
+                    TextField("Album", text: $album)
+                }
+                if let error {
+                    Section { Text(error).foregroundStyle(.red) }
+                }
+            }
+            .navigationTitle("Edit Song")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Button("Save") { Task { await save() } }
+                            .disabled(name.isEmpty)
+                    }
+                }
+            }
+        }
+    }
+
+    private func save() async {
+        isSaving = true
+        do {
+            try await api.updateSong(id: song.songId, name: name, artist: artist, album: album)
+            let updated = Song(
+                songId: song.songId,
+                name: name,
+                path: song.path,
+                album: album.isEmpty ? nil : album,
+                artist: artist.isEmpty ? nil : artist
+            )
+            onSaved(updated)
+            dismiss()
+        } catch {
+            self.error = error.localizedDescription
+        }
+        isSaving = false
+    }
+}
+
+struct EditAlbumArtSheet: View {
+    let target: AlbumArtEditTarget
+    let api: APIClient
+    let onSaved: () async -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedItem: PhotosPickerItem?
+    @State private var previewImage: Image?
+    @State private var imageData: Data?
+    @State private var isSaving = false
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                if let previewImage {
+                    previewImage
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 300, maxHeight: 300)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                } else {
+                    AsyncImage(url: api.albumArtURL(songId: target.representativeSongId)) { image in
+                        image.resizable().scaledToFit()
+                    } placeholder: {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemGray5))
+                            .overlay {
+                                Image(systemName: "photo")
+                                    .font(.largeTitle)
+                                    .foregroundStyle(.secondary)
+                            }
+                    }
+                    .frame(maxWidth: 300, maxHeight: 300)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+
+                PhotosPicker(selection: $selectedItem, matching: .images) {
+                    Label("Choose Photo", systemImage: "photo.badge.plus")
+                }
+                .onChange(of: selectedItem) { _, item in
+                    Task { await loadImage(from: item) }
+                }
+
+                if let error {
+                    Text(error).foregroundStyle(.red).font(.caption)
+                }
+
+                Spacer()
+            }
+            .padding()
+            .navigationTitle(target.album)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Button("Save") { Task { await save() } }
+                            .disabled(imageData == nil)
+                    }
+                }
+            }
+        }
+    }
+
+    private func loadImage(from item: PhotosPickerItem?) async {
+        guard let item else { return }
+        if let data = try? await item.loadTransferable(type: Data.self) {
+            imageData = data
+            if let uiImage = UIImage(data: data) {
+                previewImage = Image(uiImage: uiImage)
+            }
+        }
+    }
+
+    private func save() async {
+        guard let data = imageData else { return }
+        let jpegData = UIImage(data: data).flatMap { $0.jpegData(compressionQuality: 0.85) } ?? data
+        isSaving = true
+        do {
+            try await api.updateAlbumArt(album: target.album, imageData: jpegData)
+            await onSaved()
+            dismiss()
+        } catch {
+            self.error = error.localizedDescription
+        }
+        isSaving = false
+    }
+}
+
+struct AlbumArtEditTarget: Identifiable {
+    let album: String
+    let representativeSongId: Int
+    var id: String { album }
 }

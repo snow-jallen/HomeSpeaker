@@ -58,6 +58,20 @@ class APIClient {
         }
     }
 
+    private func requestVoidRaw(_ path: String, method: String, body: Data, contentType: String) async throws {
+        var req = URLRequest(url: url(path))
+        req.httpMethod = method
+        req.httpBody = body
+        req.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        let (_, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.networkError(URLError(.badServerResponse))
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw APIError.serverError(http.statusCode, "Request failed")
+        }
+    }
+
     private func requestVoid(_ path: String, method: String = "GET", body: (any Encodable)? = nil) async throws {
         var req = URLRequest(url: url(path))
         req.httpMethod = method
@@ -150,6 +164,21 @@ class APIClient {
     func playAlbum(_ album: String) async throws {
         let enc = album.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? album
         try await requestVoid("api/homespeaker/songs/play-by-album?album=\(enc)", method: "POST")
+    }
+
+    func albumArtURL(songId: Int) -> URL {
+        url("api/homespeaker/songs/\(songId)/art")
+    }
+
+    func updateSong(id: Int, name: String, artist: String, album: String) async throws {
+        try await requestVoid("api/homespeaker/songs/\(id)", method: "PUT",
+            body: UpdateSongRequest(name: name, artist: artist, album: album))
+    }
+
+    func updateAlbumArt(album: String, imageData: Data) async throws {
+        let enc = album.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? album
+        try await requestVoidRaw("api/homespeaker/albums/art?album=\(enc)", method: "PUT",
+            body: imageData, contentType: "image/jpeg")
     }
 
     // MARK: - Queue

@@ -218,3 +218,9 @@ struct PlayStreamRequest: Codable {
 struct CacheVideoRequest: Codable {
     let video: VideoDto
 }
+
+struct UpdateSongRequest: Codable {
+    let name: String
+    let artist: String
+    let album: String
+}

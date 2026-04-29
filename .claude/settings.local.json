@@ -37,7 +37,8 @@
       "Bash(xcodebuild -scheme HomeSpeaker -destination 'platform=iOS Simulator,name=iPhone 16' -configuration Release -allowProvisioningUpdates build)",
       "Bash(xcodebuild -scheme HomeSpeaker -destination 'platform=iOS Simulator,id=8E4C4739-C668-4D96-A680-9DC10C40B4C1' -configuration Release build)",
       "Bash(xcodebuild -scheme HomeSpeaker -destination 'generic/platform=iOS' -configuration Release -allowProvisioningUpdates archive -archivePath /tmp/HomeSpeaker.xcarchive)",
-      "Bash(xcodebuild -project HomeSpeakerMobile.xcodeproj -scheme HomeSpeaker -destination \"generic/platform=iOS\" -skipPackagePluginValidation CODE_SIGN_IDENTITY=\"\" CODE_SIGNING_REQUIRED=NO)"
+      "Bash(xcodebuild -project HomeSpeakerMobile.xcodeproj -scheme HomeSpeaker -destination \"generic/platform=iOS\" -skipPackagePluginValidation CODE_SIGN_IDENTITY=\"\" CODE_SIGNING_REQUIRED=NO)",
+      "Bash(xcodebuild -project HomeSpeakerMobile/HomeSpeakerMobile.xcodeproj -scheme HomeSpeaker -destination \"generic/platform=iOS Simulator\" -configuration Debug build)"
     ],
     "deny": [],
     "ask": []
