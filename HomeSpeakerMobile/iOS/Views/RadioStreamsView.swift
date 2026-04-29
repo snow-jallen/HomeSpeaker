@@ -9,47 +9,45 @@ struct RadioStreamsView: View {
     @State private var actionMessage: String?
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if isLoading && streams.isEmpty {
-                    ProgressView("Loading streams…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if streams.isEmpty {
-                    ContentUnavailableView {
-                        Label("No Radio Streams", systemImage: "radio")
-                    } description: {
-                        Text("Add internet radio streams to listen to.")
-                    }
-                } else {
-                    streamList
+        Group {
+            if isLoading && streams.isEmpty {
+                ProgressView("Loading streams…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if streams.isEmpty {
+                ContentUnavailableView {
+                    Label("No Radio Streams", systemImage: "radio")
+                } description: {
+                    Text("Add internet radio streams to listen to.")
+                }
+            } else {
+                streamList
+            }
+        }
+        .navigationTitle("Radio")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { showAdd = true } label: {
+                    Image(systemName: "plus")
                 }
             }
-            .navigationTitle("Radio")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { showAdd = true } label: {
-                        Image(systemName: "plus")
-                    }
-                }
+        }
+        .refreshable { await load() }
+        .task { await load() }
+        .overlay(alignment: .bottom) {
+            if let msg = actionMessage {
+                Text(msg)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.bottom, 8)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-            .refreshable { await load() }
-            .task { await load() }
-            .overlay(alignment: .bottom) {
-                if let msg = actionMessage {
-                    Text(msg)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(.regularMaterial, in: Capsule())
-                        .padding(.bottom, 8)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
-            .sheet(isPresented: $showAdd) {
-                AddEditStreamView { await load() }
-            }
-            .sheet(item: $editingStream) { stream in
-                AddEditStreamView(existing: stream) { await load() }
-            }
+        }
+        .sheet(isPresented: $showAdd) {
+            AddEditStreamView { await load() }
+        }
+        .sheet(item: $editingStream) { stream in
+            AddEditStreamView(existing: stream) { await load() }
         }
     }
 

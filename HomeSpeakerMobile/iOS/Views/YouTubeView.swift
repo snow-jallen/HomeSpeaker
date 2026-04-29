@@ -9,33 +9,31 @@ struct YouTubeView: View {
     @State private var cachingIds: Set<String> = []
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if results.isEmpty && !isSearching {
-                    ContentUnavailableView {
-                        Label("Search YouTube", systemImage: "play.rectangle")
-                    } description: {
-                        Text("Search for videos to stream or download.")
-                    }
-                } else if isSearching {
-                    ProgressView("Searching…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    resultsList
+        Group {
+            if results.isEmpty && !isSearching {
+                ContentUnavailableView {
+                    Label("Search YouTube", systemImage: "play.rectangle")
+                } description: {
+                    Text("Search for videos to stream or download.")
                 }
+            } else if isSearching {
+                ProgressView("Searching…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                resultsList
             }
-            .navigationTitle("YouTube")
-            .searchable(text: $query, prompt: "Search YouTube")
-            .onSubmit(of: .search) { Task { await search() } }
-            .overlay(alignment: .bottom) {
-                if let msg = actionMessage {
-                    Text(msg)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(.regularMaterial, in: Capsule())
-                        .padding(.bottom, 8)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
+        }
+        .navigationTitle("YouTube")
+        .searchable(text: $query, prompt: "Search YouTube")
+        .onSubmit(of: .search) { Task { await search() } }
+        .overlay(alignment: .bottom) {
+            if let msg = actionMessage {
+                Text(msg)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.bottom, 8)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
     }
