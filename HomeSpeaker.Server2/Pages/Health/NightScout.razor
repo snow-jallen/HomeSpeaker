@@ -1,7 +1,5 @@
 ﻿@page "/nightscout"
-@using Microsoft.AspNetCore.Components.WebAssembly.Hosting
 @layout NoTopLayout
-@inject IWebAssemblyHostEnvironment hostEnv
 @inject IConfiguration config
 
 <iframe id="nsFrame" title="NightScout" src=@nightscoutUrl frameborder="0" allowfullscreen></iframe>
