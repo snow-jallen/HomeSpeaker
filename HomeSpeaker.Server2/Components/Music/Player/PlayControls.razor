@@ -1,0 +1,99 @@
+﻿@inject HomeSpeakerService svc
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<div class="play-controls">
+    <button @onclick=Play title="Resume playing" class="btn btn-icon-lg btn-primary play-button">
+        <i class="fas fa-play"></i>
+    </button>
+    <button @onclick=Stop title="Stop playing" class="btn btn-icon btn-outline-primary">
+        <i class="fas fa-stop"></i>
+    </button>
+    <button @onclick=Skip title="Skip to next song" class="btn btn-icon btn-outline-primary">
+        <i class="fas fa-forward"></i>
+    </button>
+
+    <div class="dropdown">
+        <button class="btn btn-icon @(sleepTimerActive ? "btn-info" : "btn-outline-secondary") dropdown-toggle"
+                type="button"
+                id="sleepTimerDropdown"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                title="@(sleepTimerActive ? $"Sleep timer: {sleepTimerRemaining}" : "Set sleep timer")">
+            <i class="fas fa-moon"></i>
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="sleepTimerDropdown">
+            @if (sleepTimerActive)
+            {
+                <li><h6 class="dropdown-header">Timer: @sleepTimerRemaining</h6></li>
+                <li><a class="dropdown-item" @onclick="CancelSleepTimer"><i class="fas fa-times me-2"></i>Cancel Timer</a></li>
+                <li><hr class="dropdown-divider" /></li>
+            }
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(15)">15 minutes</a></li>
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(30)">30 minutes</a></li>
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(45)">45 minutes</a></li>
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(60)">1 hour</a></li>
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(90)">1.5 hours</a></li>
+            <li><a class="dropdown-item" @onclick="() => SetSleepTimer(120)">2 hours</a></li>
+        </ul>
+    </div>
+</div>
+
+@code {
+    bool sleepTimerActive = false;
+    string sleepTimerRemaining = "";
+    System.Threading.Timer? refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshSleepTimer();
+
+        refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            await RefreshSleepTimer();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+    }
+
+    async Task RefreshSleepTimer()
+    {
+        try
+        {
+            var result = await svc.GetSleepTimerAsync();
+            sleepTimerActive = result.Active;
+            if (result.Active && result.RemainingSeconds > 0)
+            {
+                var remaining = TimeSpan.FromSeconds(result.RemainingSeconds);
+                sleepTimerRemaining = remaining.TotalHours >= 1
+                    ? $"{(int)remaining.TotalHours}h {remaining.Minutes}m"
+                    : $"{remaining.Minutes}m";
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", $"Error getting sleep timer: {ex.Message}");
+        }
+    }
+
+    async Task SetSleepTimer(int minutes)
+    {
+        await svc.SetSleepTimerAsync(minutes);
+        await RefreshSleepTimer();
+    }
+
+    async Task CancelSleepTimer()
+    {
+        await svc.CancelSleepTimerAsync();
+        sleepTimerActive = false;
+        await RefreshSleepTimer();
+    }
+
+    async Task Play() => await svc.ResumePlayAsync();
+    async Task Stop() => await svc.StopPlayingAsync();
+    async Task Skip() => await svc.SkipToNextAsync();
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}

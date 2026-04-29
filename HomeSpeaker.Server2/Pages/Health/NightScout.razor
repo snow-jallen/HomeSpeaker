@@ -1,0 +1,91 @@
+﻿@page "/nightscout"
+@using Microsoft.AspNetCore.Components.WebAssembly.Hosting
+@layout NoTopLayout
+@inject IWebAssemblyHostEnvironment hostEnv
+@inject IConfiguration config
+
+<iframe id="nsFrame" title="NightScout" src=@nightscoutUrl frameborder="0" allowfullscreen></iframe>
+
+<div class="ns-home-bar">
+    <a href="/" class="ns-home-link" title="HomeSpeaker Home">
+        <i class="fas fa-music"></i>
+        <span>Home Speaker</span>
+    </a>
+</div>
+
+<script>
+    function refreshIFrame() {
+        var x = document.getElementById("nsFrame");
+        x.contentWindow.location.reload();
+        var t = setTimeout(refreshIFrame, 5 * 60 * 1000);
+    }
+</script>
+
+<style>
+    /* Hide the sidebar so nightscout fills the screen */
+    .sidebar { display: none !important; }
+    .page { display: block !important; }
+
+    #nsFrame {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        border: none;
+        z-index: 1;
+    }
+
+    .ns-home-bar {
+        position: fixed;
+        top: 12px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        z-index: 10;
+        pointer-events: none;
+    }
+
+    .ns-home-link {
+        pointer-events: auto;
+        opacity: 0.75;
+        transition: opacity 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.2rem;
+        text-decoration: none;
+        color: #fff;
+        font-family: 'Syne', sans-serif;
+        font-weight: 800;
+        font-size: 0.76rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: rgba(0,0,0,0.5);
+        border-radius: 20px;
+        padding: 6px 12px;
+        white-space: nowrap;
+    }
+
+    .ns-home-link:hover {
+        opacity: 1;
+        color: #fff;
+    }
+
+    .ns-home-link i {
+        color: #c9985a;
+        font-size: 0.9rem;
+        filter: drop-shadow(0 0 6px rgba(201, 152, 90, 0.5));
+    }
+</style>
+
+@code
+{
+    private static string? nightscoutUrl = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var httpClient = new HttpClient();
+        nightscoutUrl = await httpClient.GetStringAsync($"{hostEnv.BaseAddress}ns") ?? string.Empty;
+    }
+}

@@ -31,11 +31,12 @@ builder.Services.AddCors(options =>
                                               "http://www.contoso.com");
                       });
 });
-builder.Services.AddRazorPages();
-builder.Services.AddGrpc();
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 builder.Services.AddHostedService<MigrationApplier>();
 builder.Services.AddHostedService<DailyAnchorWorker>();
 builder.Services.AddHostedService<AirPlayReceiverService>();
+builder.Services.AddScoped<HomeSpeakerService>(); // Scoped for Blazor components
 builder.Services.AddScoped<PlaylistService>();
 builder.Services.AddScoped<AnchorService>();
 builder.Services.AddScoped<IAnchorNotificationService, AnchorNotificationService>();
@@ -87,6 +88,7 @@ builder.Services.AddHttpClient<RadioStreamService>()
     {
         AutomaticDecompression = System.Net.DecompressionMethods.All
     });
+builder.Services.AddScoped<RadioStreamService>(); // Ensure it's registered as scoped
 
 // Add HttpClient for ImageSearchService (DDG + Wikipedia image search)
 builder.Services.AddHttpClient<ImageSearchService>(client =>
@@ -109,6 +111,17 @@ builder.Services.AddHttpClient("BacklightClient", client =>
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<MusicContext>("database");
+
+// Add browser-specific services for Blazor components
+builder.Services.AddScoped<HomeSpeaker.Server2.Services.IBrowserAudioService, HomeSpeaker.Server2.Services.BrowserAudioService>();
+builder.Services.AddScoped<HomeSpeaker.Server2.Services.ILocalQueueService, HomeSpeaker.Server2.Services.LocalQueueService>();
+builder.Services.AddScoped<HomeSpeaker.Server2.Services.IPlaybackModeService, HomeSpeaker.Server2.Services.PlaybackModeService>();
+builder.Services.AddScoped<HomeSpeaker.Server2.Services.ImagePickerService>();
+builder.Services.AddSingleton<HomeSpeaker.Server2.Services.YouTubeStateService>();
+
+// Add FluentUI and MudBlazor
+builder.Services.AddFluentUIComponents();
+builder.Services.AddMudServices();
 
 var app = builder.Build();
 
@@ -137,11 +150,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseWebAssemblyDebugging();
-}
-else
+if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
 }
@@ -149,10 +158,9 @@ else
 app.Logger.LogInformation("Starting HomeSpeaker.Server2");
 
 app.UseResponseCompression();
-app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
 //app.UseHttpsRedirection();
-app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
+app.UseAntiforgery();
 
 // Serve favicons from the media folder (writable volume) at /favicons
 var faviconsPath = Path.GetFullPath(Path.Combine(app.Configuration[ConfigKeys.MediaFolder] ?? "/music", "favicons"));
@@ -186,12 +194,7 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 });
 app.UseRouting();
 app.UseCors(LocalCorsPolicy);
-app.MapRazorPages();
 app.MapHub<HomeSpeaker.Server2.Hubs.AnchorHub>("/anchorHub");
-
-// Configure the HTTP request pipeline.
-app.MapGrpcService<GreeterService>();
-app.MapGrpcService<HomeSpeakerService>();
 app.MapGet("/ns", (IConfiguration config) => config["NIGHTSCOUT_URL"] ?? string.Empty);
 app.MapGet("/api/features", (IConfiguration config) => new
 {
@@ -661,6 +664,8 @@ app.MapPost("/api/streams/upload-image", async (IFormFile file, RadioStreamServi
     return Results.Ok(new { Filename = filename });
 }).DisableAntiforgery();
 
-app.MapFallbackToFile("index.html");
+// Map Blazor components for SSR and Interactive Server
+app.MapRazorComponents<HomeSpeaker.Server2.Components.App>()
+    .AddInteractiveServerRenderMode();
 
 app.Run();

@@ -12,6 +12,17 @@
       ],
       "assignment_id": "homespeaker-init",
       "universe": "Firefly"
+    },
+    "2026-04-29": {
+      "cast": [
+        "Mal",
+        "Kaylee",
+        "Wash",
+        "Zoe",
+        "Book"
+      ],
+      "assignment_id": "homespeaker-ssr-migration",
+      "universe": "Firefly"
     }
   }
 }

@@ -17,18 +17,12 @@
     <NoWarn>$(NoWarn);CS0169;CS0414;CS8618;CS8604;CS8600;CS8602;CS8603;CS4014;CS1998;SYSLIB0051;IDE0009;IDE0031;IDE0044;IDE0005;IDE0161;IDE0130;IDE1006;IDE2001;IDE2000;IDE0055;IDE0040;IDE2003;IDE0007;IDE0011;IDE0004;IDE2002;IDE0059;SA1649;CA1003;CA1063;CA1065;CA1725;CA1727;CA1805;CA1816;CA1823;CA1826;CA1835;CA1836;CA1849;CA1852;CA1854;CA1861;CA1869;CA2012;CA2016;CA2052;CA2254;MA0134;RS0030</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <Protobuf Include="Protos\greet.proto" GrpcServices="Server" />
-  </ItemGroup>
-  <ItemGroup>
     <PackageReference Include="CliWrap" Version="3.10.1" />
     <PackageReference Include="JsonExtensions" Version="1.2.0" />
     <PackageReference Include="Meziantou.Analyzer" Version="3.0.58">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.7" />
-    <PackageReference Include="Grpc.AspNetCore" Version="2.67.0" />
-    <PackageReference Include="Grpc.AspNetCore.Web" Version="2.67.0" />
     <PackageReference Include="ID3" Version="0.6.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.7">
       <PrivateAssets>all</PrivateAssets>
@@ -38,6 +32,7 @@
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.7" />
     <PackageReference Include="Microsoft.Fast.Components.FluentUI" Version="3.8.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
+    <PackageReference Include="MudBlazor" Version="9.4.0" />
     <PackageReference Include="OpenTelemetry.Api" Version="1.15.3" />
     <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.15.3" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
@@ -61,6 +56,5 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\HomeSpeaker.Shared\HomeSpeaker.Shared.csproj" />
-    <ProjectReference Include="..\HomeSpeaker.WebAssembly\HomeSpeaker.WebAssembly.csproj" />
   </ItemGroup>
 </Project>

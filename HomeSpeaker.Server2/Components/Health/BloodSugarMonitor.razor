@@ -1,0 +1,198 @@
+@using HomeSpeaker.Shared.BloodSugar
+@using HomeSpeaker.Server2.Services
+@inject IBloodSugarService BloodSugarService
+@inject ILogger<BloodSugarMonitor> Logger
+@implements IDisposable
+
+<div class="bs-compact-card mb-2">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header py-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-tint me-1"></i>
+                    Blood Sugar
+                    @if (bloodSugarStatus?.IsStale == true)
+                    {
+                        <span class="badge bg-warning ms-1" style="font-size:0.6rem">⚠ Stale</span>
+                    }
+                </h6>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm py-0 px-1 nightscout-link"
+                            @onclick="ForceRefreshBloodSugarData"
+                            disabled="@isLoading"
+                            title="Force refresh"
+                            aria-label="Force refresh blood sugar data">
+                        <i class="fas fa-sync-alt" style="font-size:0.8rem"></i>
+                    </button>
+                    <a href="nightscout" class="nightscout-link d-flex align-items-center" title="Open NightScout">
+                        <i class="fas fa-external-link-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="card-body py-2 px-3">
+            @if (bloodSugarStatus?.CurrentReading != null)
+            {
+                <div class="bs-row">
+                    <span class="bs-value" style="color: @bloodSugarStatus.StatusColor">
+                        @bloodSugarStatus.CurrentReading.Sgv
+                    </span>
+                    <div class="bs-meta">
+                        <span class="bs-arrow" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">
+                            @bloodSugarStatus.CurrentReading.DirectionIcon
+                        </span>
+                        <span class="bs-direction" style="color: @GetTrendColor(bloodSugarStatus.CurrentReading.Direction)">
+                            @bloodSugarStatus.CurrentReading.DirectionDescription
+                        </span>
+                        <span class="bs-time">@FormatTimeSince(bloodSugarStatus.TimeSinceLastReading)</span>
+                    </div>
+                </div>
+            }
+            else if (isLoading)
+            {
+                <div class="d-flex align-items-center gap-2 py-1">
+                    <div class="spinner-border spinner-border-sm text-info" role="status"></div>
+                    <span class="small text-muted">Loading...</span>
+                </div>
+            }
+            else
+            {
+                <div class="d-flex align-items-center gap-2 py-1">
+                    <i class="fas fa-exclamation-triangle text-warning"></i>
+                    <span class="small text-muted">Unable to load data</span>
+                    <button class="btn btn-outline-info btn-sm ms-auto" @onclick="RefreshBloodSugarData">
+                        Retry
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private BloodSugarStatus? bloodSugarStatus;
+    private DateTime lastUpdated = DateTime.UtcNow.ToLocalTime();
+    private Timer? refreshTimer;
+    private bool isLoading = true;
+    protected override async Task OnInitializedAsync()
+    {
+        Logger.LogInformation("Initializing BloodSugarMonitor component...");
+
+        await RefreshBloodSugarData();
+        // Set up auto-refresh every 1 minute (server has smart cache based on reading age)
+        refreshTimer = new Timer(async _ =>
+        {
+            try
+            {
+                await InvokeAsync(RefreshBloodSugarData);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Component was disposed, ignore
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error in blood sugar refresh timer");
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+    }
+
+    private async Task RefreshBloodSugarData()
+    {
+        Logger.LogInformation("Refreshing blood sugar data...");
+
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            bloodSugarStatus = await BloodSugarService.GetBloodSugarStatusAsync();
+            lastUpdated = DateTime.UtcNow.ToLocalTime();
+            isLoading = false;
+
+            Logger.LogInformation("Blood sugar data refreshed successfully");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh blood sugar data");
+            Console.WriteLine($"Failed to refresh blood sugar data: {ex.Message}"); // Temporary - shows immediately
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClearBloodSugarCache()
+    {
+        Logger.LogInformation("Clearing blood sugar cache...");
+
+        try
+        {
+            var success = await BloodSugarService.ClearCacheAsync();
+            if (success)
+            {
+                Logger.LogInformation("Blood sugar cache cleared successfully");
+            }
+            else
+            {
+                Logger.LogWarning("Failed to clear blood sugar cache");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error clearing blood sugar cache");
+        }
+    }
+
+    private async Task ForceRefreshBloodSugarData()
+    {
+        Logger.LogInformation("Force refreshing blood sugar data...");
+
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            bloodSugarStatus = await BloodSugarService.RefreshAsync();
+            lastUpdated = DateTime.UtcNow.ToLocalTime();
+            isLoading = false;
+            StateHasChanged();
+
+            Logger.LogInformation("Blood sugar data force refreshed successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to force refresh blood sugar data");
+            Console.WriteLine($"Failed to force refresh blood sugar data: {ex.Message}");
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string FormatTimeSince(TimeSpan timeSince)
+    {
+        if (timeSince.TotalMinutes < 1)
+            return "< 1 min ago";
+        else if (timeSince.TotalMinutes < 60)
+            return $"{(int)timeSince.TotalMinutes} min ago";
+        else if (timeSince.TotalHours < 24)
+            return $"{(int)timeSince.TotalHours}h {(int)(timeSince.TotalMinutes % 60)}m ago";
+        else
+            return $"{(int)timeSince.TotalDays}d ago";
+    }
+
+    private string GetTrendColor(string direction) => direction switch
+    {
+        "DoubleUp" or "SingleUp" => "#007bff", // Blue for rising
+        "Flat" => "#28a745", // Green for stable
+        "SingleDown" or "DoubleDown" => "#dc3545", // Red for falling
+        "FortyFiveUp" => "#17a2b8", // Teal for rising moderately
+        "FortyFiveDown" => "#fd7e14", // Orange for falling moderately
+        _ => "#6c757d" // Gray for unknown
+    };
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}

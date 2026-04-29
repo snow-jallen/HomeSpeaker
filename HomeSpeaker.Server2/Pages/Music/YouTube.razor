@@ -1,0 +1,74 @@
+﻿@page "/youtube"
+@inject ILogger<YouTube> logger
+@inject HomeSpeakerService svc
+@inject HttpClient http
+@inject YouTubeStateService state
+
+<h3>YouTube Cache</h3>
+
+@if (ffmpegAvailable == false)
+{
+    <div class="alert alert-danger" role="alert">
+        <strong>ffmpeg not found.</strong> Downloading videos is disabled. Please install ffmpeg and ensure it is accessible at the configured path.
+    </div>
+}
+
+<form method="dialog">
+    <input type="text" @bind=state.SearchTerm />
+    @if (isSearching)
+    {
+        <div class="spinner-border mx-3" role="status">
+            <span class="visually-hidden">Searching...</span>
+        </div>
+    }
+    else
+    {
+        <button class="btn btn-primary mx-2" type="submit" @onclick=searchAsync>Search</button>
+    }
+</form>
+
+@if (state.Videos == null)
+{
+    <p>Search for something to create a temporary fair-use local cache.</p>
+}
+else
+{
+    @foreach (var searchResult in state.Videos)
+    {
+        <YouTubeSearchResult SearchResult="searchResult" FfmpegAvailable="ffmpegAvailable ?? true" />
+    }
+}
+
+@code {
+    bool isSearching = false;
+    bool? ffmpegAvailable;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await http.GetFromJsonAsync<FfmpegStatusResult>("/api/homespeaker/youtube/ffmpeg-status");
+            ffmpegAvailable = result?.Available ?? false;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not determine ffmpeg availability");
+            ffmpegAvailable = false;
+        }
+    }
+
+    async Task searchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(state.SearchTerm))
+            return;
+
+        isSearching = true;
+        logger.LogInformation("Starting youtube search for {SearchTerm}", state.SearchTerm);
+        var response = await svc.HomeSpeakerClient.SearchViedoAsync(new SearchVideoRequest { SearchTerm = state.SearchTerm });
+        state.Videos = response.Results;
+        logger.LogInformation("Found {ResultCount} results", state.Videos.Count());
+        isSearching = false;
+    }
+
+    record FfmpegStatusResult(bool Available);
+}

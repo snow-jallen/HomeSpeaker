@@ -6,6 +6,7 @@
 |--------|----------|-------|
 | UI, CSS, Blazor components, visual design, UX | Kaylee | Frontend domain |
 | Backend API, C#, services, data layer, Docker | Wash | Backend domain |
+| Hosting-model migration, Blazor project consolidation, dependency removal | Book | Migration specialist |
 | Architecture decisions, scope, tech direction | Mal | Lead domain |
 | Security review, vulnerability analysis | Wash | Security domain |
 | Testing, QA, edge cases | Zoe | Testing domain |

@@ -15,6 +15,7 @@
 | Mal | 🏗️ Lead | .squad/agents/mal/charter.md | active |
 | Kaylee | ⚛️ Frontend Dev | .squad/agents/kaylee/charter.md | active |
 | Wash | 🔧 Backend Dev | .squad/agents/wash/charter.md | active |
+| Book | 👤 Migration Specialist | .squad/agents/book/charter.md | active |
 | Zoe | 🧪 Tester | .squad/agents/zoe/charter.md | active |
 | Scribe | 📋 Session Logger | .squad/agents/scribe/charter.md | active |
 | Ralph | 🔄 Work Monitor | .squad/agents/ralph/charter.md | active |

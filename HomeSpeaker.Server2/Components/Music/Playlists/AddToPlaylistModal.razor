@@ -1,0 +1,99 @@
+﻿@inject HomeSpeakerService svc
+
+<h3 class="ps-3 pt-3 bg-light border-bottom">Playlists</h3>
+@if (allPlaylists == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <form method="dialog" class="ms-3">
+        @if (allPlaylists.Any())
+        {
+            <div class="fw-bold">Select from existisng playlists:</div>
+            <div style="max-height: 250px; overflow-y: auto">
+            @foreach (var selectionState in selections)
+            {
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id=@($"chk{selectionState.Name}") checked=@selectionState.NewValue value=@selectionState.Name @oninput=@((args)=>checkedChanged(args.Value as bool?, selectionState.Name))>
+                    <label class="form-check-label" for=@($"chk{selectionState.Name}")>@selectionState.Name</label>
+                </div>
+            }
+            </div>
+        }
+        <div class="fw-bold">Create a new playlist:</div>
+        <input class="form-control mb-3" @bind=newPlaylistName />
+        <input type="button" class="btn btn-outline-danger me-3" @onclick=close value="Cancel" />
+        <input type="submit" class="btn btn-outline-success" @onclick=save value="Save" />
+    </form>
+}
+
+@code {
+    [Parameter] public SongViewModel? Song { get; set; }
+
+    [Parameter] public EventCallback Closed { get; set; }
+    private IEnumerable<Playlist>? allPlaylists;
+    private string? newPlaylistName;
+
+    private List<SelectionState> selections = new();
+    public class SelectionState
+    {
+        public string Name { get; set; } = string.Empty;
+        public bool OriginalValue { get; set; }
+        public bool NewValue { get; set; }
+    }
+
+    override protected async Task OnParametersSetAsync()
+    {
+        allPlaylists = await svc.GetPlaylistsAsync();
+        foreach (var playlist in allPlaylists)
+        {
+            bool inPlaylist = playlist.Songs.Any(s => s.Path == Song?.Path);
+            selections.Add(new SelectionState
+                {
+                    Name = playlist.Name,
+                    OriginalValue = inPlaylist,
+                    NewValue = inPlaylist
+                });
+        }
+    }
+
+    async Task close() => await Closed.InvokeAsync();
+
+    void checkedChanged(bool? isChecked, string playlistName)
+    {
+        selections.Single(s => s.Name == playlistName).NewValue = isChecked ?? false;
+    }
+
+    async Task save()
+    {
+        if (Song?.Path is null)
+            return;
+
+        var uncheckedPlaylists = selections.Where(s => s.NewValue == false && s.OriginalValue == true).Select(s => s.Name);
+        var checkedPlaylists = selections.Where(s => s.NewValue == true && s.OriginalValue == false).Select(s => s.Name);
+
+        if (!uncheckedPlaylists.Any() && !checkedPlaylists.Any() && String.IsNullOrWhiteSpace(newPlaylistName))
+        {
+            await Closed.InvokeAsync();
+            return;
+        }
+
+        foreach (var playlist in checkedPlaylists)
+        {
+            await svc.AddToPlaylistAsync(playlist, Song.Path);
+        }
+
+        foreach (var playlist in uncheckedPlaylists)
+        {
+            await svc.RemoveFromPlaylistAsync(playlist, Song.Path);
+        }
+
+        if (!String.IsNullOrWhiteSpace(newPlaylistName))
+        {
+            await svc.AddToPlaylistAsync(newPlaylistName, Song.Path);
+        }
+
+        await Closed.InvokeAsync();
+    }
+}

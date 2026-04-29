@@ -149,3 +149,82 @@
 ## Cross-Team Updates (2026-03-24)
 **From wash:** Browser auto-refresh fix deployed in .github/workflows/deploy.yml. Multi-strategy fallback: Chrome Remote Debugging Protocol (primary), xdotool with XAUTHORITY discovery (secondary), hardcoded path fallback. Service polling enhanced (12x curl checks). Failures now visible in CI.
 **From scribe:** Home page layout optimized by kaylee. Removed quick-link nav buttons (redundant), compacted Now Playing (80px → 56px). Typography adjusted (1.4rem → 1.1rem, 1rem → 0.875rem). Preserves touch targets. All changes scope-protected.
+
+### 2026-03-24: Blazor WebAssembly → Server Migration Planning
+
+**Context:** Requested to plan migration from Blazor WebAssembly (HomeSpeaker.WebAssembly) to server-side rendering/Interactive Server (HomeSpeaker.Server2). Goal: Remove WebAssembly project entirely, maintain identical site behavior.
+
+**Architecture Findings:**
+- **Current Setup:** Blazor WASM hosted by Server2 (ASP.NET Core). Server2 serves WASM files via `app.UseBlazorFrameworkFiles()`.
+- **Pages:** 13 pages total (Index, Music, Queue, Folders, Playlists, RecentlyPlayed, Streams, YouTube, Anchors, AnchorsEdit, AspireDashboard, NightScout, Demo pages)
+- **Components:** 30+ components across Layout, Music (Library/Player/Queue/Playlists), Health, Weather, UI
+- **Services:** 15+ services including gRPC client (HomeSpeakerService), HTTP clients (Temperature, BloodSugar, Forecast), browser audio (LocalAudioPlayer), SignalR (AnchorSyncService)
+
+**Rendering Mode Strategy:**
+- **Interactive Server** required for: MainLayout (keyboard shortcuts, timers, mobile menu), Index (auto-refresh, volume popup, JS interop), Queue (drag-and-drop, Bootstrap tabs), all Player components (PlayControls with timers, LocalAudioPlayer with HTML5 Audio), all Library components (play/add actions), Playlists, Streams, YouTube, Admin pages
+- **SSR** possible for: NavMenu (static links), Folders (redirect), RecentlyPlayed (read-only list), Health/Weather monitors (unless auto-refresh added)
+- **Recommendation:** Start with full InteractiveServer for safety, optimize to SSR later
+
+**Critical JS Interop:**
+- **keyboard.js** — Global shortcuts (Space, arrows, S, R) via `window.homeSpeakerKeyboard.init(dotNetHelper)`. Used by MainLayout. Works fine in Interactive Server.
+- **js/audioPlayer.js** — ES6 module managing HTML5 Audio element. Exports: initialize, playSong, pause, resume, stop, setVolume, seekTo, getStatus. Used by LocalAudioPlayer via IBrowserAudioService. Client-side only (browser Audio API), requires Interactive Server.
+- **js/sleepyTime.js** — Idle detection for screen dimming. Listens for pointerdown/keydown, calls `OnUserActivity`. Used by MainLayout.
+- **Inline scripts in index.html:**
+  - `window.initializeTabs()` — Bootstrap tab initialization
+  - `window.getBackgroundLuminance(element)` — WCAG luminance calculation
+  - `window.fitNowPlaying()` — Dynamic font sizing via binary search (fits text to available space)
+  - `window.fitText(elementId, minPx, maxPx)` — Generic text-fit utility
+
+**Migration Risks Identified:**
+1. **State Management:** Server circuits lose state on disconnect/restart (volume, repeat mode, queue). Mitigation: Persist critical state to localStorage via JS interop.
+2. **JS Interop Latency:** SignalR round-trip vs. direct WASM calls. May feel less responsive. Use `[JSImport]`/`[JSExport]` if needed.
+3. **Memory/Concurrency:** Raspberry Pi may struggle with multiple circuits (but likely single-user kiosk).
+4. **Offline Support:** Server mode requires constant connection (vs. PWA-capable WASM). Show reconnection UI.
+5. **Font Mismatch:** `index.html` imports Playfair/Syne/DM Sans/DM Mono, but `history.md` says Inter/Poppins. Need to verify actual fonts in `app.css` before migrating.
+6. **Bootstrap/MudBlazor:** Bootstrap dropdowns/tabs/modals work in Server mode. MudBlazor not yet in Server2 — need to add package + `AddMudServices()`.
+
+**Static Assets to Migrate:**
+- `wwwroot/css/app.css` (entire design system — CSS custom properties, component classes, touch optimizations, RPi media queries)
+- `wwwroot/css/bootswatch/dist/darkly/` (or re-fetch via libman)
+- `wwwroot/keyboard.js`, `wwwroot/js/audioPlayer.js`, `wwwroot/js/sleepyTime.js`
+- `wwwroot/favicon.png`, `wwwroot/icon-192.png`, `wwwroot/icon-512.png`, images
+- All `.razor.css` scoped files (30+)
+
+**Service Registrations to Port:**
+From WebAssembly `Program.cs` to Server2 `Program.cs`:
+- HomeSpeakerService (Singleton)
+- PlayerStateService (Singleton)
+- ITemperatureService, IBloodSugarService, IForecastService (Scoped)
+- IAnchorService, IAnchorSyncService (Scoped + HttpClient)
+- IBrowserAudioService, ILocalQueueService, IPlaybackModeService (Scoped)
+- ImagePickerService, YouTubeStateService
+- FluentUIComponents, MudServices (add MudBlazor package)
+- OpenTelemetry tracing
+
+**Dependencies:**
+- **Add to Server2:** MudBlazor NuGet package
+- **Already in Server2:** Microsoft.Fast.Components.FluentUI ✅
+- **Remove from Server2 post-migration:** Microsoft.AspNetCore.Components.WebAssembly.Server, `app.UseBlazorFrameworkFiles()`
+
+**Migration Phases:**
+1. Setup Server-Hosted Blazor (add packages, service registrations, App.razor/Routes.razor)
+2. Move Static Assets (CSS, JS, images, fonts)
+3. Move Components & Pages (all .razor + .razor.css files)
+4. Move Services & Models (or keep in Server2 if not shared)
+5. Test & Verify (keyboard, audio, drag-and-drop, touch, fonts, SignalR)
+6. Optimize (SSR for static pages, Interactive Islands, state persistence)
+7. Remove WebAssembly Project (delete folder, update CI/CD)
+
+**Decision Document:** Full migration map written to `.squad/decisions/inbox/kaylee-blazor-server-migration-map.md` with detailed component-by-component analysis, rendering mode recommendations, risk mitigations, and open questions for Wash/Mal.
+
+**Key Learnings:**
+- Touch optimizations (CSS only) migrate cleanly — no JS dependencies ✅
+- LocalAudioPlayer is the only truly client-side component (HTML5 Audio API) — must be Interactive Server, but works fine
+- SignalR AnchorHub endpoint must not conflict with Blazor Server's internal SignalR hub — coordinate with Wash
+- Bootstrap JS (tabs, dropdowns) works in Server mode — scripts just need to load before Blazor uses them
+- Drag-and-drop queue reordering — need to verify Blazor Server drag events work identically to WASM
+
+**File Paths:**
+- Migration map: `.squad/decisions/inbox/kaylee-blazor-server-migration-map.md`
+- Current WASM project: `HomeSpeaker.WebAssembly/`
+- Target server project: `HomeSpeaker.Server2/`

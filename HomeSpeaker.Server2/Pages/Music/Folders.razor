@@ -1,0 +1,9 @@
+﻿@page "/folders"
+@inject NavigationManager Nav
+
+@code {
+    protected override void OnInitialized()
+    {
+        Nav.NavigateTo("/music", replace: true);
+    }
+}

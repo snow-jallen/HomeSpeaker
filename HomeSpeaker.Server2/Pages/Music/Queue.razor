@@ -1,0 +1,338 @@
+﻿@page "/Queue"
+@inject HomeSpeakerService svc
+@inject IJSRuntime JSRuntime
+@inject ILogger<Queue> logger
+@inject ILocalQueueService localQueueService
+@inject PlayerStateService PlayerState
+@implements IDisposable
+
+<button @onclick=refresh title="Refresh queue" class="btn btn-secondary position-absolute top-10 end-0 mx-3"><span class="oi oi-reload"></span></button>
+
+<div class="row">
+    <div class="col-12">
+        <h2>Playback Queues</h2>
+    </div>
+</div>
+
+<!-- Bootstrap Tabs -->
+<ul class="nav nav-tabs" id="queueTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="server-tab" data-bs-toggle="tab" data-bs-target="#server-queue" type="button" role="tab" aria-controls="server-queue" aria-selected="true">
+            Server Queue (@(queue?.Count.ToString("n0") ?? "0"))
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="local-tab" data-bs-toggle="tab" data-bs-target="#local-queue" type="button" role="tab" aria-controls="local-queue" aria-selected="false">
+            Local Queue (@(localQueueService.Queue.Count.ToString("n0")))
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="queueTabContent">
+    <!-- Server Queue Tab -->
+    <div class="tab-pane fade show active" id="server-queue" role="tabpanel" aria-labelledby="server-tab">
+        <div class="p-3">
+            <!-- Now Playing Card -->
+            @if (PlayerState.Status?.CurrentSong != null)
+            {
+            <div class="now-playing-card mb-4">
+                <div class="now-playing-header">
+                    <i class="fas fa-play-circle me-2"></i>
+                    Now Playing
+                </div>
+                <div class="now-playing-title">
+                    @PlayerState.Status.CurrentSong.Name
+                </div>
+                <div class="now-playing-controls mt-3">
+                    <PlayControls />
+                </div>
+            </div>
+            }
+
+            <!-- Volume Control Card -->
+            <div class="hs-card mb-4">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="fas fa-volume-up me-2 text-muted"></i>
+                    <span class="fw-semibold">Volume</span>
+                    <span class="ms-auto text-muted">@volumeLevel%</span>
+                </div>
+                <input type="range" @bind-value="@VolumeLevel" class="w-100" min="0" max="100" />
+            </div>
+
+            <div class="d-flex align-items-start mb-3">
+                <div class="flex-grow-1">
+                    <h4 class="mb-0">Server Queue</h4>
+                    <div class="fs-6 mt-0 text-muted">(@queue?.Count().ToString("n0") songs • drag to reorder)</div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button @onclick=ShuffleQueue
+                            class="btn btn-outline-secondary btn-sm"
+                            disabled="@(queue?.Count <= 1)"
+                            title="Shuffle queue">
+                        <i class="fas fa-random me-1" aria-hidden="true"></i>Shuffle
+                    </button>
+                    <button @onclick=ClearQueue
+                            class="btn btn-outline-danger btn-sm"
+                            disabled="@(queue?.Count == 0)"
+                            title="Clear queue">
+                        <i class="fas fa-trash me-1" aria-hidden="true"></i>Clear Queue
+                    </button>
+                    <button @onclick=saveQueueAsPlaylist
+                            title="Save server queue as playlist"
+                            class="btn btn-outline-primary btn-sm"
+                            disabled="@(queue?.Count == 0)">
+                        <i class="fas fa-save me-1"></i>Save as Playlist
+                    </button>
+                </div>
+            </div>            @if (queue?.Any() == true)
+            {
+                <div class="unified-queue-list">
+                    @for (int i = 0; i < queue.Count; i++)
+                    {
+                        var song = queue[i];
+                        var index = i;
+                        var isCurrentSong = PlayerState.Status?.CurrentSong?.Name != null && song.Name == PlayerState.Status.CurrentSong.Name;
+
+                        <div class="queue-item-wrapper @(serverDraggedIndex == index ? "dragging" : "") @(serverDropTargetIndex == index ? "drop-target" : "")"
+                             data-index="@index"
+                             draggable="true"
+                             @ondragstart="@(() => StartServerDrag(index))"
+                             @ondragover="@((e) => HandleServerDragOver(e, index))"
+                             @ondragover:preventDefault="true"
+                             @ondrop="@(() => DropServer(index))"
+                             @ondragenter="@(() => HandleServerDragEnter(index))"
+                             @ondragleave="@(() => HandleServerDragLeave(index))"
+                             @ondragend="@(() => HandleServerDragEnd())">
+                            <QueueItem SongViewModel="song"
+                                     Removed="removeFromQueue"
+                                     QueuePosition="@(index + 1)"
+                                     IsCurrentSong="@isCurrentSong" />
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-center text-muted p-4">
+                    <div class="empty-queue-icon mb-3">
+                        <i class="fas fa-music fa-3x opacity-25"></i>
+                    </div>
+                    <h5 class="text-muted">No songs in server queue</h5>
+                    <p class="mb-0">Use "Play on Server" from any play button to add songs here</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Local Queue Tab -->
+    <div class="tab-pane fade" id="local-queue" role="tabpanel" aria-labelledby="local-tab">
+        <div class="p-3">
+            <LocalAudioPlayer />
+            <LocalQueueDisplay />
+        </div>
+    </div>
+</div>
+
+@code {
+    // Server drag and drop variables
+    private int serverDraggedIndex = -1;
+    private int? serverDropTargetIndex = null;
+
+    int volumeLevel = 40;
+    public int VolumeLevel
+    {
+        get => volumeLevel;
+        set
+        {
+            volumeLevel = value;
+            logger.LogInformation("Setting volume to {volume}", volumeLevel);
+            _ = svc.SetVolumeAsync(volumeLevel);
+        }
+    }
+
+    List<SongViewModel> queue = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        PlayerState.StateChanged += OnStateChanged;
+        await refresh();
+        svc.QueueChanged += OnQueueChanged;
+
+        // Subscribe to local queue changes to update tab counts
+        localQueueService.QueueChanged += OnLocalQueueChanged;
+
+        try
+        {
+            VolumeLevel = await svc.GetVolumeAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to get initial volume level");
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize Bootstrap tabs
+            await JSRuntime.InvokeVoidAsync("initializeTabs");
+        }
+    }
+
+    async Task volumeChanged(int volume)
+    {
+        volumeLevel = volume;
+        logger.LogInformation("Setting volume to {volumeLevel}", volumeLevel);
+        await svc.SetVolumeAsync(volumeLevel);
+    }
+
+    async Task saveQueueAsPlaylist()
+    {
+        var newPlaylistName = String.Format("From Queue {0:ddd d MMM hh:mm tt}", DateTime.UtcNow.ToLocalTime());
+        foreach (var song in queue)
+        {
+            if (!string.IsNullOrEmpty(song.Path))
+            {
+                try
+                {
+                    await svc.AddToPlaylistAsync(newPlaylistName, song.Path);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to add song {songPath} to playlist {playlistName}", song.Path, newPlaylistName);
+                }
+            }
+        }
+    }
+
+    async Task ShuffleQueue()
+    {
+        await svc.ShuffleQueueAsync();
+        await refresh();
+    }
+
+    async Task ClearQueue()
+    {
+        await svc.ClearQueueAsync();
+        await refresh();
+    }
+
+    async Task removeFromQueue(SongViewModel song)
+    {
+        queue.Remove(song);
+        await svc.UpdateQueueAsync(queue);
+    }
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    private async void OnQueueChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            logger.LogInformation("The QueueChanged event was raised.  Refreshing.");
+            await refresh();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error handling queue change event");
+        }
+    }
+
+    private void OnLocalQueueChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
+
+    async Task refresh()
+    {
+        queue.Clear();
+        queue.AddRange(await svc.GetPlayQueueAsync());
+        var status = await svc.GetStatusAsync();
+        PlayerState.UpdateStatus(status);
+        StateHasChanged();
+    }
+
+    // Server queue drag and drop methods
+    private void StartServerDrag(int index)
+    {
+        serverDraggedIndex = index;
+        logger.LogInformation("Started dragging server queue item at index {index}", index);
+    }
+
+    private void HandleServerDragOver(DragEventArgs e, int index)
+    {
+        if (serverDraggedIndex >= 0 && serverDraggedIndex != index)
+        {
+            serverDropTargetIndex = index;
+            e.DataTransfer.DropEffect = "move";
+        }
+    }
+
+    private void HandleServerDragEnter(int index)
+    {
+        if (serverDraggedIndex >= 0 && serverDraggedIndex != index)
+        {
+            serverDropTargetIndex = index;
+        }
+    }
+
+    private void HandleServerDragLeave(int index)
+    {
+        if (serverDropTargetIndex == index)
+        {
+            serverDropTargetIndex = null;
+        }
+    }
+
+    private void HandleServerDragEnd()
+    {
+        serverDraggedIndex = -1;
+        serverDropTargetIndex = null;
+        StateHasChanged();
+    }
+
+    private async Task DropServer(int targetIndex)
+    {
+        logger.LogInformation("Server drop called: draggedIndex={draggedIndex}, targetIndex={targetIndex}", serverDraggedIndex, targetIndex);
+
+        if (serverDraggedIndex < 0 || serverDraggedIndex >= queue.Count ||
+            targetIndex < 0 || targetIndex >= queue.Count ||
+            serverDraggedIndex == targetIndex)
+        {
+            logger.LogWarning("Invalid server drop operation: draggedIndex={draggedIndex}, targetIndex={targetIndex}, queueCount={count}",
+                serverDraggedIndex, targetIndex, queue.Count);
+            HandleServerDragEnd();
+            return;
+        }
+
+        try
+        {
+            logger.LogInformation("Moving server queue song from index {fromIndex} to {toIndex}", serverDraggedIndex, targetIndex);
+
+            // Update the local queue order
+            var song = queue[serverDraggedIndex];
+            queue.RemoveAt(serverDraggedIndex);
+            queue.Insert(targetIndex, song);
+
+            // Update the server with the new queue order
+            await svc.UpdateQueueAsync(queue);
+
+            logger.LogInformation("Successfully moved server queue song from index {fromIndex} to {toIndex}", serverDraggedIndex, targetIndex);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error reordering server queue from index {draggedIndex} to {targetIndex}", serverDraggedIndex, targetIndex);
+            // Refresh the queue from server on error
+            await refresh();
+        }
+        finally
+        {
+            HandleServerDragEnd();        }
+    }
+
+    public void Dispose()
+    {
+        PlayerState.StateChanged -= OnStateChanged;
+        svc.QueueChanged -= OnQueueChanged;
+        localQueueService.QueueChanged -= OnLocalQueueChanged;
+    }
+}
+

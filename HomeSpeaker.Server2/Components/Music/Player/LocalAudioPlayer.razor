@@ -1,0 +1,181 @@
+@using HomeSpeaker.Server2.Services
+@using HomeSpeaker.Server2.Models
+@inject IBrowserAudioService BrowserAudioService
+@inject ILocalQueueService LocalQueueService
+@inject ILogger<LocalAudioPlayer> Logger
+@implements IDisposable
+
+@if (LocalQueueService.CurrentSong != null)
+{
+    <div class="local-audio-player">
+        <div class="d-flex align-items-center mb-2">
+            <div class="btn-group me-3" role="group">
+                <button class="btn btn-outline-primary btn-sm" @onclick="PreviousTrack">
+                    <i class="fas fa-step-backward"></i>
+                </button>
+                
+                @if (isPlaying)
+                {
+                    <button class="btn btn-outline-primary btn-sm" @onclick="Pause">
+                        <i class="fas fa-pause"></i>
+                    </button>
+                }
+                else
+                {
+                    <button class="btn btn-outline-primary btn-sm" @onclick="Play">
+                        <i class="fas fa-play"></i>
+                    </button>
+                }
+                
+                <button class="btn btn-outline-primary btn-sm" @onclick="Stop">
+                    <i class="fas fa-stop"></i>
+                </button>
+                
+                <button class="btn btn-outline-primary btn-sm" @onclick="NextTrack">
+                    <i class="fas fa-step-forward"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="current-song-info mb-2">
+            <div class="fw-bold text-truncate">@LocalQueueService.CurrentSong.Name</div>
+            <div class="d-flex align-items-center">
+                <small class="text-muted me-2">@currentTimeDisplay</small>
+                <div class="progress flex-grow-1 me-2" style="height: 4px;">
+                    <div class="progress-bar" 
+                         style="width: @(progressPercent)%"
+                         role="progressbar"></div>
+                </div>
+                <small class="text-muted">@durationDisplay</small>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private Timer? statusTimer;
+    private bool isPlaying = false;
+    private double currentTime = 0;
+    private double duration = 0;
+    private string currentTimeDisplay = "0:00";
+    private string durationDisplay = "0:00";
+    private double progressPercent = 0;
+
+    protected override void OnInitialized()
+    {
+        LocalQueueService.QueueChanged += OnQueueChanged;
+        LocalQueueService.CurrentSongChanged += OnCurrentSongChanged;
+        
+        // Poll for status updates
+        statusTimer = new Timer(async _ =>
+        {
+            try
+            {
+                await UpdatePlayerStatus();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error updating player status");
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+    }
+
+    private async Task UpdatePlayerStatus()
+    {
+        try
+        {
+            var status = await BrowserAudioService.GetStatusAsync();
+            isPlaying = status.IsPlaying;
+            currentTime = status.CurrentTime;
+            duration = status.Duration;
+            
+            currentTimeDisplay = TimeSpan.FromSeconds(currentTime).ToString(@"mm\:ss");
+            durationDisplay = TimeSpan.FromSeconds(duration).ToString(@"mm\:ss");
+            progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+            
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error getting player status");
+        }
+    }
+
+    private async Task Play()
+    {
+        try
+        {
+            await BrowserAudioService.ResumeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error resuming playback");
+        }
+    }
+
+    private async Task Pause()
+    {
+        try
+        {
+            await BrowserAudioService.PauseAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error pausing playback");
+        }
+    }
+
+    private async Task Stop()
+    {
+        try
+        {
+            await BrowserAudioService.StopAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error stopping playback");
+        }
+    }
+
+    private async Task PreviousTrack()
+    {
+        try
+        {
+            await LocalQueueService.PlayPreviousAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error playing previous track");
+        }
+    }
+
+    private async Task NextTrack()
+    {
+        try
+        {
+            await LocalQueueService.PlayNextAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error playing next track");
+        }
+    }
+
+    private void OnQueueChanged(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnCurrentSongChanged(object? sender, SongViewModel currentSong)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        statusTimer?.Dispose();
+        LocalQueueService.QueueChanged -= OnQueueChanged;
+        LocalQueueService.CurrentSongChanged -= OnCurrentSongChanged;
+    }
+}
+

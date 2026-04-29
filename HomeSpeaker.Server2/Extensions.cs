@@ -42,7 +42,6 @@ public static class Extensions
             {
                 tracing.AddSource(builder.Environment.ApplicationName)
                     .AddAspNetCoreInstrumentation()
-                    .AddGrpcClientInstrumentation()
                     .AddHttpClientInstrumentation();
             });
 

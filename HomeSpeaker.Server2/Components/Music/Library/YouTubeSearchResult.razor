@@ -1,0 +1,114 @@
+﻿@inject ILogger<YouTubeSearchResult> logger
+@inject HomeSpeakerService svc
+@inject HttpClient http
+
+@if (SearchResult == null)
+{
+    <div>Nothing to see here</div>
+}
+else
+{
+    <div class="row border m-1">
+        <div class="col-auto">
+            <img src="@SearchResult.Thumbnail" height="64">
+        </div>
+        <div class="col">
+            <a class="h6" href="@SearchResult.Url">@SearchResult.Title</a>
+            <br>
+            by @SearchResult.Author (@SearchResult.Duration)
+        </div>
+        <div class="col-auto d-flex align-items-center gap-2">
+            @if (isStreaming)
+            {
+                <button class="btn btn-warning btn-sm" @onclick=stopStreamAsync title="Stop">
+                    <span class="oi oi-media-stop"></span>
+                </button>
+            }
+            else
+            {
+                <button class="btn btn-success btn-sm" @onclick=playStreamAsync title="Preview">
+                    <span class="oi oi-media-play"></span>
+                </button>
+            }
+            @if (isDownloading)
+            {
+                <progress value="@progressValue" />
+            }
+            else if (isComplete)
+            {
+                <span class="oi oi-check m-2"></span>
+            }
+            else
+            {
+                <button class="btn btn-secondary btn-sm" @onclick=cacheVideoAsync disabled="@(!FfmpegAvailable)" title="@(FfmpegAvailable ? "Download" : "ffmpeg not available")">
+                    <span class="oi oi-cloud-download"></span>
+                </button>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Video? SearchResult { get; set; }
+
+    [Parameter]
+    public bool FfmpegAvailable { get; set; } = true;
+
+    bool isDownloading = false;
+    bool isComplete = false;
+    bool isStreaming = false;
+    double progressValue;
+
+    async Task playStreamAsync()
+    {
+        if (SearchResult == null) return;
+        try
+        {
+            isStreaming = true;
+            var encodedTitle = Uri.EscapeDataString(SearchResult.Title ?? SearchResult.Id);
+            var response = await http.PostAsync($"/api/homespeaker/youtube/{SearchResult.Id}/play?title={encodedTitle}", null);
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogWarning("Stream request failed for {title}: {status}", SearchResult.Title, response.StatusCode);
+                isStreaming = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error streaming {title}", SearchResult?.Title);
+            isStreaming = false;
+        }
+    }
+
+    async Task stopStreamAsync()
+    {
+        try
+        {
+            await http.PostAsJsonAsync("/api/homespeaker/player/control", new { Stop = true, Play = false, ClearQueue = false, SkipToNext = false, SetVolume = false, VolumeLevel = 0 });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error stopping stream");
+        }
+        finally
+        {
+            isStreaming = false;
+        }
+    }
+
+    async Task cacheVideoAsync()
+    {
+        isDownloading = true;
+        var cacheCallReply = svc.HomeSpeakerClient.CacheVideo(new CacheVideoRequest { Video = SearchResult });
+        await foreach (var reply in cacheCallReply.ResponseStream.ReadAllAsync())
+        {
+            progressValue = reply.PercentComplete;
+            logger.LogInformation("Progress {value} for {title}", progressValue, SearchResult?.Title);
+            StateHasChanged();
+        }
+
+        isDownloading = false;
+        isComplete = true;
+    }
+}
