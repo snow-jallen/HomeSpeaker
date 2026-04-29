@@ -64,6 +64,30 @@ public static class HomeSpeakerRestEndpoints
             .WithName("EnqueueSong")
             .WithSummary("Add song to queue")
             .WithDescription("Adds the specified song to the playback queue");
+
+        // POST /api/homespeaker/songs/enqueue-by-artist?artist={name}
+        group.MapPost("/songs/enqueue-by-artist", EnqueueByArtist)
+            .WithName("EnqueueByArtist")
+            .WithSummary("Add all songs by an artist to queue")
+            .WithDescription("Adds all songs matching the given artist to the playback queue");
+
+        // POST /api/homespeaker/songs/play-by-artist?artist={name}
+        group.MapPost("/songs/play-by-artist", PlayByArtist)
+            .WithName("PlayByArtist")
+            .WithSummary("Play all songs by an artist")
+            .WithDescription("Clears the queue and plays all songs matching the given artist");
+
+        // POST /api/homespeaker/songs/enqueue-by-album?album={name}
+        group.MapPost("/songs/enqueue-by-album", EnqueueByAlbum)
+            .WithName("EnqueueByAlbum")
+            .WithSummary("Add all songs from an album to queue")
+            .WithDescription("Adds all songs matching the given album to the playback queue");
+
+        // POST /api/homespeaker/songs/play-by-album?album={name}
+        group.MapPost("/songs/play-by-album", PlayByAlbum)
+            .WithName("PlayByAlbum")
+            .WithSummary("Play all songs from an album")
+            .WithDescription("Clears the queue and plays all songs matching the given album");
     }
 
     private static void MapPlayerEndpoints(RouteGroupBuilder group)
@@ -381,6 +405,138 @@ public static class HomeSpeakerRestEndpoints
             logger.LogError(ex, "Failed to enqueue song {songId}", songId);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to enqueue song: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> EnqueueByArtist(
+        [FromQuery] string artist,
+        [FromServices] Mp3Library library,
+        [FromServices] IMusicPlayer musicPlayer,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        using var activity = Activity.Current?.Source.StartActivity("EnqueueByArtist");
+        activity?.SetTag("artist", artist);
+
+        try
+        {
+            var songs = library.Songs?
+                .Where(s => string.Equals(s.Artist, artist, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(s => s.Album).ThenBy(s => s.Name)
+                .ToList();
+
+            if (songs == null || songs.Count == 0)
+                return Results.NotFound($"No songs found for artist: {artist}");
+
+            foreach (var song in songs)
+                musicPlayer.EnqueueSong(song);
+
+            logger.LogInformation("Enqueued {count} songs by artist {artist}", songs.Count, artist);
+            return Results.Ok(new { success = true, songCount = songs.Count, artist });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to enqueue artist {artist}", artist);
+            return Results.Problem($"Failed to enqueue artist: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> PlayByArtist(
+        [FromQuery] string artist,
+        [FromServices] Mp3Library library,
+        [FromServices] IMusicPlayer musicPlayer,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        using var activity = Activity.Current?.Source.StartActivity("PlayByArtist");
+        activity?.SetTag("artist", artist);
+
+        try
+        {
+            var songs = library.Songs?
+                .Where(s => string.Equals(s.Artist, artist, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(s => s.Album).ThenBy(s => s.Name)
+                .ToList();
+
+            if (songs == null || songs.Count == 0)
+                return Results.NotFound($"No songs found for artist: {artist}");
+
+            musicPlayer.ClearQueue();
+            musicPlayer.PlaySong(songs.First());
+            foreach (var song in songs.Skip(1))
+                musicPlayer.EnqueueSong(song);
+
+            logger.LogInformation("Playing {count} songs by artist {artist}", songs.Count, artist);
+            return Results.Ok(new { success = true, songCount = songs.Count, artist });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to play artist {artist}", artist);
+            return Results.Problem($"Failed to play artist: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> EnqueueByAlbum(
+        [FromQuery] string album,
+        [FromServices] Mp3Library library,
+        [FromServices] IMusicPlayer musicPlayer,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        using var activity = Activity.Current?.Source.StartActivity("EnqueueByAlbum");
+        activity?.SetTag("album", album);
+
+        try
+        {
+            var songs = library.Songs?
+                .Where(s => string.Equals(s.Album, album, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(s => s.Name)
+                .ToList();
+
+            if (songs == null || songs.Count == 0)
+                return Results.NotFound($"No songs found for album: {album}");
+
+            foreach (var song in songs)
+                musicPlayer.EnqueueSong(song);
+
+            logger.LogInformation("Enqueued {count} songs from album {album}", songs.Count, album);
+            return Results.Ok(new { success = true, songCount = songs.Count, album });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to enqueue album {album}", album);
+            return Results.Problem($"Failed to enqueue album: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> PlayByAlbum(
+        [FromQuery] string album,
+        [FromServices] Mp3Library library,
+        [FromServices] IMusicPlayer musicPlayer,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        using var activity = Activity.Current?.Source.StartActivity("PlayByAlbum");
+        activity?.SetTag("album", album);
+
+        try
+        {
+            var songs = library.Songs?
+                .Where(s => string.Equals(s.Album, album, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(s => s.Name)
+                .ToList();
+
+            if (songs == null || songs.Count == 0)
+                return Results.NotFound($"No songs found for album: {album}");
+
+            musicPlayer.ClearQueue();
+            musicPlayer.PlaySong(songs.First());
+            foreach (var song in songs.Skip(1))
+                musicPlayer.EnqueueSong(song);
+
+            logger.LogInformation("Playing {count} songs from album {album}", songs.Count, album);
+            return Results.Ok(new { success = true, songCount = songs.Count, album });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to play album {album}", album);
+            return Results.Problem($"Failed to play album: {ex.Message}");
         }
     }
 

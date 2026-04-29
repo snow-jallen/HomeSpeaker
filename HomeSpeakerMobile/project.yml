@@ -31,7 +31,6 @@ targets:
         createIntermediateGroups: true
         excludes:
           - Resources
-    resources:
       - path: iOS/Resources/Assets.xcassets
     settings:
       base:
@@ -57,7 +56,6 @@ targets:
         excludes:
           - Resources
           - Widget
-    resources:
       - path: watchOS/Resources/Assets.xcassets
     settings:
       base:

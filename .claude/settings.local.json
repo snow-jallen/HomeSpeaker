@@ -31,7 +31,12 @@
       "Bash(dotnet --info)",
       "Bash(dotnet package *)",
       "Bash(xcodegen generate *)",
-      "Bash(xcodebuild -project HomeSpeakerMobile.xcodeproj -scheme HomeSpeaker -destination \"id=8E4C4739-C668-4D96-A680-9DC10C40B4C1\" -configuration Debug build)"
+      "Bash(xcodebuild -project HomeSpeakerMobile.xcodeproj -scheme HomeSpeaker -destination \"id=8E4C4739-C668-4D96-A680-9DC10C40B4C1\" -configuration Debug build)",
+      "Bash(xcodegen *)",
+      "Bash(xcodebuild -scheme HomeSpeaker -destination 'generic/platform=iOS' -configuration Release clean build)",
+      "Bash(xcodebuild -scheme HomeSpeaker -destination 'platform=iOS Simulator,name=iPhone 16' -configuration Release -allowProvisioningUpdates build)",
+      "Bash(xcodebuild -scheme HomeSpeaker -destination 'platform=iOS Simulator,id=8E4C4739-C668-4D96-A680-9DC10C40B4C1' -configuration Release build)",
+      "Bash(xcodebuild -scheme HomeSpeaker -destination 'generic/platform=iOS' -configuration Release -allowProvisioningUpdates archive -archivePath /tmp/HomeSpeaker.xcarchive)"
     ],
     "deny": [],
     "ask": []

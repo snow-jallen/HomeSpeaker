@@ -132,6 +132,26 @@ class APIClient {
         try await requestVoid("api/homespeaker/songs/\(songId)/enqueue", method: "POST")
     }
 
+    func enqueueArtist(_ artist: String) async throws {
+        let enc = artist.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? artist
+        try await requestVoid("api/homespeaker/songs/enqueue-by-artist?artist=\(enc)", method: "POST")
+    }
+
+    func playArtist(_ artist: String) async throws {
+        let enc = artist.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? artist
+        try await requestVoid("api/homespeaker/songs/play-by-artist?artist=\(enc)", method: "POST")
+    }
+
+    func enqueueAlbum(_ album: String) async throws {
+        let enc = album.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? album
+        try await requestVoid("api/homespeaker/songs/enqueue-by-album?album=\(enc)", method: "POST")
+    }
+
+    func playAlbum(_ album: String) async throws {
+        let enc = album.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? album
+        try await requestVoid("api/homespeaker/songs/play-by-album?album=\(enc)", method: "POST")
+    }
+
     // MARK: - Queue
 
     func getQueue() async throws -> [Song] {

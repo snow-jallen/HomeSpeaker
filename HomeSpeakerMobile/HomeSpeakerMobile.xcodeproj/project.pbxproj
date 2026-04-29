@@ -21,6 +21,7 @@
 		687EB1F65D3FD4831CF9D102 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1859B12913E4087DC6C8AE6D /* APIClient.swift */; };
 		716E81D5609BFE112919F15F /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1859B12913E4087DC6C8AE6D /* APIClient.swift */; };
 		72CB3C0A15A20A1D470A2892 /* HomeSpeakerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE860A8EC2BC7A3510B7D5BE /* HomeSpeakerWidget.swift */; };
+		775F06E21ED5A5D9BAB69A2A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 932B931B88EC9D90133C7FB7 /* Assets.xcassets */; };
 		7AB23637168FDA6113A1E116 /* YouTubeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742488CE44FEEA3523C46654 /* YouTubeView.swift */; };
 		8BA769F8273F5002C64F9957 /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE72379FA5E35A1E24338A72 /* QueueView.swift */; };
 		90BDA85488C40C638B27DEF3 /* RadioStreamsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97987F210143A29FA1EA204 /* RadioStreamsView.swift */; };
@@ -32,6 +33,7 @@
 		A9B7146EC9427277CF98A290 /* HomeSpeakerWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 3E6E950B3D6D2B30EA71133D /* HomeSpeakerWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AFBC50135B32EEDDB784AC73 /* MusicLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5362492C8FDA890DA502B7AE /* MusicLibraryView.swift */; };
 		B4920B1AB331FAD8F211E305 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0387EAEB26350D3D2A73FB79 /* Models.swift */; };
+		B882A143B6536C8135B12E20 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EB62922935DAAB7820E9B273 /* Assets.xcassets */; };
 		BC18B967C3D72E4E311A3A36 /* ConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8049584149E66D488080E43 /* ConnectionStore.swift */; };
 		CD02ED43DB2AB4DEA6E6D892 /* WidgetIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F4F22A2E9A3EBC7B2594BF4 /* WidgetIntents.swift */; };
 		D03D1C8F483822096AD105C4 /* WatchSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA9B6AB8BBD67679356966D6 /* WatchSync.swift */; };
@@ -104,6 +106,7 @@
 		79DF5D1CE59F6944F0B2B812 /* HomeSpeakerWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerWatchApp.swift; sourceTree = "<group>"; };
 		7DC249750CEAD1C046D5E9F8 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
 		7FA88887D56058624D3959C9 /* HomeSpeakerWatchWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = HomeSpeakerWatchWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		932B931B88EC9D90133C7FB7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		972E6F741153B0F923CEB1D8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		991398AE4AA449825359CD71 /* QueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueView.swift; sourceTree = "<group>"; };
 		9FDA0E7B88A5BE2BDCD91EBA /* HomeSpeaker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HomeSpeaker.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -119,6 +122,7 @@
 		D3B0125C146E59A5A2A1943C /* PlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistsView.swift; sourceTree = "<group>"; };
 		DE860A8EC2BC7A3510B7D5BE /* HomeSpeakerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerWidget.swift; sourceTree = "<group>"; };
 		E8049584149E66D488080E43 /* ConnectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionStore.swift; sourceTree = "<group>"; };
+		EB62922935DAAB7820E9B273 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F241EFDB1BBC7B42BF8AD924 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		F27C12BCCE016B6AC25E97E5 /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = System/Library/Frameworks/WatchConnectivity.framework; sourceTree = SDKROOT; };
 		F4223DA2F0CDF7DF37CB1511 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -207,10 +211,27 @@
 				972E6F741153B0F923CEB1D8 /* ContentView.swift */,
 				CE5E33A6DF228F089492D54D /* HomeSpeakerWatch.entitlements */,
 				79DF5D1CE59F6944F0B2B812 /* HomeSpeakerWatchApp.swift */,
+				7066F1A98951F5657DDDA69B /* Resources */,
 				3312E1806B817D8B9EE70910 /* Views */,
 				4553B2634B3DE9FF5AF310E3 /* Widget */,
 			);
 			path = watchOS;
+			sourceTree = "<group>";
+		};
+		6AA690D5044B747696D6E870 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				932B931B88EC9D90133C7FB7 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		7066F1A98951F5657DDDA69B /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				EB62922935DAAB7820E9B273 /* Assets.xcassets */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		771C982BB7C6CED494318CEA /* iOS */ = {
@@ -218,6 +239,7 @@
 			children = (
 				9FE39C0DB8FFD7DBDEC6E984 /* ContentView.swift */,
 				D1C3B78E7383B49C16C349A3 /* HomeSpeakerApp.swift */,
+				6AA690D5044B747696D6E870 /* Resources */,
 				9640FB9053993F506946BA33 /* Views */,
 			);
 			path = iOS;
@@ -286,6 +308,7 @@
 			buildConfigurationList = 82215EEF575EFD543522C406 /* Build configuration list for PBXNativeTarget "HomeSpeaker" */;
 			buildPhases = (
 				7984D897AA7DD367B5D1F218 /* Sources */,
+				7A3596777C94020829D3E8C3 /* Resources */,
 				B8F3E48F6020C37DF3D5BBB2 /* Frameworks */,
 				B6B47B9463A65B9921ED1A19 /* Embed Watch Content */,
 			);
@@ -306,6 +329,7 @@
 			buildConfigurationList = C23BEA36EAF9CE7E033361BC /* Build configuration list for PBXNativeTarget "HomeSpeakerWatch" */;
 			buildPhases = (
 				DD29519CF2E35A423C377A4E /* Sources */,
+				4090659DFDB168CC1E2B725A /* Resources */,
 				9D3C1D01DCB3FC50803ACCA9 /* Frameworks */,
 				AAF725393CA4D0FF39E0B04E /* Embed Foundation Extensions */,
 			);
@@ -350,6 +374,25 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4090659DFDB168CC1E2B725A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B882A143B6536C8135B12E20 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7A3596777C94020829D3E8C3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				775F06E21ED5A5D9BAB69A2A /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		4ECA88CCE47B450126548416 /* Sources */ = {

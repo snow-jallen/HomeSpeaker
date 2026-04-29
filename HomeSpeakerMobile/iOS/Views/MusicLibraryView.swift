@@ -114,11 +114,35 @@ struct MusicLibraryView: View {
                             Text(albumEntry.album)
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
+                                .contextMenu {
+                                    Button {
+                                        Task { await handleAlbumAction(.play, album: albumEntry.album) }
+                                    } label: {
+                                        Label("Play Album", systemImage: "play.fill")
+                                    }
+                                    Button {
+                                        Task { await handleAlbumAction(.enqueue, album: albumEntry.album) }
+                                    } label: {
+                                        Label("Add Album to Queue", systemImage: "text.badge.plus")
+                                    }
+                                }
                         }
                     }
                 } label: {
                     Text(artistEntry.artist)
                         .font(.headline)
+                        .contextMenu {
+                            Button {
+                                Task { await handleArtistAction(.play, artist: artistEntry.artist) }
+                            } label: {
+                                Label("Play Artist", systemImage: "play.fill")
+                            }
+                            Button {
+                                Task { await handleArtistAction(.enqueue, artist: artistEntry.artist) }
+                            } label: {
+                                Label("Add Artist to Queue", systemImage: "text.badge.plus")
+                            }
+                        }
                 }
             }
         }
@@ -136,6 +160,38 @@ struct MusicLibraryView: View {
             case .enqueue:
                 try await api.enqueueSong(song.songId)
                 showMessage("Added to queue")
+            }
+        } catch {
+            showMessage("Error: \(error.localizedDescription)")
+        }
+    }
+
+    private func handleArtistAction(_ action: SongAction, artist: String) async {
+        guard let api = store.api else { return }
+        do {
+            switch action {
+            case .play:
+                try await api.playArtist(artist)
+                showMessage("Playing: \(artist)")
+            case .enqueue:
+                try await api.enqueueArtist(artist)
+                showMessage("Added \(artist) to queue")
+            }
+        } catch {
+            showMessage("Error: \(error.localizedDescription)")
+        }
+    }
+
+    private func handleAlbumAction(_ action: SongAction, album: String) async {
+        guard let api = store.api else { return }
+        do {
+            switch action {
+            case .play:
+                try await api.playAlbum(album)
+                showMessage("Playing: \(album)")
+            case .enqueue:
+                try await api.enqueueAlbum(album)
+                showMessage("Added \(album) to queue")
             }
         } catch {
             showMessage("Error: \(error.localizedDescription)")
