@@ -34,7 +34,10 @@ builder.Services.AddCors(options =>
                       });
 });
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents(options =>
+    {
+        options.DisconnectedCircuitRetentionPeriod = TimeSpan.FromHours(4);
+    });
 builder.Services.AddScoped(sp =>
 {
     var navigationManager = sp.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
