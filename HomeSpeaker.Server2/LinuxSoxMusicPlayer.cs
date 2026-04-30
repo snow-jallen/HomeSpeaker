@@ -438,7 +438,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     {
         get
         {
-            logger.LogInformation("StillPlaying: startedPlaying {StartedPlaying} || (playerProcess?.HasExited {HasExited} ?? true) == false) {(playerProcess?.HasExited ?? true) == false}",
+            logger.LogDebug("StillPlaying: startedPlaying {StartedPlaying} || (playerProcess?.HasExited {HasExited} ?? true) == false) {(playerProcess?.HasExited ?? true) == false}",
                 startedPlaying,
                 playerProcess?.HasExited,
                 playerProcess?.HasExited ?? false);
