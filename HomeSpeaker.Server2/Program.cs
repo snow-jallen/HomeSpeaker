@@ -97,7 +97,6 @@ builder.Services.AddHttpClient<RadioStreamService>()
     {
         AutomaticDecompression = System.Net.DecompressionMethods.All
     });
-builder.Services.AddScoped<RadioStreamService>(); // Ensure it's registered as scoped
 
 // Add HttpClient for ImageSearchService (DDG + Wikipedia image search)
 builder.Services.AddHttpClient<ImageSearchService>(client =>
