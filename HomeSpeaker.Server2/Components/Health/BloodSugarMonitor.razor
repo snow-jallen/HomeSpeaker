@@ -1,6 +1,6 @@
 @using HomeSpeaker.Shared.BloodSugar
 @using HomeSpeaker.Server2.Services
-@inject IBloodSugarService BloodSugarService
+@inject BloodSugarService BloodSugarService
 @inject ILogger<BloodSugarMonitor> Logger
 @implements IDisposable
 
@@ -94,7 +94,7 @@
             {
                 Logger.LogError(ex, "Error in blood sugar refresh timer");
             }
-        }, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+        }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
     }
 
     private async Task RefreshBloodSugarData()
@@ -104,7 +104,6 @@
         try
         {
             isLoading = true;
-            StateHasChanged();
 
             bloodSugarStatus = await BloodSugarService.GetBloodSugarStatusAsync();
             lastUpdated = DateTime.UtcNow.ToLocalTime();
@@ -151,7 +150,6 @@
         try
         {
             isLoading = true;
-            StateHasChanged();
 
             bloodSugarStatus = await BloodSugarService.RefreshAsync();
             lastUpdated = DateTime.UtcNow.ToLocalTime();

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace HomeSpeaker.Server2.Services;
 
-public sealed class TemperatureService
+public sealed class TemperatureService : ITemperatureService
 {
     private readonly HttpClient httpClient;
     private readonly IConfiguration configuration;
@@ -144,13 +144,27 @@ public sealed class TemperatureService
         logger.LogInformation("Temperature cache cleared");
     }
 
+    public Task<bool> ClearCacheAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            ClearCache();
+            return Task.FromResult(true);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to clear temperature cache");
+            return Task.FromResult(false);
+        }
+    }
+
     /// <summary>
     /// Clears the cache and fetches fresh data
     /// </summary>
     public async Task<TemperatureStatus> RefreshAsync(CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Refreshing temperature data (clearing cache and fetching fresh data)");
-        ClearCache();
+        await ClearCacheAsync(cancellationToken);
         return await GetTemperatureStatusAsync(cancellationToken);
     }
 

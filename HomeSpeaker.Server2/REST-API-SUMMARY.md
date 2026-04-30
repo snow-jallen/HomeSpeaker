@@ -85,6 +85,6 @@ POST /api/homespeaker/playlists/Favorites/songs
 
 ### 🚀 Ready for Use
 
-The implementation is complete and ready for integration testing. While the full solution build has some unrelated namespace issues in the WebAssembly project, the REST API implementation itself is syntactically correct and follows all requested patterns.
+The implementation is complete and ready for integration testing. The REST API implementation itself is syntactically correct and follows all requested patterns.
 
 All endpoints use the same underlying services as the gRPC implementation, ensuring consistency and reliability.

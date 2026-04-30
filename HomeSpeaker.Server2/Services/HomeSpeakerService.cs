@@ -5,27 +5,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HomeSpeaker.Server2.Services;
 
-// Simple replacement for gRPC types
-public class GetStatusReply
-{
-    public int Volume { get; set; }
-    public bool StilPlaying { get; set; }
-    public SongMessage? CurrentSong { get; set; }
-}
-
-public class SongMessage
-{
-    public int SongId { get; set; }
-    public string Path { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string Artist { get; set; } = string.Empty;
-    public string Album { get; set; } = string.Empty;
-    public string Duration { get; set; } = string.Empty;
-}
-
 /// <summary>
-/// Server-side service for Blazor SSR components that wraps backend music player functionality.
-/// Provides the same API as the old gRPC client wrapper but calls backend services directly.
+/// Server-side service for Blazor components. Provides direct access to backend music player functionality.
 /// </summary>
 public class HomeSpeakerService
 {
@@ -75,24 +56,28 @@ public class HomeSpeakerService
         return await musicPlayer.GetVolume();
     }
 
-    // Player status - returns gRPC-compatible reply for components
-    public async Task<GetStatusReply> GetStatusAsync()
+    // Player status - returns clean domain model
+    public async Task<PlayerStatus> GetStatusAsync()
     {
         var status = musicPlayer.Status;
         var currentSong = status?.CurrentSong;
 
-        return await Task.FromResult(new GetStatusReply
+        return await Task.FromResult(new PlayerStatus
         {
             Volume = await musicPlayer.GetVolume(),
-            StilPlaying = musicPlayer.StillPlaying,
-            CurrentSong = currentSong != null ? new SongMessage
+            StillPlaying = musicPlayer.StillPlaying,
+            PercentComplete = status?.PercentComplete ?? 0,
+            Elapsed = status?.Elapsed ?? TimeSpan.Zero,
+            Remaining = status?.Remaining ?? TimeSpan.Zero,
+            IsStream = status?.IsStream ?? false,
+            StreamName = status?.StreamName,
+            CurrentSong = currentSong != null ? new Song
             {
                 SongId = currentSong.SongId,
-                Path = currentSong.Path,
+                Path = currentSong.Path ?? string.Empty,
                 Name = currentSong.Name,
                 Artist = currentSong.Artist ?? string.Empty,
-                Album = currentSong.Album ?? string.Empty,
-                Duration = currentSong.Duration?.ToString() ?? string.Empty
+                Album = currentSong.Album ?? string.Empty
             } : null
         });
     }
@@ -105,6 +90,11 @@ public class HomeSpeakerService
             musicPlayer.ClearQueue();
             foreach (var song in songs)
             {
+                if (string.IsNullOrWhiteSpace(song.Path))
+                {
+                    continue;
+                }
+
                 var fullSong = library.Songs.FirstOrDefault(s => s.Path == song.Path);
                 if (fullSong != null)
                 {
@@ -165,7 +155,7 @@ public class HomeSpeakerService
         {
             musicPlayer.Stop();
             musicPlayer.ClearQueue();
-            var songs = library.Songs.Where(s => s.Path.StartsWith(folder, StringComparison.OrdinalIgnoreCase));
+            var songs = library.Songs.Where(s => s.Path != null && s.Path.StartsWith(folder, StringComparison.OrdinalIgnoreCase));
             foreach (var song in songs)
             {
                 musicPlayer.EnqueueSong(song);
@@ -177,7 +167,7 @@ public class HomeSpeakerService
     {
         await Task.Run(() =>
         {
-            var songs = library.Songs.Where(s => s.Path.StartsWith(folder, StringComparison.OrdinalIgnoreCase));
+            var songs = library.Songs.Where(s => s.Path != null && s.Path.StartsWith(folder, StringComparison.OrdinalIgnoreCase));
             foreach (var song in songs)
             {
                 musicPlayer.EnqueueSong(song);
@@ -221,7 +211,7 @@ public class HomeSpeakerService
     {
         return await Task.Run(() =>
             library.Songs
-                .Where(s => s.Path.StartsWith(folder, StringComparison.OrdinalIgnoreCase))
+                .Where(s => s.Path != null && s.Path.StartsWith(folder, StringComparison.OrdinalIgnoreCase))
                 .Select(s => s.ToSongViewModel()));
     }
 
@@ -232,17 +222,26 @@ public class HomeSpeakerService
             var groups = new Dictionary<string, List<SongViewModel>>();
             foreach (var song in library.Songs)
             {
-                var folder = GetFolderFromPath(song.Path);
-                if (string.IsNullOrEmpty(folder))
-                    continue;
-
-                if (!groups.ContainsKey(folder))
+                if (string.IsNullOrWhiteSpace(song.Path))
                 {
-                    groups[folder] = new List<SongViewModel>();
+                    continue;
                 }
 
-                groups[folder].Add(song.ToSongViewModel());
+                var folder = getFolderFromPath(song.Path);
+                if (string.IsNullOrEmpty(folder))
+                {
+                    continue;
+                }
+
+                if (!groups.TryGetValue(folder, out var groupSongs))
+                {
+                    groupSongs = new List<SongViewModel>();
+                    groups[folder] = groupSongs;
+                }
+
+                groupSongs.Add(song.ToSongViewModel());
             }
+
             return groups;
         });
     }
@@ -254,25 +253,33 @@ public class HomeSpeakerService
             var folders = new HashSet<string>();
             foreach (var song in library.Songs)
             {
-                var folder = GetTopLevelFolder(song.Path);
+                if (string.IsNullOrWhiteSpace(song.Path))
+                {
+                    continue;
+                }
+
+                var folder = getTopLevelFolder(song.Path);
                 if (!string.IsNullOrEmpty(folder))
                 {
                     folders.Add(folder);
                 }
             }
+
             return folders.AsEnumerable();
         });
     }
 
-    private string? GetFolderFromPath(string path)
+    private static readonly char[] pathSeparators = ['/', '\\'];
+
+    private string? getFolderFromPath(string path)
     {
-        var parts = path.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+        var parts = path.Split(pathSeparators, StringSplitOptions.RemoveEmptyEntries);
         return parts.Length > 1 ? string.Join("/", parts.Take(parts.Length - 1)) : null;
     }
 
-    private string? GetTopLevelFolder(string path)
+    private string? getTopLevelFolder(string path)
     {
-        var parts = path.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+        var parts = path.Split(pathSeparators, StringSplitOptions.RemoveEmptyEntries);
         return parts.Length > 0 ? parts[0] : null;
     }
 
@@ -282,15 +289,20 @@ public class HomeSpeakerService
         await Task.CompletedTask;
     }
 
+    public async Task DeleteSongAsync(int songId)
+    {
+        await Task.Run(() => library.DeleteSong(songId));
+    }
+
     // Playlists
-    public async Task<IEnumerable<Playlist>> GetPlaylistsAsync()
+    public async Task<IEnumerable<HomeSpeaker.Shared.Playlist>> GetPlaylistsAsync()
     {
         return await playlistService.GetPlaylistsAsync();
     }
 
     public async Task AddToPlaylistAsync(string playlistName, string songPath)
     {
-        await playlistService.AddSongToPlaylistAsync(playlistName, songPath);
+        await playlistService.AppendSongToPlaylistAsync(playlistName, songPath);
     }
 
     public async Task RemoveFromPlaylistAsync(string playlistName, string songPath)
@@ -300,7 +312,7 @@ public class HomeSpeakerService
 
     public async Task PlayPlaylistAsync(string playlistName)
     {
-        await playlistService.PlayPlaylistAsync(playlistName, musicPlayer);
+        await playlistService.PlayPlaylistAsync(playlistName);
     }
 
     public async Task RenamePlaylistAsync(string oldName, string newName)
@@ -343,7 +355,20 @@ public class HomeSpeakerService
 
     public async Task PlayRadioStreamAsync(int streamId)
     {
-        await radioStreamService.PlayRadioStreamAsync(streamId, musicPlayer);
+        var stream = await radioStreamService.GetStreamByIdAsync(streamId);
+        if (stream == null)
+        {
+            throw new InvalidOperationException($"Radio stream {streamId} not found");
+        }
+
+        await Task.Run(() =>
+        {
+            musicPlayer.Stop();
+            musicPlayer.ClearQueue();
+            musicPlayer.PlayStream(stream.Url, stream.Name);
+        });
+
+        await radioStreamService.IncrementPlayCountAsync(streamId);
     }
 
     public async Task PlayStreamAsync(string streamUri)
@@ -354,6 +379,46 @@ public class HomeSpeakerService
             musicPlayer.ClearQueue();
             musicPlayer.PlayStream(streamUri);
         });
+    }
+
+    public async Task PlayYouTubeStreamAsync(string videoId, string? title)
+    {
+        var streamUrl = await youtubeService.GetBestAudioStreamUrlAsync(videoId);
+        if (string.IsNullOrWhiteSpace(streamUrl))
+        {
+            throw new InvalidOperationException("Unable to resolve YouTube stream URL.");
+        }
+
+        await Task.Run(() =>
+        {
+            musicPlayer.Stop();
+            musicPlayer.ClearQueue();
+            musicPlayer.PlayStream(streamUrl, title);
+        });
+    }
+
+    public Task<bool> IsFfmpegAvailableAsync() =>
+        Task.FromResult(youtubeService.IsFfmpegAvailable());
+
+    public async Task<IEnumerable<VideoDto>> SearchVideosAsync(string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            return Enumerable.Empty<VideoDto>();
+        }
+
+        return await youtubeService.SearchAsync(searchTerm);
+    }
+
+    public async Task CacheVideoAsync(VideoDto video, IProgress<double> progress, CancellationToken cancellationToken = default)
+    {
+        await youtubeService.CacheVideoAsync(video.Id, video.Title, progress);
+        library.IsDirty = true;
+    }
+
+    public async Task DeleteRadioStreamAsync(int streamId)
+    {
+        await radioStreamService.DeleteStreamAsync(streamId);
     }
 
     public async Task<RadioStreamViewModel> CreateRadioStreamAsync(string name, string url, string faviconUrl = "", string faviconFileName = "")
@@ -436,10 +501,12 @@ public class HomeSpeakerService
         await Task.Run(() => musicPlayer.CancelSleepTimer());
     }
 
-    public async Task<int?> GetSleepTimerAsync()
+    public Task<(bool Active, int RemainingSeconds)> GetSleepTimerAsync()
     {
         var remaining = musicPlayer.SleepTimerRemaining;
-        return await Task.FromResult(remaining.HasValue ? (int?)remaining.Value.TotalMinutes : null);
+        return Task.FromResult(remaining.HasValue
+            ? (true, (int)Math.Max(0, remaining.Value.TotalSeconds))
+            : (false, 0));
     }
 
     // Backlight toggle

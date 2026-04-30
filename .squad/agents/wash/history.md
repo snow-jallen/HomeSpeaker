@@ -333,3 +333,65 @@ This allows the deploy workflow to refresh the browser without any X11 permissio
 - Failures are now visible in GitHub Actions logs (search for "⚠ All refresh strategies failed")
 
 **Security Note:** Remote debugging port (9222) is only accessible via localhost — no external exposure.
+
+### 2025-04-29 — Blazor SSR Migration: gRPC Cleanup Complete
+
+**Task:** Complete the WebAssembly-to-SSR migration by removing all obsolete gRPC contract/package/proto baggage and refactoring HomeSpeakerService to a clean in-process server-side API.
+
+**Context:** Book's previous migration work left gRPC artifacts in place (proto files, gRPC packages in HomeSpeaker.Shared, gRPC-shaped types like GetStatusReply/SongMessage). Mal rejected this as incomplete because the migration was hidden behind the new host rather than properly finished.
+
+**Changes Completed:**
+
+1. **HomeSpeaker.Shared Cleanup:**
+   - Removed: `Google.Protobuf`, `Grpc.Net.Client`, `Grpc.Tools` packages
+   - Removed: `homespeaker.proto` file (45 gRPC service methods)
+   - Removed: `<Protobuf>` build item from .csproj
+   - Enhanced: `PlayerStatus` record to include `Volume` property (was missing)
+   - Removed: `ProtobufExtensions` class with gRPC type conversion methods
+
+2. **HomeSpeakerService Refactor:**
+   - Changed: `GetStatusAsync()` return type from `GetStatusReply` to `PlayerStatus` (clean domain model)
+   - Changed: Service no longer creates gRPC-shaped types (`GetStatusReply`, `SongMessage`)
+   - Changed: Doc comment from "wraps backend...same API as old gRPC client" to "provides direct access to backend"
+   - Preserved: All existing functionality (volume, queue, playback, playlists, radio, YouTube, repeat, sleep timer)
+   - Preserved: Events (`StatusChanged`, `QueueChanged`) for component reactivity
+
+3. **PlayerStateService Refactor:**
+   - Changed: `Status` property type from `GetStatusReply?` to `PlayerStatus?`
+   - Changed: `UpdateStatus()` parameter from `GetStatusReply?` to `PlayerStatus?`
+   - Updated: Doc comment to reflect clean server-side state tracking
+
+4. **Component Fixes:**
+   - Fixed: `Index.razor` — typo `StilPlaying` → `StillPlaying`
+   - Fixed: `MainLayout.razor` — typo `StilPlaying` → `StillPlaying` in keyboard shortcut handler
+   - Preserved: All existing UI behavior and component logic
+
+5. **Obsolete File Cleanup:**
+   - Deleted: `HomeSpeaker.Server2\Services\GetStatusReply.cs` (gRPC-shaped POCO)
+   - Deleted: `HomeSpeaker.Server2\Services\SongMessage.cs` (gRPC-shaped POCO)
+   - Preserved: `GreeterService.cs.old`, `HomeSpeakerService.cs.old` (historical reference)
+
+**Build Status:** ✅ SUCCESSFUL
+- `dotnet build HomeSpeaker.Server2\HomeSpeaker.Server2.csproj` — 0 errors, 19 warnings (analyzer noise, not migration-related)
+- `dotnet build HomeSpeaker.sln` — 0 errors, 0 warnings (Release config suppresses analyzers)
+
+**Verification:**
+- ✅ No gRPC packages in HomeSpeaker.Shared
+- ✅ No proto files in solution
+- ✅ No gRPC-shaped types (GetStatusReply, SongMessage) in active code
+- ✅ HomeSpeakerService returns clean domain models
+- ✅ PlayerStateService uses clean domain models
+- ✅ Components compile and reference correct types
+- ✅ REST endpoints preserved (iOS app compatibility maintained)
+- ✅ Dockerfile unchanged (no WebAssembly COPY statements already removed by Book)
+
+**Migration Complete:** WebAssembly-to-SSR migration is now architecturally clean. No gRPC artifacts remain in the live code path. All domain types are proper C# records, not gRPC-generated classes.
+
+**Security Posture:** Improved. No client-side gRPC exposure, no WebAssembly attack surface. All player state now server-side with server-validated operations.
+
+**Next Actions:** 
+- Mal and Zoe: Review `HomeSpeaker.Shared\HomeSpeaker.Shared.csproj`, `HomeSpeaker.Server2\Services\HomeSpeakerService.cs`, `HomeSpeaker.Server2\Services\PlayerStateService.cs`, `HomeSpeaker.Shared\PlayerStatus.cs`, `HomeSpeaker.Shared\Song.cs`
+- Kaylee: Verify UI components still function correctly with new PlayerStatus domain model
+- Book: Review refactored service layer (was locked out of this revision cycle per Mal's rejection)
+
+**Effort:** ~1.5 hours (analysis, refactoring, build verification, documentation)

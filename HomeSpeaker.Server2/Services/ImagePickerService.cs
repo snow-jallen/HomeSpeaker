@@ -1,5 +1,4 @@
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server2.Services;
@@ -57,6 +56,6 @@ public class ImagePickerService
         }
     }
 
-    private record UploadErrorResponse(string Error);
-    private record UploadSuccessResponse(string Filename);
+    private sealed record UploadErrorResponse(string Error);
+    private sealed record UploadSuccessResponse(string Filename);
 }

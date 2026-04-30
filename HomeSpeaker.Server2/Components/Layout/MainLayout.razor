@@ -1,4 +1,4 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @inject IJSRuntime JSRuntime
 @inject HomeSpeakerService HomeSpeaker
 @inject ILogger<MainLayout> Logger
@@ -122,7 +122,7 @@
         try
         {
             var status = await HomeSpeaker.GetStatusAsync();
-            if (status.StilPlaying)
+            if (status.StillPlaying)
             {
                 await HomeSpeaker.StopPlayingAsync();
             }
@@ -264,7 +264,7 @@
 
     private static bool IsInSleepWindow()
     {
-        var now = DateTime.Now.TimeOfDay;
+        var now = DateTime.UtcNow.ToLocalTime().TimeOfDay;
         var start = new TimeSpan(22, 0, 0);
         var end   = new TimeSpan(6, 30, 0);
         // Window wraps midnight: active if >= 22:00 OR < 06:30

@@ -1,8 +1,8 @@
 @using HomeSpeaker.Shared.Temperature
 @using HomeSpeaker.Shared.Forecast
 @using HomeSpeaker.Server2.Services
-@inject ITemperatureService TemperatureService
-@inject IForecastService ForecastService
+@inject TemperatureService TemperatureService
+@inject ForecastService ForecastService
 @inject ILogger<TemperatureMonitor> Logger
 @implements IDisposable
 
@@ -194,7 +194,7 @@
             {
                 Logger.LogError(ex, "Error in temperature refresh timer");
             }
-        }, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+        }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
     }
     
     private async Task RefreshTemperatureData()
@@ -204,7 +204,6 @@
         try
         {
             isLoading = true;
-            StateHasChanged();
             
             // Fetch both temperature and forecast data in parallel
             var temperatureTask = TemperatureService.GetTemperatureStatusAsync();
@@ -327,7 +326,6 @@
         try
         {
             isLoading = true;
-            StateHasChanged();
             
             // Force refresh both temperature and forecast data in parallel
             var temperatureTask = TemperatureService.RefreshAsync();

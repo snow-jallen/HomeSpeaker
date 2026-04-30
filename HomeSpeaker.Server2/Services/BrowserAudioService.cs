@@ -1,41 +1,25 @@
-using Microsoft.JSInterop;
 using HomeSpeaker.Server2.Models;
+using Microsoft.JSInterop;
 
 namespace HomeSpeaker.Server2.Services;
-
-public interface IBrowserAudioService
-{
-    Task PlaySongAsync(SongViewModel song);
-    Task PauseAsync();
-    Task ResumeAsync();
-    Task StopAsync();
-    Task SetVolumeAsync(float volume);
-    Task<float> GetVolumeAsync();
-    Task SeekToAsync(double seconds);
-    Task<BrowserPlayerStatus> GetStatusAsync();
-    event EventHandler<BrowserPlayerStatus>? StatusChanged;
-    event EventHandler<string>? ErrorOccurred;
-}
 
 public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
 {
     private readonly IJSRuntime jsRuntime;
     private readonly ILogger<BrowserAudioService> logger;
-    private readonly IConfiguration configuration;
     private IJSObjectReference? audioModule;
     private DotNetObjectReference<BrowserAudioService>? dotNetRef;
 
     public event EventHandler<BrowserPlayerStatus>? StatusChanged;
     public event EventHandler<string>? ErrorOccurred;
 
-    public BrowserAudioService(IJSRuntime jsRuntime, ILogger<BrowserAudioService> logger, IConfiguration configuration)
+    public BrowserAudioService(IJSRuntime jsRuntime, ILogger<BrowserAudioService> logger)
     {
         this.jsRuntime = jsRuntime;
         this.logger = logger;
-        this.configuration = configuration;
     }
 
-    private async Task EnsureInitializedAsync()
+    private async Task ensureInitializedAsync()
     {
         if (audioModule == null)
         {
@@ -50,7 +34,7 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
         try
         {
             Console.WriteLine($"BrowserAudioService.PlaySongAsync called with song: {song.Name}");
-            await EnsureInitializedAsync();
+            await ensureInitializedAsync();
             // Get the current base address from the browser
             var baseUri = await jsRuntime.InvokeAsync<string>("eval", "window.location.origin");
             var audioUrl = $"{baseUri}/api/music/{song.SongId}";
@@ -71,7 +55,7 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
     {
         try
         {
-            await EnsureInitializedAsync();
+            await ensureInitializedAsync();
             await audioModule!.InvokeVoidAsync("pause");
         }
         catch (Exception ex)
@@ -85,7 +69,7 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
     {
         try
         {
-            await EnsureInitializedAsync();
+            await ensureInitializedAsync();
             await audioModule!.InvokeVoidAsync("resume");
         }
         catch (Exception ex)
@@ -99,7 +83,7 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
     {
         try
         {
-            await EnsureInitializedAsync();
+            await ensureInitializedAsync();
             await audioModule!.InvokeVoidAsync("stop");
         }
         catch (Exception ex)
@@ -113,7 +97,7 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
     {
         try
         {
-            await EnsureInitializedAsync();
+            await ensureInitializedAsync();
             await audioModule!.InvokeVoidAsync("setVolume", Math.Max(0, Math.Min(1, volume)));
         }
         catch (Exception ex)
@@ -127,7 +111,7 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
     {
         try
         {
-            await EnsureInitializedAsync();
+            await ensureInitializedAsync();
             return await audioModule!.InvokeAsync<float>("getVolume");
         }
         catch (Exception ex)
@@ -142,7 +126,7 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
     {
         try
         {
-            await EnsureInitializedAsync();
+            await ensureInitializedAsync();
             await audioModule!.InvokeVoidAsync("seekTo", seconds);
         }
         catch (Exception ex)
@@ -156,7 +140,7 @@ public class BrowserAudioService : IBrowserAudioService, IAsyncDisposable
     {
         try
         {
-            await EnsureInitializedAsync();
+            await ensureInitializedAsync();
             return await audioModule!.InvokeAsync<BrowserPlayerStatus>("getStatus");
         }
         catch (Exception ex)

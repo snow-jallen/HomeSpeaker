@@ -66,7 +66,7 @@
                                         <small class="text-muted">@song.Song.Artist - @song.Song.Album</small>
                                     </div>
                                 </div>
-                                <button class="btn btn-outline-danger btn-sm" @onclick="@(async () => await RemoveSong(song.Song.Path))" title="Remove from playlist">
+                                <button class="btn btn-outline-danger btn-sm" @onclick="@(async () => await TryRemoveSong(song.Song.Path))" title="Remove from playlist">
                                     <span class="oi oi-minus"></span>
                                 </button>
                             </div>
@@ -106,7 +106,19 @@
     {
         isEditing = false;
         editName = "";
-    }    // Drag and drop event handlers
+    }
+
+    private async Task TryRemoveSong(string? songPath)
+    {
+        if (string.IsNullOrWhiteSpace(songPath))
+        {
+            return;
+        }
+
+        await RemoveSong(songPath);
+    }
+
+    // Drag and drop event handlers
     void HandleDragStart(DragEventArgs e, int index)
     {
         draggedIndex = index;

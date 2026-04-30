@@ -1,6 +1,5 @@
 ﻿@inject ILogger<YouTubeSearchResult> logger
 @inject HomeSpeakerService svc
-@inject HttpClient http
 
 @if (SearchResult == null)
 {
@@ -50,7 +49,7 @@ else
 
 @code {
     [Parameter]
-    public Video? SearchResult { get; set; }
+    public VideoDto? SearchResult { get; set; }
 
     [Parameter]
     public bool FfmpegAvailable { get; set; } = true;
@@ -66,13 +65,7 @@ else
         try
         {
             isStreaming = true;
-            var encodedTitle = Uri.EscapeDataString(SearchResult.Title ?? SearchResult.Id);
-            var response = await http.PostAsync($"/api/homespeaker/youtube/{SearchResult.Id}/play?title={encodedTitle}", null);
-            if (!response.IsSuccessStatusCode)
-            {
-                logger.LogWarning("Stream request failed for {title}: {status}", SearchResult.Title, response.StatusCode);
-                isStreaming = false;
-            }
+            await svc.PlayYouTubeStreamAsync(SearchResult.Id, SearchResult.Title);
         }
         catch (Exception ex)
         {
@@ -85,7 +78,7 @@ else
     {
         try
         {
-            await http.PostAsJsonAsync("/api/homespeaker/player/control", new { Stop = true, Play = false, ClearQueue = false, SkipToNext = false, SetVolume = false, VolumeLevel = 0 });
+            await svc.StopPlayingAsync();
         }
         catch (Exception ex)
         {
@@ -99,16 +92,33 @@ else
 
     async Task cacheVideoAsync()
     {
-        isDownloading = true;
-        var cacheCallReply = svc.HomeSpeakerClient.CacheVideo(new CacheVideoRequest { Video = SearchResult });
-        await foreach (var reply in cacheCallReply.ResponseStream.ReadAllAsync())
+        if (SearchResult == null)
         {
-            progressValue = reply.PercentComplete;
-            logger.LogInformation("Progress {value} for {title}", progressValue, SearchResult?.Title);
-            StateHasChanged();
+            return;
         }
 
-        isDownloading = false;
-        isComplete = true;
+        isDownloading = true;
+        isComplete = false;
+        progressValue = 0;
+
+        var progress = new Progress<double>(value =>
+        {
+            progressValue = value;
+            _ = InvokeAsync(StateHasChanged);
+        });
+
+        try
+        {
+            await svc.CacheVideoAsync(SearchResult, progress);
+            isComplete = true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error caching {title}", SearchResult.Title);
+        }
+        finally
+        {
+            isDownloading = false;
+        }
     }
 }

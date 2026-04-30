@@ -18,7 +18,6 @@ WORKDIR /src
 
 COPY ["HomeSpeaker.Server2/HomeSpeaker.Server2.csproj", "HomeSpeaker.Server2/"]
 COPY ["HomeSpeaker.Shared/HomeSpeaker.Shared.csproj", "HomeSpeaker.Shared/"]
-COPY ["HomeSpeaker.WebAssembly/HomeSpeaker.WebAssembly.csproj", "HomeSpeaker.WebAssembly/"]
 
 # RUN --mount=type=cache,target=/root/.nuget/packages \
 #    dotnet restore "./HomeSpeaker.Server2/HomeSpeaker.Server2.csproj"

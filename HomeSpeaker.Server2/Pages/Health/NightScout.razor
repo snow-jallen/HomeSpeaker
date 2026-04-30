@@ -1,4 +1,4 @@
-﻿@page "/nightscout"
+@page "/nightscout"
 @layout NoTopLayout
 @inject IConfiguration config
 
@@ -81,9 +81,9 @@
 {
     private static string? nightscoutUrl = null;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
-        var httpClient = new HttpClient();
-        nightscoutUrl = await httpClient.GetStringAsync($"{hostEnv.BaseAddress}ns") ?? string.Empty;
+        nightscoutUrl = config["NIGHTSCOUT_URL"] ?? string.Empty;
+        return Task.CompletedTask;
     }
 }

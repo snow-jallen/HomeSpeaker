@@ -5,7 +5,7 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace HomeSpeaker.Server2.Services;
 
-public sealed class ForecastService
+public sealed class ForecastService : IForecastService
 {
     private readonly HttpClient httpClient;
     private readonly IConfiguration configuration;
@@ -62,13 +62,27 @@ public sealed class ForecastService
         logger.LogInformation("Forecast cache cleared");
     }
 
+    public Task<bool> ClearCacheAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            ClearCache();
+            return Task.FromResult(true);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to clear forecast cache");
+            return Task.FromResult(false);
+        }
+    }
+
     /// <summary>
     /// Clears the cache and fetches fresh data
     /// </summary>
     public async Task<ForecastStatus> RefreshAsync(CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Refreshing forecast data (clearing cache and fetching fresh data)");
-        ClearCache();
+        await ClearCacheAsync(cancellationToken);
         return await GetForecastStatusAsync(cancellationToken);
     }
 

@@ -7,3 +7,4 @@
 ## Learnings
 
 <!-- Append new learnings below. Each entry is something lasting about the project. -->
+- **2026-03-24:** Blazor Server build enforces analyzer rules (file name = first type, camelCase private methods). Keep UI service facades in Server2 and avoid gRPC client wrappers; add explicit SSR-friendly service interfaces (temperature, blood sugar, forecast).

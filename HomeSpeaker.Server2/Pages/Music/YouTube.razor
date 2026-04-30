@@ -1,7 +1,6 @@
-﻿@page "/youtube"
+@page "/youtube"
 @inject ILogger<YouTube> logger
 @inject HomeSpeakerService svc
-@inject HttpClient http
 @inject YouTubeStateService state
 
 <h3>YouTube Cache</h3>
@@ -47,8 +46,7 @@ else
     {
         try
         {
-            var result = await http.GetFromJsonAsync<FfmpegStatusResult>("/api/homespeaker/youtube/ffmpeg-status");
-            ffmpegAvailable = result?.Available ?? false;
+            ffmpegAvailable = await svc.IsFfmpegAvailableAsync();
         }
         catch (Exception ex)
         {
@@ -64,11 +62,9 @@ else
 
         isSearching = true;
         logger.LogInformation("Starting youtube search for {SearchTerm}", state.SearchTerm);
-        var response = await svc.HomeSpeakerClient.SearchViedoAsync(new SearchVideoRequest { SearchTerm = state.SearchTerm });
-        state.Videos = response.Results;
-        logger.LogInformation("Found {ResultCount} results", state.Videos.Count());
+        var results = (await svc.SearchVideosAsync(state.SearchTerm)).ToList();
+        state.Videos = results;
+        logger.LogInformation("Found {ResultCount} results", results.Count);
         isSearching = false;
     }
-
-    record FfmpegStatusResult(bool Available);
 }

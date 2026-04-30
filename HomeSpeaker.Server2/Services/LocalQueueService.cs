@@ -20,15 +20,15 @@ public class LocalQueueService : ILocalQueueService
     {
         this.audioService = audioService;
         this.logger = logger;
-        
+
         // Subscribe to audio service events to handle song completion
-        this.audioService.StatusChanged += OnAudioStatusChanged;
+        this.audioService.StatusChanged += onAudioStatusChanged;
     }
 
     public async Task AddSongAsync(SongViewModel song)
     {
         queue.Add(song);
-    logger.LogInformation("Added song {SongName} to local queue. Queue now has {Count} songs", song.Name, queue.Count);
+        logger.LogInformation("Added song {SongName} to local queue. Queue now has {Count} songs", song.Name, queue.Count);
         QueueChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -36,7 +36,7 @@ public class LocalQueueService : ILocalQueueService
     {
         var songList = songs.ToList();
         queue.AddRange(songList);
-    logger.LogInformation("Added {Count} songs to local queue. Queue now has {TotalCount} songs", songList.Count, queue.Count);
+        logger.LogInformation("Added {Count} songs to local queue. Queue now has {TotalCount} songs", songList.Count, queue.Count);
         QueueChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -66,7 +66,7 @@ public class LocalQueueService : ILocalQueueService
 
         var removedSong = queue[index];
         queue.RemoveAt(index);
-        
+
         // Adjust current index if necessary
         if (index < currentIndex)
         {
@@ -79,7 +79,6 @@ public class LocalQueueService : ILocalQueueService
             {
                 currentIndex = queue.Count - 1;
             }
-            
             // If there are still songs, play the next one
             if (queue.Count > 0 && currentIndex >= 0)
             {
@@ -92,8 +91,8 @@ public class LocalQueueService : ILocalQueueService
                 CurrentSongChanged?.Invoke(this, null!);
             }
         }
-        
-    logger.LogInformation("Removed song {SongName} from local queue at index {Index}", removedSong.Name, index);
+
+        logger.LogInformation("Removed song {SongName} from local queue at index {Index}", removedSong.Name, index);
         QueueChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -102,7 +101,7 @@ public class LocalQueueService : ILocalQueueService
         queue.Clear();
         currentIndex = -1;
         await audioService.StopAsync();
-    logger.LogInformation("Cleared local queue");
+        logger.LogInformation("Cleared local queue");
         QueueChanged?.Invoke(this, EventArgs.Empty);
         CurrentSongChanged?.Invoke(this, null!);
     }
@@ -132,7 +131,7 @@ public class LocalQueueService : ILocalQueueService
             currentIndex++;
         }
 
-    logger.LogInformation("Moved song {SongName} from index {FromIndex} to {ToIndex}", song.Name, fromIndex, toIndex);
+        logger.LogInformation("Moved song {SongName} from index {FromIndex} to {ToIndex}", song.Name, fromIndex, toIndex);
         QueueChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -167,7 +166,7 @@ public class LocalQueueService : ILocalQueueService
 
         currentIndex = index;
         var song = queue[currentIndex];
-        
+
         try
         {
             await audioService.PlaySongAsync(song);
@@ -180,12 +179,12 @@ public class LocalQueueService : ILocalQueueService
         }
     }
 
-    private void OnAudioStatusChanged(object? sender, BrowserPlayerStatus status)
+    private void onAudioStatusChanged(object? sender, BrowserPlayerStatus status)
     {
-        _ = HandleAudioStatusChangedAsync(status);
+        _ = handleAudioStatusChangedAsync(status);
     }
 
-    private async Task HandleAudioStatusChangedAsync(BrowserPlayerStatus status)
+    private async Task handleAudioStatusChangedAsync(BrowserPlayerStatus status)
     {
         // Check if the current song has ended
         if (status.Duration > 0 && Math.Abs(status.CurrentTime - status.Duration) < 1.0 && !status.IsPlaying)
@@ -204,11 +203,11 @@ public class LocalQueueService : ILocalQueueService
 
         var currentSong = CurrentSong;
         var random = new Random();
-        
+
         // Shuffle the queue using Fisher-Yates algorithm
-        for (int i = queue.Count - 1; i > 0; i--)
+        for (var i = queue.Count - 1; i > 0; i--)
         {
-            int j = random.Next(i + 1);
+            var j = random.Next(i + 1);
             var temp = queue[i];
             queue[i] = queue[j];
             queue[j] = temp;
@@ -220,7 +219,7 @@ public class LocalQueueService : ILocalQueueService
             currentIndex = queue.FindIndex(s => s.SongId == currentSong.SongId);
         }
 
-    logger.LogInformation("Shuffled local queue with {Count} songs", queue.Count);
+        logger.LogInformation("Shuffled local queue with {Count} songs", queue.Count);
         QueueChanged?.Invoke(this, EventArgs.Empty);
         return Task.CompletedTask;
     }

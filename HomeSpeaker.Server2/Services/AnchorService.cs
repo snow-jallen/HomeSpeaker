@@ -29,6 +29,9 @@ public class AnchorService
         return definitions.Select(d => new AnchorDefinition(d.Id, d.Name, d.Description, d.IsActive));
     }
 
+    public Task<IEnumerable<AnchorDefinition>> GetAnchorDefinitionsAsync() =>
+        GetActiveAnchorDefinitionsAsync();
+
     public async Task<AnchorDefinition> CreateAnchorDefinitionAsync(CreateAnchorDefinitionRequest request)
     {
         logger.LogInformation("Creating anchor definition: {Name}", request.Name);
@@ -312,4 +315,7 @@ public class AnchorService
 
         logger.LogInformation("Ensured daily anchors exist for {Count} users on {Date}", usersWithAnchors.Count, today);
     }
+
+    public Task EnsureTodayAnchorsAsync() =>
+        EnsureTodayAnchorsForAllUsersAsync();
 }

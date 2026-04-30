@@ -110,7 +110,7 @@ else
         bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
         if (confirmed && SongViewModel != null)
         {
-            await svc.HomeSpeakerClient.DeleteSongAsync(new DeleteSongRequest { SongId = SongViewModel.SongId });
+            await svc.DeleteSongAsync(SongViewModel.SongId);
             await OnDeleted.InvokeAsync(SongViewModel.SongId);
             showDetails = false;
         }

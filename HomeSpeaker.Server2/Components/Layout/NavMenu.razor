@@ -1,5 +1,4 @@
-﻿@inject IMusicPlayer player
-@inject ILogger<NavMenu> logger
+﻿@inject ILogger<NavMenu> logger
 @inject IConfiguration config
 @inject NavigationManager NavManager
 @implements IDisposable
@@ -85,16 +84,14 @@
 
         try
         {
-            if (nightscoutUrl is null)
-            {
-                var httpClient = new HttpClient();
-                nightscoutUrl = await httpClient.GetStringAsync($"{hostEnv.BaseAddress}ns") ?? string.Empty;
-            }
+            nightscoutUrl ??= config["NIGHTSCOUT_URL"] ?? string.Empty;
 
             if (aspireUrl is null)
             {
-                UriBuilder uriBuilder = new UriBuilder(hostEnv.BaseAddress.Replace("https","http"))
+                var baseUri = new Uri(NavManager.BaseUri);
+                UriBuilder uriBuilder = new UriBuilder(baseUri)
                 {
+                    Scheme = baseUri.Scheme == Uri.UriSchemeHttps ? Uri.UriSchemeHttp : baseUri.Scheme,
                     Port = 18888
                 };
                 aspireUrl = uriBuilder.Uri;

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace HomeSpeaker.Server2.Services;
 
-public sealed class BloodSugarService
+public sealed class BloodSugarService : IBloodSugarService
 {
     private readonly HttpClient httpClient;
     private readonly ILogger<BloodSugarService> logger;
@@ -180,13 +180,27 @@ public sealed class BloodSugarService
         logger.LogInformation("Blood sugar cache cleared");
     }
 
+    public Task<bool> ClearCacheAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            ClearCache();
+            return Task.FromResult(true);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to clear blood sugar cache");
+            return Task.FromResult(false);
+        }
+    }
+
     /// <summary>
     /// Clears the cache and fetches fresh data
     /// </summary>
     public async Task<BloodSugarStatus> RefreshAsync(CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Refreshing blood sugar data (clearing cache and fetching fresh data)");
-        ClearCache();
+        await ClearCacheAsync(cancellationToken);
         return await GetBloodSugarStatusAsync(cancellationToken);
     }
 }

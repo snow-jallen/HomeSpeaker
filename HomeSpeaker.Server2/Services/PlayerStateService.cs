@@ -2,19 +2,20 @@ using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server2.Services;
 
-// Minimal PlayerStateService for compatibility with migrated UI components
-// In server mode, components can query IMusicPlayer directly for real-time state
+/// <summary>
+/// Tracks player state for Blazor components. Components can query IMusicPlayer directly for real-time state.
+/// </summary>
 public class PlayerStateService
 {
-    private GetStatusReply? status;
+    private PlayerStatus? status;
     private bool repeatMode;
 
-    public GetStatusReply? Status => status;
+    public PlayerStatus? Status => status;
     public bool RepeatMode => repeatMode;
 
     public event Action? StateChanged;
 
-    public void UpdateStatus(GetStatusReply? status)
+    public void UpdateStatus(PlayerStatus? status)
     {
         this.status = status;
         StateChanged?.Invoke();

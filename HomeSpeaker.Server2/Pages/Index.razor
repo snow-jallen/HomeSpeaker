@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 @inject HomeSpeakerService svc
 @inject ILogger<Index> logger
 @inject HttpClient Http
@@ -10,7 +10,7 @@
 
 <!-- Section A: Now Playing -->
 @{
-    var isPlaying = PlayerState.Status?.StilPlaying == true && PlayerState.Status?.CurrentSong != null;
+    var isPlaying = PlayerState.Status?.StillPlaying == true && PlayerState.Status?.CurrentSong != null;
     var isStream = PlayerState.Status?.IsStream == true;
     var streamName = PlayerState.Status?.StreamName ?? string.Empty;
     var songName = PlayerState.Status?.CurrentSong?.Name ?? string.Empty;

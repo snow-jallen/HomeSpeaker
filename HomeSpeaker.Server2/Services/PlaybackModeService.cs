@@ -5,6 +5,7 @@ namespace HomeSpeaker.Server2.Services;
 public class PlaybackModeService : IPlaybackModeService
 {
     private readonly IMusicPlayer musicPlayer;
+    private readonly Mp3Library library;
     private readonly IBrowserAudioService browserAudioService;
     private readonly ILogger<PlaybackModeService> logger;
     private PlaybackMode currentMode = PlaybackMode.Server;
@@ -20,7 +21,7 @@ public class PlaybackModeService : IPlaybackModeService
             if (currentMode != value)
             {
                 currentMode = value;
-                ModeChanged?.Invoke(this, (object)value);
+                ModeChanged?.Invoke(this, value);
                 logger.LogInformation("Playback mode changed to {Mode}", value);
                 StatusMessage?.Invoke(this, $"Playback mode: {value}");
             }
@@ -29,16 +30,18 @@ public class PlaybackModeService : IPlaybackModeService
 
     public PlaybackModeService(
         IMusicPlayer musicPlayer,
+        Mp3Library library,
         IBrowserAudioService browserAudioService,
         ILogger<PlaybackModeService> logger)
     {
         this.musicPlayer = musicPlayer;
+        this.library = library;
         this.browserAudioService = browserAudioService;
         this.logger = logger;
 
         // Subscribe to browser audio events
-        this.browserAudioService.StatusChanged += OnBrowserStatusChanged;
-        this.browserAudioService.ErrorOccurred += OnBrowserError;
+        this.browserAudioService.StatusChanged += onBrowserStatusChanged;
+        this.browserAudioService.ErrorOccurred += onBrowserError;
     }
 
     public async Task PlaySongAsync(SongViewModel song)
@@ -46,13 +49,17 @@ public class PlaybackModeService : IPlaybackModeService
         try
         {
             Console.WriteLine($"PlaySongAsync called with song: {song.Name}, CurrentMode: {CurrentMode}");
-            
+
             switch (CurrentMode)
             {
                 case PlaybackMode.Server:
                     Console.WriteLine("Using server playback");
-                    musicPlayer.PlaySong(song.SongId);
-                    await Task.CompletedTask;
+                    var fullSong = library.Songs.FirstOrDefault(s => s.SongId == song.SongId);
+                    if (fullSong != null)
+                    {
+                        musicPlayer.PlaySong(fullSong);
+                    }
+
                     StatusMessage?.Invoke(this, $"Playing on server: {song.Name}");
                     break;
 
@@ -103,8 +110,7 @@ public class PlaybackModeService : IPlaybackModeService
             switch (CurrentMode)
             {
                 case PlaybackMode.Server:
-                    musicPlayer.Play();
-                    await Task.CompletedTask;
+                    musicPlayer.ResumePlay();
                     StatusMessage?.Invoke(this, "Resumed on server");
                     break;
 
@@ -153,8 +159,7 @@ public class PlaybackModeService : IPlaybackModeService
             switch (CurrentMode)
             {
                 case PlaybackMode.Server:
-                    musicPlayer.ChangeVolume(volume);
-                    await Task.CompletedTask;
+                    musicPlayer.SetVolume(volume);
                     StatusMessage?.Invoke(this, $"Server volume: {volume}%");
                     break;
 
@@ -178,7 +183,7 @@ public class PlaybackModeService : IPlaybackModeService
             switch (CurrentMode)
             {
                 case PlaybackMode.Server:
-                    return musicPlayer.GetVolume();
+                    return await musicPlayer.GetVolume();
 
                 case PlaybackMode.Local:
                     var volume = await browserAudioService.GetVolumeAsync();
@@ -195,7 +200,7 @@ public class PlaybackModeService : IPlaybackModeService
         }
     }
 
-    private void OnBrowserStatusChanged(object? sender, BrowserPlayerStatus status)
+    private void onBrowserStatusChanged(object? sender, BrowserPlayerStatus status)
     {
         if (CurrentMode == PlaybackMode.Local)
         {
@@ -204,11 +209,12 @@ public class PlaybackModeService : IPlaybackModeService
             {
                 statusText += $": {status.CurrentSong}";
             }
+
             StatusMessage?.Invoke(this, statusText);
         }
     }
 
-    private void OnBrowserError(object? sender, string error)
+    private void onBrowserError(object? sender, string error)
     {
         if (CurrentMode == PlaybackMode.Local)
         {

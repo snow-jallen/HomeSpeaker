@@ -6,6 +6,8 @@ using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Shared;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Fast.Components.FluentUI;
+using MudBlazor.Services;
 
 #pragma warning disable IDE1006 // Naming Styles
 const string LocalCorsPolicy = nameof(LocalCorsPolicy);
@@ -33,6 +35,14 @@ builder.Services.AddCors(options =>
 });
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddScoped(sp =>
+{
+    var navigationManager = sp.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
+    return new HttpClient
+    {
+        BaseAddress = new Uri(navigationManager.BaseUri)
+    };
+});
 builder.Services.AddHostedService<MigrationApplier>();
 builder.Services.AddHostedService<DailyAnchorWorker>();
 builder.Services.AddHostedService<AirPlayReceiverService>();
@@ -70,17 +80,13 @@ builder.Services.AddHostedService<LifecycleEvents>();
 // Add memory cache for caching services
 builder.Services.AddMemoryCache();
 
-// Add temperature service with caching
+// Add temperature and health-monitor services with caching
 builder.Services.AddHttpClient<TemperatureService>();
-builder.Services.AddSingleton<TemperatureService>();
-
-// Add blood sugar service with smart caching
+builder.Services.AddScoped<ITemperatureService>(sp => sp.GetRequiredService<TemperatureService>());
 builder.Services.AddHttpClient<BloodSugarService>();
-builder.Services.AddSingleton<BloodSugarService>();
-
-// Add forecast service with caching
+builder.Services.AddScoped<IBloodSugarService>(sp => sp.GetRequiredService<BloodSugarService>());
 builder.Services.AddHttpClient<ForecastService>();
-builder.Services.AddSingleton<ForecastService>();
+builder.Services.AddScoped<IForecastService>(sp => sp.GetRequiredService<ForecastService>());
 
 // Add HttpClient for RadioStreamService (favicon downloads)
 builder.Services.AddHttpClient<RadioStreamService>()
@@ -113,12 +119,12 @@ builder.Services.AddHealthChecks()
     .AddDbContextCheck<MusicContext>("database");
 
 // Add browser-specific services for Blazor components
-builder.Services.AddSingleton<HomeSpeaker.Server2.Services.PlayerStateService>();
+builder.Services.AddScoped<HomeSpeaker.Server2.Services.PlayerStateService>();
 builder.Services.AddScoped<HomeSpeaker.Server2.Services.IBrowserAudioService, HomeSpeaker.Server2.Services.BrowserAudioService>();
 builder.Services.AddScoped<HomeSpeaker.Server2.Services.ILocalQueueService, HomeSpeaker.Server2.Services.LocalQueueService>();
 builder.Services.AddScoped<HomeSpeaker.Server2.Services.IPlaybackModeService, HomeSpeaker.Server2.Services.PlaybackModeService>();
 builder.Services.AddScoped<HomeSpeaker.Server2.Services.ImagePickerService>();
-builder.Services.AddSingleton<HomeSpeaker.Server2.Services.YouTubeStateService>();
+builder.Services.AddScoped<HomeSpeaker.Server2.Services.YouTubeStateService>();
 
 // Add FluentUI and MudBlazor
 builder.Services.AddFluentUIComponents();
@@ -161,7 +167,6 @@ app.Logger.LogInformation("Starting HomeSpeaker.Server2");
 app.UseResponseCompression();
 //app.UseHttpsRedirection();
 app.UseStaticFiles();
-app.UseAntiforgery();
 
 // Serve favicons from the media folder (writable volume) at /favicons
 var faviconsPath = Path.GetFullPath(Path.Combine(app.Configuration[ConfigKeys.MediaFolder] ?? "/music", "favicons"));
@@ -195,6 +200,7 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 });
 app.UseRouting();
 app.UseCors(LocalCorsPolicy);
+app.UseAntiforgery();
 app.MapHub<HomeSpeaker.Server2.Hubs.AnchorHub>("/anchorHub");
 app.MapGet("/ns", (IConfiguration config) => config["NIGHTSCOUT_URL"] ?? string.Empty);
 app.MapGet("/api/features", (IConfiguration config) => new
@@ -204,7 +210,7 @@ app.MapGet("/api/features", (IConfiguration config) => new
 });
 
 // Temperature API endpoint
-app.MapGet("/api/temperature", async (TemperatureService temperatureService, CancellationToken cancellationToken) =>
+app.MapGet("/api/temperature", async (ITemperatureService temperatureService, CancellationToken cancellationToken) =>
 {
     try
     {
@@ -218,7 +224,7 @@ app.MapGet("/api/temperature", async (TemperatureService temperatureService, Can
 });
 
 // Blood Sugar API endpoint
-app.MapGet("/api/bloodsugar", async (BloodSugarService bloodSugarService, CancellationToken cancellationToken) =>
+app.MapGet("/api/bloodsugar", async (IBloodSugarService bloodSugarService, CancellationToken cancellationToken) =>
 {
     try
     {
@@ -232,11 +238,11 @@ app.MapGet("/api/bloodsugar", async (BloodSugarService bloodSugarService, Cancel
 });
 
 // Temperature cache management endpoints
-app.MapDelete("/api/temperature/cache", (TemperatureService temperatureService) =>
+app.MapDelete("/api/temperature/cache", async (ITemperatureService temperatureService) =>
 {
     try
     {
-        temperatureService.ClearCache();
+        await temperatureService.ClearCacheAsync();
         return Results.Ok(new { message = "Temperature cache cleared successfully" });
     }
     catch (Exception ex)
@@ -245,7 +251,7 @@ app.MapDelete("/api/temperature/cache", (TemperatureService temperatureService) 
     }
 });
 
-app.MapPost("/api/temperature/refresh", async (TemperatureService temperatureService, CancellationToken cancellationToken) =>
+app.MapPost("/api/temperature/refresh", async (ITemperatureService temperatureService, CancellationToken cancellationToken) =>
 {
     try
     {
@@ -259,11 +265,11 @@ app.MapPost("/api/temperature/refresh", async (TemperatureService temperatureSer
 });
 
 // Blood Sugar cache management endpoints
-app.MapDelete("/api/bloodsugar/cache", (BloodSugarService bloodSugarService) =>
+app.MapDelete("/api/bloodsugar/cache", async (IBloodSugarService bloodSugarService) =>
 {
     try
     {
-        bloodSugarService.ClearCache();
+        await bloodSugarService.ClearCacheAsync();
         return Results.Ok(new { message = "Blood sugar cache cleared successfully" });
     }
     catch (Exception ex)
@@ -272,7 +278,7 @@ app.MapDelete("/api/bloodsugar/cache", (BloodSugarService bloodSugarService) =>
     }
 });
 
-app.MapPost("/api/bloodsugar/refresh", async (BloodSugarService bloodSugarService, CancellationToken cancellationToken) =>
+app.MapPost("/api/bloodsugar/refresh", async (IBloodSugarService bloodSugarService, CancellationToken cancellationToken) =>
 {
     try
     {
@@ -286,7 +292,7 @@ app.MapPost("/api/bloodsugar/refresh", async (BloodSugarService bloodSugarServic
 });
 
 // Forecast API endpoint
-app.MapGet("/api/forecast", async (ForecastService forecastService, CancellationToken cancellationToken) =>
+app.MapGet("/api/forecast", async (IForecastService forecastService, CancellationToken cancellationToken) =>
 {
     try
     {
@@ -300,11 +306,11 @@ app.MapGet("/api/forecast", async (ForecastService forecastService, Cancellation
 });
 
 // Forecast cache management endpoints
-app.MapDelete("/api/forecast/cache", (ForecastService forecastService) =>
+app.MapDelete("/api/forecast/cache", async (IForecastService forecastService) =>
 {
     try
     {
-        forecastService.ClearCache();
+        await forecastService.ClearCacheAsync();
         return Results.Ok(new { message = "Forecast cache cleared successfully" });
     }
     catch (Exception ex)
@@ -313,7 +319,7 @@ app.MapDelete("/api/forecast/cache", (ForecastService forecastService) =>
     }
 });
 
-app.MapPost("/api/forecast/refresh", async (ForecastService forecastService, CancellationToken cancellationToken) =>
+app.MapPost("/api/forecast/refresh", async (IForecastService forecastService, CancellationToken cancellationToken) =>
 {
     try
     {
