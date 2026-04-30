@@ -306,6 +306,23 @@ input[type="range"].volume-slider-vertical::-moz-range-thumb {
     padding-top: 0;
 }
 
+.now-playing-status--placeholder {
+    min-height: 64px;
+}
+
+.health-card-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 96px;
+    margin-bottom: var(--hs-space-sm);
+    padding: var(--hs-space-md);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    text-align: center;
+}
+
 .home-primary-panels--dense {
     display: grid;
     gap: var(--hs-space-sm);

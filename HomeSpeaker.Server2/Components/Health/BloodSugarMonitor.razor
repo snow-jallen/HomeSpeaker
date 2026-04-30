@@ -3,6 +3,7 @@
 @inject BloodSugarService BloodSugarService
 @inject ILogger<BloodSugarMonitor> Logger
 @implements IDisposable
+@attribute [StreamRendering]
 
 <div class="bs-compact-card mb-2">
     <div class="card border-0 shadow-sm">
@@ -74,10 +75,15 @@
     private DateTime lastUpdated = DateTime.UtcNow.ToLocalTime();
     private Timer? refreshTimer;
     private bool isLoading = true;
-    protected override async Task OnInitializedAsync()
-    {
-        Logger.LogInformation("Initializing BloodSugarMonitor component...");
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        Logger.LogInformation("Initializing BloodSugarMonitor component...");
         await RefreshBloodSugarData();
         // Set up auto-refresh every 1 minute (server has smart cache based on reading age)
         refreshTimer = new Timer(async _ =>

@@ -5,6 +5,7 @@
 @inject ForecastService ForecastService
 @inject ILogger<TemperatureMonitor> Logger
 @implements IDisposable
+@attribute [StreamRendering]
 
 <div class="temperature-card mb-2">
     <div class="card border-0 shadow-sm">
@@ -174,8 +175,13 @@
     private Timer? refreshTimer;
     private bool isLoading = true;
     
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender)
+        {
+            return;
+        }
+
         Logger.LogInformation("Initializing TemperatureMonitor component...");
         
         await RefreshTemperatureData();

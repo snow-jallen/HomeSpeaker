@@ -1,6 +1,7 @@
-﻿@inject HomeSpeakerService svc
+@inject HomeSpeakerService svc
 @inject IJSRuntime JSRuntime
 @implements IDisposable
+@attribute [StreamRendering]
 
 <div class="play-controls">
     <button @onclick=Play title="Resume playing" class="btn btn-icon-lg btn-primary play-button">
@@ -44,8 +45,13 @@
     string sleepTimerRemaining = "";
     System.Threading.Timer? refreshTimer;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender)
+        {
+            return;
+        }
+
         await RefreshSleepTimer();
 
         refreshTimer = new System.Threading.Timer(async _ =>
@@ -61,6 +67,7 @@
         {
             var result = await svc.GetSleepTimerAsync();
             sleepTimerActive = result.Active;
+            sleepTimerRemaining = "";
             if (result.Active && result.RemainingSeconds > 0)
             {
                 var remaining = TimeSpan.FromSeconds(result.RemainingSeconds);

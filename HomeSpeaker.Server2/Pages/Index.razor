@@ -5,6 +5,7 @@
 @inject PlayerStateService PlayerState
 @inject IJSRuntime JSRuntime
 @implements IDisposable
+@attribute [StreamRendering]
 
 <PageTitle>Home Speaker</PageTitle>
 
@@ -26,14 +27,12 @@
 }
 <div class="home-primary-panels @(isPlaying && showBloodSugar ? "home-primary-panels--dense" : "")">
     <div>
-        @if (isPlaying)
-        {
-        <div class="now-playing-card mb-3">
+        <div class="now-playing-card @(isPlaying ? string.Empty : "now-playing-card--idle") mb-3">
+            <div class="now-playing-label">
+                <i class="fas fa-headphones me-2"></i>Now Playing
+            </div>
             @if (isPlaying)
             {
-                <div class="now-playing-label">
-                    <i class="fas fa-headphones me-2"></i>Now Playing
-                </div>
                 <div class="now-playing-status">
                     <div class="song-info">
                         <div id="now-playing-title" class="song-title">@displayName</div>
@@ -81,10 +80,41 @@
                     <PlayControls />
                 </div>
             }
+            else if (isStatusLoading)
+            {
+                <div class="now-playing-status now-playing-status--placeholder">
+                    <div class="song-info">
+                        <div class="song-title">Loading player status…</div>
+                        <div class="song-artist">Fetching current playback and controls.</div>
+                    </div>
+                </div>
+                <div class="now-playing-controls">
+                    <PlayControls />
+                </div>
+            }
+            else
+            {
+                <div class="now-playing-status now-playing-status--placeholder">
+                    <div class="song-info">
+                        <div class="song-title">Nothing playing right now</div>
+                        <div class="song-artist">Use the controls or open Music to start playback.</div>
+                    </div>
+                </div>
+                <div class="now-playing-controls">
+                    <PlayControls />
+                </div>
+            }
         </div>
-        }
     </div>
-    @if (showBloodSugar)
+    @if (!featuresLoaded)
+    {
+        <div>
+            <div class="health-card-placeholder">
+                <div class="small text-muted">Loading health widgets…</div>
+            </div>
+        </div>
+    }
+    else if (showBloodSugar)
     {
         <div>
             <BloodSugarMonitor />
@@ -93,7 +123,13 @@
 </div>
 
 <!-- Section B: Health Monitors (feature-flagged) -->
-@if (showTemperature)
+@if (!featuresLoaded)
+{
+    <div class="health-card-placeholder">
+        <div class="small text-muted">Checking temperature widgets…</div>
+    </div>
+}
+else if (showTemperature)
 {
     <TemperatureMonitor />
 }
@@ -104,24 +140,36 @@
     private Timer? refreshTimer;
     private bool showVolumePopup;
     private int volumeLevel;
+    private bool featuresLoaded;
+    private bool isStatusLoading = true;
 
     private record FeaturesResponse(bool TemperatureEnabled, bool BloodSugarEnabled);
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        try
+        PlayerState.StateChanged += OnStateChanged;
+    }
+
+    private void OnStateChanged() => InvokeAsync(async () => { StateHasChanged(); await FitNowPlayingAsync(); });
+
+    private async Task FitNowPlayingAsync()
+    {
+        try { await JSRuntime.InvokeVoidAsync("fitNowPlaying"); } catch { }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
         {
-            var features = await Http.GetFromJsonAsync<FeaturesResponse>("/api/features");
-            showTemperature = features?.TemperatureEnabled ?? false;
-            showBloodSugar = features?.BloodSugarEnabled ?? false;
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to load feature flags");
+            await InitializeInteractiveAsync();
         }
 
-        PlayerState.StateChanged += OnStateChanged;
-        await RefreshStatusAsync();
+        await FitNowPlayingAsync();
+    }
+
+    private async Task InitializeInteractiveAsync()
+    {
+        await Task.WhenAll(LoadFeaturesAsync(), RefreshStatusAsync());
 
         refreshTimer = new Timer(async _ =>
         {
@@ -137,16 +185,23 @@
         }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
     }
 
-    private void OnStateChanged() => InvokeAsync(async () => { StateHasChanged(); await FitNowPlayingAsync(); });
-
-    private async Task FitNowPlayingAsync()
+    private async Task LoadFeaturesAsync()
     {
-        try { await JSRuntime.InvokeVoidAsync("fitNowPlaying"); } catch { }
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        await FitNowPlayingAsync();
+        try
+        {
+            var features = await Http.GetFromJsonAsync<FeaturesResponse>("/api/features");
+            showTemperature = features?.TemperatureEnabled ?? false;
+            showBloodSugar = features?.BloodSugarEnabled ?? false;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to load feature flags");
+        }
+        finally
+        {
+            featuresLoaded = true;
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private void ToggleVolumePopup() => showVolumePopup = !showVolumePopup;
@@ -176,11 +231,15 @@
             PlayerState.UpdateStatus(status);
             PlayerState.UpdateRepeatMode(repeatMode);
             volumeLevel = status?.Volume ?? volumeLevel;
-            StateHasChanged();
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to refresh player status");
+        }
+        finally
+        {
+            isStatusLoading = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
