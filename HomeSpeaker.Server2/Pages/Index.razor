@@ -26,86 +26,77 @@
     var showAlbum = !string.IsNullOrEmpty(album) && album != "[ No Album ]";
 }
 <div class="home-primary-panels @(isPlaying && showBloodSugar ? "home-primary-panels--dense" : "")">
-    <div>
-        <div class="now-playing-card @(isPlaying ? string.Empty : "now-playing-card--idle") mb-3">
-            <div class="now-playing-label">
-                <i class="fas fa-headphones me-2"></i>Now Playing
-            </div>
-            @if (isPlaying)
-            {
-                <div class="now-playing-status">
-                    <div class="song-info">
-                        <div id="now-playing-title" class="song-title">@displayName</div>
-                        @if (showArtist)
-                        {
-                            <div id="now-playing-artist" class="song-artist">@artist</div>
-                        }
-                        @if (showAlbum)
-                        {
-                            <div class="song-album">@album</div>
-                        }
-                        <div class="progress-row">
-                            @if (!isStream)
+    @if (isPlaying || isStatusLoading)
+    {
+        <div>
+            <div class="now-playing-card mb-3">
+                <div class="now-playing-label">
+                    <i class="fas fa-headphones me-2"></i>Now Playing
+                </div>
+                @if (isPlaying)
+                {
+                    <div class="now-playing-status">
+                        <div class="song-info">
+                            <div id="now-playing-title" class="song-title">@displayName</div>
+                            @if (showArtist)
                             {
-                                <div class="progress-bar-track">
-                                    <div class="progress-bar-fill" style="width: @((PlayerState.Status!.PercentComplete * 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
-                                </div>
+                                <div id="now-playing-artist" class="song-artist">@artist</div>
                             }
-                            <div class="volume-popup-anchor">
-                                <button class="volume-icon-btn" @onclick="ToggleVolumePopup" title="Adjust volume" aria-label="Adjust volume">
-                                    <i class="fas fa-volume-up"></i>
-                                </button>
-                                @if (showVolumePopup)
+                            @if (showAlbum)
+                            {
+                                <div class="song-album">@album</div>
+                            }
+                            <div class="progress-row">
+                                @if (!isStream)
                                 {
-                                    <div class="volume-dismiss-overlay" @onclick="CloseVolumePopup"></div>
-                                    <div class="volume-popup-card">
-                                        <span class="volume-popup-label">Vol</span>
-                                        <span class="volume-popup-number">@volumeLevel</span>
-                                        <div class="volume-slider-wrap">
-                                            <input type="range"
-                                                   class="volume-slider-vertical"
-                                                   min="0" max="100"
-                                                   value="@volumeLevel"
-                                                   aria-label="Volume"
-                                                   @oninput="@(e => { if (int.TryParse(e.Value?.ToString(), out var v)) volumeLevel = v; })"
-                                                   @onchange="OnVolumeChanged" />
-                                        </div>
+                                    <div class="progress-bar-track">
+                                        <div class="progress-bar-fill" style="width: @((PlayerState.Status!.PercentComplete * 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
                                     </div>
                                 }
+                                <div class="volume-popup-anchor">
+                                    <button class="volume-icon-btn" @onclick="ToggleVolumePopup" title="Adjust volume" aria-label="Adjust volume">
+                                        <i class="fas fa-volume-up"></i>
+                                    </button>
+                                    @if (showVolumePopup)
+                                    {
+                                        <div class="volume-dismiss-overlay" @onclick="CloseVolumePopup"></div>
+                                        <div class="volume-popup-card">
+                                            <span class="volume-popup-label">Vol</span>
+                                            <span class="volume-popup-number">@volumeLevel</span>
+                                            <div class="volume-slider-wrap">
+                                                <input type="range"
+                                                       class="volume-slider-vertical"
+                                                       min="0" max="100"
+                                                       value="@volumeLevel"
+                                                       aria-label="Volume"
+                                                       @oninput="@(e => { if (int.TryParse(e.Value?.ToString(), out var v)) volumeLevel = v; })"
+                                                       @onchange="OnVolumeChanged" />
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="now-playing-controls">
-                    <PlayControls />
-                </div>
-            }
-            else if (isStatusLoading)
-            {
-                <div class="now-playing-status now-playing-status--placeholder">
-                    <div class="song-info">
-                        <div class="song-title">Loading player status…</div>
-                        <div class="song-artist">Fetching current playback and controls.</div>
+                    <div class="now-playing-controls">
+                        <PlayControls />
                     </div>
-                </div>
-                <div class="now-playing-controls">
-                    <PlayControls />
-                </div>
-            }
-            else
-            {
-                <div class="now-playing-status now-playing-status--placeholder">
-                    <div class="song-info">
-                        <div class="song-title">Nothing playing right now</div>
-                        <div class="song-artist">Use the controls or open Music to start playback.</div>
+                }
+                else
+                {
+                    <div class="now-playing-status now-playing-status--placeholder">
+                        <div class="song-info">
+                            <div class="song-title">Loading player status…</div>
+                            <div class="song-artist">Fetching current playback and controls.</div>
+                        </div>
                     </div>
-                </div>
-                <div class="now-playing-controls">
-                    <PlayControls />
-                </div>
-            }
+                    <div class="now-playing-controls">
+                        <PlayControls />
+                    </div>
+                }
+            </div>
         </div>
-    </div>
+    }
     @if (!featuresLoaded)
     {
         <div>
