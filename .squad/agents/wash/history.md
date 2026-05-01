@@ -21,6 +21,9 @@ Mapped AI integration points for OpenAI-backed playlisting. Use in-process servi
 ## Learnings
 <!-- Recent entries below -->
 
+### 2026-05-01 — AI Retry Cooldown + Explicit Request Timeout
+AI music analysis now re-queues failed work items automatically after a short cooldown instead of leaving them stranded in `Failed` until manual DB cleanup. The batch default was reduced to 6, and model calls now enforce a 200-second linked cancellation timeout inside `AiMusicAnalyzer`, which applies consistently across whichever OpenAI provider is behind `IChatClient`.
+
 ### 2026-05-02 — Dual OpenAI Provider Config
 Updated `HomeSpeaker.Server2` AI wiring to support either public OpenAI or Azure OpenAI from the existing `AI` options section. `AI:AzureOpenAI` now uses `Endpoint`, `ApiKey`, and `DeploymentName`, Azure is preferred when fully configured, and degraded-status messaging points at the active/missing provider instead of always blaming `AI:OpenAI:ApiKey`.
 
@@ -35,3 +38,7 @@ The user-facing “failed on attempt 1” activity message is composed in `AiMus
 
 ### 2026-05-01 — AI Timeout Diagnosis (Diagnostic)
 Traced Azure/OpenAI timeout message to Azure SDK retry timeout during chat request in AiMusicAnalyzer.AnalyzeBatchAsync(). Resume endpoint does not requeue failed items, allowing timeouts to persist. Root cause identified: No custom retry policy wrapping AzureOpenAIClient. Diagnostic only; no code changes made.
+
+### 2026-05-01 — AI Retry/Timeout Fix Cycle (Wash → Zoe → Mal → Approved)
+
+Implemented auto-requeue mechanism for failed AI music analysis work items. Initial implementation rejected by Zoe due to end-to-end timeout ineffectiveness. Mal revised provider-level timeout wiring via AzureOpenAIClientOptions and OpenAIClientOptions to properly configure SDK transport. Zoe revalidated and approved. Final state: auto-requeue enabled, batch size 6, 200s timeout enforced at both analyzer and transport layers.

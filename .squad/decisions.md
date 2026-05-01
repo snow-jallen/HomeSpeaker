@@ -4982,3 +4982,75 @@ Current recommendation: **NOT YET READY** for any user trial.
 
 ---
 
+
+---
+
+## AI Retry/Timeout Fix (2026-05-01)
+
+### Decision 1: Wash — AI Retry Timeout Placement
+
+**By:** Wash (Backend)  
+**Date:** 2026-05-01  
+**Status:** Approved (after revision by Mal)  
+**Affects:** HomeSpeaker.Server2 AI music analysis worker
+
+**What:**
+- Enforce model-request timeout in AiMusicAnalyzer with linked cancellation token set to 200 seconds
+- Automatically re-queue failed work items after 5-minute cooldown in worker loop
+
+**Why:**
+The analyzer-level timeout applies uniformly through IChatClient for both Azure OpenAI and public OpenAI without depending on provider-specific client plumbing. Cooldown-based requeue avoids infinite hot-loop retries while keeping failures visible.
+
+**Rationale:** Initial iteration lacked end-to-end timeout effectiveness (see rejection below). Revised by Mal to include provider-level timeout wiring.
+
+---
+
+### Decision 2: Zoe — Rejection: AI Timeout Not Effective End-to-End
+
+**By:** Zoe (Tester)  
+**Date:** 2026-05-01  
+**Status:** Validated & Addressed by Mal  
+**Affects:** HomeSpeaker.Server2 AI timeout + retry validation
+
+**Decision:** Reject Wash's backend change set as not fully validated for release.
+
+**Why:**
+- Batch-size reduction (6) and automatic failed-item requeue are validated ✓
+- **Problem:** Live runtime/status output still shows Azure OpenAI requests timing out at  :01:40 (~100s)
+- **Root cause:** Program.cs creates AzureOpenAIClient without configuring SDK network timeout
+- **Evidence:**
+  - AiMusicOptions + ppsettings.json set batch size 6 and timeout 200
+  - AiMusicAnalysisWorker re-queues correctly; DB state shows Attempts = 2 on retries
+  - /api/ai/status error messages recommend ClientPipelineOptions.NetworkTimeout
+
+**Next Step:** Assign **Mal** to revise provider timeout wiring, then rerun validation.
+
+---
+
+### Decision 3: Mal — AI Provider Timeout Must Be Set at Transport
+
+**By:** Mal (Lead)  
+**Date:** 2026-05-01  
+**Status:** Implemented & Approved  
+**Affects:** HomeSpeaker.Server2 AI provider wiring
+
+**What:**
+For AI analysis requests, the effective timeout must be applied in the actual provider client stack, not only in AiMusicAnalyzer.
+
+**Implementation:**
+- Keep existing analyzer cancellation timeout as outer request budget
+- Configure System.ClientModel client options with explicit NetworkTimeout
+- Provide transport backed by HttpClient with timeout set above the analyzer budget
+
+**Why:**
+Wash's rejected version only changed outer call budget. Live failures still occurred at ~100s because SDK transport used default HttpClient.Timeout, preventing intended ~200s policy from taking effect.
+
+**Scope:** Apply pattern to both:
+- Azure OpenAI via AzureOpenAIClientOptions
+- Public OpenAI via OpenAIClientOptions
+
+Do not add extra wrapper abstractions that don't own underlying HTTP request.
+
+**Validation:** Zoe revalidated post-revision and approved. Smoke tests passing, batch size 6 retained, auto-requeue retained.
+
+---

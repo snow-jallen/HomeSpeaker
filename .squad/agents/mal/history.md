@@ -148,3 +148,13 @@ Defined architecture for AI playlist generation within HomeSpeaker.Server2. No n
 - `2026-05-01T155906Z-mal.md` — Mal's verdict and architecture notes
 - `2026-05-01T155906Z-zoe.md` — Zoe's QA findings and blocking issues
 - Session log: `.squad/log/2026-05-01T155906Z-ai-readiness-review.md`
+
+### 2026-05-01 — AI provider timeout wiring
+
+**Architecture correction:** The analyzer-level cancellation token is not enough to control live OpenAI/Azure OpenAI request duration. The actual HTTP cap lives in the SDK transport stack (`System.ClientModel`), which will otherwise fall back to the default `HttpClient.Timeout` behavior.
+
+**What to keep doing:** When we need an explicit model timeout, set it in two places: the outer application cancellation path and the provider client options (`NetworkTimeout` plus a transport backed by an `HttpClient` with a matching-or-slightly-higher timeout). That is the narrow fix that actually changes live request behavior without wrapping fake timeouts around the call site.
+
+### 2026-05-01 — AI Provider Timeout Wiring Revision (Lead)
+
+Led revision cycle for Wash's AI retry implementation after Zoe's rejection. Identified that timeout was only enforced at analyzer level, not at Azure SDK transport. Revised to configure System.ClientModel client options with explicit NetworkTimeout for both Azure and public OpenAI providers. Ensured no extra wrapper abstractions. Build passed, Zoe revalidated and approved.
