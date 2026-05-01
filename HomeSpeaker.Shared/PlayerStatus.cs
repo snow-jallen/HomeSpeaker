@@ -10,4 +10,5 @@ public record PlayerStatus
     public bool IsStream { get; init; }
     public string? StreamName { get; init; }
     public Song? CurrentSong { get; init; }
+    public AiPlayerContextDto? AiContext { get; init; }
 }

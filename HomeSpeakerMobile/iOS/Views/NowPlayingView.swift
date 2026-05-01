@@ -84,6 +84,11 @@ struct NowPlayingView: View {
 
                 if let status {
                     progressSection(status: status)
+                    
+                    if let aiContext = status.aiContext, aiContext.allowFeedback, let songId = status.currentSong?.songId {
+                        aiFeedbackButtons(api: api, songId: songId, sessionId: aiContext.sessionId)
+                    }
+                    
                     transportControls(api: api, status: status)
                 } else {
                     transportControls(api: api, status: nil)
@@ -224,6 +229,35 @@ struct NowPlayingView: View {
         .padding(.vertical, 8)
         .background(.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 10))
     }
+    
+    private func aiFeedbackButtons(api: APIClient, songId: Int, sessionId: String?) -> some View {
+        HStack(spacing: 32) {
+            Button {
+                Task { await sendFeedback(api: api, songId: songId, feedback: "Down", sessionId: sessionId) }
+            } label: {
+                Image(systemName: "hand.thumbsdown")
+                    .font(.title2)
+                    .frame(width: 48, height: 48)
+                    .background(Color(.systemGray5), in: Circle())
+            }
+            .foregroundStyle(.primary)
+            
+            Text("How's this pick?")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            
+            Button {
+                Task { await sendFeedback(api: api, songId: songId, feedback: "Up", sessionId: sessionId) }
+            } label: {
+                Image(systemName: "hand.thumbsup")
+                    .font(.title2)
+                    .frame(width: 48, height: 48)
+                    .background(Color(.systemGray5), in: Circle())
+            }
+            .foregroundStyle(Color.accentColor)
+        }
+        .padding(.vertical, 8)
+    }
 
     @MainActor
     private func refresh(api: APIClient) async {
@@ -235,6 +269,11 @@ struct NowPlayingView: View {
         } catch {
             // Silently ignore polling errors
         }
+    }
+    
+    @MainActor
+    private func sendFeedback(api: APIClient, songId: Int, feedback: String, sessionId: String?) async {
+        try? await api.sendAiFeedback(songId: songId, feedback: feedback, sessionId: sessionId)
     }
 }
 

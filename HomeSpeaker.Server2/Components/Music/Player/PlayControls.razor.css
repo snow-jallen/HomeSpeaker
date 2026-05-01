@@ -50,6 +50,18 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
 }
 
+.ai-feedback-btn {
+    min-height: 56px;
+    min-width: 56px;
+    touch-action: manipulation;
+    transition: transform 0.15s, opacity 0.15s;
+}
+
+.ai-feedback-btn:active {
+    transform: scale(0.97);
+    opacity: 0.85;
+}
+
 /* RPi 7" screen — compact but still touch-friendly */
 @media (max-width: 800px) and (max-height: 480px) {
     .play-controls {

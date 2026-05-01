@@ -580,6 +580,7 @@ public static class HomeSpeakerRestEndpoints
 
     private static async Task<IResult> getPlayerStatus(
         [FromServices] IMusicPlayer musicPlayer,
+        [FromServices] AiPlaybackService aiPlaybackService,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("GetPlayerStatus");
@@ -590,6 +591,7 @@ public static class HomeSpeakerRestEndpoints
 
             var status = musicPlayer.Status;
             var volume = await musicPlayer.GetVolume();
+            var aiContext = await aiPlaybackService.GetCurrentContextAsync(CancellationToken.None);
 
             var playerStatus = new
             {
@@ -601,7 +603,8 @@ public static class HomeSpeakerRestEndpoints
                 Volume = volume,
                 SleepTimerActive = musicPlayer.SleepTimerActive,
                 SleepTimerRemainingMinutes = musicPlayer.SleepTimerRemaining?.TotalMinutes,
-                RepeatMode = musicPlayer.RepeatMode
+                RepeatMode = musicPlayer.RepeatMode,
+                AiContext = aiContext
             };
 
             logger.LogInformation("Player status retrieved: playing={StillPlaying}, song={CurrentSong}",

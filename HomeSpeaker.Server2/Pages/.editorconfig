@@ -3,3 +3,6 @@ root = false
 # Razor Page code-behind files are named after the page, not the model class
 [*.cs]
 dotnet_diagnostic.MA0048.severity = none
+
+[Music/AiStatus.razor]
+dotnet_diagnostic.RS0030.severity = none

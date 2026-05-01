@@ -82,6 +82,7 @@ struct PlayerStatus: Codable {
     let sleepTimerActive: Bool?
     let sleepTimerRemainingMinutes: Double?
     let repeatMode: Bool?
+    let aiContext: AiPlayerContextDto?
 
     var isPlaying: Bool { stillPlaying }
 
@@ -223,4 +224,85 @@ struct UpdateSongRequest: Codable {
     let name: String
     let artist: String
     let album: String
+}
+
+// MARK: - AI Playlists Models
+
+struct AiPlayerContextDto: Codable {
+    let mode: String?
+    let sessionId: String?
+    let genreKey: String?
+    let seedSongId: Int?
+    let allowFeedback: Bool
+}
+
+struct AiPlaylistSummaryDto: Codable, Identifiable {
+    let genreKey: String
+    let displayName: String
+    let description: String
+    let trackCount: Int
+    let sortOrder: Int
+    
+    var id: String { genreKey }
+    var songCount: Int { trackCount }
+    
+    enum CodingKeys: String, CodingKey {
+        case genreKey, displayName, description, trackCount = "TrackCount", sortOrder
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        genreKey = try container.decode(String.self, forKey: .genreKey)
+        displayName = try container.decode(String.self, forKey: .displayName)
+        description = try container.decode(String.self, forKey: .description)
+        trackCount = try container.decode(Int.self, forKey: .trackCount)
+        sortOrder = (try? container.decode(Int.self, forKey: .sortOrder)) ?? 0
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(genreKey, forKey: .genreKey)
+        try container.encode(displayName, forKey: .displayName)
+        try container.encode(description, forKey: .description)
+        try container.encode(trackCount, forKey: .trackCount)
+    }
+}
+
+struct AiPlaylistDto: Codable {
+    let genreKey: String
+    let displayName: String
+    let description: String
+    let songs: [Song]
+}
+
+struct AiLibraryStatusDto: Codable {
+    let state: String
+    let totalTracks: Int
+    let queuedTracks: Int
+    let processingTracks: Int
+    let completedTracks: Int
+    let failedTracks: Int
+    let percentComplete: Double
+    let lastScanUtc: String?
+    let currentBatchId: String?
+    
+    var stateDisplay: String {
+        switch state.lowercased() {
+        case "idle": return "Idle"
+        case "scanning": return "Scanning library"
+        case "processing": return "Processing tracks"
+        case "degraded": return "Degraded"
+        default: return state
+        }
+    }
+    
+    var isProcessing: Bool {
+        ["scanning", "processing"].contains(state.lowercased())
+    }
+}
+
+struct AiFeedbackRequest: Codable {
+    let songId: Int
+    let feedback: String
+    let sessionId: String?
 }

@@ -1,0 +1,27 @@
+{
+  "name": "homespeaker",
+  "version": "1.0.0",
+  "description": "- Install ffmpeg `winget install gyan.ffmpeg.shared`\r - Run the following command to run the Aspire Dashboard in a container\r    `docker run --rm -it -p 18888:18888 -p 4317:18889 -p 4318:18890 -e DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true -e DASHBOARD__OTLP__CORS__ALLOWEDORIGINS=http://localhost:5028 --name aspire-dashboard mcr.microsoft.com/dotnet/aspire-dashboard:9.0`\r - Make sure you're running the `https` profile for the HomeSpeaker.Server2 project",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/snow-jallen/homespeaker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/snow-jallen/homespeaker/issues"
+  },
+  "homepage": "https://github.com/snow-jallen/homespeaker#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
+  }
+}

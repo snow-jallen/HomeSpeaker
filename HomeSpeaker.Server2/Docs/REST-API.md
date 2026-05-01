@@ -4,7 +4,7 @@ This document describes the REST API endpoints that provide an alternative to th
 
 ## Base URL
 
-All endpoints are prefixed with `/api/homespeaker/`
+Most endpoints are prefixed with `/api/homespeaker/`. AI playlist endpoints use `/api/ai/`.
 
 Example: `https://localhost:7072/api/homespeaker/songs`
 
@@ -52,6 +52,16 @@ Example: `https://localhost:7072/api/homespeaker/songs`
 ### YouTube Integration
 - `GET /youtube/search` - Search YouTube videos
 - `POST /youtube/cache` - Cache a YouTube video
+
+### AI Playlists
+- `GET /api/ai/status` - AI processing status
+- `POST /api/ai/process/resume` - Nudge/resume AI processing
+- `GET /api/ai/playlists` - List AI genre playlists
+- `GET /api/ai/playlists/{genreKey}` - Get a genre playlist
+- `POST /api/ai/playlists/{genreKey}/play` - Start AI genre playback
+- `GET /api/ai/similar/{songId}` - Similar songs for a track
+- `POST /api/ai/autoplay/from-current` - Start AI autoplay from current track
+- `POST /api/ai/feedback` - Submit thumbs up/down feedback
 
 ## Detailed Endpoint Documentation
 

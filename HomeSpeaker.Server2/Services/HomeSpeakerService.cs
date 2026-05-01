@@ -1,6 +1,8 @@
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Models;
 using HomeSpeaker.Shared;
+using SharedPlayerStatus = HomeSpeaker.Shared.PlayerStatus;
+using SharedSong = HomeSpeaker.Shared.Song;
 using Microsoft.EntityFrameworkCore;
 
 namespace HomeSpeaker.Server2.Services;
@@ -17,6 +19,9 @@ public class HomeSpeakerService
     private readonly PlaylistService playlistService;
     private readonly RadioStreamService radioStreamService;
     private readonly IServiceProvider serviceProvider;
+    private readonly AiMusicCatalogService aiCatalogService;
+    private readonly AiPlaybackService aiPlaybackService;
+    private readonly AiProcessingSignal aiProcessingSignal;
 
     public event EventHandler? QueueChanged;
     public event Action<string>? StatusChanged;
@@ -28,7 +33,10 @@ public class HomeSpeakerService
         YoutubeService youtubeService,
         PlaylistService playlistService,
         RadioStreamService radioStreamService,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        AiMusicCatalogService aiCatalogService,
+        AiPlaybackService aiPlaybackService,
+        AiProcessingSignal aiProcessingSignal)
     {
         this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
         this.library = library ?? throw new ArgumentNullException(nameof(library));
@@ -37,6 +45,9 @@ public class HomeSpeakerService
         this.playlistService = playlistService;
         this.radioStreamService = radioStreamService;
         this.serviceProvider = serviceProvider;
+        this.aiCatalogService = aiCatalogService;
+        this.aiPlaybackService = aiPlaybackService;
+        this.aiProcessingSignal = aiProcessingSignal;
 
         // Forward player events
         this.musicPlayer.PlayerEvent += (sender, msg) =>
@@ -57,12 +68,13 @@ public class HomeSpeakerService
     }
 
     // Player status - returns clean domain model
-    public async Task<PlayerStatus> GetStatusAsync()
+    public async Task<SharedPlayerStatus> GetStatusAsync()
     {
         var status = musicPlayer.Status;
         var currentSong = status?.CurrentSong;
+        var aiContext = await aiPlaybackService.GetCurrentContextAsync(CancellationToken.None);
 
-        return await Task.FromResult(new PlayerStatus
+        return await Task.FromResult(new SharedPlayerStatus
         {
             Volume = await musicPlayer.GetVolume(),
             StillPlaying = musicPlayer.StillPlaying,
@@ -71,14 +83,15 @@ public class HomeSpeakerService
             Remaining = status?.Remaining ?? TimeSpan.Zero,
             IsStream = status?.IsStream ?? false,
             StreamName = status?.StreamName,
-            CurrentSong = currentSong != null ? new Song
+            CurrentSong = currentSong != null ? new SharedSong
             {
                 SongId = currentSong.SongId,
                 Path = currentSong.Path ?? string.Empty,
                 Name = currentSong.Name,
                 Artist = currentSong.Artist ?? string.Empty,
                 Album = currentSong.Album ?? string.Empty
-            } : null
+            } : null,
+            AiContext = aiContext
         });
     }
 
@@ -514,5 +527,135 @@ public class HomeSpeakerService
     {
         logger.LogWarning("ToggleBrightness called but not implemented in SSR mode");
         await Task.CompletedTask;
+    }
+
+    // AI Playlists
+    public async Task<List<AiPlaylistSummary>> GetAiPlaylistsAsync()
+    {
+        try
+        {
+            var summaries = await aiCatalogService.GetGenreSummariesAsync(CancellationToken.None);
+            return summaries
+                .Select(summary => new AiPlaylistSummary
+                {
+                    GenreKey = summary.GenreKey,
+                    DisplayName = summary.DisplayName,
+                    Description = summary.Description,
+                    TrackCount = summary.TrackCount,
+                    LastUpdated = summary.LastUpdatedUtc
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching AI playlists");
+            return new List<AiPlaylistSummary>();
+        }
+    }
+
+    public async Task<AiPlaylist?> GetAiPlaylistAsync(string genreKey)
+    {
+        try
+        {
+            var playlist = await aiCatalogService.GetGenrePlaylistAsync(genreKey, 200, CancellationToken.None);
+            if (playlist == null)
+            {
+                return null;
+            }
+
+            return new AiPlaylist
+            {
+                GenreKey = playlist.GenreKey,
+                DisplayName = playlist.DisplayName,
+                Description = playlist.Description,
+                Songs = playlist.Songs.Select(song => song.ToSongViewModel()).ToList()
+            };
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching AI playlist {GenreKey}", genreKey);
+            return null;
+        }
+    }
+
+    public async Task PlayAiPlaylistAsync(string genreKey)
+    {
+        try
+        {
+            await aiPlaybackService.StartGenreSessionAsync(genreKey, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error starting AI playlist {GenreKey}", genreKey);
+        }
+    }
+
+    public async Task<AiLibraryStatus> GetAiStatusAsync()
+    {
+        try
+        {
+            var status = await aiCatalogService.GetStatusAsync(CancellationToken.None);
+            return new AiLibraryStatus
+            {
+                State = status.State,
+                TotalTracks = status.TotalTracks,
+                QueuedTracks = status.QueuedTracks,
+                ProcessingTracks = status.ProcessingTracks,
+                CompletedTracks = status.CompletedTracks,
+                FailedTracks = status.FailedTracks,
+                PercentComplete = status.PercentComplete,
+                LastScanUtc = status.LastScanUtc,
+                LastHeartbeatUtc = status.LastHeartbeatUtc,
+                CurrentBatchId = status.CurrentBatchId,
+                DegradedReason = status.DegradedReason,
+                LastErrorMessage = status.LastErrorMessage,
+                LastFailureUtc = status.LastFailureUtc,
+                ErrorDetails = status.ErrorDetails,
+                RecentActivity = status.RecentActivity
+                    .Select(activity => new AiStatusActivity
+                    {
+                        TimestampUtc = activity.TimestampUtc,
+                        Kind = activity.Kind,
+                        Message = activity.Message,
+                        BatchId = activity.BatchId
+                    })
+                    .ToArray()
+            };
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching AI status");
+            return new AiLibraryStatus();
+        }
+    }
+
+    public async Task ResumeAiProcessingAsync()
+    {
+        try
+        {
+            await aiProcessingSignal.SignalAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error resuming AI processing");
+        }
+    }
+
+    public async Task SubmitAiFeedbackAsync(string sessionId, int songId, string feedback)
+    {
+        try
+        {
+            var request = new AiFeedbackRequest
+            {
+                SessionId = sessionId,
+                SongId = songId,
+                Feedback = feedback
+            };
+            await aiPlaybackService.SubmitFeedbackAsync(request, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error submitting AI feedback");
+        }
     }
 }

@@ -1,0 +1,392 @@
+@page "/ai-status"
+@inject HomeSpeakerService svc
+@inject ILogger<AiStatus> Logger
+@implements IDisposable
+@attribute [StreamRendering]
+
+<PageTitle>AI Processing Status</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3 gap-3 flex-wrap">
+    <h3><i class="fas fa-robot me-2"></i>AI Processing Status</h3>
+    <button @onclick="RefreshStatus" class="btn btn-outline-secondary btn-touch" title="Refresh status" disabled="@isLoading">
+        @if (isLoading)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            <span>Refreshing...</span>
+        }
+        else
+        {
+            <i class="fas fa-sync-alt me-1"></i><span>Refresh</span>
+        }
+    </button>
+</div>
+
+@if (!hasLoaded && isLoading)
+{
+    <div class="d-flex justify-content-center p-5">
+        <div class="spinner-border text-primary ai-status-spinner" role="status">
+            <span class="visually-hidden">Loading status...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="ai-status-container">
+        @if (isLoading)
+        {
+            <div class="ai-status-refreshing" aria-live="polite">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span>Updating AI status…</span>
+            </div>
+        }
+
+        <!-- State Card -->
+        <div class="@StatusCardClass">
+            <div class="@StatusIconClass">
+                @if (status.State == "Processing")
+                {
+                    <i class="fas fa-spinner fa-pulse"></i>
+                }
+                else if (status.State == "Scanning")
+                {
+                    <i class="fas fa-search"></i>
+                }
+                else if (status.State == "Degraded")
+                {
+                    <i class="fas fa-exclamation-triangle"></i>
+                }
+                else
+                {
+                    <i class="fas fa-check-circle"></i>
+                }
+            </div>
+            <div class="ai-status-content">
+                <div class="ai-status-label">Status</div>
+                <div class="ai-status-value">@status.State</div>
+            </div>
+        </div>
+
+        <!-- Progress Card -->
+        <div class="ai-status-card">
+            <div class="ai-status-content">
+                <div class="ai-status-label">Progress</div>
+                <div class="ai-status-value">@status.PercentComplete.ToString("F1")%</div>
+                <div class="progress mt-2 ai-status-progress">
+                    <div class="progress-bar bg-primary" 
+                         role="progressbar" 
+                         style="width: @(status.PercentComplete)%"
+                         aria-valuenow="@status.PercentComplete" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <section class="ai-activity-card ai-activity-card--prominent" aria-labelledby="ai-activity-heading" aria-live="polite">
+            <div class="ai-activity-card__header">
+                <div>
+                    <div class="ai-status-label">Recent activity</div>
+                    <h4 id="ai-activity-heading" class="ai-activity-card__title">Live enrichment timeline</h4>
+                    <p class="ai-activity-card__subtitle">The newest worker updates stay here so you can see what AI enrichment is doing right now.</p>
+                </div>
+
+                <div class="ai-activity-card__summary">
+                    <div class="ai-activity-card__count">@VisibleActivity.Count @(VisibleActivity.Count == 1 ? "entry" : "entries")</div>
+
+                    @if (!string.IsNullOrWhiteSpace(status.CurrentBatchId))
+                    {
+                        <div class="ai-activity-card__batch">Batch @ShortBatchId(status.CurrentBatchId)</div>
+                    }
+                </div>
+            </div>
+
+            @if (VisibleActivity.Count > 0)
+            {
+                <div class="ai-activity-list" role="list">
+                    @foreach (var activity in VisibleActivity)
+                    {
+                        <article class="@GetActivityItemClass(activity)" role="listitem">
+                            <div class="ai-activity-item__rail">
+                                <span class="ai-activity-item__dot">
+                                    <i class="@GetActivityIcon(activity)" aria-hidden="true"></i>
+                                </span>
+                            </div>
+
+                            <div class="ai-activity-item__body">
+                                <div class="ai-activity-item__meta">
+                                    <span class="ai-activity-item__kind">@GetActivityLabel(activity)</span>
+                                    <time class="ai-activity-item__time" datetime="@activity.TimestampUtc.ToString("O")">
+                                        @FormatActivityTimestamp(activity.TimestampUtc)
+                                    </time>
+                                </div>
+
+                                <p class="ai-activity-item__message">@activity.Message</p>
+
+                                @if (!string.IsNullOrWhiteSpace(activity.BatchId))
+                                {
+                                    <div class="ai-activity-item__batch">Batch @ShortBatchId(activity.BatchId)</div>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="ai-activity-empty" role="status">
+                    <i class="fas fa-wave-square" aria-hidden="true"></i>
+                    <div>
+                        <div class="ai-activity-empty__title">No activity yet</div>
+                        <p class="ai-activity-empty__message">@ActivityEmptyMessage</p>
+                    </div>
+                </div>
+            }
+        </section>
+
+        @if (IsDegraded && HasDegradedDetails)
+        {
+            <section class="ai-status-alert" role="alert" aria-live="polite">
+                <div class="ai-status-alert__header">
+                    <i class="fas fa-circle-exclamation ai-status-alert__icon"></i>
+                    <div>
+                        <div class="ai-status-alert__title">AI processing needs attention</div>
+                        <p class="ai-status-alert__summary">@(status.DegradedReason ?? "The AI pipeline reported a degraded state.")</p>
+
+                        @if (!string.IsNullOrWhiteSpace(status.LastErrorMessage))
+                        {
+                            <div class="ai-status-alert__latest">
+                                <span class="ai-status-alert__label">Most recent error</span>
+                                <div>@status.LastErrorMessage</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @if (status.ErrorDetails.Count > 0)
+                {
+                    <div>
+                        <div class="ai-status-alert__label">Reported details</div>
+                        <ul class="ai-status-alert__list">
+                            @foreach (var detail in status.ErrorDetails)
+                            {
+                                <li>@detail</li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(status.CurrentBatchId))
+                {
+                    <div class="ai-status-alert__meta">Batch ID: @status.CurrentBatchId</div>
+                }
+
+                @if (status.LastFailureUtc.HasValue)
+                {
+                    <div class="ai-status-alert__meta">Last failure: @FormatDateTime(status.LastFailureUtc.Value)</div>
+                }
+            </section>
+        }
+
+        <!-- Stats Grid -->
+        <div class="ai-stats-grid">
+            <div class="ai-stat-item">
+                <div class="ai-stat-label">Total Tracks</div>
+                <div class="ai-stat-value">@status.TotalTracks</div>
+            </div>
+            <div class="ai-stat-item">
+                <div class="ai-stat-label">Completed</div>
+                <div class="ai-stat-value text-success">@status.CompletedTracks</div>
+            </div>
+            <div class="ai-stat-item">
+                <div class="ai-stat-label">Queued</div>
+                <div class="ai-stat-value text-info">@status.QueuedTracks</div>
+            </div>
+            <div class="ai-stat-item">
+                <div class="ai-stat-label">Processing</div>
+                <div class="ai-stat-value text-warning">@status.ProcessingTracks</div>
+            </div>
+            <div class="ai-stat-item">
+                <div class="ai-stat-label">Failed</div>
+                <div class="ai-stat-value text-danger">@status.FailedTracks</div>
+            </div>
+        </div>
+
+        <!-- Timestamps -->
+        @if (status.LastScanUtc.HasValue)
+        {
+            <div class="ai-timestamp-card">
+                <i class="fas fa-clock me-2"></i>
+                Last scan: @FormatDateTime(status.LastScanUtc.Value)
+            </div>
+        }
+
+        @if (status.LastHeartbeatUtc.HasValue)
+        {
+            <div class="ai-timestamp-card">
+                <i class="fas fa-heartbeat me-2"></i>
+                Last activity: @FormatDateTime(status.LastHeartbeatUtc.Value)
+            </div>
+        }
+
+        <!-- Actions -->
+        @if (status.State == "Idle" && status.QueuedTracks > 0)
+        {
+            <button @onclick="ResumeProcessing" 
+                    class="btn btn-primary btn-touch w-100 mt-3"
+                    title="Resume AI processing">
+                <i class="fas fa-play me-2"></i>Resume Processing
+            </button>
+        }
+
+        <!-- Info Banner -->
+        <div class="ai-info-banner">
+            <i class="fas fa-info-circle me-2"></i>
+            The AI analyzes your music library to create intelligent playlists based on mood, energy, and genre.
+        </div>
+    </div>
+}
+
+@code {
+    private AiLibraryStatus status = new();
+    private bool isLoading = true;
+    private bool hasLoaded;
+    private System.Threading.Timer? refreshTimer;
+    private bool IsDegraded => string.Equals(status.State, "Degraded", StringComparison.OrdinalIgnoreCase);
+    private bool HasDegradedDetails =>
+        !string.IsNullOrWhiteSpace(status.DegradedReason) ||
+        !string.IsNullOrWhiteSpace(status.LastErrorMessage) ||
+        status.LastFailureUtc.HasValue ||
+        status.ErrorDetails.Count > 0 ||
+        !string.IsNullOrWhiteSpace(status.CurrentBatchId);
+    private string StatusCardClass => IsDegraded ? "ai-status-card ai-status-card--degraded" : "ai-status-card ai-status-card--primary";
+    private string StatusIconClass => IsDegraded ? "ai-status-icon ai-status-icon--degraded" : "ai-status-icon";
+    private IReadOnlyList<AiStatusActivity> VisibleActivity => status.RecentActivity.Take(20).ToArray();
+    private string ActivityEmptyMessage => status.State switch
+    {
+        "Processing" or "Scanning" => "The worker is starting up. The first scan and batch updates will appear here as soon as they are published.",
+        "Degraded" => "The pipeline needs attention, so there are no fresh timeline entries yet. Check the warning details below while it recovers.",
+        _ when status.TotalTracks == 0 => "Add music to the library, then AI enrichment activity will start showing up here.",
+        _ when status.QueuedTracks > 0 => "AI enrichment is ready to run. Resume processing and the latest batches will appear here.",
+        _ => "No recent AI activity yet. Once the worker starts, progress updates will appear here."
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshStatus();
+
+        // Auto-refresh every 5 seconds while processing
+        refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            await RefreshStatus();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    private async Task RefreshStatus()
+    {
+        try
+        {
+            isLoading = true;
+            status = await svc.GetAiStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading AI status");
+            status = new AiLibraryStatus();
+        }
+        finally
+        {
+            isLoading = false;
+            hasLoaded = true;
+        }
+    }
+
+    private async Task ResumeProcessing()
+    {
+        try
+        {
+            await svc.ResumeAiProcessingAsync();
+            Logger.LogInformation("Resumed AI processing");
+            await RefreshStatus();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error resuming AI processing");
+        }
+    }
+
+    private string FormatDateTime(DateTime dateTime)
+    {
+        var local = dateTime.ToLocalTime();
+        var diff = DateTime.UtcNow - dateTime.ToUniversalTime();
+        
+        if (diff.TotalMinutes < 1) return "just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 2) return "yesterday";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays} days ago";
+        
+        return local.ToString("MMM d, yyyy 'at' h:mm tt");
+    }
+
+    private string FormatActivityTimestamp(DateTime dateTime)
+    {
+        var local = dateTime.ToLocalTime();
+        return $"{local:h:mm tt} · {FormatDateTime(dateTime)}";
+    }
+
+    private static string GetActivityItemClass(AiStatusActivity activity)
+    {
+        var tone = activity.Kind switch
+        {
+            "track-failed" or "batch-failed" or "degraded" => "danger",
+            "batch-completed" => "success",
+            "retry" => "info",
+            "scan-progress" or "scan-completed" or "progress" or "batch-started" => "active",
+            _ => "neutral"
+        };
+
+        return $"ai-activity-item ai-activity-item--{tone}";
+    }
+
+    private static string GetActivityIcon(AiStatusActivity activity) => activity.Kind switch
+    {
+        "track-failed" or "batch-failed" or "degraded" => "fas fa-triangle-exclamation",
+        "batch-completed" => "fas fa-check",
+        "retry" => "fas fa-rotate-right",
+        "scan-progress" => "fas fa-magnifying-glass",
+        "scan-completed" => "fas fa-binoculars",
+        "batch-started" or "progress" => "fas fa-spinner fa-pulse",
+        _ => "fas fa-wave-square"
+    };
+
+    private static string GetActivityLabel(AiStatusActivity activity) => activity.Kind switch
+    {
+        "track-failed" => "Track failure",
+        "batch-failed" => "Batch ended with failures",
+        "batch-completed" => "Batch completed",
+        "batch-started" => "Batch started",
+        "retry" => "Retry",
+        "scan-progress" => "Scanning",
+        "scan-completed" => "Scan finished",
+        "progress" => "Pipeline status",
+        "degraded" => "Needs attention",
+        _ => "Activity"
+    };
+
+    private static string ShortBatchId(string? batchId)
+    {
+        if (string.IsNullOrWhiteSpace(batchId))
+        {
+            return string.Empty;
+        }
+
+        return batchId.Length <= 8 ? batchId : batchId[..8];
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}

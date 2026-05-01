@@ -21,10 +21,20 @@
 <body>
     <Routes @rendermode="InteractiveServer" />
 
-    <div id="blazor-error-ui">
-        An unhandled error has occurred.
-        <a href="" class="reload">Reload</a>
-        <a class="dismiss">🗙</a>
+    <div id="blazor-error-ui" role="alert" aria-live="assertive">
+        <div class="blazor-status-panel">
+            <div class="blazor-status-panel__copy">
+                <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+                <div>
+                    <div class="blazor-status-panel__title">Connection interrupted</div>
+                    <div class="blazor-status-panel__text">Something went wrong in the app. Reload to get back to your music.</div>
+                </div>
+            </div>
+            <div class="blazor-status-panel__actions">
+                <a href="" class="reload">Reload</a>
+                <button type="button" class="dismiss" aria-label="Dismiss message">Dismiss</button>
+            </div>
+        </div>
     </div>
 
     <script src="_framework/blazor.web.js"></script>

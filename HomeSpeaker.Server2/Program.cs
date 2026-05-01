@@ -1,4 +1,6 @@
 using System.Runtime.InteropServices;
+using Azure;
+using Azure.AI.OpenAI;
 using HomeSpeaker.Server2;
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Endpoints;
@@ -7,7 +9,10 @@ using HomeSpeaker.Shared;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Fast.Components.FluentUI;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Options;
 using MudBlazor.Services;
+using OpenAI.Chat;
 
 #pragma warning disable IDE1006 // Naming Styles
 const string LocalCorsPolicy = nameof(LocalCorsPolicy);
@@ -83,6 +88,43 @@ builder.Services.AddHostedService<LifecycleEvents>();
 // Add memory cache for caching services
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton(TimeProvider.System);
+
+builder.Services.Configure<AiMusicOptions>(builder.Configuration.GetSection("AI"));
+builder.Services.AddSingleton<AiProcessingSignal>();
+builder.Services.AddSingleton<AiMusicAnalyzer>();
+builder.Services.AddScoped<AiMusicCatalogService>();
+builder.Services.AddScoped<AiPlaybackService>();
+builder.Services.AddHostedService<AiMusicAnalysisWorker>();
+builder.Services.AddChatClient(sp =>
+{
+    var aiOptions = sp.GetRequiredService<IOptions<AiMusicOptions>>().Value;
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    var logger = loggerFactory.CreateLogger("AiChatClient");
+    IChatClient chatClient;
+
+    if (aiOptions.UseAzureOpenAI)
+    {
+        aiOptions.AzureOpenAI.TryGetEndpointUri(out var endpointUri);
+        var azureOpenAiClient = new AzureOpenAIClient(endpointUri, new AzureKeyCredential(aiOptions.AzureOpenAI.ApiKey!));
+        chatClient = azureOpenAiClient
+            .GetChatClient(aiOptions.AzureOpenAI.DeploymentName!)
+            .AsIChatClient();
+    }
+    else if (aiOptions.HasOpenAIConfiguration)
+    {
+        var openAiClient = new ChatClient(aiOptions.OpenAI.ChatModel, aiOptions.OpenAI.ApiKey);
+        chatClient = openAiClient.AsIChatClient();
+    }
+    else
+    {
+        logger.LogWarning("AI analysis is disabled: {Reason}", aiOptions.ConfigurationIssue);
+        return new NullChatClient();
+    }
+
+    chatClient = new LoggingChatClient(chatClient, logger);
+    chatClient = new OpenTelemetryChatClient(chatClient, logger, "HomeSpeaker.AI");
+    return chatClient;
+}, ServiceLifetime.Singleton);
 
 // Add temperature and health-monitor services with caching
 builder.Services.AddHttpClient<TemperatureService>();
@@ -633,6 +675,7 @@ app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, Htt
 
 // Map HomeSpeaker REST API endpoints
 app.MapHomeSpeakerApi();
+app.MapAiApi();
 
 // Stream image search endpoint
 app.MapGet("/api/streams/image-search", async (string q, ImageSearchService imageSearch) =>

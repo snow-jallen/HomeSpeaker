@@ -1,0 +1,88 @@
+.btn-touch {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.5rem 1rem;
+    touch-action: manipulation;
+}
+
+.ai-playlists-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.ai-playlists-spinner {
+    width: 3rem;
+    height: 3rem;
+}
+
+.ai-playlists-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--hs-space-md, 1rem);
+    padding-bottom: var(--hs-space-lg, 1.5rem);
+}
+
+@media (max-width: 600px) {
+    .ai-playlists-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ai-playlist-card {
+    background: var(--bs-body-bg);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: var(--hs-space-lg, 1.5rem);
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.ai-playlist-card:active {
+    transform: scale(0.98);
+    border-color: var(--bs-primary);
+}
+
+.ai-playlist-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--hs-space-sm, 0.5rem);
+}
+
+.ai-playlist-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--bs-primary);
+}
+
+.ai-playlist-count {
+    font-size: 0.875rem;
+    color: var(--bs-secondary);
+    white-space: nowrap;
+}
+
+.ai-playlist-desc {
+    font-size: 0.875rem;
+    color: var(--bs-body-color);
+    opacity: 0.85;
+    margin-bottom: var(--hs-space-sm, 0.5rem);
+    min-height: 2.6em;
+}
+
+.ai-playlist-updated {
+    font-size: 0.75rem;
+    color: var(--bs-secondary);
+    opacity: 0.7;
+}
+
+.ai-playlist-card .btn-touch {
+    font-weight: 500;
+    transition: transform 0.15s, opacity 0.15s;
+}
+
+.ai-playlist-card .btn-touch:active {
+    transform: scale(0.97);
+    opacity: 0.85;
+}

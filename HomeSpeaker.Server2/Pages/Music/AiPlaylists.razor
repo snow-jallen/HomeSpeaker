@@ -1,0 +1,126 @@
+@page "/ai-playlists"
+@inject HomeSpeakerService svc
+@inject ILogger<AiPlaylists> Logger
+@implements IDisposable
+@attribute [StreamRendering]
+
+<PageTitle>AI Playlists</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3><i class="fas fa-brain me-2"></i>AI Playlists</h3>
+    <div class="ai-playlists-actions">
+        <a href="/ai-status" class="btn btn-outline-secondary btn-touch" title="View AI status">
+            <i class="fas fa-robot me-1"></i>Status
+        </a>
+        <button @onclick="RefreshPlaylists" class="btn btn-outline-secondary btn-touch" title="Refresh AI playlists">
+            <i class="fas fa-sync-alt me-1"></i>Refresh
+        </button>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="d-flex justify-content-center p-5">
+        <div class="spinner-border text-primary ai-playlists-spinner" role="status">
+            <span class="visually-hidden">Loading AI playlists...</span>
+        </div>
+    </div>
+}
+else if (!playlists.Any())
+{
+    <div class="text-center text-muted p-5">
+        <i class="fas fa-robot fa-3x mb-3 opacity-50"></i>
+        <h5>No AI playlists available yet</h5>
+        <p>The AI is still analyzing your music library. Check <a href="/ai-status" class="link-primary">AI Status</a> for progress.</p>
+    </div>
+}
+else
+{
+    <div class="ai-playlists-grid">
+        @foreach (var playlist in playlists)
+        {
+            <div class="ai-playlist-card" @key="playlist.GenreKey">
+                <div class="ai-playlist-header">
+                    <h5 class="ai-playlist-title">@playlist.DisplayName</h5>
+                    <span class="ai-playlist-count">@playlist.TrackCount tracks</span>
+                </div>
+                <p class="ai-playlist-desc">@playlist.Description</p>
+                @if (playlist.LastUpdated.HasValue)
+                {
+                    <div class="ai-playlist-updated">
+                        Updated @FormatRelativeTime(playlist.LastUpdated.Value)
+                    </div>
+                }
+                <button @onclick="() => PlayPlaylist(playlist.GenreKey)" 
+                        class="btn btn-primary btn-touch w-100 mt-3"
+                        title="Play @playlist.DisplayName">
+                    <i class="fas fa-play me-2"></i>Play
+                </button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<AiPlaylistSummary> playlists = new();
+    private bool isLoading = true;
+    private System.Threading.Timer? refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshPlaylists();
+
+        // Auto-refresh every 30 seconds
+        refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            await RefreshPlaylists();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private async Task RefreshPlaylists()
+    {
+        try
+        {
+            isLoading = true;
+            playlists = await svc.GetAiPlaylistsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading AI playlists");
+            playlists = new List<AiPlaylistSummary>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task PlayPlaylist(string genreKey)
+    {
+        try
+        {
+            await svc.PlayAiPlaylistAsync(genreKey);
+            Logger.LogInformation("Started AI playlist: {GenreKey}", genreKey);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error playing AI playlist: {GenreKey}", genreKey);
+        }
+    }
+
+    private string FormatRelativeTime(DateTime dateTime)
+    {
+        var diff = DateTime.UtcNow - dateTime;
+        if (diff.TotalMinutes < 1) return "just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}d ago";
+        return dateTime.ToString("MMM d");
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}

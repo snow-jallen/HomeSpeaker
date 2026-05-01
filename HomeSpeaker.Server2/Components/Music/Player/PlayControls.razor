@@ -1,5 +1,6 @@
 @inject HomeSpeakerService svc
 @inject IJSRuntime JSRuntime
+@inject PlayerStateService PlayerState
 @implements IDisposable
 @attribute [StreamRendering]
 
@@ -13,6 +14,20 @@
     <button @onclick=Skip title="Skip to next song" class="btn btn-icon btn-outline-primary">
         <i class="fas fa-forward"></i>
     </button>
+
+    @if (showAiFeedback)
+    {
+        <button @onclick="() => SubmitFeedback(true)" 
+                title="I like this" 
+                class="btn btn-icon @(lastFeedback == true ? "btn-success" : "btn-outline-success") ai-feedback-btn">
+            <i class="fas fa-thumbs-up"></i>
+        </button>
+        <button @onclick="() => SubmitFeedback(false)" 
+                title="Not for me" 
+                class="btn btn-icon @(lastFeedback == false ? "btn-danger" : "btn-outline-danger") ai-feedback-btn">
+            <i class="fas fa-thumbs-down"></i>
+        </button>
+    }
 
     <div class="dropdown">
         <button class="btn btn-icon @(sleepTimerActive ? "btn-info" : "btn-outline-secondary") dropdown-toggle"
@@ -44,6 +59,11 @@
     bool sleepTimerActive = false;
     string sleepTimerRemaining = "";
     System.Threading.Timer? refreshTimer;
+    bool? lastFeedback = null;
+    string? currentSessionId = null;
+    int? currentSongId = null;
+
+    bool showAiFeedback => PlayerState.Status?.AiContext?.AllowFeedback == true;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -57,8 +77,39 @@
         refreshTimer = new System.Threading.Timer(async _ =>
         {
             await RefreshSleepTimer();
+            await CheckAiContext();
             await InvokeAsync(StateHasChanged);
         }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+
+        PlayerState.StateChanged += OnPlayerStateChanged;
+    }
+
+    void OnPlayerStateChanged()
+    {
+        CheckAiContextSync();
+        InvokeAsync(StateHasChanged);
+    }
+
+    async Task CheckAiContext()
+    {
+        await InvokeAsync(() =>
+        {
+            CheckAiContextSync();
+        });
+    }
+
+    void CheckAiContextSync()
+    {
+        var aiContext = PlayerState.Status?.AiContext;
+        var songId = PlayerState.Status?.CurrentSong?.SongId;
+
+        // Reset feedback state if song or session changed
+        if (aiContext?.SessionId != currentSessionId || songId != currentSongId)
+        {
+            lastFeedback = null;
+            currentSessionId = aiContext?.SessionId;
+            currentSongId = songId;
+        }
     }
 
     async Task RefreshSleepTimer()
@@ -99,8 +150,33 @@
     async Task Stop() => await svc.StopPlayingAsync();
     async Task Skip() => await svc.SkipToNextAsync();
 
+    async Task SubmitFeedback(bool isPositive)
+    {
+        try
+        {
+            var sessionId = PlayerState.Status?.AiContext?.SessionId;
+            var songId = PlayerState.Status?.CurrentSong?.SongId;
+
+            if (string.IsNullOrEmpty(sessionId) || !songId.HasValue)
+            {
+                await JSRuntime.InvokeVoidAsync("console.warn", "Cannot submit feedback: missing session or song");
+                return;
+            }
+
+            lastFeedback = isPositive;
+            await svc.SubmitAiFeedbackAsync(sessionId, songId.Value, isPositive ? "Up" : "Down");
+            await JSRuntime.InvokeVoidAsync("console.log", $"Submitted AI feedback: {(isPositive ? "Up" : "Down")}");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", $"Error submitting feedback: {ex.Message}");
+            lastFeedback = null;
+        }
+    }
+
     public void Dispose()
     {
         refreshTimer?.Dispose();
+        PlayerState.StateChanged -= OnPlayerStateChanged;
     }
 }
