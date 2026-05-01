@@ -4,6 +4,17 @@
 - **Stack:** .NET 8 / C#, Blazor WebAssembly, ASP.NET Core, Bootstrap/Bootswatch CSS, Docker, SQLite, gRPC/SignalR
 - **Created:** 2026-03-23
 
+## Core Context
+
+### Architecture Summary (2025-01 — Feature Complete & Released)
+- **Feature-complete** core: playback controls, queue management, playlists, radio streams, folder browsing, YouTube integration, volume control, dual playback modes, search/filter, shuffle, repeat, sleep timer, keyboard shortcuts, recently-played tracking.
+- **Architecture patterns:** IMusicPlayer interface (core abstraction), gRPC for music ops, REST API for supplementary features, EF Core + SQLite, component hierarchy, dual playback routing.
+- **Cross-team context:** Wash completed security audit (recommended auth layer); Kaylee finalized Darkly UI theme with RPi touch optimization; Scribe documented squad setup.
+
+### Major Milestones
+- **2026-04-29:** SSR migration audit initiated; halfway migration left in rejected state; server host now has Blazor Web App wiring but old client architecture still in place.
+- **2026-05-01:** AI playlists architecture locked; using `Microsoft.Extensions.AI` with OpenAI, background worker processing, SQLite persistence keyed on SongPath.
+
 ## Learnings
 
 ### 2025-01-XX — Feature Gap Analysis & Implementation

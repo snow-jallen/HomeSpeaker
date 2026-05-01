@@ -6,6 +6,14 @@
 
 ## Core Context
 
+### SSR Migration & Validation (2026-03-24 — Q1 2026 Completed)
+Blazor WebAssembly to Server-Side Rendering migration completed over Q1 2026. Four QA validation attempts; final approval post-rendermode fixes. Build succeeds (0 errors, 20 warnings), all pages accessible, 100+ Blazor components migrated, 11/14 pages with Interactive Server rendermode. Zero automated tests; manual smoke testing only. Status: ✅ APPROVED & LIVE.
+
+### AI Playlists Feature Matrix (2026-05-01)
+Comprehensive QA matrix defined covering 8 risk domains (restart safety, incremental pickup, multi-genre classification, similarity & autoplay, feedback loop, progress visibility, data consistency, E2E integration). 77 total test cases. Key risks identified: CRITICAL on restart safety (RPi kiosk needs transaction guarantee), CRITICAL on incremental pickup (new file detection), HIGH on progress visibility (RPi touch users need feedback), HIGH on similarity/autoplay (user exposure), MEDIUM on data consistency. Awaiting implementation completion before QA validation.
+
+## Learnings
+
 ### SSR Migration Journey (Summarized from 2025-03-24 validation attempts)
 Completed Blazor WebAssembly to Server-Side Rendering (SSR) migration over Q1 2026. 
 
