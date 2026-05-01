@@ -25,6 +25,7 @@ public class HomeSpeakerService
 
     public event EventHandler? QueueChanged;
     public event Action<string>? StatusChanged;
+    public event EventHandler? LibraryChanged;
 
     public HomeSpeakerService(
         ILogger<HomeSpeakerService> logger,
@@ -53,6 +54,12 @@ public class HomeSpeakerService
         this.musicPlayer.PlayerEvent += (sender, msg) =>
         {
             StatusChanged?.Invoke(msg);
+        };
+
+        // Forward library change events
+        this.library.LibraryChanged += (sender, e) =>
+        {
+            LibraryChanged?.Invoke(this, e);
         };
     }
 

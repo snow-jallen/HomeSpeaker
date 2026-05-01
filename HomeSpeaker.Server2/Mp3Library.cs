@@ -1,12 +1,17 @@
 namespace HomeSpeaker.Server2;
 
-public class Mp3Library
+public sealed class Mp3Library : IDisposable
 {
     private readonly IFileSource fileSource;
     private readonly ITagParser tagParser;
     private readonly IDataStore dataStore;
     private readonly ILogger<Mp3Library> logger;
     private readonly object lockObject = new();
+    private FileSystemWatcher? watcher;
+    private Timer? debounceTimer;
+    private bool disposed;
+
+    public event EventHandler? LibraryChanged;
 
     public Mp3Library(IFileSource fileSource, ITagParser tagParser, IDataStore dataStore, ILogger<Mp3Library> logger)
     {
@@ -17,6 +22,49 @@ public class Mp3Library
         this.logger.LogInformation("Initialized with fileSource {RootFolder}", fileSource.RootFolder);
 
         SyncLibrary();
+        startFileSystemWatcher();
+    }
+
+    private void startFileSystemWatcher()
+    {
+        var rootFolder = fileSource.RootFolder.Replace("~", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        if (!Directory.Exists(rootFolder))
+        {
+            logger.LogWarning("Media folder {RootFolder} does not exist; filesystem watcher not started.", rootFolder);
+            return;
+        }
+
+        debounceTimer = new Timer(onDebounceElapsed, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+
+        watcher = new FileSystemWatcher(rootFolder, "*.mp3")
+        {
+            IncludeSubdirectories = true,
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
+            EnableRaisingEvents = true
+        };
+
+        watcher.Created += onFileSystemChanged;
+        watcher.Deleted += onFileSystemChanged;
+        watcher.Renamed += onFileSystemChanged;
+
+        logger.LogInformation("Filesystem watcher started for {RootFolder}", rootFolder);
+    }
+
+    private void onFileSystemChanged(object sender, FileSystemEventArgs e)
+    {
+        logger.LogInformation("Detected filesystem change ({ChangeType}): {Path}", e.ChangeType, e.FullPath);
+        // Debounce: reset the timer so rapid successive changes result in a single reload
+        debounceTimer?.Change(TimeSpan.FromMilliseconds(500), Timeout.InfiniteTimeSpan);
+    }
+
+    private void onDebounceElapsed(object? state)
+    {
+        lock (lockObject)
+        {
+            IsDirty = true;
+        }
+
+        LibraryChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public string RootFolder => fileSource.RootFolder;
@@ -100,5 +148,17 @@ public class Mp3Library
 
             logger.LogInformation("Successfully updated song# {SongId} both in file and in memory", songId);
         }
+    }
+
+    public void Dispose()
+    {
+        if (!disposed)
+        {
+            debounceTimer?.Dispose();
+            watcher?.Dispose();
+            disposed = true;
+        }
+
+        GC.SuppressFinalize(this);
     }
 }
