@@ -2,6 +2,7 @@
 @inject HomeSpeakerService svc
 @inject ILogger<Music> logger
 @using Microsoft.Fast.Components.FluentUI
+@implements IDisposable
 
 <PageTitle>Home Speaker | Music</PageTitle>
 
@@ -110,7 +111,28 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        svc.LibraryChanged += OnLibraryChanged;
         await reloadSongsAsync();
+    }
+
+    private void OnLibraryChanged(object? sender, EventArgs e)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await reloadSongsAsync();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error reloading songs after library change");
+            }
+        });
+    }
+
+    public void Dispose()
+    {
+        svc.LibraryChanged -= OnLibraryChanged;
     }
 
     async Task reloadSongsAsync()
