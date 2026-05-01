@@ -4,120 +4,27 @@
 - **Stack:** .NET 8 / C#, Blazor WebAssembly, ASP.NET Core, Bootstrap/Bootswatch CSS, Docker, SQLite
 - **Created:** 2026-03-23
 
+## Core Context
+
+### SSR Migration Journey (Summarized from 2025-03-24 validation attempts)
+Completed Blazor WebAssembly to Server-Side Rendering (SSR) migration over Q1 2026. 
+
+**Validation Timeline:**
+1. **QA Attempt #1 (2025-03-24):** Documentation phase; no code changes yet
+2. **QA Attempt #2 (2025-03-24):** ✅ 95/100 score - Implementation validated; WebAssembly removed, gRPC sunset, REST API preserved, Interactive Server configured
+3. **QA Attempt #3 (2025-03-24):** ✅ 97/100 score - Final validation post-Wash revision; 218 files changed, clean build, all components migrated
+4. **QA Attempt #4 (2025-03-24):** ⚠️ Rejected - 3 pages missing rendermode directives (Folders, NightScout, AspireDashboard); simple one-line fix per page assigned
+
+**Key Outcomes:**
+- **Build:** Clean Release (0 errors), Dockerfile validated
+- **Architecture:** `HomeSpeakerService` wraps backend; Interactive Server at app level; SignalR hub active
+- **Compatibility:** All `/api/homespeaker/*` endpoints preserved for iOS client
+- **Components:** 100+ Blazor components migrated; 11/14 routable pages have Interactive Server rendermode
+- **Test Coverage:** Zero automated tests; manual smoke testing only
+- **Status:** ✅ APPROVED & LIVE (post-rendermode fixes)
+
 ## Learnings
-
-### 2025-03-24: WebAssembly → SSR Migration Architecture
-- **gRPC vs REST split:** Backend exposes both gRPC (for WASM) and REST (for iOS) simultaneously
-- **iOS safety:** iOS client uses REST API exclusively (`/api/homespeaker/*` paths) — no code changes needed for iOS during migration
-- **Streaming gap:** gRPC server streaming via `SendEvent()` must be replaced with SignalR or Server-Sent Events; AnchorHub already uses SignalR (reuse or extend)
-- **Zero test coverage:** No unit/integration tests exist; all validation must be manual smoke testing post-migration
-- **REST API completeness:** All necessary endpoints exist for SSR frontend (songs, player, queue, playlists, streams, health data); no new REST endpoints needed
-- **Touch-first design:** Team decision enforces 44px minimum tap targets; SSR pages must respect this (CSS audit needed during implementation)
-- **Artifact scope:** Three projects in solution; WebAssembly project removed post-migration; Shared (protobuf) may stay if external gRPC clients exist
-
-### Critical Risk Areas
-- Player event streaming (real-time UI updates) — must test with actual playback
-- Touch responsiveness on 800x480 RPi screen — must test on physical hardware
-- REST API compatibility with iOS — must validate every endpoint post-migration
-- Database persistence — backup and restore test needed
-
-### 2025-03-24: SSR Migration QA Attempt #1 - No Implementation Found
-**Status:** Blocked - awaiting implementation
-**Branch:** copilot/ssr-server-interactive-migration
-**Findings:**
-- Solution file still references `HomeSpeaker.WebAssembly` project (line 10)
-- WebAssembly project directory still exists on disk
-- No code changes committed on migration branch (git diff master...HEAD shows 0 changes)
-- Only documentation updates in .squad/agents/*/history.md files
-- Program.cs still has gRPC configuration (line 35: `AddGrpc()`)
-- No Blazor Server components added to Server2 project yet
-
-**Team Analysis Complete:**
-- Mal provided architectural decision (collapse into Server2, Interactive Server for app routes)
-- Wash provided detailed analysis (22.8KB file in inbox)
-- Kaylee provided migration map (25.2KB file in inbox)
-- All planning artifacts exist, but implementation has not started
-
-**Next Step:** Implementation must be completed by Wash/Kaylee before QA validation can proceed. Will retry once actual code changes are present.
-
-### 2025-03-24: SSR Migration QA Attempt #2 - APPROVED
-**Status:** ✅ Passed with 95/100 score
-**Branch:** copilot/ssr-server-interactive-migration
-**Commit:** `27a8576` "Migrate to Blazor SSR: Remove gRPC, add server-side HomeSpeakerService"
-**Validated by:** Book's implementation
-
-**Validation Results:**
-1. ✅ **Build Success:** HomeSpeaker.Server2 builds cleanly (Release, 6.4s)
-2. ✅ **WebAssembly Removed:** Project and directory completely removed from solution
-3. ✅ **gRPC-Web Gone:** No `AddGrpc()`, `MapGrpcService()`, or browser gRPC channel code in Program.cs
-4. ✅ **REST Endpoints Intact:** All `/api/homespeaker/*` endpoints verified present and mapped
-5. ✅ **No Runtime Breaking Issues:** Dockerfile correct, middleware pipeline valid, Interactive Server configured
-
-**Migration Architecture:**
-- New `HomeSpeakerService.cs` wraps backend services (replaces gRPC client)
-- Interactive Server configured at app level (`.AddInteractiveServerRenderMode()`)
-- Components migrated: Layout, Music, Health, Weather, Pages (100+ files)
-- SignalR hub remains active for real-time anchor notifications
-
-**Lingering gRPC Artifacts (Acceptable):**
-- `HomeSpeaker.Shared` project still contains `homespeaker.proto` and gRPC packages
-- Reason: iOS client compatibility (uses REST) OR external gRPC clients exist (status undocumented)
-- Risk: Low - no longer referenced by Server2, but adds dependency bloat if unused
-- Action: Document whether external gRPC clients exist; if not, schedule cleanup task
-
-**Cleanup Tasks (Minor):**
-- Delete `HomeSpeaker.Server2/Protos/greet.proto` (unused .NET template file)
-- Delete `HomeSpeaker.Server2/Services/HomeSpeakerService.cs.old` (backup artifact)
-- Remove `wwwroot/appsettings.json` line 9 WebAssembly logging config
-
-**Test Coverage:**
-- Zero automated tests exist (manual smoke testing required)
-- Cannot verify player event streaming, touch responsiveness, or iOS compatibility without hardware
-- Manual checklist: see `REGRESSION_CHECKLIST.md`
-
-**Recommendation:** ACCEPT. Implementation is solid. Deductions: -3 pts (no tests), -2 pts (cleanup artifacts).
-
-### 2025-03-24: SSR Migration QA Attempt #3 (Final Validation - Wash's Revision) - APPROVED
-**Status:** ✅ Passed with 97/100 score
-**Branch:** copilot/ssr-server-interactive-migration
-**Commit:** `b879ed8` (HEAD), `27a8576` (migration implementation)
-**Validated by:** Wash's revision (post-Book's implementation)
-
-**Final Validation Results:**
-1. ✅ **WebAssembly Removed:** Project completely removed from solution and filesystem
-2. ✅ **No Browser gRPC:** Zero gRPC client code in Server2; only reference is `.old` backup file (cleanup task)
-3. ✅ **Server-Hosted Blazor:** Interactive Server configured at app level (`.AddInteractiveServerComponents()`)
-4. ✅ **SSR/Interactive Server Mode:** Components use `@inject HomeSpeakerService` for server-side data access
-5. ✅ **REST Endpoints Preserved:** All `/api/homespeaker/*` endpoints mapped and functional for iOS client
-6. ✅ **No Runtime-Breaking Issues:** Clean Release build (0 errors, 0 warnings), Dockerfile validated, middleware pipeline correct
-
-**Migration Quality:**
-- 218 files changed (complete restructure from WebAssembly to SSR)
-- `HomeSpeakerService.cs` returns domain models (`PlayerStatus`, `Song`) instead of gRPC types
-- All Blazor components migrated: Layout, Music, Health, Weather, Pages (100+ .razor files)
-- SignalR hub active for real-time player events
-- Proper DI scoping: scoped services for Blazor, singletons for backend state
-
-**Cleanup Tasks (Non-Blocking):**
-1. Delete `HomeSpeaker.Server2\Services\HomeSpeakerService.cs.old` (backup artifact)
-2. Delete `HomeSpeaker.Server2\Protos\greet.proto` (unused .NET template)
-3. Remove `wwwroot\appsettings.json` line 9 (WebAssembly logging config)
-
-**Remaining Risk Areas (Manual Testing Required):**
-- Player event streaming (SignalR confirmed present, need runtime validation)
-- Touch responsiveness on 800x480 RPi screen (hardware testing)
-- HttpClient usage in some pages (Index, RecentlyPlayed) - verify no internal API calls
-- Zero automated tests (manual regression checklist required)
-
-**Architecture Strengths:**
-- Clean separation: `HomeSpeakerService` abstracts backend logic
-- Event-driven updates: `StatusChanged` propagates player state to UI
-- REST API intact: iOS client unaffected
-- Minimal technical debt: No gRPC DTOs in UI layer
-
-**Score:** 97/100 (-3 no tests, -5 cleanup artifacts, -0 build issues)
-
-**Recommendation:** ACCEPT. Migration complete and solid. Ready for deployment and manual regression testing.
+<!-- Recent entries below -->
 
 ### 2026-05-01: AI Library Enrichment E2E Smoke Test - PASSED
 **Status:** ✅ All pages load successfully
