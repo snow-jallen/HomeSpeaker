@@ -13,6 +13,7 @@ Use this when a .NET server already owns the media catalog, playback state, and 
 - Keep AI orchestration in the main ASP.NET Core server if that server already owns the source catalog and playback decisions.
 - Use `Microsoft.Extensions.AI` with provider-specific registration so the app codes against `IChatClient`, not an OpenAI-specific type.
 - Bind AI configuration from `IConfiguration` under a dedicated section like `AI`, but keep secrets out of `appsettings.json`.
+- When supporting both public OpenAI and Azure OpenAI, keep a stable `AI` root contract and add a sibling `AI:AzureOpenAI` section with `Endpoint`, `ApiKey`, and `DeploymentName`; prefer Azure only when that section is fully configured.
 - Persist song-linked AI data by a durable key such as `SongPath`, not an ephemeral in-memory ID.
 - Split persistence into: durable per-track profile, many-to-many genre scores, similarity edges, playback feedback, and a resumable work queue.
 - Use a claim/lease work-item table for resumable background analysis. Reset expired leases on startup and only process missing or changed fingerprints.

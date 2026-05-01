@@ -20,3 +20,12 @@ Mapped AI integration points for OpenAI-backed playlisting. Use in-process servi
 
 ## Learnings
 <!-- Recent entries below -->
+
+### 2026-05-02 — Dual OpenAI Provider Config
+Updated `HomeSpeaker.Server2` AI wiring to support either public OpenAI or Azure OpenAI from the existing `AI` options section. `AI:AzureOpenAI` now uses `Endpoint`, `ApiKey`, and `DeploymentName`, Azure is preferred when fully configured, and degraded-status messaging points at the active/missing provider instead of always blaming `AI:OpenAI:ApiKey`.
+
+### 2026-05-02 — AI Playlists Backend Slice
+Implemented AI playlist backend slice in Server2: AI options + OpenAI `IChatClient` wiring, AI entities + seeded genres, background analysis worker, similarity/autoplay, feedback capture, and `/api/ai/*` endpoints. Player status now includes nullable AI context via shared DTOs. Migration was created manually because the existing PlayControls razor build error blocks `dotnet ef`.
+
+### 2026-05-02 — Azure OpenAI Support (Request from Jonathan Allen)
+Implemented dual OpenAI provider configuration: added `AI:AzureOpenAI` section with `Endpoint`, `ApiKey`, `DeploymentName`. Runtime preference: Azure when fully configured, fallback to public OpenAI. Updated degraded-status messaging to reflect active provider. Validated by Zoe: build clean, server startup healthy, smoke tests passing on /, /music, /queue, /playlists, /ai-playlists, /ai-status. ✅ APPROVED

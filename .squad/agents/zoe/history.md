@@ -119,6 +119,70 @@
 
 **Recommendation:** ACCEPT. Migration complete and solid. Ready for deployment and manual regression testing.
 
+### 2026-05-01: AI Library Enrichment E2E Smoke Test - PASSED
+**Status:** ✅ All pages load successfully
+**Branch:** master
+**Commit:** `fc948ad`
+**Validated by:** Zoe's automated browser testing
+
+**Test Scope:**
+Performed end-to-end smoke test after backend fixes were completed:
+- `AiPlaybackSession` primary-key issue resolved
+- Additional backend analyzer/runtime blockers fixed
+- Solution build succeeds
+- Server startup succeeds
+
+**Validation Method:**
+1. Built solution from repo root (`dotnet build HomeSpeaker.sln`)
+2. Started server in detached mode (listens on http://0.0.0.0:5280)
+3. Verified `/health` endpoint reports Healthy
+4. Automated browser testing via Playwright (Chromium) for all required routes
+
+**Test Results:**
+All 6 pages loaded successfully (HTTP 200, no runtime errors):
+1. ✅ `/` (Home) - HTTP 200
+2. ✅ `/music` (Music) - HTTP 200
+3. ✅ `/queue` (Queue) - HTTP 200
+4. ✅ `/playlists` (Playlists) - HTTP 200
+5. ✅ `/ai-playlists` (AI Playlists) - HTTP 200
+6. ✅ `/ai-status` (AI Status) - HTTP 200
+
+**Health Check:**
+Server health endpoint confirmed:
+- Status: Healthy
+- Database check: 13.3ms (Healthy)
+- Self check: 0.9ms (Healthy)
+
+**Build Quality:**
+- Build succeeded in 6.0s
+- 20 warnings (non-blocking: nullability, unused usings, DateTime.Now ban)
+- 0 errors
+
+**What This Validates:**
+- Blazor SSR pages render correctly
+- New AI-related routes (`/ai-playlists`, `/ai-status`) are accessible
+- Database migrations apply cleanly
+- Server startup completes without crashes
+- SignalR hub initializes (AnchorHub, player events)
+- Background workers start (DailyAnchorWorker, AI processing heartbeat)
+- Library sync completes (96 songs loaded)
+
+**What This Does NOT Validate:**
+- Interactive functionality (button clicks, form submissions)
+- Real-time player updates via SignalR
+- AI enrichment processing behavior
+- Touch responsiveness on RPi hardware
+- Playlist generation correctness
+- API endpoint responses (only page rendering tested)
+
+**Technical Notes:**
+- Installed Playwright locally for testing (`@playwright/test` + Chromium)
+- Server started successfully on first attempt (no port conflicts)
+- All pages waited for `domcontentloaded` and 2s Blazor initialization
+- No JavaScript exceptions or HTTP errors detected in page content
+
+**Recommendation:** ACCEPT. All critical pages load successfully. Interactive behavior and AI functionality require manual validation or integration tests (future work).
+
 ### 2025-03-24: SSR Migration QA Attempt #4 (Final Interactive Server Re-Check) - REJECTED
 **Status:** ❌ Failed - 3 pages missing @rendermode directive
 **Branch:** copilot/ssr-server-interactive-migration
@@ -219,3 +283,19 @@ Produced comprehensive QA matrix covering AI playlist generation, feedback mecha
 - Test case definitions
 - QA baseline established
 - Ready for test automation
+
+### 2026-05-01: Azure OpenAI Provider QA Validation - APPROVED
+**Status:** ✅ Passed
+**Validated by:** Zoe
+
+**Validation results:**
+1. `HomeSpeaker.Server2` built successfully with `dotnet build`.
+2. Server started healthy with all AI configuration values forced blank via ephemeral environment variables.
+3. Playwright smoke coverage passed for `/`, `/music`, `/queue`, `/playlists`, `/ai-playlists`, and `/ai-status` (all HTTP 200, no browser console or page errors).
+4. `/ai-status` showed the provider-aware degraded summary: `AI provider is not configured. Set AI:OpenAI:ApiKey or AI:AzureOpenAI:Endpoint, ApiKey, and DeploymentName.`
+5. Confirmed the old hardcoded OpenAI-only message was not present.
+6. Additional startup check with dummy Azure OpenAI env vars (`Endpoint`, `ApiKey`, `DeploymentName`) succeeded; the app stayed healthy and `/ai-status` did not fall back to provider-missing or old OpenAI-only messaging.
+
+**Not validated:**
+- Real Azure OpenAI authentication or successful completions (dummy config only)
+- Interactive playlist generation behavior beyond page-load smoke coverage
