@@ -99,6 +99,30 @@
 - FluentUI components (used for search)
 - Bootstrap 5.3.0 (JavaScript bundle)
 
+### 2026-03-24: AI Playlists UI Architecture Analysis
+- **Feature Scope:** Genre-based AI playlist generation + thumbs feedback + real-time status tracking
+- **New Pages:** AIPlaylists.razor (/ai-playlists), AIStatus.razor (/ai-status)
+- **New Components:** AIFeedback.razor (thumbs up/down), GenreCard.razor (genre selector), JobStatus.razor (job card)
+- **Navigation:** Add "AI Playlists" nav item with sparkle icon (fa-sparkles) after Playlists
+- **Touch Compliance:** All interactive elements ≥56×56px, active states use scale(0.97) + opacity per decisions.md
+- **Integration:** New AIPlaylistService (scoped) registered in Program.cs
+- **UX Risks:** Generation timeout UX, feedback discovery, queue clearing consent, accessibility
+- **Key Decision:** Status page shows during long-running generation (>2s); auto-navigates on completion
+- **Feedback Integration:** Thumbs buttons placed in PlayControls or Index.razor during AI playlist playback
+- **File Manifest:** 8 new files (3 pages/components + service), 4 modified files (nav, play controls, music page)
+- **CSS Design System:** Genre grid uses responsive 2-col (RPi) to 3+ cols (desktop); reuses existing color tokens
+- **Architecture Decisions:**
+  - Genre grid: 2 columns on RPi (150×150px cards), 3+ on desktop
+  - Quick path: Generation <2s → auto-play immediately
+  - Long path: Generation >2s → show status page with progress bar and ETA
+  - Feedback buttons: Appear only during AI playlist playback, immediate color feedback (no modal)
+  - Status updates: SignalR recommended over polling for real-time responsiveness
+  - Accessibility: ARIA labels for genre cards, progress bars, feedback buttons; live region for job updates
+- **Deliverables:** 3 decision documents created:
+  1. `.squad/decisions/inbox/kaylee-ai-playlists-uimap.md` — Full architectural analysis (16KB)
+  2. `.squad/decisions/inbox/kaylee-ai-playlists-summary.md` — Developer quick reference (8KB)
+  3. `.squad/decisions/inbox/kaylee-ai-playlists-visual.md` — Visual design + CSS specs (15KB)
+
 ### Accessibility Considerations
 - Focus states with 2px primary color outlines
 - WCAG AAA touch targets (44×44px minimum, up to 80×80px for primary actions)
@@ -228,3 +252,69 @@ From WebAssembly `Program.cs` to Server2 `Program.cs`:
 - Migration map: `.squad/decisions/inbox/kaylee-blazor-server-migration-map.md`
 - Current WASM project: `HomeSpeaker.WebAssembly/`
 - Target server project: `HomeSpeaker.Server2/`
+
+### 2026-05-01: AI Playlists Blazor UI Implementation
+
+**Feature:** AI-powered genre-based playlists with thumbs feedback
+
+**Files Created:**
+- Models/AiPlaylistSummary.cs — DTOs for AI playlist data (AiPlaylistSummary, AiPlaylist, AiLibraryStatus, AiPlayerContext, updated PlayerStatus with AiContext)
+- Pages/Music/AiPlaylists.razor — Grid of AI-generated genre playlists with play buttons
+- Pages/Music/AiStatus.razor — Processing status dashboard with progress tracking
+
+**Files Modified:**
+- Services/HomeSpeakerService.cs — Added AI API methods (GetAiPlaylistsAsync, PlayAiPlaylistAsync, GetAiStatusAsync, ResumeAiProcessingAsync, SubmitAiFeedbackAsync)
+- Components/Layout/NavMenu.razor — Added "AI Playlists" nav item with fa-brain icon after regular Playlists
+- Components/Music/Player/PlayControls.razor — Added conditional thumbs up/down buttons, only shown when PlayerStatus.AiContext.AllowFeedback is true
+
+**UX Patterns:**
+- **AI Playlists Page:** Responsive grid (1 col on mobile, auto-fill 280px+ on desktop), card-based design with genre name, description, track count, last updated time
+- **AI Status Page:** Dashboard with state card, progress bar, stats grid (total/completed/queued/processing/failed), timestamps, resume button when idle
+- **Thumbs Feedback:** 56×56px touch targets in PlayControls, green/red button states for up/down, only visible during AI playback mode
+- **Touch-First Design:** All buttons meet 44px+ minimum, active states with scale(0.97) + opacity per touch decisions
+- **Auto-Refresh:** AI playlists refresh every 30s, AI status every 5s while on page
+
+**API Integration:**
+- Extended HomeSpeakerService with HTTP calls to /api/ai/* endpoints
+- Follows Mal's architecture: separate AI surface, no mutation of existing playlist code
+- Feedback submission includes sessionId, songId, and Up/Down string per API contract
+
+**Key Decisions:**
+- PlayerStatus extended with nullable AiContext property (mode, sessionId, genreKey, seedSongId, allowFeedback)
+- Thumbs buttons conditionally rendered based on AiContext.AllowFeedback flag
+- Status tracking via polling (SignalR is future enhancement if needed)
+- AI playlists use separate namespace from user playlists
+- Relative time formatting for last updated/scan timestamps
+
+**Touch Compliance:**
+- All interactive elements ≥44px minimum (buttons, nav items)
+- Thumbs buttons: 56×56px with active states
+- Grid cards: full tap target with scale feedback on :active
+- RPi-optimized: single column on <600px width
+
+**File Paths:**
+- AI models: HomeSpeaker.Server2/Models/AiPlaylistSummary.cs
+- AI pages: HomeSpeaker.Server2/Pages/Music/AiPlaylists.razor, AiStatus.razor
+- Service: HomeSpeaker.Server2/Services/HomeSpeakerService.cs
+- Nav: HomeSpeaker.Server2/Components/Layout/NavMenu.razor
+- Controls: HomeSpeaker.Server2/Components/Music/Player/PlayControls.razor
+
+**Dependencies:**
+- Requires Wash's backend implementation of /api/ai/* endpoints
+- PlayerStateService must be updated to include AiContext in PlayerStatus when Wash extends the status contract
+- HttpClient configured to use localhost:5000 base URL (will work for same-host deployment)
+
+
+
+### 2026-05-01 — AI Playlists Blazor UI Discovery
+
+**By:** Kaylee  
+**Status:** Analysis complete; implementation in progress
+
+Mapped Blazor component structure for AI playlists. Produced UI maps (component topology, routing), visual design guide (wireframes, colors, touch targets), and executive summary. Building pages now.
+
+**Key outputs:**
+- UI component map (topology, routing, state flow)
+- Visual design guide (Darkly theme integration, touch targets, responsive behavior)
+- UI decisions summary
+- Page implementations in progress

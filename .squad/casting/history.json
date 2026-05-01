@@ -23,6 +23,18 @@
       ],
       "assignment_id": "homespeaker-ssr-migration",
       "universe": "Firefly"
+    },
+    "2026-04-30": {
+      "cast": [
+        "Mal",
+        "Kaylee",
+        "Wash",
+        "River",
+        "Zoe",
+        "Book"
+      ],
+      "assignment_id": "homespeaker-ai-playlists",
+      "universe": "Firefly"
     }
   }
 }

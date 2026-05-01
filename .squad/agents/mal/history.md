@@ -75,3 +75,32 @@
 - The copied server UI still imports `Microsoft.AspNetCore.Components.WebAssembly.Hosting` and still uses a gRPC client wrapper in `HomeSpeaker.Server2\Services\HomeSpeakerService.cs`, which means the browser path was not actually collapsed to in-process server services.
 - Current `HomeSpeaker.Server2` does not build (`dotnet build HomeSpeaker.Server2\HomeSpeaker.Server2.csproj` failed with 93 errors), so startup/deployment coherence is not reviewable as acceptable yet.
 
+### 2026-05-01 — AI Playlists Architecture
+
+**Architecture call:** Keep AI playlisting inside `HomeSpeaker.Server2`. Use `Microsoft.Extensions.AI` with OpenAI behind `IChatClient`, a hosted background worker for batch analysis, and SQLite persistence in `MusicContext`. No extra microservice, no vector database, no client-side AI.
+
+**Durable key:** AI persistence must use `SongPath`, not `SongId`, because `OnDiskDataStore` reassigns `SongId` from scan order on each library load.
+
+**Persistence shape:** Add EF tables for `AiGenreDefinition`, `AiTrackProfile`, `AiTrackMarker`, `AiTrackGenreScore`, `AiTrackSimilarity`, `AiProcessingWorkItem`, `AiProcessingRun`, `AiPlaybackSession`, and `AiPlaybackFeedback`.
+
+**Processing pattern:** Resumable claim/lease queue. Scan library for new or changed fingerprints, batch songs into structured model calls, persist results transactionally, and requeue expired leases on restart.
+
+**Playback/UI contract:** Keep user playlists separate from AI playlists. Expose AI features under `/api/ai/*`, and extend player status with nullable AI session context so Blazor and iOS can show thumbs up/down only during AI playback.
+
+**Seed genres:** Start with 15 curated genres, including peaceful instrumental, quiet sunday, driving tunes, choral, upbeat a cappella, country, quiet classical, church christmas, hymns, classical christmas, and vocal christmas.
+
+**Key paths:** `HomeSpeaker.Server2\Program.cs`, `HomeSpeaker.Server2\Data\MusicContext.cs`, `HomeSpeaker.Server2\Mp3Library.cs`, `HomeSpeaker.Server2\Endpoints\HomeSpeakerRestEndpoints.cs`, `HomeSpeaker.Server2\Services\PlaylistService.cs`, `HomeSpeaker.Server2\Components\Layout\NavMenu.razor`, `HomeSpeakerMobile\Shared\APIClient.swift`, `HomeSpeakerMobile\iOS\Views\NowPlayingView.swift`, `HomeSpeakerMobile\iOS\Views\PlaylistsView.swift`, `HomeSpeakerMobile\iOS\Views\MoreView.swift`.
+
+
+
+### 2026-05-01 — AI Playlists Architecture Decision
+
+**By:** Mal  
+**Status:** Locked for implementation
+
+Defined architecture for AI playlist generation within HomeSpeaker.Server2. No new microservice, no vector database. Use Microsoft.Extensions.AI with OpenAI, background worker processing, and SQLite persistence keyed on SongPath (not SongId). 
+
+**Key outputs:**
+- Architecture decision with full schema (EF Core tables, seed genres, processing pattern)
+- Skill extracted for team implementation
+- Ready for backend, frontend, iOS, and QA implementation

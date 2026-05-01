@@ -5,6 +5,7 @@
 | Signal | Route To | Notes |
 |--------|----------|-------|
 | UI, CSS, Blazor components, visual design, UX | Kaylee | Frontend domain |
+| iOS, SwiftUI, Apple platform UI, mobile playback UX | River | iOS/mobile domain |
 | Backend API, C#, services, data layer, Docker | Wash | Backend domain |
 | Hosting-model migration, Blazor project consolidation, dependency removal | Book | Migration specialist |
 | Architecture decisions, scope, tech direction | Mal | Lead domain |

@@ -334,6 +334,81 @@ This allows the deploy workflow to refresh the browser without any X11 permissio
 
 **Security Note:** Remote debugging port (9222) is only accessible via localhost — no external exposure.
 
+### 2026-03-24 — AI Music Processing: Backend Architecture Analysis
+
+**Task:** Analyze backend for AI-powered music features: genre classification, resumable batching, similarity markers, AI playlists, and progress/status support.
+
+**Scope:** Pre-implementation architecture review only (no code changes).
+
+**Key Findings:**
+
+1. **Current Data Layer (Solid Foundation):**
+   - EF Core + SQLite with 8 entities (Playlist, PlaylistItem, Impression, Thumbnail, RadioStream, Anchors)
+   - Song identity uses `SongPath` (string FK) not numeric SongId — important for similarity lookups
+   - In-memory Mp3Library cache via OnDiskDataStore — no AI metadata persisted currently
+   - Impression table already tracks plays (reuse opportunity for training data)
+
+2. **New Entities Required (5 total):**
+   - `SongMetadataEntity`: Stores genre classification + energy/acousticness/danceability floats (AI metadata)
+   - `SongSimilarityEntity`: Pre-computed similarity scores between track pairs (avoids O(n²) at runtime)
+   - `AiPlaylistEntity` + `AiPlaylistItemEntity`: Auto-generated playlists (immutable snapshots, separate from manual Playlist)
+   - `ClassificationBatchEntity`: Job progress tracking with checkpoint resume capability (LastCheckpoint = SongPath)
+
+3. **New Services (3 total):**
+   - `AIClassificationService`: Single song classification + resumable batch processing with checkpoints
+   - `AISimilarityService`: Compute similarity matrix + generate AI playlists from seed song or genre
+   - `AIBackgroundProcessor`: Hosted service that runs batches in background, resumes from interruption
+
+4. **New Endpoints (10+ total, 3 groups):**
+   - Classification: `POST /api/homespeaker/ai/classify/start`, `GET /status/{id}`, `POST /resume/{id}`
+   - Similarity: `POST /api/homespeaker/ai/similarities/compute`, `GET /song/{id}/similar`
+   - AI Playlists: `POST /from-seed`, `POST /by-genre`, `GET /`, `POST /{id}/play`, `DELETE /{id}`
+
+5. **Migration Strategy:**
+   - Single migration adds 5 tables with proper indexes
+   - SongPath FK (implicit, validated in service layer)
+   - Composite indexes on (SongPathA, SongPathB) for similarity lookups
+   - (Status, StartedAt) index for batch job discovery
+
+6. **Key Risks Identified:**
+   - **Storage (HIGH):** 5k songs = 25M similarity pairs (~2.5 GB SQLite). Acceptable but needs pagination/archival for >50k libraries.
+   - **Computation (HIGH):** O(n²) similarity matrix takes hours. Must run as background job, not in request.
+   - **Resumability (MEDIUM):** Must validate checkpoint SongPath exists, handle deleted songs gracefully.
+   - **Security (MEDIUM):** Rate-limit `/classify/start`. Validate SongPath prevents path traversal. Never expose AI API keys in logs.
+   - **Data Integrity (MEDIUM):** Cascade delete SongMetadata/SongSimilarity when song removed. Similarity scores must be 0.0-1.0 (add CHECK constraint).
+
+7. **Reuse Opportunities:**
+   - Song lookup by path: Extract `SongLookupExtensions.BuildPathDictionary()` (used by PlaylistService and new AI services)
+   - Batch progress tracking pattern: Similar to existing DailyAnchorEntity (temporal tracking)
+   - Hosted service loop: Reuse DailyAnchorWorker pattern for AIBackgroundProcessor
+   - Logging: Use existing ILogger<T> pattern throughout
+
+8. **Open Questions for Team:**
+   - AI Model: OpenAI/Spotify API, Musi-XMind, local model, or mock?
+   - Similarity Metric: Cosine distance, Euclidean, or weighted feature blend?
+   - Batch Frequency: On startup, daily, on-demand, or continuous background?
+   - Genre Taxonomy: Predefined list or open-ended classification?
+   - Max Playlist Size: 50 songs? 100? Configurable?
+   - UI Integration: AI playlists in same nav as manual (Kaylee)?
+
+**Effort Estimate:**
+- Phase 1 (Entities + Migration + Service Registration): ~6 hours
+- Phase 2 (Classification service + endpoints): ~8 hours
+- Phase 3 (Similarity computation + AI playlists): ~10 hours
+- Phase 4 (Background processor + resumability): ~6 hours
+- Phase 5 (Testing + integration): ~8 hours
+- **Total:** ~38 hours (~1 week solo, ~3-4 days with help)
+
+**Complexity:** MEDIUM (no external dependencies until AI model chosen; clear data schema; familiar EF Core patterns)
+
+**Deliverable:** `BACKEND_AI_ANALYSIS.md` (20KB comprehensive analysis with entity schemas, risk matrix, file map, implementation sequence, and team questions)
+
+**Pre-Implementation Blockers:**
+- ✅ Architecture approved
+- ⚠️ AI model selection (BLOCKING)
+- ⚠️ UX/playlist integration design (Kaylee + Mal)
+- ✅ Database schema validated
+
 ### 2025-04-29 — Blazor SSR Migration: gRPC Cleanup Complete
 
 **Task:** Complete the WebAssembly-to-SSR migration by removing all obsolete gRPC contract/package/proto baggage and refactoring HomeSpeakerService to a clean in-process server-side API.
@@ -395,3 +470,16 @@ This allows the deploy workflow to refresh the browser without any X11 permissio
 - Book: Review refactored service layer (was locked out of this revision cycle per Mal's rejection)
 
 **Effort:** ~1.5 hours (analysis, refactoring, build verification, documentation)
+
+
+### 2026-05-01 — AI Playlists Backend Seams Analysis
+
+**By:** Wash  
+**Status:** Analysis complete; implementation in progress
+
+Mapped AI integration points across HomeSpeaker.Server2: database layer, services, endpoints. Produced backend architecture guide and implementation roadmap. Cost/token analysis underway.
+
+**Key outputs:**
+- Backend AI analysis (seams, service layer, API contracts)
+- Backend architecture decision notes
+- Implementation patterns documented
