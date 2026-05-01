@@ -27,6 +27,7 @@ services:
     depends_on:
     - aspire    
     environment:
+    - TZ=America/Denver
     - MediaFolder=/music
     # ALSA_CARD is now auto-detected. Uncomment to override:
     # - ALSA_CARD=Headphones

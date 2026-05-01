@@ -9,10 +9,13 @@ namespace HomeSpeaker.Server2;
 
 public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 {
-    public WindowsMusicPlayer(ILogger<WindowsMusicPlayer> logger, Mp3Library library, ILoggerFactory loggerFactory)
+    private readonly TimeProvider timeProvider;
+
+    public WindowsMusicPlayer(ILogger<WindowsMusicPlayer> logger, Mp3Library library, ILoggerFactory loggerFactory, TimeProvider timeProvider)
     {
         this.logger = logger;
         this.library = library;
+        this.timeProvider = timeProvider;
         icyReader = new IcyMetadataReader(loggerFactory.CreateLogger<IcyMetadataReader>());
         icyReader.TitleChanged += title =>
         {
@@ -44,7 +47,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             var baseStatus = (status ?? new PlayerStatus()) with { CurrentSong = currentSong, IsStream = isStream, StreamName = streamName };
             if (!isStream && songStartTime.HasValue && songDuration > TimeSpan.Zero && currentSong != null)
             {
-                var elapsed = DateTime.UtcNow - songStartTime.Value;
+                var elapsed = timeProvider.GetUtcNow().UtcDateTime - songStartTime.Value;
                 if (elapsed < TimeSpan.Zero)
                 {
                     elapsed = TimeSpan.Zero;
@@ -123,7 +126,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         PlayerEvent?.Invoke(this, "Playing " + song.Name);
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
-        songStartTime = DateTime.UtcNow;
+        songStartTime = timeProvider.GetUtcNow().UtcDateTime;
         playerProcess.Exited += playerProcess_Exited;
 
         playerProcess.BeginOutputReadLine();
@@ -435,14 +438,14 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
     public bool SleepTimerActive => sleepTimerCts != null && !sleepTimerCts.IsCancellationRequested;
 
     public TimeSpan? SleepTimerRemaining => sleepTimerEndTime.HasValue
-        ? sleepTimerEndTime.Value - DateTime.UtcNow.ToLocalTime()
+        ? sleepTimerEndTime.Value - timeProvider.GetUtcNow().UtcDateTime
         : null;
 
     public void SetSleepTimer(int minutes)
     {
         CancelSleepTimer();
         sleepTimerCts = new CancellationTokenSource();
-        sleepTimerEndTime = DateTime.UtcNow.ToLocalTime().AddMinutes(minutes);
+        sleepTimerEndTime = timeProvider.GetUtcNow().AddMinutes(minutes).UtcDateTime;
 
         _ = Task.Run(async () =>
         {
@@ -450,7 +453,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
             {
                 logger.LogInformation("Sleep timer set for {Minutes} minutes", minutes);
                 PlayerEvent?.Invoke(this, $"Sleep timer: {minutes} min");
-                await Task.Delay(TimeSpan.FromMinutes(minutes), sleepTimerCts.Token);
+                await Task.Delay(TimeSpan.FromMinutes(minutes), timeProvider, sleepTimerCts.Token);
 
                 logger.LogInformation("Sleep timer expired, stopping playback");
                 Stop();

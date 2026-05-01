@@ -11,17 +11,19 @@ public sealed class ForecastService : IForecastService
     private readonly IConfiguration configuration;
     private readonly ILogger<ForecastService> logger;
     private readonly IMemoryCache cache;
+    private readonly TimeProvider timeProvider;
 
     private const string CacheKey = "forecast-status";
     private static readonly TimeSpan cacheExpiration = TimeSpan.FromMinutes(30);
     private static readonly JsonSerializerOptions jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    public ForecastService(HttpClient httpClient, IConfiguration configuration, ILogger<ForecastService> logger, IMemoryCache cache)
+    public ForecastService(HttpClient httpClient, IConfiguration configuration, ILogger<ForecastService> logger, IMemoryCache cache, TimeProvider timeProvider)
     {
         this.httpClient = httpClient;
         this.configuration = configuration;
         this.logger = logger;
         this.cache = cache;
+        this.timeProvider = timeProvider;
     }
 
     public async Task<ForecastStatus> GetForecastStatusAsync(CancellationToken cancellationToken = default)
@@ -38,7 +40,7 @@ public sealed class ForecastService : IForecastService
         var forecastStatus = await getForecastStatusInternalAsync(cancellationToken);
 
         // Set cache timestamp
-        forecastStatus.LastCachedAt = DateTime.UtcNow;
+        forecastStatus.LastCachedAt = timeProvider.GetUtcNow().UtcDateTime;
 
         // Cache the result with absolute expiration
         var cacheOptions = new MemoryCacheEntryOptions
@@ -110,13 +112,13 @@ public sealed class ForecastService : IForecastService
             if (weatherData?.Hourly == null)
             {
                 logger.LogWarning("No forecast data received from API");
-                return new ForecastStatus { LastUpdated = DateTime.UtcNow };
+                return new ForecastStatus { LastUpdated = timeProvider.GetUtcNow().UtcDateTime };
             }
 
             var now = getForecastNow(weatherData.Timezone);
             var forecastStatus = new ForecastStatus
             {
-                LastUpdated = DateTime.UtcNow
+                LastUpdated = timeProvider.GetUtcNow().UtcDateTime
             };
 
             // Find tonight's low (remaining hours of today in forecast timezone)
@@ -206,26 +208,27 @@ public sealed class ForecastService : IForecastService
             logger.LogInformation("Using sample forecast data for testing");
 
             // Return sample data when API is unavailable (for testing/demo purposes)
+            var utcNow = timeProvider.GetUtcNow().UtcDateTime;
             return new ForecastStatus
             {
-                LastUpdated = DateTime.UtcNow,
+                LastUpdated = utcNow,
                 TonightLow = new ForecastData
                 {
-                    DateTime = DateTime.UtcNow.Date.AddHours(22),
+                    DateTime = utcNow.Date.AddHours(22),
                     Temperature = 45.0,
                     Conditions = "Clear",
                     PrecipitationChance = 10
                 },
                 TodayHigh = new ForecastData
                 {
-                    DateTime = DateTime.UtcNow.Date.AddHours(14),
+                    DateTime = utcNow.Date.AddHours(14),
                     Temperature = 72.0,
                     Conditions = "Sunny",
                     PrecipitationChance = 5
                 },
                 TomorrowHigh = new ForecastData
                 {
-                    DateTime = DateTime.UtcNow.Date.AddDays(1).AddHours(14),
+                    DateTime = utcNow.Date.AddDays(1).AddHours(14),
                     Temperature = 68.0,
                     Conditions = "Partly Cloudy",
                     PrecipitationChance = 20
@@ -281,25 +284,26 @@ public sealed class ForecastService : IForecastService
         public int[] WeatherCode { get; set; } = Array.Empty<int>();
     }
 
-    private static DateTime getForecastNow(string? timezone)
+    private DateTime getForecastNow(string? timezone)
     {
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         if (string.IsNullOrWhiteSpace(timezone))
         {
-            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.Local);
+            return TimeZoneInfo.ConvertTimeFromUtc(utcNow, TimeZoneInfo.Local);
         }
 
         try
         {
             var timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById(timezone);
-            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZoneInfo);
+            return TimeZoneInfo.ConvertTimeFromUtc(utcNow, timeZoneInfo);
         }
         catch (TimeZoneNotFoundException)
         {
-            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.Local);
+            return TimeZoneInfo.ConvertTimeFromUtc(utcNow, TimeZoneInfo.Local);
         }
         catch (InvalidTimeZoneException)
         {
-            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.Local);
+            return TimeZoneInfo.ConvertTimeFromUtc(utcNow, TimeZoneInfo.Local);
         }
     }
 }

@@ -82,6 +82,7 @@ builder.Services.AddHostedService<LifecycleEvents>();
 
 // Add memory cache for caching services
 builder.Services.AddMemoryCache();
+builder.Services.AddSingleton(TimeProvider.System);
 
 // Add temperature and health-monitor services with caching
 builder.Services.AddHttpClient<TemperatureService>();

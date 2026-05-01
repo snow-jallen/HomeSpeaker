@@ -12,11 +12,12 @@ namespace HomeSpeaker.Server2.Services;
 
 public class YoutubeService : IDisposable
 {
-    public YoutubeService(IConfiguration config, ILogger<YoutubeService> logger, Mp3Library library)
+    public YoutubeService(IConfiguration config, ILogger<YoutubeService> logger, Mp3Library library, TimeProvider timeProvider)
     {
         this.config = config;
         this.logger = logger;
         this.library = library;
+        this.timeProvider = timeProvider;
     }
 
 #pragma warning disable CA2213 // YoutubeClient does not implement IDisposable — false positive
@@ -25,6 +26,7 @@ public class YoutubeService : IDisposable
     private readonly IConfiguration config;
     private readonly ILogger<YoutubeService> logger;
     private readonly Mp3Library library;
+    private readonly TimeProvider timeProvider;
     private bool disposed;
 
     public async Task<IEnumerable<VideoDto>> SearchAsync(string searchTerm, int maxItems = 50)
@@ -122,7 +124,7 @@ public class YoutubeService : IDisposable
 
         try
         {
-            using var mediaFile = MediaFile.Create(destinationPath);
+            using var mediaFile = MediaFile.Create(destinationPath, timeProvider);
             mediaFile.SetArtist("Youtube Cache");
             mediaFile.SetAlbum("Youtube Cache");
             mediaFile.SetTitle(title);
@@ -233,8 +235,13 @@ public class Video : IVideo
 internal sealed partial class MediaFile : IDisposable
 {
     private readonly TagFile file;
+    private readonly TimeProvider timeProvider;
 
-    public MediaFile(TagFile file) => this.file = file;
+    public MediaFile(TagFile file, TimeProvider timeProvider)
+    {
+        this.file = file;
+        this.timeProvider = timeProvider;
+    }
 
     public void SetThumbnail(byte[] thumbnailData) =>
         file.Tag.Pictures = new IPicture[] { new Picture(thumbnailData) };
@@ -259,10 +266,10 @@ internal sealed partial class MediaFile : IDisposable
 
     public void Dispose()
     {
-        file.Tag.DateTagged = DateTime.UtcNow.ToLocalTime();
+        file.Tag.DateTagged = timeProvider.GetUtcNow().UtcDateTime;
         file.Save();
         file.Dispose();
     }
 
-    public static MediaFile Create(string filePath) => new(TagFile.Create(filePath));
+    public static MediaFile Create(string filePath, TimeProvider timeProvider) => new(TagFile.Create(filePath), timeProvider);
 }

@@ -2,6 +2,7 @@
 @inject IJSRuntime JSRuntime
 @inject HomeSpeakerService HomeSpeaker
 @inject ILogger<MainLayout> Logger
+@inject TimeProvider TimeProvider
 @implements IAsyncDisposable
 
 <div class="page-container">
@@ -262,9 +263,9 @@
         showMobileMenu = !showMobileMenu;
     }
 
-    private static bool IsInSleepWindow()
+    private bool IsInSleepWindow()
     {
-        var now = DateTime.UtcNow.ToLocalTime().TimeOfDay;
+        var now = TimeProvider.GetLocalNow().TimeOfDay;
         var start = new TimeSpan(22, 0, 0);
         var end   = new TimeSpan(6, 30, 0);
         // Window wraps midnight: active if >= 22:00 OR < 06:30

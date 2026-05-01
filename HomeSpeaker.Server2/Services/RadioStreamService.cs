@@ -11,6 +11,7 @@ public class RadioStreamService
     private readonly IMemoryCache cache;
     private readonly HttpClient httpClient;
     private readonly string faviconsDirectory;
+    private readonly TimeProvider timeProvider;
 
     private const string CACHE_KEY = "radio_streams_all";
     private static readonly TimeSpan cacheDuration = TimeSpan.FromMinutes(5);
@@ -20,13 +21,15 @@ public class RadioStreamService
         ILogger<RadioStreamService> logger,
         IConfiguration configuration,
         IMemoryCache cache,
-        HttpClient httpClient)
+        HttpClient httpClient,
+        TimeProvider timeProvider)
     {
         this.dbContext = dbContext;
         this.logger = logger;
         this.cache = cache;
         this.httpClient = httpClient;
         this.httpClient.Timeout = TimeSpan.FromSeconds(10);
+        this.timeProvider = timeProvider;
 
         // Store favicons in the media folder (volume-mounted, writable) rather than wwwroot (read-only in container)
         var mediaFolder = configuration[ConfigKeys.MediaFolder] ?? "/music";
@@ -59,7 +62,7 @@ public class RadioStreamService
         {
             Name = name,
             Url = url,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = timeProvider.GetUtcNow().UtcDateTime,
             DisplayOrder = await getNextDisplayOrderAsync()
         };
 
@@ -186,7 +189,7 @@ public class RadioStreamService
         }
 
         stream.PlayCount++;
-        stream.LastPlayedAt = DateTime.UtcNow;
+        stream.LastPlayedAt = timeProvider.GetUtcNow().UtcDateTime;
         await dbContext.SaveChangesAsync();
 
         // Invalidate cache

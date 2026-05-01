@@ -6,11 +6,13 @@ public class DailyAnchorWorker : BackgroundService
 {
     private readonly IServiceProvider serviceProvider;
     private readonly ILogger<DailyAnchorWorker> logger;
+    private readonly TimeProvider timeProvider;
 
-    public DailyAnchorWorker(IServiceProvider serviceProvider, ILogger<DailyAnchorWorker> logger)
+    public DailyAnchorWorker(IServiceProvider serviceProvider, ILogger<DailyAnchorWorker> logger, TimeProvider timeProvider)
     {
         this.serviceProvider = serviceProvider;
         this.logger = logger;
+        this.timeProvider = timeProvider;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -34,7 +36,7 @@ public class DailyAnchorWorker : BackgroundService
             }
 
             // Wait until the next day at midnight
-            var now = DateTime.UtcNow.ToLocalTime();
+            var now = TimeZoneInfo.ConvertTimeFromUtc(timeProvider.GetUtcNow().UtcDateTime, TimeZoneInfo.Local);
             var tomorrow = now.Date.AddDays(1);
             var delay = tomorrow - now;
 
@@ -49,7 +51,7 @@ public class DailyAnchorWorker : BackgroundService
 
             try
             {
-                await Task.Delay(delay, stoppingToken);
+                await Task.Delay(delay, timeProvider, stoppingToken);
             }
             catch (OperationCanceledException)
             {

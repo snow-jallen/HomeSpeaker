@@ -9,12 +9,14 @@ public class AnchorService
     private readonly MusicContext dbContext;
     private readonly ILogger<AnchorService> logger;
     private readonly IAnchorNotificationService notificationService;
+    private readonly TimeProvider timeProvider;
 
-    public AnchorService(MusicContext dbContext, ILogger<AnchorService> logger, IAnchorNotificationService notificationService)
+    public AnchorService(MusicContext dbContext, ILogger<AnchorService> logger, IAnchorNotificationService notificationService, TimeProvider timeProvider)
     {
         this.dbContext = dbContext;
         this.logger = logger;
         this.notificationService = notificationService;
+        this.timeProvider = timeProvider;
     }
 
     // Anchor Definition Management
@@ -41,7 +43,7 @@ public class AnchorService
             Name = request.Name,
             Description = request.Description,
             IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = timeProvider.GetUtcNow().UtcDateTime
         };
 
         await dbContext.AnchorDefinitions.AddAsync(entity);
@@ -81,7 +83,7 @@ public class AnchorService
         }
 
         entity.IsActive = false;
-        entity.DeactivatedAt = DateTime.UtcNow;
+        entity.DeactivatedAt = timeProvider.GetUtcNow().UtcDateTime;
         await dbContext.SaveChangesAsync();
 
         logger.LogInformation("Deactivated anchor definition {Id}: {Name}", id, entity.Name);
@@ -118,7 +120,7 @@ public class AnchorService
         {
             UserId = request.UserId,
             AnchorDefinitionId = request.AnchorDefinitionId,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = timeProvider.GetUtcNow().UtcDateTime
         };
 
         await dbContext.UserAnchors.AddAsync(entity);
@@ -184,7 +186,7 @@ public class AnchorService
             IsCompleted = false,
             AnchorName = ua.AnchorDefinition!.Name,
             AnchorDescription = ua.AnchorDefinition.Description,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = timeProvider.GetUtcNow().UtcDateTime
         });
 
         await dbContext.DailyAnchors.AddRangeAsync(dailyAnchors);
@@ -230,7 +232,7 @@ public class AnchorService
         }
 
         entity.IsCompleted = request.IsCompleted;
-        entity.CompletedAt = request.IsCompleted ? DateTime.UtcNow : null;
+        entity.CompletedAt = request.IsCompleted ? timeProvider.GetUtcNow().UtcDateTime : null;
         await dbContext.SaveChangesAsync();
 
         logger.LogInformation("Updated daily anchor {Id} completion to {Completed}", request.DailyAnchorId, request.IsCompleted);
@@ -256,8 +258,9 @@ public class AnchorService
     // Get daily anchors for all users in a date range
     public async Task<Dictionary<string, List<DailyAnchor>>> GetAllUsersDailyAnchorsAsync(DateOnly? startDate = null, DateOnly? endDate = null)
     {
-        var start = startDate ?? DateOnly.FromDateTime(DateTime.Today.AddDays(-30));
-        var end = endDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var localNow = TimeZoneInfo.ConvertTimeFromUtc(timeProvider.GetUtcNow().UtcDateTime, TimeZoneInfo.Local);
+        var start = startDate ?? DateOnly.FromDateTime(localNow.AddDays(-30));
+        var end = endDate ?? DateOnly.FromDateTime(localNow);
 
         var dailyAnchors = await dbContext.DailyAnchors
             .Where(da => da.Date >= start && da.Date <= end)
@@ -297,7 +300,7 @@ public class AnchorService
     // Ensure daily anchors exist for today for all users with anchors
     public async Task EnsureTodayAnchorsForAllUsersAsync()
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(timeProvider.GetUtcNow().UtcDateTime, TimeZoneInfo.Local));
 
         // Get all users who have active anchors
         var usersWithAnchors = await dbContext.UserAnchors

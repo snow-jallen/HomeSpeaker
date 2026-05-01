@@ -10,16 +10,18 @@ public sealed class BloodSugarService : IBloodSugarService
     private readonly ILogger<BloodSugarService> logger;
     private readonly IConfiguration configuration;
     private readonly IMemoryCache cache;
+    private readonly TimeProvider timeProvider;
 
     private const string CacheKey = "blood-sugar-status";
     private static readonly JsonSerializerOptions jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    public BloodSugarService(HttpClient httpClient, ILogger<BloodSugarService> logger, IConfiguration configuration, IMemoryCache cache)
+    public BloodSugarService(HttpClient httpClient, ILogger<BloodSugarService> logger, IConfiguration configuration, IMemoryCache cache, TimeProvider timeProvider)
     {
         this.httpClient = httpClient;
         this.logger = logger;
         this.configuration = configuration;
         this.cache = cache;
+        this.timeProvider = timeProvider;
     }
 
     public async Task<BloodSugarStatus> GetBloodSugarStatusAsync(CancellationToken cancellationToken = default)
@@ -61,8 +63,9 @@ public sealed class BloodSugarService : IBloodSugarService
             return true; // Always refresh when no data
         }
 
-        var readingAge = DateTime.UtcNow - cachedStatus.CurrentReading.Date;
-        var cacheAge = DateTime.UtcNow - cachedStatus.LastUpdated;
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
+        var readingAge = utcNow - cachedStatus.CurrentReading.Date;
+        var cacheAge = utcNow - cachedStatus.LastUpdated;
 
         // If reading is very fresh (< 2 minutes), can cache longer
         if (readingAge.TotalMinutes < 2)
@@ -88,7 +91,7 @@ public sealed class BloodSugarService : IBloodSugarService
             return TimeSpan.FromMinutes(1);
         }
 
-        var readingAge = DateTime.UtcNow - status.CurrentReading.Date;
+        var readingAge = timeProvider.GetUtcNow().UtcDateTime - status.CurrentReading.Date;
 
         // Fresh reading (< 2 min): cache for 2 minutes
         if (readingAge.TotalMinutes < 2)
@@ -116,7 +119,7 @@ public sealed class BloodSugarService : IBloodSugarService
                 logger.LogWarning("NIGHTSCOUT_URL not configured");
                 return new BloodSugarStatus
                 {
-                    LastUpdated = DateTime.UtcNow.ToLocalTime(),
+                    LastUpdated = timeProvider.GetUtcNow().UtcDateTime,
                     IsStale = true,
                     CurrentReading = null
                 };
@@ -137,14 +140,14 @@ public sealed class BloodSugarService : IBloodSugarService
                 logger.LogWarning("No blood sugar entries found");
                 return new BloodSugarStatus
                 {
-                    LastUpdated = DateTime.UtcNow.ToLocalTime(),
+                    LastUpdated = timeProvider.GetUtcNow().UtcDateTime,
                     IsStale = true,
                     CurrentReading = null
                 };
             }
 
             var latestReading = entries[0];
-            var now = DateTime.UtcNow;
+            var now = timeProvider.GetUtcNow().UtcDateTime;
             var readingTime = latestReading.Date;
             var timeSinceReading = now - readingTime;
 

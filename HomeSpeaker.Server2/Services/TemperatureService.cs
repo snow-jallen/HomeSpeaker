@@ -11,16 +11,18 @@ public sealed class TemperatureService : ITemperatureService
     private readonly IConfiguration configuration;
     private readonly ILogger<TemperatureService> logger;
     private readonly IMemoryCache cache;
+    private readonly TimeProvider timeProvider;
 
     private const string CacheKey = "temperature-status";
     private static readonly TimeSpan cacheExpiration = TimeSpan.FromMinutes(2);
 
-    public TemperatureService(HttpClient httpClient, IConfiguration configuration, ILogger<TemperatureService> logger, IMemoryCache cache)
+    public TemperatureService(HttpClient httpClient, IConfiguration configuration, ILogger<TemperatureService> logger, IMemoryCache cache, TimeProvider timeProvider)
     {
         this.httpClient = httpClient;
         this.configuration = configuration;
         this.logger = logger;
         this.cache = cache;
+        this.timeProvider = timeProvider;
 
         // Configure the HttpClient for Govee API
         var apiBaseUrl = this.configuration["Temperature:ApiBaseUrl"];
@@ -120,7 +122,7 @@ public sealed class TemperatureService : ITemperatureService
         var temperatureStatus = await getTemperatureStatusInternalAsync(cancellationToken);
 
         // Set cache timestamp
-        temperatureStatus.LastCachedAt = DateTime.UtcNow.ToLocalTime();
+        temperatureStatus.LastCachedAt = timeProvider.GetUtcNow().UtcDateTime;
 
         // Cache the result with absolute expiration
         var cacheOptions = new MemoryCacheEntryOptions
@@ -176,7 +178,7 @@ public sealed class TemperatureService : ITemperatureService
 
         var temperatureStatus = new TemperatureStatus
         {
-            ReadingTakenAt = DateTime.UtcNow.ToLocalTime(),
+            ReadingTakenAt = timeProvider.GetUtcNow().UtcDateTime,
             Threshold = threshold
         };
 

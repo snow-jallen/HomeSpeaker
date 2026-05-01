@@ -12,15 +12,17 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     private readonly ILogger<LinuxSoxMusicPlayer> logger;
     private readonly Mp3Library library;
     private readonly AudioDeviceDetector audioDeviceDetector;
+    private readonly TimeProvider timeProvider;
     private Process? playerProcess;
     private bool disposed;
     private bool deviceDetectionComplete;
 
-    public LinuxSoxMusicPlayer(ILogger<LinuxSoxMusicPlayer> logger, Mp3Library library, ILoggerFactory loggerFactory, AudioDeviceDetector audioDeviceDetector)
+    public LinuxSoxMusicPlayer(ILogger<LinuxSoxMusicPlayer> logger, Mp3Library library, ILoggerFactory loggerFactory, AudioDeviceDetector audioDeviceDetector, TimeProvider timeProvider)
     {
         this.logger = logger;
         this.library = library;
         this.audioDeviceDetector = audioDeviceDetector;
+        this.timeProvider = timeProvider;
         icyReader = new IcyMetadataReader(loggerFactory.CreateLogger<IcyMetadataReader>());
         icyReader.TitleChanged += title =>
         {
@@ -54,10 +56,10 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     private async Task ensureDeviceDetectedAsync()
     {
         // Wait up to 5 seconds for device detection to complete
-        var timeout = DateTime.UtcNow.AddSeconds(5);
-        while (!deviceDetectionComplete && DateTime.UtcNow < timeout)
+        var timeout = timeProvider.GetUtcNow().AddSeconds(5);
+        while (!deviceDetectionComplete && timeProvider.GetUtcNow() < timeout)
         {
-            await Task.Delay(100, CancellationToken.None);
+            await Task.Delay(TimeSpan.FromMilliseconds(100), timeProvider, CancellationToken.None);
         }
     }
 
@@ -471,14 +473,14 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     public bool SleepTimerActive => sleepTimerCts != null && !sleepTimerCts.IsCancellationRequested;
 
     public TimeSpan? SleepTimerRemaining => sleepTimerEndTime.HasValue
-        ? sleepTimerEndTime.Value - DateTime.UtcNow.ToLocalTime()
+        ? sleepTimerEndTime.Value - timeProvider.GetUtcNow().UtcDateTime
         : null;
 
     public void SetSleepTimer(int minutes)
     {
         CancelSleepTimer();
         sleepTimerCts = new CancellationTokenSource();
-        sleepTimerEndTime = DateTime.UtcNow.ToLocalTime().AddMinutes(minutes);
+        sleepTimerEndTime = timeProvider.GetUtcNow().AddMinutes(minutes).UtcDateTime;
 
         _ = Task.Run(async () =>
         {
@@ -486,7 +488,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
             {
                 logger.LogInformation("Sleep timer set for {Minutes} minutes", minutes);
                 PlayerEvent?.Invoke(this, $"Sleep timer: {minutes} min");
-                await Task.Delay(TimeSpan.FromMinutes(minutes), sleepTimerCts.Token);
+                await Task.Delay(TimeSpan.FromMinutes(minutes), timeProvider, sleepTimerCts.Token);
 
                 logger.LogInformation("Sleep timer expired, stopping playback");
                 Stop();
