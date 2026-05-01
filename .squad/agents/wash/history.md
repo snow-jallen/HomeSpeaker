@@ -29,3 +29,9 @@ Implemented AI playlist backend slice in Server2: AI options + OpenAI `IChatClie
 
 ### 2026-05-02 — Azure OpenAI Support (Request from Jonathan Allen)
 Implemented dual OpenAI provider configuration: added `AI:AzureOpenAI` section with `Endpoint`, `ApiKey`, `DeploymentName`. Runtime preference: Azure when fully configured, fallback to public OpenAI. Updated degraded-status messaging to reflect active provider. Validated by Zoe: build clean, server startup healthy, smoke tests passing on /, /music, /queue, /playlists, /ai-playlists, /ai-status. ✅ APPROVED
+
+### 2026-05-02 — AI Timeout Message Path
+The user-facing “failed on attempt 1” activity message is composed in `AiMusicCatalogService` from `AiProcessingWorkItem.LastError`, while the underlying timeout text comes from the exception captured in `AiMusicAnalysisWorker` around `AiMusicAnalyzer.AnalyzeBatchAsync()`. The app does not implement its own model-call retry policy here; with Azure configured it constructs `AzureOpenAIClient` with default options, so Azure SDK retry/timeout behavior surfaces directly, and `/api/ai/process/resume` only wakes the worker—it does not requeue already failed items.
+
+### 2026-05-01 — AI Timeout Diagnosis (Diagnostic)
+Traced Azure/OpenAI timeout message to Azure SDK retry timeout during chat request in AiMusicAnalyzer.AnalyzeBatchAsync(). Resume endpoint does not requeue failed items, allowing timeouts to persist. Root cause identified: No custom retry policy wrapping AzureOpenAIClient. Diagnostic only; no code changes made.
