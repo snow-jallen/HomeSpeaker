@@ -4880,6 +4880,82 @@ This matrix defines **77 test cases** across **8 risk domains** for the AI Playl
 
 ---
 
+---
+
+## 2026-05-01: AI Playlists Readiness Verdict (Mal)
+
+### Status
+Trial-ready (limited private trial on server/Blazor path only)
+
+### Decision
+
+Treat the current AI playlists/music-intelligence work as **trial-ready on the server/Blazor path**, not as a finished feature.
+
+### Key Points
+
+- Do **not** call the iOS AI surfaces production-ready yet; the current DTO contract and progress display logic are not trustworthy enough.
+- Before broad rollout, close the session-lifecycle, stale-library cleanup, and similarity-refresh gaps so AI context and recommendations stay aligned with actual playback and library state.
+- If this goes to Azure now, keep it a limited/private trial and use the web/server experience as the primary validation surface.
+
+---
+
+## 2026-05-01: AI Playlists Readiness Decision (Zoe)
+
+**Date:** 2026-05-01  
+**Author:** Zoe  
+**Status:** Proposed  
+**Affects:** AI playlists, AI status, iOS UI, rollout
+
+### Decision
+
+Treat the AI playlists feature as **developer preview only**. Do **not** call it ready for a real user trial yet.
+
+### What is Actually Validated
+
+- Solution build succeeds.
+- Prior smoke testing shows the Blazor routes load without immediate runtime errors.
+- Provider-misconfiguration messaging on /ai-status was smoke-validated.
+
+### What is Still Unproven or Broken
+
+1. **iOS playlist decoding looks broken with real data**
+   - AIPlaylistsView loads AiPlaylistSummaryDto.
+   - Swift model decodes TrackCount instead of the server's camelCase 	rackCount.
+   - Result: non-empty playlist payloads are likely to fail decode and fall back to an empty state.
+
+2. **iOS status progress is unreliable**
+   - Server status returns PercentComplete as 0-100.
+   - AIStatusView multiplies it by 100 again for display and feeds the raw 0-100 value into ProgressView.
+   - Result: progress can be overstated by 100x and the progress bar range is wrong.
+
+3. **Similar-song autoplay is not user-proven**
+   - API endpoints exist for similar songs and autoplay from current track.
+   - I found no Blazor or iOS entry point exposing that flow to a real user.
+   - I found no evidence of end-to-end validation for queue-empty handoff or similar-song sequencing.
+
+4. **Pipeline recovery is not trial-safe yet**
+   - Resume only signals the worker.
+   - Failed items are counted and surfaced, but I found no retry/requeue path for ordinary failed analyses.
+   - Transient provider/network failures can leave tracks stranded in failed state.
+
+5. **User-facing error handling is weak**
+   - Blazor AI playlists falls back to "no playlists available yet" on load failures.
+   - Blazor AI status falls back to a default idle-looking model on load failures.
+   - iOS playlist loads, play actions, and thumbs feedback mostly swallow errors.
+
+### QA Recommendation
+
+Before any limited real-user trial:
+- Fix the iOS playlist/status contract issues
+- Expose and test the similar-song autoplay flow
+- Prove retry/recovery behavior for failed analysis work items
+- Run end-to-end validation for: analysis → playlists appear → play playlist → thumbs feedback recorded → future ranking changes
+
+### Rollout Call
+
+Current recommendation: **NOT YET READY** for any user trial.
+
+---
 ## Notes & Assumptions
 
 ### Assumed Decisions (to be Confirmed)
@@ -4905,3 +4981,4 @@ This matrix defines **77 test cases** across **8 risk domains** for the AI Playl
 
 
 ---
+

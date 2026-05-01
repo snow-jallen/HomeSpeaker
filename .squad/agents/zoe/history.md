@@ -26,6 +26,25 @@ Completed Blazor WebAssembly to Server-Side Rendering (SSR) migration over Q1 20
 ## Learnings
 <!-- Recent entries below -->
 
+### 2026-05-01: AI Playlists Readiness Assessment - NOT READY
+**Status:** ⚠️ Developer-preview only
+**Validated by:** Zoe
+
+**What I verified:**
+- `dotnet build HomeSpeaker.sln` succeeds.
+- `dotnet test HomeSpeaker.sln` runs with no actual automated tests present.
+- Existing smoke evidence only proves `/ai-playlists` and `/ai-status` load; it does not prove AI generation, feedback adaptation, or autoplay behavior.
+
+**Blocking readiness findings:**
+- iOS AI playlist decoding is wired to `TrackCount` instead of the server's camelCase `trackCount`, so real playlist payloads are likely to decode as empty.
+- iOS AI status multiplies `percentComplete` by 100 even though the server already returns 0-100, so progress display is unreliable.
+- Similar-song autoplay exists as an API endpoint, but I found no Blazor or iOS control that exposes it to users.
+- Resume processing only nudges the worker; failed items are not re-queued, so transient AI failures remain stuck.
+- Error handling is weak in user-facing flows: Blazor playlist/status pages collapse failures into empty/idle states, and iOS feedback/playlist actions mostly swallow errors.
+
+**Release recommendation:**
+- Do not treat this as trial-ready for real users until the iOS data-contract issues, retry/recovery behavior, and end-to-end validation of playlist generation / feedback / autoplay are completed.
+
 ### 2026-05-01: AI Library Enrichment E2E Smoke Test - PASSED
 **Status:** ✅ All pages load successfully
 **Branch:** master
@@ -206,3 +225,32 @@ Produced comprehensive QA matrix covering AI playlist generation, feedback mecha
 **Not validated:**
 - Real Azure OpenAI authentication or successful completions (dummy config only)
 - Interactive playlist generation behavior beyond page-load smoke coverage
+
+### 2026-05-01 — AI Readiness Review Finalized (Cross-team Synthesis)
+
+**Verdict:** NOT READY for any user trial
+
+**Team consensus (Zoe + Mal):**
+- Developer-preview status only; do not attempt user trial in current state.
+- iOS data-contract issues block any iOS exposure.
+- Retry/recovery missing for failed analyses.
+- Similar-song autoplay not exposed to users.
+- Error handling weak in user-facing flows.
+
+**Blocking issues for trial readiness:**
+1. iOS playlist decoding uses `TrackCount` instead of server's camelCase `trackCount`
+2. iOS status multiplies `percentComplete` by 100 (server 0-100 → display 0-10000)
+3. Similar-song autoplay API exists but not exposed in Blazor/iOS UIs
+4. Failed analyses not re-queued; transient failures strand tracks
+5. Blazor/iOS error handling collapses to empty/idle states
+
+**Required before trial:**
+- Fix iOS data contracts
+- Implement retry/recovery for failed items
+- Expose and test similar-song autoplay flow
+- End-to-end validation: generation → playlists → play → feedback → ranking
+
+**Orchestration logs created:**
+- `2026-05-01T155906Z-zoe.md` — QA findings and blocking issues
+- `2026-05-01T155906Z-mal.md` — Mal's verdict and next steps
+- Session log: `.squad/log/2026-05-01T155906Z-ai-readiness-review.md`

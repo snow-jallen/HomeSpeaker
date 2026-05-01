@@ -104,3 +104,36 @@ Defined architecture for AI playlist generation within HomeSpeaker.Server2. No n
 - Architecture decision with full schema (EF Core tables, seed genres, processing pattern)
 - Skill extracted for team implementation
 - Ready for backend, frontend, iOS, and QA implementation
+
+### 2026-05-01 — AI Playlists Readiness Review
+
+**Review result:** Ready for a limited private Azure-backed trial, not ready to call finished.
+
+**What holds it back from “really ready”:**
+- iOS AI playlist decoding is very likely broken: `AiPlaylistSummaryDto` expects `TrackCount`, while the server emits camelCase JSON.
+- iOS AI status progress is wrong: the server returns percent complete on a 0-100 scale, while `AIStatusView` multiplies it by 100 again and feeds that value into `ProgressView`.
+- AI session context is not tied back to actual playback exit conditions; the active session can stay marked active after users leave AI playback, so feedback affordances can linger against non-AI playback.
+- Similarity refresh is one-way for newly analyzed songs; older seed tracks do not get refreshed reverse edges, so “more like this” will go stale unless the seed track itself is reprocessed.
+- Library scan enqueues new or changed songs but does not clean out deleted songs or stale AI rows, so playlists/similarity can drift from the real library over time.
+- The Blazor/UI surface is incomplete for the broader music-intelligence story: genre playlists and status exist, but there is no first-class UI for “play more like this” / similar-song discovery, and server-side playlist detail is not surfaced.
+- There are no automated tests covering analyzer contract parsing, queue leasing/retry behavior, similarity generation, or AI playback/session transitions.
+
+**What is solid enough for trial:**
+- Server build passes, AI schema/migration exists, and the feature is wired into startup, REST endpoints, Blazor pages, and player status.
+- Background processing has the right basic shape for a trial: persisted work items, resumable scanning, expired lease recovery, degraded-state reporting, and manual resume.
+- Genre playlist generation/playback and thumbs feedback are implemented end-to-end on the server/Blazor path.
+- Status reporting is better than a stub: counts, heartbeat, recent activity timeline, degraded reason, and last failure details are present for the web UI.
+
+### 2026-05-01 — AI Readiness Review (Cross-team Synthesis)
+
+**Verdict:** Trial-ready on server/Blazor path; iOS not production-ready
+
+**Team consensus (Mal + Zoe):**
+- Do **not** call iOS AI surfaces production-ready; iOS DTO contracts and progress display logic are not trustworthy.
+- Before broad rollout, close the session-lifecycle, stale-library cleanup, and similarity-refresh gaps.
+- If moving to Azure now, keep it a limited/private trial; use web/server as primary validation surface.
+
+**Orchestration logs created:**
+- `2026-05-01T155906Z-mal.md` — Mal's verdict and architecture notes
+- `2026-05-01T155906Z-zoe.md` — Zoe's QA findings and blocking issues
+- Session log: `.squad/log/2026-05-01T155906Z-ai-readiness-review.md`
