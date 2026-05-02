@@ -24,6 +24,9 @@ Mapped Blazor UI structure for AI playlists: New pages in Pages/Music/, componen
 ## Learnings
 <!-- Recent entries below -->
 
+### 2026-05-02: EstateMapper PeopleNavMenu Disposal Diagnosis
+Diagnosed critical lifecycle bug in PeopleNavMenu component during EstateMapper disposal request. Root cause: stale NavigationManager callback outlives component and triggers refresh after disposal. Impact: post-disposal state updates attempt to modify disposed component. Diagnostic completed, implementation pending team decision.
+
 ### 2026-05-02: PlayControls Dispose Fix
 Fixed build error CS0535 in PlayControls.razor caused by malformed C# code block structure. An extra closing brace between CheckAiContextSync() and RefreshSleepTimer() methods prevented the Dispose() method from being recognized by the compiler. Removed the orphaned brace on line 128. The component already correctly implemented IDisposable with proper cleanup of the refresh timer and PlayerState.StateChanged event subscription. AI feedback UX (thumbs up/down buttons) remains intact and functional.
 

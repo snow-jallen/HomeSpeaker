@@ -21,6 +21,9 @@ Mapped AI integration points for OpenAI-backed playlisting. Use in-process servi
 ## Learnings
 <!-- Recent entries below -->
 
+### 2026-05-02 — EstateMapper IDbContextFactory Disposal Diagnosis
+Diagnosed disposed DI scope issue in EstateMapper's IDbContextFactory<EstateContext> usage. Root cause: CreateDbContext fails because constructor dependencies resolve through dead IServiceProvider. The DI container scope is disposed before the factory attempts instantiation. Diagnostic completed, implementation pending team decision.
+
 ### 2026-05-01 — AI Retry Cooldown + Explicit Request Timeout
 AI music analysis now re-queues failed work items automatically after a short cooldown instead of leaving them stranded in `Failed` until manual DB cleanup. The batch default was reduced to 6, and model calls now enforce a 200-second linked cancellation timeout inside `AiMusicAnalyzer`, which applies consistently across whichever OpenAI provider is behind `IChatClient`.
 
