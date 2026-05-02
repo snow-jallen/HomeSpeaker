@@ -8,6 +8,7 @@ public class AiMusicOptions
     public AzureOpenAiOptions AzureOpenAI { get; set; } = new();
     public ProcessingOptions Processing { get; set; } = new();
     public string AnalysisVersion { get; set; } = "2026-05-01-v1";
+    public int ModelRequestTimeoutSeconds { get; set; } = 200;
 
     public bool HasOpenAIConfiguration => !string.IsNullOrWhiteSpace(OpenAI.ApiKey);
     public bool UseAzureOpenAI => AzureOpenAI.IsConfigured;
@@ -46,10 +47,11 @@ public class AiMusicOptions
     public class ProcessingOptions
     {
         public bool Enabled { get; set; } = true;
-        public int BatchSize { get; set; } = 12;
+        public int BatchSize { get; set; } = 6;
         public int MaxParallelBatches { get; set; } = 1;
         public int ScanIntervalMinutes { get; set; } = 30;
         public int StaleLeaseMinutes { get; set; } = 10;
+        public int FailedItemRequeueDelayMinutes { get; set; } = 5;
     }
 
     private string? getConfigurationIssue()

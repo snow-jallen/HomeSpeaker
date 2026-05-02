@@ -31,7 +31,7 @@ public sealed class AiMusicCatalogService
         var failed = await dbContext.AiTrackProfiles.CountAsync(p => p.Status == AiProcessingStatus.Failed, cancellationToken);
         var percentComplete = totalTracks == 0 ? 0 : (double)completed / totalTracks * 100;
         var lastFailure = await dbContext.AiProcessingWorkItems.AsNoTracking()
-            .Where(w => w.Status == AiProcessingStatus.Failed && !string.IsNullOrWhiteSpace(w.LastError))
+            .Where(w => !string.IsNullOrWhiteSpace(w.LastError) && (w.CompletedUtc != null || w.StartedUtc != null))
             .OrderByDescending(w => w.CompletedUtc ?? w.StartedUtc ?? w.QueuedUtc)
             .Select(w => new
             {
@@ -156,7 +156,7 @@ public sealed class AiMusicCatalogService
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
         var recentFailures = await dbContext.AiProcessingWorkItems.AsNoTracking()
-            .Where(w => w.Status == AiProcessingStatus.Failed && w.CompletedUtc != null && !string.IsNullOrWhiteSpace(w.LastError))
+            .Where(w => w.CompletedUtc != null && !string.IsNullOrWhiteSpace(w.LastError))
             .OrderByDescending(w => w.CompletedUtc)
             .Select(w => new ItemActivityRow(
                 w.SongPath,

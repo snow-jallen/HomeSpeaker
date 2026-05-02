@@ -46,8 +46,9 @@ public sealed class AiMusicAnalysisWorker : BackgroundService
     private async Task waitForNextCycleAsync(CancellationToken stoppingToken)
     {
         using var scope = serviceProvider.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<MusicContext>();
         var options = scope.ServiceProvider.GetRequiredService<IOptions<AiMusicOptions>>().Value;
-        var delay = TimeSpan.FromMinutes(Math.Max(1, options.Processing.ScanIntervalMinutes));
+        var delay = await getNextCycleDelayAsync(dbContext, options, stoppingToken);
         await processingSignal.WaitForNextAsync(delay, stoppingToken);
     }
 
@@ -73,6 +74,7 @@ public sealed class AiMusicAnalysisWorker : BackgroundService
 
         await updateRunStateAsync(dbContext, AiProcessingState.Scanning, stoppingToken);
         await resetExpiredLeasesAsync(dbContext, stoppingToken);
+        await requeueFailedItemsAsync(dbContext, options, stoppingToken);
         await scanLibraryAsync(dbContext, library, options, stoppingToken);
 
         var batchCount = Math.Max(1, options.Processing.MaxParallelBatches);
@@ -90,7 +92,38 @@ public sealed class AiMusicAnalysisWorker : BackgroundService
 
         var remainingWork = await dbContext.AiProcessingWorkItems
             .AnyAsync(w => w.Status == AiProcessingStatus.Pending || w.Status == AiProcessingStatus.Processing, stoppingToken);
-        await updateRunStateAsync(dbContext, remainingWork ? AiProcessingState.Processing : AiProcessingState.Idle, stoppingToken);
+        var failedAwaitingRetry = await dbContext.AiProcessingWorkItems
+            .AnyAsync(w => w.Status == AiProcessingStatus.Failed, stoppingToken);
+        var nextState = remainingWork
+            ? AiProcessingState.Processing
+            : failedAwaitingRetry
+                ? AiProcessingState.Degraded
+                : AiProcessingState.Idle;
+        await updateRunStateAsync(dbContext, nextState, stoppingToken);
+    }
+
+    private async Task<TimeSpan> getNextCycleDelayAsync(
+        MusicContext dbContext,
+        AiMusicOptions options,
+        CancellationToken cancellationToken)
+    {
+        var scanDelay = TimeSpan.FromMinutes(Math.Max(1, options.Processing.ScanIntervalMinutes));
+        var retryDelay = TimeSpan.FromMinutes(Math.Max(1, options.Processing.FailedItemRequeueDelayMinutes));
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+
+        var failedCompletionTimes = await dbContext.AiProcessingWorkItems.AsNoTracking()
+            .Where(w => w.Status == AiProcessingStatus.Failed && w.CompletedUtc != null)
+            .Select(w => w.CompletedUtc)
+            .ToListAsync(cancellationToken);
+
+        var nextRetryDelay = failedCompletionTimes
+            .Where(completedUtc => completedUtc.HasValue)
+            .Select(completedUtc => completedUtc!.Value.Add(retryDelay) - now)
+            .Where(delay => delay > TimeSpan.Zero)
+            .DefaultIfEmpty(scanDelay)
+            .Min();
+
+        return nextRetryDelay < scanDelay ? nextRetryDelay : scanDelay;
     }
 
     private async Task updateRunStateAsync(
@@ -140,6 +173,37 @@ public sealed class AiMusicAnalysisWorker : BackgroundService
 
         if (expired.Count > 0)
         {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private async Task requeueFailedItemsAsync(
+        MusicContext dbContext,
+        AiMusicOptions options,
+        CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var retryCutoffUtc = now.AddMinutes(-Math.Max(1, options.Processing.FailedItemRequeueDelayMinutes));
+        var failedItems = await dbContext.AiProcessingWorkItems
+            .Where(w => w.Status == AiProcessingStatus.Failed && w.CompletedUtc != null && w.CompletedUtc <= retryCutoffUtc)
+            .OrderBy(w => w.CompletedUtc)
+            .ToListAsync(cancellationToken);
+
+        foreach (var item in failedItems)
+        {
+            item.Status = AiProcessingStatus.Pending;
+            item.BatchId = null;
+            item.LeaseExpiresUtc = null;
+            item.StartedUtc = null;
+            item.QueuedUtc = now;
+        }
+
+        if (failedItems.Count > 0)
+        {
+            logger.LogInformation(
+                "Re-queued {Count} failed AI analysis item(s) after cooldown of {DelayMinutes} minute(s)",
+                failedItems.Count,
+                Math.Max(1, options.Processing.FailedItemRequeueDelayMinutes));
             await dbContext.SaveChangesAsync(cancellationToken);
         }
     }
@@ -270,11 +334,63 @@ public sealed class AiMusicAnalysisWorker : BackgroundService
                 song.Album ?? string.Empty,
                 buildFolderHint(song.Path)))
             .ToList();
+        var songCandidatesByPath = songCandidates.ToDictionary(candidate => candidate.SongPath, StringComparer.OrdinalIgnoreCase);
+        var updatedSongs = new List<string>();
 
         IReadOnlyList<AiTrackAnalysisResult> results;
         try
         {
             results = await analyzer.AnalyzeBatchAsync(songCandidates, genres, cancellationToken);
+        }
+        catch (AiBatchAnalysisException ex) when (ex.ShouldRetryIndividually && workItems.Count > 1)
+        {
+            logger.LogWarning(
+                ex,
+                "Batch {BatchId} returned truncated AI JSON near {Path}; retrying {Count} song(s) individually",
+                workItems[0].BatchId ?? "batch",
+                ex.JsonPath,
+                workItems.Count);
+
+            foreach (var item in workItems)
+            {
+                if (!songCandidatesByPath.TryGetValue(item.SongPath, out var candidate))
+                {
+                    markItemFailed(item, "AI fallback skipped because song metadata was unavailable.");
+                    continue;
+                }
+
+                try
+                {
+                    var singleResults = await analyzer.AnalyzeBatchAsync([candidate], genres, cancellationToken);
+                    var singleResult = singleResults.FirstOrDefault(result =>
+                        string.Equals(result.SongPath, item.SongPath, StringComparison.OrdinalIgnoreCase));
+
+                    if (singleResult == null)
+                    {
+                        markItemFailed(item, $"AI fallback response missing result after batch truncation near {ex.JsonPath}.");
+                        continue;
+                    }
+
+                    await applyResultAsync(item, singleResult);
+                }
+                catch (Exception fallbackEx)
+                {
+                    logger.LogError(
+                        fallbackEx,
+                        "Per-song AI fallback failed for {SongPath} after batch truncation near {Path}",
+                        item.SongPath,
+                        ex.JsonPath);
+                    markItemFailed(item, $"Batch JSON truncated near {ex.JsonPath}; per-song fallback failed: {fallbackEx.Message}");
+                }
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+            if (updatedSongs.Count > 0)
+            {
+                await updateSimilarityAsync(dbContext, updatedSongs, cancellationToken);
+            }
+
+            return;
         }
         catch (Exception ex)
         {
@@ -288,7 +404,6 @@ public sealed class AiMusicAnalysisWorker : BackgroundService
         }
 
         var resultLookup = results.ToDictionary(r => r.SongPath, StringComparer.OrdinalIgnoreCase);
-        var updatedSongs = new List<string>();
 
         foreach (var item in workItems)
         {
@@ -298,6 +413,30 @@ public sealed class AiMusicAnalysisWorker : BackgroundService
                 continue;
             }
 
+            await applyResultAsync(item, result);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        if (updatedSongs.Count > 0)
+        {
+            await updateSimilarityAsync(dbContext, updatedSongs, cancellationToken);
+        }
+
+        AiTrackProfile getOrCreateProfile(AiProcessingWorkItem item)
+        {
+            if (profiles.TryGetValue(item.SongPath, out var existingProfile))
+            {
+                return existingProfile;
+            }
+
+            var profile = new AiTrackProfile { SongPath = item.SongPath };
+            dbContext.AiTrackProfiles.Add(profile);
+            profiles[item.SongPath] = profile;
+            return profile;
+        }
+
+        async Task applyResultAsync(AiProcessingWorkItem item, AiTrackAnalysisResult result)
+        {
             var profile = getOrCreateProfile(item);
 
             profile.Fingerprint = item.Fingerprint;
@@ -344,25 +483,6 @@ public sealed class AiMusicAnalysisWorker : BackgroundService
             item.LastError = null;
             item.CompletedUtc = now;
             updatedSongs.Add(item.SongPath);
-        }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-        if (updatedSongs.Count > 0)
-        {
-            await updateSimilarityAsync(dbContext, updatedSongs, cancellationToken);
-        }
-
-        AiTrackProfile getOrCreateProfile(AiProcessingWorkItem item)
-        {
-            if (profiles.TryGetValue(item.SongPath, out var existingProfile))
-            {
-                return existingProfile;
-            }
-
-            var profile = new AiTrackProfile { SongPath = item.SongPath };
-            dbContext.AiTrackProfiles.Add(profile);
-            profiles[item.SongPath] = profile;
-            return profile;
         }
 
         void markItemFailed(AiProcessingWorkItem item, string error)

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using HomeSpeaker.Server2.Data;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
@@ -8,6 +9,15 @@ namespace HomeSpeaker.Server2.Services;
 
 public sealed class AiMusicAnalyzer
 {
+    private static readonly TimeSpan minimumModelRequestTimeout = TimeSpan.FromSeconds(30);
+    private const int MinimumMaxOutputTokens = 2000;
+    private const int EstimatedOutputTokensPerSong = 400;
+    private static readonly Regex repairableNumericFieldPattern = new(
+        "(?<prefix>\"(?<field>energy|acousticness|instrumentalness|vocalPresence|sacredness|seasonalityChristmas|danceability|warmth|confidence|value|score|rank)\"\\s*:\\s*)(?<value>[+-]?(?:\\d+[\\.,]?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex strictJsonNumberPattern = new(
+        "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private readonly IChatClient chatClient;
     private readonly AiMusicOptions options;
     private readonly ILogger<AiMusicAnalyzer> logger;
@@ -43,12 +53,29 @@ public sealed class AiMusicAnalyzer
         var chatOptions = new ChatOptions
         {
             Temperature = 0.2f,
-            MaxOutputTokens = 2000,
+            MaxOutputTokens = Math.Max(MinimumMaxOutputTokens, songs.Count * EstimatedOutputTokensPerSong),
             ResponseFormat = ChatResponseFormat.Json,
             ModelId = options.ConfiguredModelId
         };
 
-        var response = await chatClient.GetResponseAsync(messages, chatOptions, cancellationToken);
+        var requestTimeout = TimeSpan.FromSeconds(Math.Max(
+            minimumModelRequestTimeout.TotalSeconds,
+            options.ModelRequestTimeoutSeconds));
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(requestTimeout);
+
+        ChatResponse response;
+        try
+        {
+            response = await chatClient.GetResponseAsync(messages, chatOptions, timeoutCts.Token);
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested && timeoutCts.IsCancellationRequested)
+        {
+            var message = $"AI model request timed out after {requestTimeout:mm\\:ss}.";
+            logger.LogWarning(ex, "{Message} Batch size was {Count}.", message, songs.Count);
+            throw new TimeoutException(message, ex);
+        }
+
         if (string.IsNullOrWhiteSpace(response.Text))
         {
             logger.LogWarning("AI response was empty for {Count} songs", songs.Count);
@@ -57,13 +84,25 @@ public sealed class AiMusicAnalyzer
 
         try
         {
-            var payload = JsonSerializer.Deserialize<AiBatchAnalysisResponse>(response.Text, jsonOptions);
+            var payload = deserializeResponse(response.Text);
             return payload?.Songs ?? new List<AiTrackAnalysisResult>();
         }
         catch (JsonException ex)
         {
-            logger.LogError(ex, "Failed to parse AI response JSON");
-            throw;
+            var failureKind = classifyJsonFailure(response.Text, ex);
+            logger.LogError(
+                ex,
+                "Failed to parse AI response JSON ({FailureKind}) at {Path}. Context: {Context}. Response preview: {Preview}",
+                failureKind,
+                ex.Path ?? "$",
+                buildJsonErrorContext(response.Text, ex),
+                summarizeResponse(response.Text));
+            throw new AiBatchAnalysisException(
+                failureKind,
+                ex.Path ?? "$",
+                buildJsonErrorContext(response.Text, ex),
+                summarizeResponse(response.Text),
+                ex);
         }
     }
 
@@ -92,8 +131,252 @@ public sealed class AiMusicAnalyzer
         }
 
         sb.AppendLine("Normalize numeric scores to 0..1.");
-        sb.AppendLine("Provide at least 3 markers per song.");
+        sb.AppendLine("Every numeric field must be a valid JSON number, not a string.");
+        sb.AppendLine("Never use leading zero integers like 01 or 00.42; use 1 or 0.42.");
+        sb.AppendLine("Use a period for decimals and include digits on both sides when needed (for example 0.4, never .4, 0., or 0,4).");
+        sb.AppendLine($"Return exactly {songs.Count} song objects in the same order as the input songs.");
+        sb.AppendLine("Provide exactly 3 markers per song and at most 3 genres per song.");
+        sb.AppendLine("Keep summary to one sentence under 160 characters. Keep each genre why under 80 characters.");
+        sb.AppendLine("If space is tight, shorten text fields. Never truncate the JSON document or leave an array/object unfinished.");
         return sb.ToString();
+    }
+
+    private AiBatchAnalysisResponse? deserializeResponse(string responseText)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<AiBatchAnalysisResponse>(responseText, jsonOptions);
+        }
+        catch (JsonException ex) when (tryRepairMalformedNumericJson(responseText, out var repairedResponse, out var repairs))
+        {
+            try
+            {
+                var repairedPayload = JsonSerializer.Deserialize<AiBatchAnalysisResponse>(repairedResponse, jsonOptions);
+                logger.LogWarning(
+                    "Repaired malformed AI JSON at {Path}. Applied {RepairCount} numeric fix(es): {Repairs}. Context: {Context}",
+                    ex.Path ?? "$",
+                    repairs.Count,
+                    string.Join("; ", repairs.Take(6)),
+                    buildJsonErrorContext(responseText, ex));
+                return repairedPayload;
+            }
+            catch (JsonException repairedEx)
+            {
+                logger.LogError(
+                    repairedEx,
+                    "AI JSON repair did not resolve parse failure. Original path {OriginalPath}, repaired path {RepairedPath}, repairs: {Repairs}, response preview: {Preview}",
+                    ex.Path ?? "$",
+                    repairedEx.Path ?? "$",
+                    string.Join("; ", repairs.Take(6)),
+                    summarizeResponse(repairedResponse));
+                throw;
+            }
+        }
+    }
+
+    private static bool tryRepairMalformedNumericJson(
+        string responseText,
+        out string repairedResponse,
+        out IReadOnlyList<string> repairs)
+    {
+        var repairNotes = new List<string>();
+        repairedResponse = repairableNumericFieldPattern.Replace(responseText, match =>
+        {
+            var field = match.Groups["field"].Value;
+            var originalValue = match.Groups["value"].Value;
+            if (!tryNormalizeJsonNumber(originalValue, out var normalizedValue, out var reason))
+            {
+                return match.Value;
+            }
+
+            repairNotes.Add($"{field}: {originalValue} -> {normalizedValue} ({reason})");
+            return $"{match.Groups["prefix"].Value}{normalizedValue}";
+        });
+
+        repairs = repairNotes;
+        return repairNotes.Count > 0 && !string.Equals(responseText, repairedResponse, StringComparison.Ordinal);
+    }
+
+    private static bool tryNormalizeJsonNumber(string value, out string normalizedValue, out string reason)
+    {
+        normalizedValue = value;
+        var working = value.Trim();
+        var reasons = new List<string>();
+
+        if (working.StartsWith('+'))
+        {
+            working = working[1..];
+            reasons.Add("removed-leading-plus");
+        }
+
+        var exponentIndex = working.IndexOfAny(['e', 'E']);
+        var exponent = exponentIndex >= 0 ? working[exponentIndex..] : string.Empty;
+        var mantissa = exponentIndex >= 0 ? working[..exponentIndex] : working;
+
+        if (mantissa.StartsWith("-.", StringComparison.Ordinal))
+        {
+            mantissa = $"-0{mantissa[1..]}";
+            reasons.Add("added-leading-zero");
+        }
+        else if (mantissa.StartsWith('.'))
+        {
+            mantissa = $"0{mantissa}";
+            reasons.Add("added-leading-zero");
+        }
+
+        if (mantissa.EndsWith('.'))
+        {
+            mantissa = $"{mantissa}0";
+            reasons.Add("completed-trailing-decimal");
+        }
+
+        if (mantissa.Contains(','))
+        {
+            if (mantissa.Contains('.') || mantissa.Count(c => c == ',') != 1)
+            {
+                reason = string.Empty;
+                return false;
+            }
+
+            mantissa = mantissa.Replace(',', '.');
+            reasons.Add("converted-decimal-comma");
+        }
+
+        var sign = string.Empty;
+        if (mantissa.StartsWith('-'))
+        {
+            sign = "-";
+            mantissa = mantissa[1..];
+        }
+
+        var dotIndex = mantissa.IndexOf('.');
+        var integerPart = dotIndex >= 0 ? mantissa[..dotIndex] : mantissa;
+        var fractionalPart = dotIndex >= 0 ? mantissa[(dotIndex + 1)..] : string.Empty;
+
+        if (integerPart.Length > 1 && integerPart.StartsWith('0'))
+        {
+            integerPart = integerPart.TrimStart('0');
+            if (integerPart.Length == 0)
+            {
+                integerPart = "0";
+            }
+
+            reasons.Add("trimmed-leading-zeros");
+        }
+
+        if (integerPart.Length == 0)
+        {
+            integerPart = "0";
+        }
+
+        normalizedValue = dotIndex >= 0
+            ? $"{sign}{integerPart}.{fractionalPart}{exponent}"
+            : $"{sign}{integerPart}{exponent}";
+
+        if (!strictJsonNumberPattern.IsMatch(normalizedValue) ||
+            string.Equals(normalizedValue, value, StringComparison.Ordinal))
+        {
+            reason = string.Empty;
+            normalizedValue = value;
+            return false;
+        }
+
+        reason = string.Join(", ", reasons);
+        return true;
+    }
+
+    private static string buildJsonErrorContext(string responseText, JsonException exception)
+    {
+        var lineNumber = exception.LineNumber.GetValueOrDefault();
+        var bytePosition = exception.BytePositionInLine.GetValueOrDefault();
+        var normalizedText = responseText.Replace("\r\n", "\n", StringComparison.Ordinal);
+        var lines = normalizedText.Split('\n');
+        if (lineNumber < 0 || lineNumber >= lines.Length)
+        {
+            return summarizeResponse(responseText);
+        }
+
+        var line = lines[(int)lineNumber];
+        var start = Math.Max(0, (int)bytePosition - 40);
+        var length = Math.Min(line.Length - start, 80);
+        if (length <= 0)
+        {
+            return summarizeResponse(responseText);
+        }
+
+        return line.Substring(start, length).Trim();
+    }
+
+    private static string summarizeResponse(string responseText)
+    {
+        const int maxLength = 240;
+        var compact = responseText.ReplaceLineEndings(" ").Trim();
+        if (compact.Length <= maxLength)
+        {
+            return compact;
+        }
+
+        return $"{compact[..(maxLength - 1)]}…";
+    }
+
+    private static AiBatchAnalysisFailureKind classifyJsonFailure(string responseText, JsonException exception)
+    {
+        if (exception.Message.Contains("reached end of data", StringComparison.OrdinalIgnoreCase))
+        {
+            return AiBatchAnalysisFailureKind.TruncatedJson;
+        }
+
+        var trimmed = responseText.TrimEnd();
+        if (trimmed.Length == 0)
+        {
+            return AiBatchAnalysisFailureKind.InvalidJson;
+        }
+
+        var lastCharacter = trimmed[^1];
+        if ((lastCharacter == ',' || lastCharacter == ':' || lastCharacter == '"' || lastCharacter == '{' || lastCharacter == '[') &&
+            (exception.Path?.StartsWith("$.songs[", StringComparison.Ordinal) ?? false))
+        {
+            return AiBatchAnalysisFailureKind.TruncatedJson;
+        }
+
+        return AiBatchAnalysisFailureKind.InvalidJson;
+    }
+}
+
+public enum AiBatchAnalysisFailureKind
+{
+    InvalidJson,
+    TruncatedJson
+}
+
+public sealed class AiBatchAnalysisException : Exception
+{
+    public AiBatchAnalysisException(
+        AiBatchAnalysisFailureKind failureKind,
+        string jsonPath,
+        string responseContext,
+        string responsePreview,
+        JsonException innerException)
+        : base(buildMessage(failureKind, jsonPath, innerException.Message), innerException)
+    {
+        FailureKind = failureKind;
+        JsonPath = jsonPath;
+        ResponseContext = responseContext;
+        ResponsePreview = responsePreview;
+    }
+
+    public AiBatchAnalysisFailureKind FailureKind { get; }
+    public string JsonPath { get; }
+    public string ResponseContext { get; }
+    public string ResponsePreview { get; }
+    public bool ShouldRetryIndividually => FailureKind == AiBatchAnalysisFailureKind.TruncatedJson;
+
+    private static string buildMessage(AiBatchAnalysisFailureKind failureKind, string jsonPath, string parserMessage)
+    {
+        var description = failureKind == AiBatchAnalysisFailureKind.TruncatedJson
+            ? "AI returned truncated JSON"
+            : "AI returned invalid JSON";
+        return $"{description} near {jsonPath}. {parserMessage}";
     }
 }
 

@@ -1,5 +1,6 @@
+using System.ClientModel;
+using System.ClientModel.Primitives;
 using System.Runtime.InteropServices;
-using Azure;
 using Azure.AI.OpenAI;
 using HomeSpeaker.Server2;
 using HomeSpeaker.Server2.Data;
@@ -12,6 +13,7 @@ using Microsoft.Fast.Components.FluentUI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using MudBlazor.Services;
+using OpenAI;
 using OpenAI.Chat;
 
 #pragma warning disable IDE1006 // Naming Styles
@@ -100,19 +102,26 @@ builder.Services.AddChatClient(sp =>
     var aiOptions = sp.GetRequiredService<IOptions<AiMusicOptions>>().Value;
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
     var logger = loggerFactory.CreateLogger("AiChatClient");
+    var requestTimeout = getAiModelRequestTimeout(aiOptions);
     IChatClient chatClient;
 
     if (aiOptions.UseAzureOpenAI)
     {
         aiOptions.AzureOpenAI.TryGetEndpointUri(out var endpointUri);
-        var azureOpenAiClient = new AzureOpenAIClient(endpointUri, new AzureKeyCredential(aiOptions.AzureOpenAI.ApiKey!));
+        var azureOpenAiClient = new AzureOpenAIClient(
+            endpointUri!,
+            new ApiKeyCredential(aiOptions.AzureOpenAI.ApiKey!),
+            createAzureOpenAiClientOptions(requestTimeout));
         chatClient = azureOpenAiClient
             .GetChatClient(aiOptions.AzureOpenAI.DeploymentName!)
             .AsIChatClient();
     }
     else if (aiOptions.HasOpenAIConfiguration)
     {
-        var openAiClient = new ChatClient(aiOptions.OpenAI.ChatModel, aiOptions.OpenAI.ApiKey);
+        var openAiClient = new ChatClient(
+            aiOptions.OpenAI.ChatModel,
+            new ApiKeyCredential(aiOptions.OpenAI.ApiKey!),
+            createOpenAiClientOptions(requestTimeout));
         chatClient = openAiClient.AsIChatClient();
     }
     else
@@ -125,6 +134,33 @@ builder.Services.AddChatClient(sp =>
     chatClient = new OpenTelemetryChatClient(chatClient, logger, "HomeSpeaker.AI");
     return chatClient;
 }, ServiceLifetime.Singleton);
+
+TimeSpan getAiModelRequestTimeout(AiMusicOptions options) =>
+    TimeSpan.FromSeconds(Math.Max(30, options.ModelRequestTimeoutSeconds));
+
+AzureOpenAIClientOptions createAzureOpenAiClientOptions(TimeSpan requestTimeout)
+{
+    var options = new AzureOpenAIClientOptions();
+    applyAiTransportTimeouts(options, requestTimeout);
+    return options;
+}
+
+OpenAIClientOptions createOpenAiClientOptions(TimeSpan requestTimeout)
+{
+    var options = new OpenAIClientOptions();
+    applyAiTransportTimeouts(options, requestTimeout);
+    return options;
+}
+
+void applyAiTransportTimeouts(ClientPipelineOptions options, TimeSpan requestTimeout)
+{
+    var transportTimeout = requestTimeout + TimeSpan.FromSeconds(15);
+    options.NetworkTimeout = transportTimeout;
+    options.Transport = new HttpClientPipelineTransport(new HttpClient
+    {
+        Timeout = transportTimeout
+    });
+}
 
 // Add temperature and health-monitor services with caching
 builder.Services.AddHttpClient<TemperatureService>();

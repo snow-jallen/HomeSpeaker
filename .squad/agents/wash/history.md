@@ -21,6 +21,9 @@ Mapped AI integration points for OpenAI-backed playlisting. Use in-process servi
 ## Learnings
 <!-- Recent entries below -->
 
+### 2026-05-02 — AI Truncated JSON Fallback
+Truncated AI batch payloads that fail at paths like `$.songs[4].genres[2]` are structural end-of-data errors, so the existing numeric repair path cannot safely fix them. `HomeSpeaker.Server2` now tightens the prompt/output budget and falls back to per-song analysis only for classified truncated-JSON batch failures, which keeps one malformed batch from stranding every claimed track.
+
 ### 2026-05-02 — EstateMapper IDbContextFactory Disposal Diagnosis
 Diagnosed disposed DI scope issue in EstateMapper's IDbContextFactory<EstateContext> usage. Root cause: CreateDbContext fails because constructor dependencies resolve through dead IServiceProvider. The DI container scope is disposed before the factory attempts instantiation. Diagnostic completed, implementation pending team decision.
 
