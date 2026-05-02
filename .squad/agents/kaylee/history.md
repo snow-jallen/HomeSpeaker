@@ -31,3 +31,9 @@ Diagnosed critical lifecycle bug in PeopleNavMenu component during EstateMapper 
 Fixed build error CS0535 in PlayControls.razor caused by malformed C# code block structure. An extra closing brace between CheckAiContextSync() and RefreshSleepTimer() methods prevented the Dispose() method from being recognized by the compiler. Removed the orphaned brace on line 128. The component already correctly implemented IDisposable with proper cleanup of the refresh timer and PlayerState.StateChanged event subscription. AI feedback UX (thumbs up/down buttons) remains intact and functional.
 
 ### 2026-05-01: AI Playlists Blazor UI Implementation
+
+### 2026-05-02: AI Playlist Details Preview
+Added a dedicated AI playlist details route in Server2 so users can inspect a playlist before playback. The gallery cards now behave like touch-friendly entry points with an explicit “View details” action, and the details table renders the real exposed scoring data: genre rank, genre score, optional “why” text, plus any marker columns Wash’s service shape provides for that playlist.
+
+### 2026-05-02: AI Playlist Details UX (Completed)
+Implemented /ai-playlists/{genreKey} details page showing full playlist metadata, included tracks, scoring columns (rank, score, why), and dynamic marker columns. Gallery cards act as preview-first entry points; play actions remain visible on both card and details page. Touch-optimized per Darkly theme. Validated by Zoe: all pages load, scoring data visible, play actions functional. ✅ APPROVED & COMPLETE

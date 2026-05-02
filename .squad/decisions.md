@@ -5088,3 +5088,76 @@ Do not add extra wrapper abstractions that don't own underlying HTTP request.
 **Validation:** Zoe revalidated post-revision and approved. Smoke tests passing, batch size 6 retained, auto-requeue retained.
 
 ---
+
+---
+
+### 2026-05-02T23:20:09Z: AI Playlist Preview Pattern
+**By:** Kaylee (Frontend Dev)
+**Date:** 2026-05-02
+**Status:** Proposed
+**Affects:** Blazor UI, AI playlist browsing
+
+## Decision
+
+AI playlist cards should act as preview-first entry points: tapping the card opens a details page, while playback remains a visible secondary action on both the card and the details page.
+
+## Why
+
+- Users asked to inspect what an AI playlist contains before pressing play.
+- Full-card navigation is more obvious and touch-friendly than hiding preview behind a small affordance.
+- The details table can safely render only the real scoring fields exposed by the service shape, including dynamic marker columns when present.
+
+## UI Contract
+
+- Gallery route: `/ai-playlists`
+- Details route: `/ai-playlists/{genreKey}`
+- Table shows static score fields first, then any playlist-specific marker columns supplied by the model.
+
+---
+
+### 2026-05-02T23:20:09Z: AI Truncated JSON Fallback
+**By:** Wash (Backend Dev)
+**Date:** 2026-05-02
+**Status:** Implemented
+**Affects:** HomeSpeaker.Server2 AI analysis
+
+## Decision
+
+Treat AI JSON parse failures that end with parser EOF messages (for example near `$.songs[4].genres[2]`) as truncated batch responses. Do not add broad structural JSON repair for these cases; instead tighten the output contract and retry the claimed songs individually inside the same worker pass.
+
+## Why
+
+The existing numeric repair only fixes narrow malformed number tokens and is not safe for incomplete arrays or objects. Broadly guessing missing structure would hide model defects and risk storing incorrect genre/marker data, while per-song fallback contains the blast radius and keeps the queue moving.
+
+## Implementation Notes
+
+- `AiMusicAnalyzer` now requests exactly one ordered result per input song, caps verbose text fields, and scales `MaxOutputTokens` with batch size.
+- Batch JSON parse failures are classified as `TruncatedJson` vs `InvalidJson`, preserving the failing JSON path and parser detail.
+- `AiMusicAnalysisWorker` retries truncated batch failures one song at a time within the same claimed batch, so successful singles can complete even when the original batch payload was cut off.
+
+---
+
+### 2026-05-02T23:20:09Z: AI Playlist Detail Payload Enrichment
+**By:** Wash (Backend Dev)
+**Date:** 2026-05-02
+**Status:** Implemented
+**Affects:** AI playlist detail API, Blazor server models
+
+## Decision
+
+Reuse the existing AI playlist detail flow (`/api/ai/playlists/{genreKey}` and `HomeSpeakerService.GetAiPlaylistAsync`) and enrich its payload rather than introducing a duplicate details-specific endpoint.
+
+## Details
+
+- `AiPlaylistDto` now includes `Tracks`
+- each track carries:
+  - `Song`
+  - `GenreScore`
+  - `GenreRank`
+  - `Why`
+  - `Markers[]` with key/value/confidence
+- legacy `Songs` remains populated for backward compatibility
+
+## Rationale
+
+This keeps Kaylee on the existing fetch path for the detail page, avoids two near-identical playlist contracts drifting apart, and preserves current list/play consumers that only know about `Songs`.

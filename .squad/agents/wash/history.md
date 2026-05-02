@@ -21,6 +21,9 @@ Mapped AI integration points for OpenAI-backed playlisting. Use in-process servi
 ## Learnings
 <!-- Recent entries below -->
 
+### 2026-05-02 — AI Playlist Detail Payload Enrichment
+Extended the existing AI playlist detail flow instead of creating a second details endpoint. `AiPlaylistDto` now carries `Tracks`, where each entry includes the song plus its selected-genre score, rank, why text, and stored marker values/confidence, while the legacy `Songs` list remains populated for older callers.
+
 ### 2026-05-02 — AI Truncated JSON Fallback
 Truncated AI batch payloads that fail at paths like `$.songs[4].genres[2]` are structural end-of-data errors, so the existing numeric repair path cannot safely fix them. `HomeSpeaker.Server2` now tightens the prompt/output budget and falls back to per-song analysis only for classified truncated-JSON batch failures, which keeps one malformed batch from stranding every claimed track.
 
@@ -52,3 +55,6 @@ Implemented auto-requeue mechanism for failed AI music analysis work items. Init
 ### 2026-05-02 — AI JSON Numeric Repair
 
 Traced malformed-model failures to `AiMusicAnalyzer.AnalyzeBatchAsync()` deserializing `response.Text` directly into `AiBatchAnalysisResponse`, so invalid JSON numbers like `01`, `.4`, `0.`, or `0,4` at paths such as `$.songs[5].energy` abort the whole batch. Tightened the prompt to demand valid JSON numerics and added a narrow repair pass that only normalizes known numeric fields before deserialization, with warning/error logging that preserves the failing path and response context. Zoe validated with smoke tests and numeric repair validation. ✅ APPROVED for production.
+
+### 2026-05-02 — AI Playlist Detail Payload Enrichment (Completed)
+Extended the existing AI playlist detail flow (`/api/ai/playlists/{genreKey}`) to include per-track scoring metadata. `AiPlaylistDto.Tracks` now carries `Song`, `GenreScore`, `GenreRank`, `Why` text, and `Markers[]` (key/value/confidence). Legacy `Songs` list remains populated for backward compatibility. Reused existing endpoint rather than creating a second details API, avoiding duplicate contracts. Validated by Zoe: build clean, all pages load, scoring data visible. ✅ APPROVED & COMPLETE

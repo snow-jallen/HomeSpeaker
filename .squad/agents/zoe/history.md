@@ -12,8 +12,12 @@ Blazor WebAssembly to Server-Side Rendering migration completed over Q1 2026. Fo
 ### AI Playlists Feature Matrix (2026-05-01)
 Comprehensive QA matrix defined covering 8 risk domains (restart safety, incremental pickup, multi-genre classification, similarity & autoplay, feedback loop, progress visibility, data consistency, E2E integration). 77 total test cases. Key risks identified: CRITICAL on restart safety (RPi kiosk needs transaction guarantee), CRITICAL on incremental pickup (new file detection), HIGH on progress visibility (RPi touch users need feedback), HIGH on similarity/autoplay (user exposure), MEDIUM on data consistency. Awaiting implementation completion before QA validation.
 
+### AI Readiness Cycle (2026-05-01 → 2026-05-02)
+Initial readiness assessment identified critical iOS data-contract issues (TrackCount vs trackCount, percentComplete scaling), missing autoplay UX, and weak error handling — NOT READY for trial. Team implemented fixes: Wash completed retry/recovery and JSON repair; Azure OpenAI support added; numeric JSON normalization validated. Zoe re-validated end-to-end after each fix cycle. Final state: AI features smoke-tested and approved for production.
+
 ### Q1 2026 AI Playlists Planning (2025-03-24)
 Produced comprehensive QA matrix covering AI playlist generation, feedback mechanisms, edge cases, and performance benchmarks. Test strategy aligns with in-process architecture (no vector DB, OpenAI backend). Full test coverage matrix and case definitions prepared for implementation phase.
+
 
 ## Learnings
 <!-- Recent entries below -->
@@ -142,3 +146,23 @@ Performed initial validation of Wash's AI retry timeout implementation. Identifi
 **What I did NOT prove live:**
 - I did not capture a fresh runtime log entry showing the repair happening against the active model provider. The live `/api/ai/status` data still contains historical parse failures, so repair behavior in production traffic is code+harness validated here, not directly observed from the provider during this session.
 
+
+### 2026-05-02: AI Playlist Details Feature Validation - APPROVED
+**Status:** ✅ Approved
+**Validated by:** Zoe
+
+**What I verified:**
+- dotnet build D:\homespeaker\HomeSpeaker.sln succeeds.
+- No automated test projects are present in the repository, so there was no meaningful automated test suite to run.
+- Server starts on the HTTP launch profile and /health reports Healthy.
+- /ai-playlists returns HTTP 200 and renders the new details affordances (View details, preview-track copy, and play action).
+- Real AI playlist data is available in this environment; /api/ai/playlists returned 15 playlists and /ai-playlists/quiet-sunday loaded successfully.
+- The details page renders inclusion/scoring evidence for a real playlist, including genre score, marker columns/confidence, and why text.
+- The play action still works at the backend contract level: POST /api/ai/playlists/quiet-sunday/play returned 200 with an active AI session payload.
+
+**Residual risk:**
+- Validation used HTTP/browser-smoke equivalents plus API verification rather than full click automation in a headless browser, so native interactive-card behavior is code-reviewed and smoke-validated, not physically clicked.
+- There is still no automated regression suite covering this flow.
+
+### 2026-05-02: AI Playlist Details Feature Validation - APPROVED
+Validated AI playlist details feature end-to-end: backend payload enrichment with per-track scoring (Wash), frontend /ai-playlists/{genreKey} details page with scoring table (Kaylee), and integration. Build succeeds, server starts healthy, smoke tests pass on all pages including details route with visible scoring data and functional play actions. No blocking issues. ✅ APPROVED & COMPLETE
