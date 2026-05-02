@@ -20,6 +20,8 @@ struct MoreView: View {
 
                 youtubeSection
 
+                aiSection
+
                 if features?.temperatureEnabled == true {
                     temperatureSection
                 }
@@ -115,6 +117,21 @@ struct MoreView: View {
                 YouTubeView()
             } label: {
                 Label("YouTube", systemImage: "play.rectangle")
+            }
+        }
+    }
+
+    private var aiSection: some View {
+        Section("AI") {
+            NavigationLink {
+                AIPlaylistsView()
+            } label: {
+                Label("AI Playlists", systemImage: "sparkles")
+            }
+            NavigationLink {
+                AIStatusView()
+            } label: {
+                Label("AI Status", systemImage: "cpu")
             }
         }
     }

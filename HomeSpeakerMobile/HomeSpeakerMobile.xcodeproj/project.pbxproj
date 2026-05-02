@@ -26,6 +26,8 @@
 		775F06E21ED5A5D9BAB69A2A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 932B931B88EC9D90133C7FB7 /* Assets.xcassets */; };
 		7AB23637168FDA6113A1E116 /* YouTubeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742488CE44FEEA3523C46654 /* YouTubeView.swift */; };
 		8BA769F8273F5002C64F9957 /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE72379FA5E35A1E24338A72 /* QueueView.swift */; };
+		8CAA466DE8E1AC4DDC182682 /* AIPlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5AB2945906B9634A6C844C9 /* AIPlaylistsView.swift */; };
+		8E27D4675795777A6FF971AD /* AIStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0708C23DBE902CD2AF78140D /* AIStatusView.swift */; };
 		90BDA85488C40C638B27DEF3 /* RadioStreamsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97987F210143A29FA1EA204 /* RadioStreamsView.swift */; };
 		96F16D770BBC0004BCE29747 /* MediaPlayer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CAF6F1D2EC5D2112E6D5AECA /* MediaPlayer.framework */; };
 		97D4A59656382C9B54FD48D9 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F4223DA2F0CDF7DF37CB1511 /* SwiftUI.framework */; };
@@ -39,6 +41,7 @@
 		B882A143B6536C8135B12E20 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EB62922935DAAB7820E9B273 /* Assets.xcassets */; };
 		BC18B967C3D72E4E311A3A36 /* ConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8049584149E66D488080E43 /* ConnectionStore.swift */; };
 		CD02ED43DB2AB4DEA6E6D892 /* WidgetIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F4F22A2E9A3EBC7B2594BF4 /* WidgetIntents.swift */; };
+		D037E33A7AF0B10E6ABA5A5E /* AIPlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4783E8ABC24B91A6C939BF /* AIPlaylistsView.swift */; };
 		D03D1C8F483822096AD105C4 /* WatchSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA9B6AB8BBD67679356966D6 /* WatchSync.swift */; };
 		D5262AFCA33339C74FD86834 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 972E6F741153B0F923CEB1D8 /* ContentView.swift */; };
 		D5E9B351F36941F8BD43F65E /* WatchSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA9B6AB8BBD67679356966D6 /* WatchSync.swift */; };
@@ -96,6 +99,7 @@
 
 /* Begin PBXFileReference section */
 		0387EAEB26350D3D2A73FB79 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		0708C23DBE902CD2AF78140D /* AIStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIStatusView.swift; sourceTree = "<group>"; };
 		16D6F1E4E46A26F966D05A65 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		16F2A1CA99C67EB4935F82B4 /* NowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingView.swift; sourceTree = "<group>"; };
 		1859B12913E4087DC6C8AE6D /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
@@ -113,7 +117,8 @@
 		932B931B88EC9D90133C7FB7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		972E6F741153B0F923CEB1D8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		991398AE4AA449825359CD71 /* QueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueView.swift; sourceTree = "<group>"; };
-		9FDA0E7B88A5BE2BDCD91EBA /* HomeSpeaker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HomeSpeaker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9E4783E8ABC24B91A6C939BF /* AIPlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPlaylistsView.swift; sourceTree = "<group>"; };
+		9FDA0E7B88A5BE2BDCD91EBA /* HomeSpeaker.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = HomeSpeaker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9FE39C0DB8FFD7DBDEC6E984 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A1ED18F91C6D18A84AC2CE2D /* PlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistsView.swift; sourceTree = "<group>"; };
 		AA9B6AB8BBD67679356966D6 /* WatchSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSync.swift; sourceTree = "<group>"; };
@@ -127,6 +132,7 @@
 		D3B0125C146E59A5A2A1943C /* PlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistsView.swift; sourceTree = "<group>"; };
 		DE860A8EC2BC7A3510B7D5BE /* HomeSpeakerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerWidget.swift; sourceTree = "<group>"; };
 		DFF600AE780822B97E207F38 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		E5AB2945906B9634A6C844C9 /* AIPlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPlaylistsView.swift; sourceTree = "<group>"; };
 		E8049584149E66D488080E43 /* ConnectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionStore.swift; sourceTree = "<group>"; };
 		EB62922935DAAB7820E9B273 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F241EFDB1BBC7B42BF8AD924 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -181,6 +187,7 @@
 		3312E1806B817D8B9EE70910 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				E5AB2945906B9634A6C844C9 /* AIPlaylistsView.swift */,
 				16D6F1E4E46A26F966D05A65 /* LibraryView.swift */,
 				16F2A1CA99C67EB4935F82B4 /* NowPlayingView.swift */,
 				D3B0125C146E59A5A2A1943C /* PlaylistsView.swift */,
@@ -270,6 +277,8 @@
 		9640FB9053993F506946BA33 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				9E4783E8ABC24B91A6C939BF /* AIPlaylistsView.swift */,
+				0708C23DBE902CD2AF78140D /* AIStatusView.swift */,
 				7DC249750CEAD1C046D5E9F8 /* MoreView.swift */,
 				5362492C8FDA890DA502B7AE /* MusicLibraryView.swift */,
 				FAD72D0C245433BA64B16115 /* NowPlayingView.swift */,
@@ -364,6 +373,17 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					2A9C51AE16AD79AE38C00127 = {
+						DevelopmentTeam = 53VT2BR349;
+					};
+					A15168F97BCC9E467C5F6200 = {
+						DevelopmentTeam = 53VT2BR349;
+					};
+					D0F3F38AD55547F90D067CFA = {
+						DevelopmentTeam = 53VT2BR349;
+					};
+				};
 			};
 			buildConfigurationList = E3B9BE366A907B393F85208E /* Build configuration list for PBXProject "HomeSpeakerMobile" */;
 			developmentRegion = en;
@@ -421,6 +441,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D037E33A7AF0B10E6ABA5A5E /* AIPlaylistsView.swift in Sources */,
+				8E27D4675795777A6FF971AD /* AIStatusView.swift in Sources */,
 				687EB1F65D3FD4831CF9D102 /* APIClient.swift in Sources */,
 				BC18B967C3D72E4E311A3A36 /* ConnectionStore.swift in Sources */,
 				5DBB028FCF8D559EA3178DC6 /* ContentView.swift in Sources */,
@@ -443,6 +465,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8CAA466DE8E1AC4DDC182682 /* AIPlaylistsView.swift in Sources */,
 				716E81D5609BFE112919F15F /* APIClient.swift in Sources */,
 				DB776F605977B61BC0570A8C /* ConnectionStore.swift in Sources */,
 				D5262AFCA33339C74FD86834 /* ContentView.swift in Sources */,
@@ -479,7 +502,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = watchOS/Widget/HomeSpeakerWidget.entitlements;
-				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				INFOPLIST_FILE = watchOS/Widget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -498,7 +520,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = watchOS/Widget/HomeSpeakerWidget.entitlements;
-				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				INFOPLIST_FILE = watchOS/Widget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -643,7 +664,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = iOS/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -662,7 +682,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = iOS/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -681,7 +700,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = watchOS/HomeSpeakerWatch.entitlements;
-				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = watchOS/Resources/Info.plist;
 				PRODUCT_BUNDLE_IDENTIFIER = com.homespeaker.ios.watchos;
@@ -699,7 +717,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = watchOS/HomeSpeakerWatch.entitlements;
-				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = watchOS/Resources/Info.plist;
 				PRODUCT_BUNDLE_IDENTIFIER = com.homespeaker.ios.watchos;
