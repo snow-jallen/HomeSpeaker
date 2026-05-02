@@ -1,0 +1,220 @@
+@page "/ai-playlists/{GenreKey}"
+@inject HomeSpeakerService svc
+@inject ILogger<AiPlaylistDetails> Logger
+@attribute [StreamRendering]
+
+<PageTitle>@(playlist?.DisplayName is { Length: > 0 } name ? $"{name} · AI Playlist" : "AI Playlist Details")</PageTitle>
+
+<div class="ai-playlist-details-page">
+    <div class="ai-playlist-details-toolbar">
+        <a href="/ai-playlists" class="btn btn-outline-secondary btn-touch">
+            <i class="fas fa-arrow-left me-2"></i>Back to playlists
+        </a>
+
+        <button @onclick="PlayPlaylist"
+                class="btn btn-primary btn-touch"
+                disabled="@(playlist is null || isPlaying)">
+            @if (isPlaying)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span>Starting…</span>
+            }
+            else
+            {
+                <i class="fas fa-play me-2"></i>
+                <span>Play playlist</span>
+            }
+        </button>
+    </div>
+
+    @if (!hasLoaded && isLoading)
+    {
+        <div class="d-flex justify-content-center p-5">
+            <div class="spinner-border text-primary ai-playlist-details-spinner" role="status">
+                <span class="visually-hidden">Loading AI playlist details...</span>
+            </div>
+        </div>
+    }
+    else if (playlist is null)
+    {
+        <section class="ai-playlist-empty-state">
+            <i class="fas fa-brain fa-3x" aria-hidden="true"></i>
+            <h3>Playlist not found</h3>
+            <p>That AI playlist is unavailable right now. Try going back to the playlist gallery and refreshing.</p>
+        </section>
+    }
+    else
+    {
+        <section class="ai-playlist-hero">
+            <div class="ai-playlist-hero__eyebrow">AI playlist preview</div>
+            <h1 class="ai-playlist-hero__title">@playlist.DisplayName</h1>
+            <p class="ai-playlist-hero__description">@playlist.Description</p>
+
+            <div class="ai-playlist-meta">
+                <div class="ai-playlist-meta__item">
+                    <span class="ai-playlist-meta__label">Included tracks</span>
+                    <span class="ai-playlist-meta__value">@playlist.Tracks.Count</span>
+                </div>
+                <div class="ai-playlist-meta__item">
+                    <span class="ai-playlist-meta__label">Genre key</span>
+                    <span class="ai-playlist-meta__value">@playlist.GenreKey</span>
+                </div>
+                <div class="ai-playlist-meta__item">
+                    <span class="ai-playlist-meta__label">Scoring columns</span>
+                    <span class="ai-playlist-meta__value">@VisibleScoreColumnCount</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="ai-playlist-table-card">
+            <div class="ai-playlist-table-card__header">
+                <div class="ai-playlist-table-card__eyebrow">Why these tracks made it in</div>
+                <h2 class="ai-playlist-table-card__title">Included tracks and AI scores</h2>
+                <p class="ai-playlist-table-card__description">Review the real playlist scoring data before pressing play. Marker columns only appear when the AI model exposed them for this playlist.</p>
+            </div>
+
+            @if (playlist.Tracks.Count == 0)
+            {
+                <div class="ai-playlist-empty-table">
+                    <i class="fas fa-table-list" aria-hidden="true"></i>
+                    <p>No ranked tracks are available for this playlist yet.</p>
+                </div>
+            }
+            else
+            {
+                <div class="ai-playlist-table-wrap">
+                    <table class="table ai-playlist-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Rank</th>
+                                <th scope="col">Track</th>
+                                <th scope="col">Artist</th>
+                                <th scope="col">Album</th>
+                                <th scope="col">Genre score</th>
+                                @foreach (var markerKey in MarkerKeys)
+                                {
+                                    <th scope="col">@FormatMarkerLabel(markerKey)</th>
+                                }
+                                @if (HasWhyColumn)
+                                {
+                                    <th scope="col">Why</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var track in playlist.Tracks)
+                            {
+                                <tr>
+                                    <td class="ai-playlist-table__rank">#@track.GenreRank</td>
+                                    <td class="ai-playlist-table__track">@track.Song.Name</td>
+                                    <td>@track.Song.Artist</td>
+                                    <td>@track.Song.Album</td>
+                                    <td class="ai-playlist-table__score">@track.GenreScore.ToString("0.###")</td>
+                                    @foreach (var markerKey in MarkerKeys)
+                                    {
+                                        var marker = track.Markers.FirstOrDefault(item => string.Equals(item.Key, markerKey, StringComparison.OrdinalIgnoreCase));
+                                        <td class="ai-playlist-table__marker">
+                                            @if (marker is null)
+                                            {
+                                                <span>—</span>
+                                            }
+                                            else
+                                            {
+                                                <div class="ai-playlist-table__marker-value">@marker.Value.ToString("0.###")</div>
+                                                <div class="ai-playlist-table__marker-confidence">Conf. @marker.Confidence.ToString("0.##")</div>
+                                            }
+                                        </td>
+                                    }
+                                    @if (HasWhyColumn)
+                                    {
+                                        <td class="ai-playlist-table__why">@(string.IsNullOrWhiteSpace(track.Why) ? "—" : track.Why)</td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string GenreKey { get; set; } = string.Empty;
+
+    private AiPlaylist? playlist;
+    private bool isLoading = true;
+    private bool hasLoaded;
+    private bool isPlaying;
+
+    private IReadOnlyList<string> MarkerKeys =>
+        playlist?.Tracks
+            .SelectMany(track => track.Markers)
+            .Select(marker => marker.Key)
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
+            .ToList() ?? (IReadOnlyList<string>)Array.Empty<string>();
+
+    private int VisibleScoreColumnCount => 2 + MarkerKeys.Count + (HasWhyColumn ? 1 : 0);
+
+    private bool HasWhyColumn => playlist?.Tracks.Any(track => !string.IsNullOrWhiteSpace(track.Why)) == true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadPlaylistAsync();
+    }
+
+    private async Task LoadPlaylistAsync()
+    {
+        try
+        {
+            isLoading = true;
+            playlist = await svc.GetAiPlaylistAsync(GenreKey);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading AI playlist details for {GenreKey}", GenreKey);
+            playlist = null;
+        }
+        finally
+        {
+            isLoading = false;
+            hasLoaded = true;
+        }
+    }
+
+    private async Task PlayPlaylist()
+    {
+        if (playlist is null || string.IsNullOrWhiteSpace(GenreKey))
+        {
+            return;
+        }
+
+        try
+        {
+            isPlaying = true;
+            await svc.PlayAiPlaylistAsync(GenreKey);
+            Logger.LogInformation("Started AI playlist from details page: {GenreKey}", GenreKey);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error playing AI playlist from details page: {GenreKey}", GenreKey);
+        }
+        finally
+        {
+            isPlaying = false;
+        }
+    }
+
+    private static string FormatMarkerLabel(string markerKey)
+    {
+        return string.Join(' ',
+            markerKey
+                .Replace("-", " ", StringComparison.Ordinal)
+                .Replace("_", " ", StringComparison.Ordinal)
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Select(part => char.ToUpperInvariant(part[0]) + part[1..]));
+    }
+}

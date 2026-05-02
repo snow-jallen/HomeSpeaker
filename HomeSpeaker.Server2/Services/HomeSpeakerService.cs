@@ -575,6 +575,19 @@ public class HomeSpeakerService
                 GenreKey = playlist.GenreKey,
                 DisplayName = playlist.DisplayName,
                 Description = playlist.Description,
+                Tracks = playlist.Tracks.Select(track => new AiPlaylistTrack
+                {
+                    Song = track.Song.ToSongViewModel(),
+                    GenreScore = track.GenreScore,
+                    GenreRank = track.GenreRank,
+                    Why = track.Why,
+                    Markers = track.Markers.Select(marker => new AiPlaylistTrackMarker
+                    {
+                        Key = marker.Key,
+                        Value = marker.Value,
+                        Confidence = marker.Confidence
+                    }).ToList()
+                }).ToList(),
                 Songs = playlist.Songs.Select(song => song.ToSongViewModel()).ToList()
             };
         }

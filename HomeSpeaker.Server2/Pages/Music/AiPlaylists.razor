@@ -36,10 +36,15 @@ else if (!playlists.Any())
 }
 else
 {
-    <div class="ai-playlists-grid">
-        @foreach (var playlist in playlists)
-        {
-            <div class="ai-playlist-card" @key="playlist.GenreKey">
+        <div class="ai-playlists-grid">
+            @foreach (var playlist in playlists)
+            {
+            <article class="ai-playlist-card" @key="playlist.GenreKey">
+                <a class="ai-playlist-card-link"
+                   href="@GetPlaylistDetailsUrl(playlist.GenreKey)"
+                   aria-label="Open details for @playlist.DisplayName">
+                    <span class="visually-hidden">Open details for @playlist.DisplayName</span>
+                </a>
                 <div class="ai-playlist-header">
                     <h5 class="ai-playlist-title">@playlist.DisplayName</h5>
                     <span class="ai-playlist-count">@playlist.TrackCount tracks</span>
@@ -51,12 +56,25 @@ else
                         Updated @FormatRelativeTime(playlist.LastUpdated.Value)
                     </div>
                 }
-                <button @onclick="() => PlayPlaylist(playlist.GenreKey)" 
-                        class="btn btn-primary btn-touch w-100 mt-3"
-                        title="Play @playlist.DisplayName">
-                    <i class="fas fa-play me-2"></i>Play
-                </button>
-            </div>
+                <div class="ai-playlist-footer">
+                    <div class="ai-playlist-hint">
+                        <i class="fas fa-table-list" aria-hidden="true"></i>
+                        <span>Tap anywhere to preview tracks and scores</span>
+                    </div>
+                    <div class="ai-playlist-actions-row">
+                        <a href="@GetPlaylistDetailsUrl(playlist.GenreKey)"
+                           class="btn btn-outline-secondary btn-touch"
+                           title="View details for @playlist.DisplayName">
+                            <i class="fas fa-arrow-right me-2"></i>View details
+                        </a>
+                        <button @onclick="() => PlayPlaylist(playlist.GenreKey)"
+                                class="btn btn-primary btn-touch"
+                                title="Play @playlist.DisplayName">
+                            <i class="fas fa-play me-2"></i>Play
+                        </button>
+                    </div>
+                </div>
+            </article>
         }
     </div>
 }
@@ -108,6 +126,8 @@ else
             Logger.LogError(ex, "Error playing AI playlist: {GenreKey}", genreKey);
         }
     }
+
+    private static string GetPlaylistDetailsUrl(string genreKey) => $"/ai-playlists/{Uri.EscapeDataString(genreKey)}";
 
     private string FormatRelativeTime(DateTime dateTime)
     {

@@ -386,13 +386,53 @@ public sealed class AiMusicCatalogService
             .Take(maxTracks)
             .ToListAsync(cancellationToken);
 
+        var songPaths = scores
+            .Select(score => score.SongPath)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var markers = await dbContext.AiTrackMarkers.AsNoTracking()
+            .Where(marker => songPaths.Contains(marker.SongPath))
+            .OrderByDescending(marker => marker.MarkerValue)
+            .ThenByDescending(marker => marker.Confidence)
+            .ToListAsync(cancellationToken);
+
         var songsByPath = library.Songs
             .Where(s => !string.IsNullOrWhiteSpace(s.Path))
-            .ToDictionary(s => s.Path!, s => s);
+            .ToDictionary(s => s.Path!, s => s, StringComparer.OrdinalIgnoreCase);
 
-        var songs = scores
-            .Select(score => songsByPath.GetValueOrDefault(score.SongPath))
-            .OfType<Song>()
+        var markersBySongPath = markers
+            .GroupBy(marker => marker.SongPath, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<AiPlaylistTrackMarkerDto>)group
+                    .Select(marker => new AiPlaylistTrackMarkerDto
+                    {
+                        Key = marker.MarkerKey,
+                        Value = marker.MarkerValue,
+                        Confidence = marker.Confidence
+                    })
+                    .ToList(),
+                StringComparer.OrdinalIgnoreCase);
+
+        var tracks = scores
+            .Select(score =>
+            {
+                if (!songsByPath.TryGetValue(score.SongPath, out var song))
+                {
+                    return null;
+                }
+
+                return new AiPlaylistTrackDto
+                {
+                    Song = song,
+                    GenreScore = score.Score,
+                    GenreRank = score.Rank,
+                    Why = string.IsNullOrWhiteSpace(score.Why) ? null : score.Why.Trim(),
+                    Markers = markersBySongPath.GetValueOrDefault(score.SongPath, Array.Empty<AiPlaylistTrackMarkerDto>())
+                };
+            })
+            .OfType<AiPlaylistTrackDto>()
             .ToList();
 
         return new AiPlaylistDto
@@ -400,7 +440,8 @@ public sealed class AiMusicCatalogService
             GenreKey = genre.Key,
             DisplayName = genre.DisplayName,
             Description = genre.Description,
-            Songs = songs
+            Tracks = tracks,
+            Songs = tracks.Select(track => track.Song).ToList()
         };
     }
 

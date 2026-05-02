@@ -35,12 +35,34 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     padding: var(--hs-space-lg, 1.5rem);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: var(--hs-space-sm, 0.5rem);
+    position: relative;
     transition: transform 0.2s, border-color 0.2s;
 }
 
-.ai-playlist-card:active {
+.ai-playlist-card:focus-within {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.2rem rgba(83, 91, 242, 0.25);
+}
+
+.ai-playlist-card:has(.ai-playlist-card-link:active) {
     transform: scale(0.98);
     border-color: var(--bs-primary);
+}
+
+.ai-playlist-card-link {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+}
+
+.ai-playlist-card-link:focus-visible {
+    outline: none;
 }
 
 .ai-playlist-header {
@@ -75,6 +97,34 @@
     font-size: 0.75rem;
     color: var(--bs-secondary);
     opacity: 0.7;
+}
+
+.ai-playlist-footer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--hs-space-sm, 0.5rem);
+    margin-top: auto;
+    padding-top: var(--hs-space-sm, 0.5rem);
+}
+
+.ai-playlist-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--bs-secondary);
+}
+
+.ai-playlist-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    position: relative;
+    z-index: 2;
+}
+
+.ai-playlist-actions-row .btn-touch {
+    flex: 1 1 140px;
 }
 
 .ai-playlist-card .btn-touch {

@@ -14,7 +14,24 @@ public class AiPlaylist
     public string GenreKey { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public List<AiPlaylistTrack> Tracks { get; set; } = new();
     public List<SongViewModel> Songs { get; set; } = new();
+}
+
+public class AiPlaylistTrack
+{
+    public required SongViewModel Song { get; set; }
+    public double GenreScore { get; set; }
+    public int GenreRank { get; set; }
+    public string? Why { get; set; }
+    public List<AiPlaylistTrackMarker> Markers { get; set; } = new();
+}
+
+public class AiPlaylistTrackMarker
+{
+    public string Key { get; set; } = string.Empty;
+    public double Value { get; set; }
+    public double Confidence { get; set; }
 }
 
 public class AiLibraryStatus

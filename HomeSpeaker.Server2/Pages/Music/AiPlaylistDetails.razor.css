@@ -1,0 +1,160 @@
+.btn-touch {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.5rem 1rem;
+    touch-action: manipulation;
+}
+
+.ai-playlist-details-page {
+    display: grid;
+    gap: var(--hs-space-lg, 1.5rem);
+    padding-bottom: var(--hs-space-lg, 1.5rem);
+}
+
+.ai-playlist-details-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.ai-playlist-details-spinner {
+    width: 3rem;
+    height: 3rem;
+}
+
+.ai-playlist-empty-state,
+.ai-playlist-empty-table {
+    display: grid;
+    place-items: center;
+    gap: 0.75rem;
+    text-align: center;
+    padding: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--bs-secondary);
+}
+
+.ai-playlist-hero,
+.ai-playlist-table-card {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: clamp(1rem, 2vw, 1.5rem);
+}
+
+.ai-playlist-hero {
+    display: grid;
+    gap: 1rem;
+}
+
+.ai-playlist-hero__eyebrow,
+.ai-playlist-table-card__eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+    color: var(--bs-primary);
+    font-weight: 700;
+}
+
+.ai-playlist-hero__title,
+.ai-playlist-table-card__title {
+    margin: 0;
+}
+
+.ai-playlist-hero__description,
+.ai-playlist-table-card__description {
+    margin: 0.5rem 0 0;
+    color: rgba(255, 255, 255, 0.75);
+    max-width: 70ch;
+}
+
+.ai-playlist-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.75rem;
+}
+
+.ai-playlist-meta__item {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.85rem 1rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.ai-playlist-meta__label {
+    font-size: 0.8rem;
+    color: var(--bs-secondary);
+}
+
+.ai-playlist-meta__value {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.ai-playlist-table-card__header {
+    margin-bottom: 1rem;
+}
+
+.ai-playlist-table-wrap {
+    overflow-x: auto;
+}
+
+.ai-playlist-table {
+    margin-bottom: 0;
+    min-width: 880px;
+    vertical-align: middle;
+}
+
+.ai-playlist-table thead th {
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+    color: var(--bs-secondary);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.ai-playlist-table tbody td {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.ai-playlist-table__rank,
+.ai-playlist-table__score {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.ai-playlist-table__track {
+    font-weight: 600;
+    min-width: 180px;
+}
+
+.ai-playlist-table__marker {
+    min-width: 110px;
+    white-space: nowrap;
+}
+
+.ai-playlist-table__marker-value {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.ai-playlist-table__marker-confidence {
+    font-size: 0.75rem;
+    color: var(--bs-secondary);
+}
+
+.ai-playlist-table__why {
+    min-width: 260px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+@media (max-width: 600px) {
+    .ai-playlist-details-toolbar > * {
+        width: 100%;
+    }
+}
