@@ -260,6 +260,40 @@ Extended `HomeSpeakerService.cs` with AI methods:
 
 ---
 
+---
+date: 2026-05-02
+author: Wash (Backend Dev)
+status: Approved
+affects: HomeSpeaker.Server2 AI analysis pipeline
+---
+
+# Narrow AI JSON Numeric Repair
+
+## Decision
+
+When the music-analysis model returns malformed JSON numbers, the backend should only repair explicitly known numeric fields in the expected schema (`energy`, score fields, marker values/confidence, and `rank`) before deserializing the batch.
+
+## Why
+
+The current failure mode is batch-wide: `AiMusicAnalyzer.AnalyzeBatchAsync()` deserializes the raw model payload directly, so one malformed numeric token like `01` in `$.songs[5].energy` fails every track in that batch. A narrow repair path keeps retries productive for known model formatting mistakes without silently accepting arbitrary malformed JSON or untrusted schema drift.
+
+## Implementation
+
+- Prompt now explicitly forbids leading-zero integers, decimal commas, missing leading zeros, and trailing decimal points.
+- Repair is limited to numeric-shape fixes on known numeric properties; anything else still fails loudly with path/context logging.
+- Existing failed-item requeue behavior remains in place, so affected tracks can recover on the next worker attempt after deploy.
+
+## Validation
+
+✅ Approved by Zoe (QA):
+- Build passed
+- Server startup healthy
+- Browser smoke tests on /, /music, /queue, /playlists, /ai-playlists, /ai-status
+- Validated that malformed energy value (e.g., 00.42) is repaired
+- Confirmed non-target/truncated JSON still fails as intended
+
+---
+
 # Blazor WebAssembly → Server Migration Map
 
 **Date:** 2026-03-24  

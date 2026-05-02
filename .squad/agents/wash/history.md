@@ -42,3 +42,7 @@ Traced Azure/OpenAI timeout message to Azure SDK retry timeout during chat reque
 ### 2026-05-01 — AI Retry/Timeout Fix Cycle (Wash → Zoe → Mal → Approved)
 
 Implemented auto-requeue mechanism for failed AI music analysis work items. Initial implementation rejected by Zoe due to end-to-end timeout ineffectiveness. Mal revised provider-level timeout wiring via AzureOpenAIClientOptions and OpenAIClientOptions to properly configure SDK transport. Zoe revalidated and approved. Final state: auto-requeue enabled, batch size 6, 200s timeout enforced at both analyzer and transport layers.
+
+### 2026-05-02 — AI JSON Numeric Repair
+
+Traced malformed-model failures to `AiMusicAnalyzer.AnalyzeBatchAsync()` deserializing `response.Text` directly into `AiBatchAnalysisResponse`, so invalid JSON numbers like `01`, `.4`, `0.`, or `0,4` at paths such as `$.songs[5].energy` abort the whole batch. Tightened the prompt to demand valid JSON numerics and added a narrow repair pass that only normalizes known numeric fields before deserialization, with warning/error logging that preserves the failing path and response context. Zoe validated with smoke tests and numeric repair validation. ✅ APPROVED for production.
