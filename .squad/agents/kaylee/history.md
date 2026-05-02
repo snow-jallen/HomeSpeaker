@@ -24,6 +24,9 @@ Mapped Blazor UI structure for AI playlists: New pages in Pages/Music/, componen
 ## Learnings
 <!-- Recent entries below -->
 
+### 2026-05-02: AI Playlist Card Navigation Follow-up (COMPLETED)
+Swapped the `/ai-playlists` cards from Blazor click handlers to real full-card links so detail navigation works immediately and reliably on touch devices. Kept the play button layered above the card link so tapping Play still starts playback instead of navigating away. Cards navigate to `/ai-playlists/{genreKey}` on click. HomeSpeaker.Server2 build: ✅ SUCCESS
+
 ### 2026-05-02: EstateMapper PeopleNavMenu Disposal Diagnosis
 Diagnosed critical lifecycle bug in PeopleNavMenu component during EstateMapper disposal request. Root cause: stale NavigationManager callback outlives component and triggers refresh after disposal. Impact: post-disposal state updates attempt to modify disposed component. Diagnostic completed, implementation pending team decision.
 

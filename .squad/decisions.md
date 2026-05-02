@@ -5161,3 +5161,28 @@ Reuse the existing AI playlist detail flow (`/api/ai/playlists/{genreKey}` and `
 ## Rationale
 
 This keeps Kaylee on the existing fetch path for the detail page, avoids two near-identical playlist contracts drifting apart, and preserves current list/play consumers that only know about `Songs`.
+
+---
+
+### 2026-05-02T23:23:09Z: AI Playlist Card Link Navigation
+**By:** Kaylee (Frontend Dev)  
+**Status:** Implemented  
+**Affects:** AiPlaylists.razor, card navigation UX
+
+## Decision
+
+AI playlist cards on /ai-playlists use real full-card anchor links that navigate to /ai-playlists/{genreKey}. The dedicated Play button remains as a separate action layered above the card link and triggers playback instead of navigation.
+
+## Rationale
+
+- Real links preserve expected navigation even before Blazor event handlers hydrate
+- Safer for touch-first card UIs on 7-inch Raspberry Pi display
+- Keeps play action separate, preventing accidental navigation when user intends playback
+- Aligns with full-page details pattern established in previous AI playlist iteration
+
+## Implementation
+
+- Card click/tap: navigates to detail page
+- Play button click/tap: triggers playback without navigation
+- Styling: consolidated to AiPlaylists.razor.css only
+- Build: validated ✅
