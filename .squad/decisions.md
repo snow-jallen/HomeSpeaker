@@ -5205,3 +5205,22 @@ Keep the `/ai-playlists` gallery visible during active AI processing by treating
 - The gallery now shows partial playlist data and links to status for live progress.
 - Per-card counts can read as "so far" while processing is active.
 - Detail and play flows stay unchanged.
+---
+
+### 2026-05-03T20:18:30Z: Case-insensitive AI genre aggregation
+**By:** Wash (AI Engineer)  
+**Status:** Implemented  
+**Affects:** AiMusicCatalogService, AI Playlists Backend
+
+## Decision
+Treat AI genre keys as case-insensitive at the service boundary:
+- Collapse active genre definitions by key using StringComparer.OrdinalIgnoreCase
+- Fold grouped summary counts/last-updated values case-insensitively before ToDictionary
+- Resolve playlist requests case-insensitively and query scores with SQLite NOCASE
+- Keep partial-results behavior by deduping per-song rows and duplicate library paths instead of failing
+
+## Why
+This fixes the immediate crash without requiring a risky data cleanup or schema migration, and it matches how the UI/API already present genre keys as logical identifiers rather than case-sensitive IDs.
+
+## Root Cause
+AI playlist summaries crashed in AiMusicCatalogService.GetGenreSummariesAsync() when grouped score rows produced keys that only differed by case (for example choral and CHORAL). SQLite grouping and the current { SongPath, GenreKey } primary key treat those as distinct rows, but the service later materialized them into case-insensitive dictionaries.

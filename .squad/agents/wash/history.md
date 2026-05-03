@@ -21,6 +21,9 @@ Mapped AI integration points for OpenAI-backed playlisting. Use in-process servi
 ## Learnings
 <!-- Recent entries below -->
 
+### 2026-05-03 — AI Playlist Genre Key Deduping
+`AiMusicCatalogService` summary queries can return separate grouped rows for `choral`/`CHORAL` because SQLite grouping and the composite `{ SongPath, GenreKey }` key are case-sensitive. Collapsing definitions and grouped aggregates with `StringComparer.OrdinalIgnoreCase`, plus case-insensitive playlist lookups, keeps AI playlists rendering and preserves partial results when dirty genre data slips in.
+
 ### 2026-05-02 — AI Playlist Detail Payload Enrichment
 Extended the existing AI playlist detail flow instead of creating a second details endpoint. `AiPlaylistDto` now carries `Tracks`, where each entry includes the song plus its selected-genre score, rank, why text, and stored marker values/confidence, while the legacy `Songs` list remains populated for older callers.
 
