@@ -12,13 +12,21 @@
         <a href="/ai-status" class="btn btn-outline-secondary btn-touch" title="View AI status">
             <i class="fas fa-robot me-1"></i>Status
         </a>
-        <button @onclick="RefreshPlaylists" class="btn btn-outline-secondary btn-touch" title="Refresh AI playlists">
-            <i class="fas fa-sync-alt me-1"></i>Refresh
+        <button @onclick="RefreshPlaylists" class="btn btn-outline-secondary btn-touch" title="Refresh AI playlists" disabled="@isLoading">
+            @if (isLoading)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span>Refreshing...</span>
+            }
+            else
+            {
+                <i class="fas fa-sync-alt me-1"></i><span>Refresh</span>
+            }
         </button>
     </div>
 </div>
 
-@if (isLoading)
+@if (!hasLoaded && isLoading)
 {
     <div class="d-flex justify-content-center p-5">
         <div class="spinner-border text-primary ai-playlists-spinner" role="status">
@@ -26,63 +34,105 @@
         </div>
     </div>
 }
-else if (!playlists.Any())
-{
-    <div class="text-center text-muted p-5">
-        <i class="fas fa-robot fa-3x mb-3 opacity-50"></i>
-        <h5>No AI playlists available yet</h5>
-        <p>The AI is still analyzing your music library. Check <a href="/ai-status" class="link-primary">AI Status</a> for progress.</p>
-    </div>
-}
 else
 {
-        <div class="ai-playlists-grid">
-            @foreach (var playlist in playlists)
-            {
-            <article class="ai-playlist-card" @key="playlist.GenreKey">
-                <a class="ai-playlist-card-link"
-                   href="@GetPlaylistDetailsUrl(playlist.GenreKey)"
-                   aria-label="Open details for @playlist.DisplayName">
-                    <span class="visually-hidden">Open details for @playlist.DisplayName</span>
-                </a>
-                <div class="ai-playlist-header">
-                    <h5 class="ai-playlist-title">@playlist.DisplayName</h5>
-                    <span class="ai-playlist-count">@playlist.TrackCount tracks</span>
+    <div class="ai-playlists-page">
+        @if (isLoading)
+        {
+            <div class="ai-playlists-refreshing" aria-live="polite">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span>Updating playlist counts…</span>
+            </div>
+        }
+
+        @if (HasAnalysisInProgress)
+        {
+            <section class="ai-playlists-status-card" aria-live="polite">
+                <div class="ai-playlists-status-card__icon">
+                    <i class="fas fa-wave-square" aria-hidden="true"></i>
                 </div>
-                <p class="ai-playlist-desc">@playlist.Description</p>
-                @if (playlist.LastUpdated.HasValue)
+                <div class="ai-playlists-status-card__content">
+                    <div class="ai-playlists-status-card__title">AI analysis is still filling these playlists in</div>
+                    <p class="ai-playlists-status-card__text">
+                        You can open any playlist now to see the tracks scored so far. @GetAnalysisProgressSummary()
+                        <a href="/ai-status" class="link-primary">View live status</a>.
+                    </p>
+                </div>
+            </section>
+        }
+
+        @if (!playlists.Any())
+        {
+            <section class="ai-playlists-empty-state">
+                <i class="fas fa-brain fa-3x" aria-hidden="true"></i>
+                <h5>AI playlists aren’t available right now</h5>
+                <p>Try refreshing this page, or check <a href="/ai-status" class="link-primary">AI Status</a> for the current processing state.</p>
+            </section>
+        }
+        else
+        {
+            <div class="ai-playlists-grid">
+                @foreach (var playlist in playlists)
                 {
-                    <div class="ai-playlist-updated">
-                        Updated @FormatRelativeTime(playlist.LastUpdated.Value)
-                    </div>
-                }
-                <div class="ai-playlist-footer">
-                    <div class="ai-playlist-hint">
-                        <i class="fas fa-table-list" aria-hidden="true"></i>
-                        <span>Tap anywhere to preview tracks and scores</span>
-                    </div>
-                    <div class="ai-playlist-actions-row">
-                        <a href="@GetPlaylistDetailsUrl(playlist.GenreKey)"
-                           class="btn btn-outline-secondary btn-touch"
-                           title="View details for @playlist.DisplayName">
-                            <i class="fas fa-arrow-right me-2"></i>View details
+                    <article class="ai-playlist-card" @key="playlist.GenreKey">
+                        <a class="ai-playlist-card-link"
+                           href="@GetPlaylistDetailsUrl(playlist.GenreKey)"
+                           aria-label="Open details for @playlist.DisplayName">
+                            <span class="visually-hidden">Open details for @playlist.DisplayName</span>
                         </a>
-                        <button @onclick="() => PlayPlaylist(playlist.GenreKey)"
-                                class="btn btn-primary btn-touch"
-                                title="Play @playlist.DisplayName">
-                            <i class="fas fa-play me-2"></i>Play
-                        </button>
-                    </div>
-                </div>
-            </article>
+                        <div class="ai-playlist-header">
+                            <h5 class="ai-playlist-title">@playlist.DisplayName</h5>
+                            <span class="ai-playlist-count">@GetTrackCountLabel(playlist)</span>
+                        </div>
+                        <p class="ai-playlist-desc">@playlist.Description</p>
+                        @if (playlist.LastUpdated.HasValue)
+                        {
+                            <div class="ai-playlist-updated">
+                                Updated @FormatRelativeTime(playlist.LastUpdated.Value)
+                            </div>
+                        }
+                        else if (HasAnalysisInProgress)
+                        {
+                            <div class="ai-playlist-updated ai-playlist-updated--pending">
+                                Still collecting matches
+                            </div>
+                        }
+                        <div class="ai-playlist-footer">
+                            <div class="ai-playlist-hint">
+                                <i class="fas fa-table-list" aria-hidden="true"></i>
+                                <span>Tap anywhere to preview tracks and scores</span>
+                            </div>
+                            <div class="ai-playlist-actions-row">
+                                <a href="@GetPlaylistDetailsUrl(playlist.GenreKey)"
+                                   class="btn btn-outline-secondary btn-touch"
+                                   title="View details for @playlist.DisplayName">
+                                    <i class="fas fa-arrow-right me-2"></i>View details
+                                </a>
+                                <button @onclick="() => PlayPlaylist(playlist.GenreKey)"
+                                        class="btn btn-primary btn-touch"
+                                        title="Play @playlist.DisplayName">
+                                    <i class="fas fa-play me-2"></i>Play
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
         }
     </div>
 }
 
 @code {
     private List<AiPlaylistSummary> playlists = new();
+    private AiLibraryStatus status = new();
     private bool isLoading = true;
+    private bool hasLoaded;
     private System.Threading.Timer? refreshTimer;
+    private bool HasAnalysisInProgress =>
+        string.Equals(status.State, "Processing", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(status.State, "Scanning", StringComparison.OrdinalIgnoreCase) ||
+        status.QueuedTracks > 0 ||
+        status.ProcessingTracks > 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -101,16 +151,24 @@ else
         try
         {
             isLoading = true;
-            playlists = await svc.GetAiPlaylistsAsync();
+            var playlistsTask = svc.GetAiPlaylistsAsync();
+            var statusTask = svc.GetAiStatusAsync();
+
+            await Task.WhenAll(playlistsTask, statusTask);
+
+            playlists = await playlistsTask;
+            status = await statusTask;
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading AI playlists");
             playlists = new List<AiPlaylistSummary>();
+            status = new AiLibraryStatus();
         }
         finally
         {
             isLoading = false;
+            hasLoaded = true;
         }
     }
 
@@ -128,6 +186,37 @@ else
     }
 
     private static string GetPlaylistDetailsUrl(string genreKey) => $"/ai-playlists/{Uri.EscapeDataString(genreKey)}";
+
+    private string GetTrackCountLabel(AiPlaylistSummary playlist)
+    {
+        var trackLabel = playlist.TrackCount == 1 ? "track" : "tracks";
+        var suffix = HasAnalysisInProgress ? " so far" : string.Empty;
+        return $"{playlist.TrackCount} {trackLabel}{suffix}";
+    }
+
+    private string GetAnalysisProgressSummary()
+    {
+        var parts = new List<string>();
+
+        if (status.TotalTracks > 0)
+        {
+            parts.Add($"{status.CompletedTracks} of {status.TotalTracks} tracks analyzed ({status.PercentComplete:F1}%).");
+        }
+
+        if (status.ProcessingTracks > 0)
+        {
+            parts.Add($"{status.ProcessingTracks} processing now.");
+        }
+
+        if (status.QueuedTracks > 0)
+        {
+            parts.Add($"{status.QueuedTracks} queued next.");
+        }
+
+        return parts.Count > 0
+            ? string.Join(" ", parts)
+            : "Counts will grow automatically as the worker scores more songs.";
+    }
 
     private string FormatRelativeTime(DateTime dateTime)
     {

@@ -352,7 +352,27 @@ public sealed class AiMusicCatalogService
             .Select(g => new { GenreKey = g.Key, Count = g.Count() })
             .ToListAsync(cancellationToken);
 
+        var lastUpdatedGroups = await dbContext.AiTrackGenreScores.AsNoTracking()
+            .Join(
+                dbContext.AiTrackProfiles.AsNoTracking()
+                    .Where(profile => profile.Status == AiProcessingStatus.Completed && profile.LastAnalyzedUtc != null),
+                score => score.SongPath,
+                profile => profile.SongPath,
+                (score, profile) => new
+                {
+                    score.GenreKey,
+                    profile.LastAnalyzedUtc
+                })
+            .GroupBy(item => item.GenreKey)
+            .Select(group => new
+            {
+                GenreKey = group.Key,
+                LastUpdatedUtc = group.Max(item => item.LastAnalyzedUtc)
+            })
+            .ToListAsync(cancellationToken);
+
         var scoreCounts = scoreGroups.ToDictionary(x => x.GenreKey, x => x.Count, StringComparer.OrdinalIgnoreCase);
+        var lastUpdatedByGenre = lastUpdatedGroups.ToDictionary(x => x.GenreKey, x => x.LastUpdatedUtc, StringComparer.OrdinalIgnoreCase);
         var summaries = new List<AiPlaylistSummaryDto>();
         foreach (var genre in genres)
         {
@@ -363,7 +383,7 @@ public sealed class AiMusicCatalogService
                 Description = genre.Description,
                 TrackCount = scoreCounts.GetValueOrDefault(genre.Key),
                 SortOrder = genre.SortOrder,
-                LastUpdatedUtc = await getLastUpdatedUtcAsync(genre.Key, cancellationToken)
+                LastUpdatedUtc = lastUpdatedByGenre.GetValueOrDefault(genre.Key)
             });
         }
 
@@ -461,22 +481,6 @@ public sealed class AiMusicCatalogService
             .Select(sim => songsByPath.GetValueOrDefault(sim.SimilarSongPath))
             .OfType<Song>()
             .ToList();
-    }
-
-    private async Task<DateTime?> getLastUpdatedUtcAsync(string genreKey, CancellationToken cancellationToken)
-    {
-        var last = await dbContext.AiTrackGenreScores.AsNoTracking()
-            .Where(g => g.GenreKey == genreKey)
-            .Join(dbContext.AiTrackProfiles.AsNoTracking(),
-                g => g.SongPath,
-                p => p.SongPath,
-                (g, p) => new { g.GenreKey, p.LastAnalyzedUtc, p.Status })
-            .Where(x => x.Status == AiProcessingStatus.Completed && x.LastAnalyzedUtc != null)
-            .OrderByDescending(x => x.LastAnalyzedUtc)
-            .Select(x => x.LastAnalyzedUtc)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        return last;
     }
 
     private sealed record BatchActivityRow(
