@@ -24,6 +24,9 @@ Mapped Blazor UI structure for AI playlists: New pages in Pages/Music/, componen
 ## Learnings
 <!-- Recent entries below -->
 
+### 2026-05-03: AI Playlist In-Progress Gallery Fix (COMPLETED)
+Updated `/ai-playlists` so the gallery stays useful while AI enrichment is still running: it now keeps rendering the playlist set with current counts, shows a progress/status callout instead of the misleading “No AI playlists available yet” message, and preserves detail/play entry points while background refreshes happen. Also collapsed the summary query work in `AiMusicCatalogService` so playlist counts + last-updated data arrive in grouped queries instead of one per genre. HomeSpeaker.Server2 build: ✅ SUCCESS
+
 ### 2026-05-02: AI Playlist Card Navigation Follow-up (COMPLETED)
 Swapped the `/ai-playlists` cards from Blazor click handlers to real full-card links so detail navigation works immediately and reliably on touch devices. Kept the play button layered above the card link so tapping Play still starts playback instead of navigating away. Cards navigate to `/ai-playlists/{genreKey}` on click. HomeSpeaker.Server2 build: ✅ SUCCESS
 
@@ -40,3 +43,6 @@ Added a dedicated AI playlist details route in Server2 so users can inspect a pl
 
 ### 2026-05-02: AI Playlist Details UX (Completed)
 Implemented /ai-playlists/{genreKey} details page showing full playlist metadata, included tracks, scoring columns (rank, score, why), and dynamic marker columns. Gallery cards act as preview-first entry points; play actions remain visible on both card and details page. Touch-optimized per Darkly theme. Validated by Zoe: all pages load, scoring data visible, play actions functional. ✅ APPROVED & COMPLETE
+
+### 2026-05-02 (Evening): AI Playlists In-Progress Gallery Fix (Completed)
+Completed partial fix for /ai-playlists visibility during AI enrichment. The gallery now keeps playlist cards visible while processing is active instead of showing misleading empty state. Cards display current track counts with "so far" suffix during processing and show pending copy for playlists without matches. Catalog summary loading optimized to grouped queries for counts/last-updated. All existing status, details, and play flows preserved. HomeSpeaker.Server2 build: ✅ SUCCESS

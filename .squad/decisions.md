@@ -5186,3 +5186,22 @@ AI playlist cards on /ai-playlists use real full-card anchor links that navigate
 - Play button click/tap: triggers playback without navigation
 - Styling: consolidated to AiPlaylists.razor.css only
 - Build: validated ✅
+---
+
+### 2026-05-02T20:11:24Z: AI Playlists In-Progress Visibility
+**By:** Kaylee (Frontend Dev)  
+**Status:** Implemented  
+**Affects:** AiPlaylists.razor gallery, AiMusicCatalogService
+
+## Decision
+Keep the `/ai-playlists` gallery visible during active AI processing by treating genre cards as stable playlist shells, then layering current counts/progress messaging on top instead of swapping to an empty state.
+
+## Why
+- Users should be able to browse into playlist details immediately, even when some playlists still have zero scored tracks.
+- "No AI playlists available yet" reads like failure or absence, when the real state is partial/in-progress enrichment.
+- Non-blocking refresh feedback keeps the page feeling alive without hiding already-loaded cards every time counts update.
+
+## Impact
+- The gallery now shows partial playlist data and links to status for live progress.
+- Per-card counts can read as "so far" while processing is active.
+- Detail and play flows stay unchanged.
