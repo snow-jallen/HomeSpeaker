@@ -342,10 +342,19 @@ public sealed class AiMusicCatalogService
 
     public async Task<IReadOnlyList<AiPlaylistSummaryDto>> GetGenreSummariesAsync(CancellationToken cancellationToken)
     {
-        var genres = await dbContext.AiGenreDefinitions.AsNoTracking()
+        var genres = (await dbContext.AiGenreDefinitions.AsNoTracking()
             .Where(g => g.IsActive)
             .OrderBy(g => g.SortOrder)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken))
+            .Where(g => !string.IsNullOrWhiteSpace(g.Key))
+            .GroupBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group
+                .OrderBy(g => g.SortOrder)
+                .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+                .First())
+            .OrderBy(g => g.SortOrder)
+            .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         var scoreGroups = await dbContext.AiTrackGenreScores.AsNoTracking()
             .GroupBy(g => g.GenreKey)
@@ -371,8 +380,14 @@ public sealed class AiMusicCatalogService
             })
             .ToListAsync(cancellationToken);
 
-        var scoreCounts = scoreGroups.ToDictionary(x => x.GenreKey, x => x.Count, StringComparer.OrdinalIgnoreCase);
-        var lastUpdatedByGenre = lastUpdatedGroups.ToDictionary(x => x.GenreKey, x => x.LastUpdatedUtc, StringComparer.OrdinalIgnoreCase);
+        var scoreCounts = scoreGroups
+            .Where(x => !string.IsNullOrWhiteSpace(x.GenreKey))
+            .GroupBy(x => x.GenreKey, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Sum(x => x.Count), StringComparer.OrdinalIgnoreCase);
+        var lastUpdatedByGenre = lastUpdatedGroups
+            .Where(x => !string.IsNullOrWhiteSpace(x.GenreKey))
+            .GroupBy(x => x.GenreKey, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Max(x => x.LastUpdatedUtc), StringComparer.OrdinalIgnoreCase);
         var summaries = new List<AiPlaylistSummaryDto>();
         foreach (var genre in genres)
         {
@@ -392,19 +407,33 @@ public sealed class AiMusicCatalogService
 
     public async Task<AiPlaylistDto?> GetGenrePlaylistAsync(string genreKey, int maxTracks, CancellationToken cancellationToken)
     {
-        var genre = await dbContext.AiGenreDefinitions.AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Key == genreKey && g.IsActive, cancellationToken);
+        var genre = (await dbContext.AiGenreDefinitions.AsNoTracking()
+                .Where(g => g.IsActive)
+                .ToListAsync(cancellationToken))
+            .Where(g => !string.IsNullOrWhiteSpace(g.Key) &&
+                        string.Equals(g.Key, genreKey, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(g => g.SortOrder)
+            .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
         if (genre == null)
         {
             return null;
         }
 
-        var scores = await dbContext.AiTrackGenreScores.AsNoTracking()
-            .Where(s => s.GenreKey == genreKey)
+        var scores = (await dbContext.AiTrackGenreScores.AsNoTracking()
+            .Where(s => EF.Functions.Collate(s.GenreKey, "NOCASE") == genre.Key)
             .OrderByDescending(s => s.Score)
             .ThenBy(s => s.Rank)
+            .ToListAsync(cancellationToken))
+            .GroupBy(score => score.SongPath, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group
+                .OrderByDescending(score => score.Score)
+                .ThenBy(score => score.Rank)
+                .First())
+            .OrderByDescending(score => score.Score)
+            .ThenBy(score => score.Rank)
             .Take(maxTracks)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         var songPaths = scores
             .Select(score => score.SongPath)
@@ -419,7 +448,8 @@ public sealed class AiMusicCatalogService
 
         var songsByPath = library.Songs
             .Where(s => !string.IsNullOrWhiteSpace(s.Path))
-            .ToDictionary(s => s.Path!, s => s, StringComparer.OrdinalIgnoreCase);
+            .GroupBy(s => s.Path!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
         var markersBySongPath = markers
             .GroupBy(marker => marker.SongPath, StringComparer.OrdinalIgnoreCase)
