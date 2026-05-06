@@ -5224,3 +5224,58 @@ This fixes the immediate crash without requiring a risky data cleanup or schema 
 
 ## Root Cause
 AI playlist summaries crashed in AiMusicCatalogService.GetGenreSummariesAsync() when grouped score rows produced keys that only differed by case (for example choral and CHORAL). SQLite grouping and the current { SongPath, GenreKey } primary key treat those as distinct rows, but the service later materialized them into case-insensitive dictionaries.
+
+---
+
+### 2026-05-06T00:37:09Z: AI playlist detail row-level play actions
+**By:** Kaylee (Frontend Dev)  
+**Status:** Implemented  
+**Affects:** AiPlaylistDetails page, AI playlist playback flow
+
+## Decision
+AI playlist detail row-level play actions should reuse the AI genre playback session instead of falling back to generic single-song playback.
+
+## Why
+- Keeps AI feedback/session context intact for thumbs-up/down and related AI player state.
+- Lets a tapped song start immediately without throwing away the rest of the playlist.
+- Preserves a consistent queue experience between "play all" and "play this track."
+
+## Implementation Note
+Start the same genre session, rotate the ranked song order so the selected track is first, then enqueue the remaining playlist tracks after it.
+
+---
+
+### 2026-05-06T00:37:09Z: Music-page play replaces queue through dedicated path
+**By:** Wash (Backend/AI Engineer)  
+**Status:** Implemented  
+**Affects:** HomeSpeakerService.PlaySongsAsync, music page play dropdown
+
+## Decision
+Music-page server-side multi-song play should use a replace-queue path, not repeated enqueue calls.
+
+## Why
+The shared play dropdown is used for artist/album song collections. Reusing EnqueueSongAsync after StopPlayingAsync left old queued tracks behind because stopping playback does not clear IMusicPlayer.SongQueue.
+
+## Implementation
+HomeSpeakerService now owns a dedicated PlaySongsAsync flow that stops playback, clears the active queue, starts the first selected song immediately, and queues only the remaining selected songs. Existing add-to-queue behavior still routes through enqueue-only code paths.
+
+---
+
+### 2026-05-06T00:37:09Z: AI genre entry sanitization with bounded normalization
+**By:** Wash (Backend/AI Engineer)  
+**Status:** Implemented  
+**Affects:** AiMusicAnalyzer, AI batch processing pipeline
+
+## Context
+AiMusicAnalyzer already had a narrow numeric repair pass and a truncated-batch fallback. Repeated failures like AI returned invalid JSON near $.songs[4].genres[2] were still escaping because the payload was syntactically valid JSON, but the genres item shape/value did not match AiGenreScoreResult.
+
+## Decision
+- Keep strict typed deserialization as the primary path.
+- If deserialization fails on a .genres path, run a bounded JSON-node normalization pass only over songs[*].genres.
+- Canonicalize known genre keys, coerce safe numeric score/rank strings into numbers, clear non-string optional why, and drop malformed genre items or non-array genres containers.
+- Preserve existing numeric repair and truncated-json per-song fallback behavior unchanged.
+
+## Why
+- This contains the blast radius to the field that is actually failing instead of weakening the whole contract.
+- One malformed genre item should not strand the rest of the batch, but unknown or structurally bad genre data should still be visible in logs rather than silently accepted.
+

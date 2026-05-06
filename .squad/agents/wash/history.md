@@ -21,6 +21,18 @@ Mapped AI integration points for OpenAI-backed playlisting. Use in-process servi
 ## Learnings
 <!-- Recent entries below -->
 
+### 2026-05-06 (COMPLETED): Music page play replaces queue
+Music-page Play dropdown now routes through dedicated `PlaySongsAsync` path that stops playback, clears queue, starts first song immediately, and queues remaining songs. Preserves add-to-queue append semantics through separate code path. Coordinated with Kaylee on AI playlist playback. Build: ✅ SUCCESS
+
+### 2026-05-06 (COMPLETED): AI genre entry sanitization
+Bounded JSON-node normalization pass now runs only over `songs[*].genres` when typed deserialization fails. Canonicalizes known genre keys, coerces safe numeric score/rank strings, drops malformed items. Preserves existing numeric repair and truncated-json fallback unchanged. Logs all changes for observability.
+
+### 2026-05-06 — Music page play replaces queue through a dedicated server-side path
+The music page's shared multi-song play dropdown was stopping playback and then enqueueing each selected song, which preserved any stale queued entries because `Stop()` does not clear the queue. The safe fix is to route multi-song server play through a dedicated `HomeSpeakerService.PlaySongsAsync()` path that stops playback, clears the queue, starts the first song, and only uses enqueue for the remaining tracks, while the existing plus-menu add-to-queue flow keeps append semantics.
+
+### 2026-05-06 — AI Genre Entry Sanitization
+`AiMusicAnalyzer` was still deserializing the full model payload straight into `AiBatchAnalysisResponse`, so schema-valid JSON with a bad `songs[*].genres` shape/value (stringified numbers, non-object entries, wrong `genres` container) bypassed the numeric repair pass and never qualified for truncated-json fallback. The production fix is a bounded DOM normalization pass that runs only for `.genres` parse failures, canonicalizes known genre keys, coerces safe score/rank strings, drops malformed genre entries or invalid genre containers, and logs exactly what was changed before retrying typed deserialization.
+
 ### 2026-05-03 — AI Playlist Genre Key Deduping
 `AiMusicCatalogService` summary queries can return separate grouped rows for `choral`/`CHORAL` because SQLite grouping and the composite `{ SongPath, GenreKey }` key are case-sensitive. Collapsing definitions and grouped aggregates with `StringComparer.OrdinalIgnoreCase`, plus case-insensitive playlist lookups, keeps AI playlists rendering and preserves partial results when dirty genre data slips in.
 

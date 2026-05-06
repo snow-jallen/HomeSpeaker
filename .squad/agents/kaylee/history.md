@@ -24,6 +24,12 @@ Mapped Blazor UI structure for AI playlists: New pages in Pages/Music/, componen
 ## Learnings
 <!-- Recent entries below -->
 
+### 2026-05-06 (COMPLETED): AI Playlist Detail Playback Controls
+Added per-track play buttons to AI playlist details page. Individual track play reuses AI genre playback flow by rotating the playlist queue so chosen songs start immediately while the rest queues behind. Coordinated with Wash on Music-page queue replacement. Build: ✅ SUCCESS
+
+### 2026-05-06: AI Playlist Detail Playback Controls (COMPLETED)
+Added a more obvious "Play all tracks" CTA to the AI playlist details hero and introduced per-track play buttons directly in the ranked table. Individual track play now reuses the AI genre playback flow by rotating the playlist queue so the chosen song starts immediately while the rest of the playlist stays queued behind it. HomeSpeaker.Server2 build: ✅ SUCCESS
+
 ### 2026-05-03: AI Playlist In-Progress Gallery Fix (COMPLETED)
 Updated `/ai-playlists` so the gallery stays useful while AI enrichment is still running: it now keeps rendering the playlist set with current counts, shows a progress/status callout instead of the misleading “No AI playlists available yet” message, and preserves detail/play entry points while background refreshes happen. Also collapsed the summary query work in `AiMusicCatalogService` so playlist counts + last-updated data arrive in grouped queries instead of one per genre. HomeSpeaker.Server2 build: ✅ SUCCESS
 
