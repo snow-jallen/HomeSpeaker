@@ -98,11 +98,7 @@
         }
         else if (Songs != null)
         {
-            await homeSpeakerService.StopPlayingAsync();
-            foreach (var song in Songs)
-            {
-                await homeSpeakerService.EnqueueSongAsync(song.SongId);
-            }
+            await homeSpeakerService.PlaySongsAsync(Songs);
         }
         
         await OnPlayStarted.InvokeAsync();

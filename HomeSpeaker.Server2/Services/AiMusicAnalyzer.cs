@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using HomeSpeaker.Server2.Data;
 using Microsoft.Extensions.AI;
@@ -84,7 +86,11 @@ public sealed class AiMusicAnalyzer
 
         try
         {
-            var payload = deserializeResponse(response.Text);
+            var allowedGenreKeys = genres
+                .Where(genre => !string.IsNullOrWhiteSpace(genre.Key))
+                .GroupBy(genre => genre.Key, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First().Key, StringComparer.OrdinalIgnoreCase);
+            var payload = deserializeResponse(response.Text, allowedGenreKeys);
             return payload?.Songs ?? new List<AiTrackAnalysisResult>();
         }
         catch (JsonException ex)
@@ -141,36 +147,77 @@ public sealed class AiMusicAnalyzer
         return sb.ToString();
     }
 
-    private AiBatchAnalysisResponse? deserializeResponse(string responseText)
+    private AiBatchAnalysisResponse? deserializeResponse(
+        string responseText,
+        IReadOnlyDictionary<string, string> allowedGenreKeys)
+    {
+        if (tryDeserializeBatchResponse(responseText, out var payload, out var exception))
+        {
+            return normalizePayload(payload);
+        }
+
+        var workingResponse = responseText;
+        var currentException = exception!;
+
+        if (tryRepairMalformedNumericJson(workingResponse, out var repairedResponse, out var repairs))
+        {
+            if (tryDeserializeBatchResponse(repairedResponse, out payload, out var repairedException))
+            {
+                logger.LogWarning(
+                    "Repaired malformed AI JSON at {Path}. Applied {RepairCount} numeric fix(es): {Repairs}. Context: {Context}",
+                    currentException.Path ?? "$",
+                    repairs.Count,
+                    string.Join("; ", repairs.Take(6)),
+                    buildJsonErrorContext(responseText, currentException));
+                return normalizePayload(payload);
+            }
+
+            workingResponse = repairedResponse;
+            currentException = repairedException!;
+        }
+
+        if (tryNormalizeMalformedGenreJson(workingResponse, currentException, allowedGenreKeys, out var normalizedResponse, out var genreRepairs))
+        {
+            if (tryDeserializeBatchResponse(normalizedResponse, out payload, out var normalizedException))
+            {
+                logger.LogWarning(
+                    "Normalized malformed AI genre data at {Path}. Applied {RepairCount} genre fix(es): {Repairs}. Context: {Context}",
+                    currentException.Path ?? "$",
+                    genreRepairs.Count,
+                    string.Join("; ", genreRepairs.Take(6)),
+                    buildJsonErrorContext(workingResponse, currentException));
+                return normalizePayload(payload);
+            }
+
+            logger.LogError(
+                normalizedException,
+                "AI genre normalization did not resolve parse failure. Original path {OriginalPath}, repaired path {RepairedPath}, repairs: {Repairs}, response preview: {Preview}",
+                currentException.Path ?? "$",
+                normalizedException?.Path ?? "$",
+                string.Join("; ", genreRepairs.Take(6)),
+                summarizeResponse(normalizedResponse));
+            currentException = normalizedException!;
+        }
+
+        throw currentException;
+    }
+
+    private bool tryDeserializeBatchResponse(
+        string responseText,
+        out AiBatchAnalysisResponse? payload,
+        out JsonException? exception)
     {
         try
         {
-            return JsonSerializer.Deserialize<AiBatchAnalysisResponse>(responseText, jsonOptions);
+            payload = JsonSerializer.Deserialize<AiBatchAnalysisResponse>(responseText, jsonOptions);
+            exception = null;
+            return true;
         }
-        catch (JsonException ex) when (tryRepairMalformedNumericJson(responseText, out var repairedResponse, out var repairs))
+        catch (JsonException ex)
         {
-            try
-            {
-                var repairedPayload = JsonSerializer.Deserialize<AiBatchAnalysisResponse>(repairedResponse, jsonOptions);
-                logger.LogWarning(
-                    "Repaired malformed AI JSON at {Path}. Applied {RepairCount} numeric fix(es): {Repairs}. Context: {Context}",
-                    ex.Path ?? "$",
-                    repairs.Count,
-                    string.Join("; ", repairs.Take(6)),
-                    buildJsonErrorContext(responseText, ex));
-                return repairedPayload;
-            }
-            catch (JsonException repairedEx)
-            {
-                logger.LogError(
-                    repairedEx,
-                    "AI JSON repair did not resolve parse failure. Original path {OriginalPath}, repaired path {RepairedPath}, repairs: {Repairs}, response preview: {Preview}",
-                    ex.Path ?? "$",
-                    repairedEx.Path ?? "$",
-                    string.Join("; ", repairs.Take(6)),
-                    summarizeResponse(repairedResponse));
-                throw;
-            }
+            payload = null;
+            exception = ex;
+            return false;
         }
     }
 
@@ -283,6 +330,322 @@ public sealed class AiMusicAnalyzer
 
         reason = string.Join(", ", reasons);
         return true;
+    }
+
+    private static bool tryNormalizeMalformedGenreJson(
+        string responseText,
+        JsonException exception,
+        IReadOnlyDictionary<string, string> allowedGenreKeys,
+        out string normalizedResponse,
+        out IReadOnlyList<string> repairs)
+    {
+        repairs = Array.Empty<string>();
+        normalizedResponse = responseText;
+
+        if (!isGenrePath(exception.Path))
+        {
+            return false;
+        }
+
+        JsonNode? root;
+        try
+        {
+            root = JsonNode.Parse(responseText);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        if (root is not JsonObject rootObject ||
+            rootObject["songs"] is not JsonArray songsArray)
+        {
+            return false;
+        }
+
+        var repairNotes = new List<string>();
+        for (var songIndex = 0; songIndex < songsArray.Count; songIndex++)
+        {
+            if (songsArray[songIndex] is not JsonObject songObject ||
+                !songObject.TryGetPropertyValue("genres", out var genresNode))
+            {
+                continue;
+            }
+
+            if (genresNode is null)
+            {
+                songObject["genres"] = new JsonArray();
+                repairNotes.Add($"songs[{songIndex}].genres replaced null with []");
+                continue;
+            }
+
+            if (genresNode is not JsonArray genresArray)
+            {
+                songObject["genres"] = new JsonArray();
+                repairNotes.Add($"songs[{songIndex}].genres replaced non-array value with []");
+                continue;
+            }
+
+            for (var genreIndex = genresArray.Count - 1; genreIndex >= 0; genreIndex--)
+            {
+                if (!tryNormalizeGenreEntry(genresArray[genreIndex], allowedGenreKeys, out var action))
+                {
+                    genresArray.RemoveAt(genreIndex);
+                    repairNotes.Add($"songs[{songIndex}].genres[{genreIndex}] removed ({action})");
+                    continue;
+                }
+
+                if (!string.IsNullOrWhiteSpace(action))
+                {
+                    repairNotes.Add($"songs[{songIndex}].genres[{genreIndex}] normalized ({action})");
+                }
+            }
+        }
+
+        if (repairNotes.Count == 0)
+        {
+            return false;
+        }
+
+        normalizedResponse = rootObject.ToJsonString();
+        repairs = repairNotes;
+        return true;
+    }
+
+    private static bool tryNormalizeGenreEntry(
+        JsonNode? genreNode,
+        IReadOnlyDictionary<string, string> allowedGenreKeys,
+        out string action)
+    {
+        if (genreNode is not JsonObject genreObject)
+        {
+            action = "expected an object";
+            return false;
+        }
+
+        var changes = new List<string>();
+
+        if (!tryNormalizeGenreKey(genreObject, allowedGenreKeys, changes, out action) ||
+            !tryNormalizeGenreScore(genreObject, changes, out action) ||
+            !tryNormalizeGenreRank(genreObject, changes, out action))
+        {
+            return false;
+        }
+
+        if (genreObject.TryGetPropertyValue("why", out var whyNode) &&
+            whyNode is not null &&
+            !tryReadJsonString(whyNode, out _))
+        {
+            genreObject["why"] = null;
+            changes.Add("cleared non-string why");
+        }
+
+        action = string.Join(", ", changes);
+        return true;
+    }
+
+    private static bool tryNormalizeGenreKey(
+        JsonObject genreObject,
+        IReadOnlyDictionary<string, string> allowedGenreKeys,
+        List<string> changes,
+        out string failureReason)
+    {
+        failureReason = string.Empty;
+        if (!genreObject.TryGetPropertyValue("genreKey", out var genreKeyNode) ||
+            !tryReadJsonString(genreKeyNode, out var genreKey) ||
+            string.IsNullOrWhiteSpace(genreKey))
+        {
+            failureReason = "missing genreKey";
+            return false;
+        }
+
+        if (!allowedGenreKeys.TryGetValue(genreKey, out var canonicalGenreKey))
+        {
+            failureReason = $"unknown genreKey '{genreKey}'";
+            return false;
+        }
+
+        if (!string.Equals(genreKey, canonicalGenreKey, StringComparison.Ordinal))
+        {
+            genreObject["genreKey"] = canonicalGenreKey;
+            changes.Add($"canonicalized genreKey '{genreKey}'");
+        }
+
+        return true;
+    }
+
+    private static bool tryNormalizeGenreScore(JsonObject genreObject, List<string> changes, out string failureReason)
+    {
+        failureReason = string.Empty;
+        if (!genreObject.TryGetPropertyValue("score", out var scoreNode))
+        {
+            failureReason = "missing score";
+            return false;
+        }
+
+        if (!tryReadFlexibleDouble(scoreNode, out var score, out var scoreAction))
+        {
+            failureReason = "invalid score";
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(scoreAction))
+        {
+            genreObject["score"] = score;
+            changes.Add(scoreAction);
+        }
+
+        return true;
+    }
+
+    private static bool tryNormalizeGenreRank(JsonObject genreObject, List<string> changes, out string failureReason)
+    {
+        failureReason = string.Empty;
+        if (!genreObject.TryGetPropertyValue("rank", out var rankNode))
+        {
+            failureReason = "missing rank";
+            return false;
+        }
+
+        if (!tryReadFlexibleInt32(rankNode, out var rank, out var rankAction))
+        {
+            failureReason = "invalid rank";
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(rankAction))
+        {
+            genreObject["rank"] = rank;
+            changes.Add(rankAction);
+        }
+
+        return true;
+    }
+
+    private static bool tryReadFlexibleDouble(JsonNode? node, out double value, out string action)
+    {
+        value = 0;
+        action = string.Empty;
+
+        if (node is JsonValue jsonValue)
+        {
+            if (jsonValue.TryGetValue<double>(out value))
+            {
+                return double.IsFinite(value);
+            }
+
+            if (tryReadJsonString(jsonValue, out var stringValue))
+            {
+                var trimmed = stringValue.Trim();
+                if (strictJsonNumberPattern.IsMatch(trimmed) &&
+                    double.TryParse(trimmed, NumberStyles.Float, CultureInfo.InvariantCulture, out value))
+                {
+                    action = "converted score string to number";
+                    return true;
+                }
+
+                if (tryNormalizeJsonNumber(trimmed, out var normalizedValue, out _) &&
+                    double.TryParse(normalizedValue, NumberStyles.Float, CultureInfo.InvariantCulture, out value))
+                {
+                    action = "normalized malformed score string";
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool tryReadFlexibleInt32(JsonNode? node, out int value, out string action)
+    {
+        value = 0;
+        action = string.Empty;
+
+        if (node is JsonValue jsonValue)
+        {
+            if (jsonValue.TryGetValue<int>(out value))
+            {
+                return true;
+            }
+
+            if (jsonValue.TryGetValue<long>(out var longValue) &&
+                longValue >= int.MinValue &&
+                longValue <= int.MaxValue)
+            {
+                value = (int)longValue;
+                action = "normalized rank number";
+                return true;
+            }
+
+            if (jsonValue.TryGetValue<double>(out var doubleValue) &&
+                double.IsFinite(doubleValue) &&
+                Math.Abs(doubleValue - Math.Round(doubleValue, MidpointRounding.AwayFromZero)) < 0.000001d &&
+                doubleValue >= int.MinValue &&
+                doubleValue <= int.MaxValue)
+            {
+                value = (int)doubleValue;
+                action = "normalized fractional rank number";
+                return true;
+            }
+
+            if (tryReadJsonString(jsonValue, out var stringValue))
+            {
+                var trimmed = stringValue.Trim();
+                if (int.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out value))
+                {
+                    action = "converted rank string to number";
+                    return true;
+                }
+
+                if (tryNormalizeJsonNumber(trimmed, out var normalizedValue, out _) &&
+                    decimal.TryParse(normalizedValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var decimalValue) &&
+                    decimal.Truncate(decimalValue) == decimalValue &&
+                    decimalValue >= int.MinValue &&
+                    decimalValue <= int.MaxValue)
+                {
+                    value = (int)decimalValue;
+                    action = "normalized malformed rank string";
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool tryReadJsonString(JsonNode? node, out string value)
+    {
+        value = string.Empty;
+        if (node is not JsonValue jsonValue ||
+            !jsonValue.TryGetValue<string>(out var rawValue) ||
+            rawValue == null)
+        {
+            return false;
+        }
+
+        value = rawValue;
+        return true;
+    }
+
+    private static bool isGenrePath(string? path) =>
+        !string.IsNullOrWhiteSpace(path) &&
+        path.Contains(".genres", StringComparison.Ordinal);
+
+    private static AiBatchAnalysisResponse? normalizePayload(AiBatchAnalysisResponse? payload)
+    {
+        if (payload == null)
+        {
+            return null;
+        }
+
+        payload.Songs ??= new List<AiTrackAnalysisResult>();
+        foreach (var song in payload.Songs)
+        {
+            song.Markers ??= new List<AiMarkerResult>();
+            song.Genres ??= new List<AiGenreScoreResult>();
+        }
+
+        return payload;
     }
 
     private static string buildJsonErrorContext(string responseText, JsonException exception)

@@ -50,6 +50,22 @@
     gap: 1rem;
 }
 
+.ai-playlist-hero__actions {
+    display: grid;
+    gap: 0.5rem;
+    align-items: start;
+}
+
+.ai-playlist-hero__play-button {
+    justify-self: start;
+}
+
+.ai-playlist-hero__hint {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.75);
+    max-width: 55ch;
+}
+
 .ai-playlist-hero__eyebrow,
 .ai-playlist-table-card__eyebrow {
     text-transform: uppercase;
@@ -122,6 +138,19 @@
     border-color: rgba(255, 255, 255, 0.08);
 }
 
+.ai-playlist-table__actions {
+    width: 1%;
+    white-space: nowrap;
+}
+
+.ai-playlist-table__play-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    padding-inline: 0.85rem;
+}
+
 .ai-playlist-table__rank,
 .ai-playlist-table__score {
     font-variant-numeric: tabular-nums;
@@ -156,5 +185,9 @@
 @media (max-width: 600px) {
     .ai-playlist-details-toolbar > * {
         width: 100%;
+    }
+
+    .ai-playlist-hero__play-button {
+        justify-self: stretch;
     }
 }

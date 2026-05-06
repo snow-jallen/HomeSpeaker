@@ -10,21 +10,6 @@
         <a href="/ai-playlists" class="btn btn-outline-secondary btn-touch">
             <i class="fas fa-arrow-left me-2"></i>Back to playlists
         </a>
-
-        <button @onclick="PlayPlaylist"
-                class="btn btn-primary btn-touch"
-                disabled="@(playlist is null || isPlaying)">
-            @if (isPlaying)
-            {
-                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                <span>Starting…</span>
-            }
-            else
-            {
-                <i class="fas fa-play me-2"></i>
-                <span>Play playlist</span>
-            }
-        </button>
     </div>
 
     @if (!hasLoaded && isLoading)
@@ -45,24 +30,43 @@
     }
     else
     {
+        var currentPlaylist = playlist;
         <section class="ai-playlist-hero">
             <div class="ai-playlist-hero__eyebrow">AI playlist preview</div>
-            <h1 class="ai-playlist-hero__title">@playlist.DisplayName</h1>
-            <p class="ai-playlist-hero__description">@playlist.Description</p>
+            <h1 class="ai-playlist-hero__title">@currentPlaylist!.DisplayName</h1>
+            <p class="ai-playlist-hero__description">@currentPlaylist.Description</p>
 
             <div class="ai-playlist-meta">
                 <div class="ai-playlist-meta__item">
                     <span class="ai-playlist-meta__label">Included tracks</span>
-                    <span class="ai-playlist-meta__value">@playlist.Tracks.Count</span>
+                    <span class="ai-playlist-meta__value">@currentPlaylist.Tracks.Count</span>
                 </div>
                 <div class="ai-playlist-meta__item">
                     <span class="ai-playlist-meta__label">Genre key</span>
-                    <span class="ai-playlist-meta__value">@playlist.GenreKey</span>
+                    <span class="ai-playlist-meta__value">@currentPlaylist.GenreKey</span>
                 </div>
                 <div class="ai-playlist-meta__item">
                     <span class="ai-playlist-meta__label">Scoring columns</span>
                     <span class="ai-playlist-meta__value">@VisibleScoreColumnCount</span>
                 </div>
+            </div>
+
+            <div class="ai-playlist-hero__actions">
+                <button @onclick="PlayPlaylist"
+                        class="btn btn-primary btn-touch ai-playlist-hero__play-button"
+                        disabled="@(playlist is null || IsPlaybackStarting)">
+                    @if (isStartingPlaylist)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span>Starting full playlist…</span>
+                    }
+                    else
+                    {
+                        <i class="fas fa-play me-2"></i>
+                        <span>Play all tracks</span>
+                    }
+                </button>
+                <p class="ai-playlist-hero__hint">Start the full AI playlist, or jump into any individual track from the ranked list below.</p>
             </div>
         </section>
 
@@ -73,7 +77,7 @@
                 <p class="ai-playlist-table-card__description">Review the real playlist scoring data before pressing play. Marker columns only appear when the AI model exposed them for this playlist.</p>
             </div>
 
-            @if (playlist.Tracks.Count == 0)
+            @if (currentPlaylist!.Tracks.Count == 0)
             {
                 <div class="ai-playlist-empty-table">
                     <i class="fas fa-table-list" aria-hidden="true"></i>
@@ -86,6 +90,7 @@
                     <table class="table ai-playlist-table">
                         <thead>
                             <tr>
+                                <th scope="col">Play</th>
                                 <th scope="col">Rank</th>
                                 <th scope="col">Track</th>
                                 <th scope="col">Artist</th>
@@ -102,9 +107,26 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var track in playlist.Tracks)
+                            @foreach (var track in currentPlaylist.Tracks)
                             {
                                 <tr>
+                                    <td class="ai-playlist-table__actions">
+                                        <button @onclick="() => PlayTrack(track)"
+                                                class="btn btn-outline-primary btn-touch ai-playlist-table__play-button"
+                                                title="Play @track.Song.Name"
+                                                aria-label="Play @track.Song.Name by @track.Song.Artist"
+                                                disabled="@IsPlaybackStarting">
+                                            @if (playingTrackSongId == track.Song.SongId)
+                                            {
+                                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                                <span class="visually-hidden">Starting @track.Song.Name</span>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-play" aria-hidden="true"></i>
+                                            }
+                                        </button>
+                                    </td>
                                     <td class="ai-playlist-table__rank">#@track.GenreRank</td>
                                     <td class="ai-playlist-table__track">@track.Song.Name</td>
                                     <td>@track.Song.Artist</td>
@@ -146,7 +168,8 @@
     private AiPlaylist? playlist;
     private bool isLoading = true;
     private bool hasLoaded;
-    private bool isPlaying;
+    private bool isStartingPlaylist;
+    private int? playingTrackSongId;
 
     private IReadOnlyList<string> MarkerKeys =>
         playlist?.Tracks
@@ -160,6 +183,7 @@
     private int VisibleScoreColumnCount => 2 + MarkerKeys.Count + (HasWhyColumn ? 1 : 0);
 
     private bool HasWhyColumn => playlist?.Tracks.Any(track => !string.IsNullOrWhiteSpace(track.Why)) == true;
+    private bool IsPlaybackStarting => isStartingPlaylist || playingTrackSongId.HasValue;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -194,7 +218,7 @@
 
         try
         {
-            isPlaying = true;
+            isStartingPlaylist = true;
             await svc.PlayAiPlaylistAsync(GenreKey);
             Logger.LogInformation("Started AI playlist from details page: {GenreKey}", GenreKey);
         }
@@ -204,7 +228,30 @@
         }
         finally
         {
-            isPlaying = false;
+            isStartingPlaylist = false;
+        }
+    }
+
+    private async Task PlayTrack(AiPlaylistTrack track)
+    {
+        if (playlist is null || string.IsNullOrWhiteSpace(GenreKey) || track.Song.SongId <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            playingTrackSongId = track.Song.SongId;
+            await svc.PlayAiPlaylistTrackAsync(GenreKey, track.Song.SongId);
+            Logger.LogInformation("Started AI playlist track from details page: {GenreKey} {SongId}", GenreKey, track.Song.SongId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error playing AI playlist track from details page: {GenreKey} {SongId}", GenreKey, track.Song.SongId);
+        }
+        finally
+        {
+            playingTrackSongId = null;
         }
     }
 

@@ -45,12 +45,26 @@ public sealed class AiPlaybackService
         };
     }
 
-    public async Task<AiPlayerContextDto?> StartGenreSessionAsync(string genreKey, CancellationToken cancellationToken)
+    public Task<AiPlayerContextDto?> StartGenreSessionAsync(string genreKey, CancellationToken cancellationToken)
+        => StartGenreSessionAsync(genreKey, null, cancellationToken);
+
+    public async Task<AiPlayerContextDto?> StartGenreSessionAsync(string genreKey, int? startSongId, CancellationToken cancellationToken)
     {
         var songs = await getGenreSongsAsync(genreKey, cancellationToken);
         if (songs.Count == 0)
         {
             return null;
+        }
+
+        if (startSongId.HasValue)
+        {
+            var startingIndex = songs.FindIndex(song => song.SongId == startSongId.Value);
+            if (startingIndex > 0)
+            {
+                songs = songs.Skip(startingIndex)
+                    .Concat(songs.Take(startingIndex))
+                    .ToList();
+            }
         }
 
         musicPlayer.Stop();

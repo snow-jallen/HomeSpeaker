@@ -147,12 +147,31 @@ public class HomeSpeakerService
     {
         await Task.Run(() =>
         {
-            musicPlayer.Stop();
-            musicPlayer.ClearQueue();
             var song = library.Songs.FirstOrDefault(s => s.SongId == songId);
             if (song != null)
             {
-                musicPlayer.EnqueueSong(song);
+                replaceQueueAndStartPlayback([song]);
+            }
+        });
+    }
+
+    public async Task PlaySongsAsync(IEnumerable<SongViewModel> songs)
+    {
+        ArgumentNullException.ThrowIfNull(songs);
+
+        await Task.Run(() =>
+        {
+            var songsToPlay = songs
+                .Select(songViewModel => library.Songs.FirstOrDefault(song =>
+                    song.SongId == songViewModel.SongId ||
+                    (!string.IsNullOrWhiteSpace(songViewModel.Path) && song.Path == songViewModel.Path)))
+                .Where(song => song != null)
+                .Cast<HomeSpeaker.Shared.Song>()
+                .ToList();
+
+            if (songsToPlay.Count > 0)
+            {
+                replaceQueueAndStartPlayback(songsToPlay);
             }
         });
     }
@@ -173,13 +192,8 @@ public class HomeSpeakerService
     {
         await Task.Run(() =>
         {
-            musicPlayer.Stop();
-            musicPlayer.ClearQueue();
             var songs = library.Songs.Where(s => s.Path != null && s.Path.StartsWith(folder, StringComparison.OrdinalIgnoreCase));
-            foreach (var song in songs)
-            {
-                musicPlayer.EnqueueSong(song);
-            }
+            replaceQueueAndStartPlayback(songs);
         });
     }
 
@@ -201,6 +215,24 @@ public class HomeSpeakerService
     public async Task StopPlayingAsync()
     {
         await Task.Run(() => musicPlayer.Stop());
+    }
+
+    private void replaceQueueAndStartPlayback(IEnumerable<HomeSpeaker.Shared.Song> songs)
+    {
+        musicPlayer.Stop();
+        musicPlayer.ClearQueue();
+
+        using var enumerator = songs.GetEnumerator();
+        if (!enumerator.MoveNext())
+        {
+            return;
+        }
+
+        musicPlayer.PlaySong(enumerator.Current);
+        while (enumerator.MoveNext())
+        {
+            musicPlayer.EnqueueSong(enumerator.Current);
+        }
     }
 
     public async Task ResumePlayAsync()
@@ -607,6 +639,18 @@ public class HomeSpeakerService
         catch (Exception ex)
         {
             logger.LogError(ex, "Error starting AI playlist {GenreKey}", genreKey);
+        }
+    }
+
+    public async Task PlayAiPlaylistTrackAsync(string genreKey, int songId)
+    {
+        try
+        {
+            await aiPlaybackService.StartGenreSessionAsync(genreKey, songId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error starting AI playlist {GenreKey} from song {SongId}", genreKey, songId);
         }
     }
 
