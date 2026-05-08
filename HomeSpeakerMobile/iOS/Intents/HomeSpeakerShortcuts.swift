@@ -11,10 +11,8 @@ struct HomeSpeakerShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: PlayArtistOnHomeSpeakerIntent(),
             phrases: [
-                "Play \(\.$artist) on \(.applicationName)",
-                "Play \(\.$artist) \(.applicationName)",
-                "Shuffle \(\.$artist) on \(.applicationName)",
-                "Shuffle \(\.$artist) \(.applicationName)",
+                "Play \(\.$artist) in \(.applicationName)",
+                "Shuffle \(\.$artist) in \(.applicationName)",
             ],
             shortTitle: "Play Artist",
             systemImageName: "music.mic"
@@ -22,8 +20,7 @@ struct HomeSpeakerShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: PlayAlbumOnHomeSpeakerIntent(),
             phrases: [
-                "Play album \(\.$album) on \(.applicationName)",
-                "Play album \(\.$album) \(.applicationName)",
+                "Play album \(\.$album) in \(.applicationName)",
             ],
             shortTitle: "Play Album",
             systemImageName: "opticaldisc"
@@ -31,8 +28,7 @@ struct HomeSpeakerShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: PlayPlaylistOnHomeSpeakerIntent(),
             phrases: [
-                "Play playlist \(\.$playlist) on \(.applicationName)",
-                "Play playlist \(\.$playlist) \(.applicationName)",
+                "Play playlist \(\.$playlist) in \(.applicationName)",
             ],
             shortTitle: "Play Playlist",
             systemImageName: "music.note.list"
@@ -40,10 +36,8 @@ struct HomeSpeakerShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: PlayAiPlaylistOnHomeSpeakerIntent(),
             phrases: [
-                "Play AI playlist \(\.$genre) on \(.applicationName)",
-                "Play AI playlist \(\.$genre) \(.applicationName)",
-                "Play \(\.$genre) AI playlist on \(.applicationName)",
-                "Play \(\.$genre) AI playlist \(.applicationName)",
+                "Play AI playlist \(\.$genre) in \(.applicationName)",
+                "Play \(\.$genre) AI playlist in \(.applicationName)",
             ],
             shortTitle: "Play AI Playlist",
             systemImageName: "sparkles"
@@ -51,10 +45,8 @@ struct HomeSpeakerShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: PlayStreamOnHomeSpeakerIntent(),
             phrases: [
-                "Stream \(\.$streamName) on \(.applicationName)",
-                "Stream \(\.$streamName) \(.applicationName)",
-                "Play stream \(\.$streamName) on \(.applicationName)",
-                "Play stream \(\.$streamName) \(.applicationName)",
+                "Stream \(\.$streamName) in \(.applicationName)",
+                "Play stream \(\.$streamName) in \(.applicationName)",
             ],
             shortTitle: "Play Stream",
             systemImageName: "antenna.radiowaves.left.and.right"
