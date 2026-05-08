@@ -22,14 +22,10 @@ struct MainTabView: View {
             PlaylistsView()
                 .tabItem { Label("Playlists", systemImage: "music.quarternote.3") }
                 .tag(3)
-                
-            AIPlaylistsView()
-                .tabItem { Label("AI Playlists", systemImage: "sparkles") }
-                .tag(4)
 
             MoreView()
                 .tabItem { Label("More", systemImage: "ellipsis.circle") }
-                .tag(5)
+                .tag(4)
         }
         .sheet(isPresented: $showServerPicker) {
             ServerPickerSheet()
