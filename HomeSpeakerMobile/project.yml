@@ -45,6 +45,7 @@ targets:
       - sdk: WatchConnectivity.framework
       - sdk: AVFoundation.framework
       - sdk: MediaPlayer.framework
+      - sdk: AppIntents.framework
 
   HomeSpeakerWatch:
     type: application

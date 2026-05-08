@@ -74,6 +74,8 @@ class ConnectionStore {
         #endif
     }
 
+    func reload() { load() }
+
     private func load() {
         if let data = defaults.data(forKey: connectionsKey),
            let saved = try? JSONDecoder().decode([ServerConnection].self, from: data) {

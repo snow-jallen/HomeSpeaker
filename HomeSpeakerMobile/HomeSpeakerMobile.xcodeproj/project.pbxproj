@@ -32,6 +32,7 @@
 		96F16D770BBC0004BCE29747 /* MediaPlayer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CAF6F1D2EC5D2112E6D5AECA /* MediaPlayer.framework */; };
 		97D4A59656382C9B54FD48D9 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F4223DA2F0CDF7DF37CB1511 /* SwiftUI.framework */; };
 		991824C7DE36205AB120A845 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F241EFDB1BBC7B42BF8AD924 /* WidgetKit.framework */; };
+		991EE3BA897BB77766B29131 /* ServerEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D82ABFFCC115B98EF80A10 /* ServerEntity.swift */; };
 		9C5C4BA3EC5EB7A7A650895B /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16D6F1E4E46A26F966D05A65 /* LibraryView.swift */; };
 		A08875BB22B217481D8F8A2B /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 991398AE4AA449825359CD71 /* QueueView.swift */; };
 		A2FCE01C84D30A8E2F20E610 /* VolumeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D03CEE4EBF33F56CE6560A47 /* VolumeView.swift */; };
@@ -40,17 +41,21 @@
 		B4920B1AB331FAD8F211E305 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0387EAEB26350D3D2A73FB79 /* Models.swift */; };
 		B882A143B6536C8135B12E20 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EB62922935DAAB7820E9B273 /* Assets.xcassets */; };
 		BC18B967C3D72E4E311A3A36 /* ConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8049584149E66D488080E43 /* ConnectionStore.swift */; };
+		C4836BE207096383CD1E652A /* HomeSpeakerIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1709BAEE278DD434166E942C /* HomeSpeakerIntents.swift */; };
 		CD02ED43DB2AB4DEA6E6D892 /* WidgetIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F4F22A2E9A3EBC7B2594BF4 /* WidgetIntents.swift */; };
 		D037E33A7AF0B10E6ABA5A5E /* AIPlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4783E8ABC24B91A6C939BF /* AIPlaylistsView.swift */; };
 		D03D1C8F483822096AD105C4 /* WatchSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA9B6AB8BBD67679356966D6 /* WatchSync.swift */; };
+		D4351CD4DDACED6A3DBC7B04 /* IntentHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 597E25C4A64424793FA0F786 /* IntentHelpers.swift */; };
 		D5262AFCA33339C74FD86834 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 972E6F741153B0F923CEB1D8 /* ContentView.swift */; };
 		D5E9B351F36941F8BD43F65E /* WatchSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA9B6AB8BBD67679356966D6 /* WatchSync.swift */; };
+		D9E9AE5722B45A06324A4197 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 348CD51028183AD1583AC3BC /* AppIntents.framework */; };
 		DB776F605977B61BC0570A8C /* ConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8049584149E66D488080E43 /* ConnectionStore.swift */; };
 		DE6051148FA4909B497ECA63 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0387EAEB26350D3D2A73FB79 /* Models.swift */; };
 		E67C1946D2602902FAEF6B24 /* PlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1ED18F91C6D18A84AC2CE2D /* PlaylistsView.swift */; };
 		E9CFA7C6C54884491EE42B74 /* ServerListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAA123689971EE3504312BBE /* ServerListView.swift */; };
 		ED6AA397244C91B925E949AF /* PlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B0125C146E59A5A2A1943C /* PlaylistsView.swift */; };
 		EE56A00AE4A62D3A70F3C141 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 348CD51028183AD1583AC3BC /* AppIntents.framework */; };
+		EFE57C1AEABFFD95F81531ED /* HomeSpeakerShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4079029A2C197EA0A4DB14CF /* HomeSpeakerShortcuts.swift */; };
 		F4089D82DB9CCF24A58D7150 /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC249750CEAD1C046D5E9F8 /* MoreView.swift */; };
 		FF6AC4DBAC26C4591175E5C6 /* NowPlayingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD72D0C245433BA64B16115 /* NowPlayingView.swift */; };
 /* End PBXBuildFile section */
@@ -102,12 +107,15 @@
 		0708C23DBE902CD2AF78140D /* AIStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIStatusView.swift; sourceTree = "<group>"; };
 		16D6F1E4E46A26F966D05A65 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		16F2A1CA99C67EB4935F82B4 /* NowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingView.swift; sourceTree = "<group>"; };
+		1709BAEE278DD434166E942C /* HomeSpeakerIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerIntents.swift; sourceTree = "<group>"; };
 		1859B12913E4087DC6C8AE6D /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		2F4F22A2E9A3EBC7B2594BF4 /* WidgetIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetIntents.swift; sourceTree = "<group>"; };
 		348CD51028183AD1583AC3BC /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
 		3E6E950B3D6D2B30EA71133D /* HomeSpeakerWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HomeSpeakerWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4079029A2C197EA0A4DB14CF /* HomeSpeakerShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerShortcuts.swift; sourceTree = "<group>"; };
 		447D6C55CE8A9FA57984E129 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		5362492C8FDA890DA502B7AE /* MusicLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicLibraryView.swift; sourceTree = "<group>"; };
+		597E25C4A64424793FA0F786 /* IntentHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentHelpers.swift; sourceTree = "<group>"; };
 		719AD39AF69258B48ABFB67D /* ServerPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerPickerView.swift; sourceTree = "<group>"; };
 		742488CE44FEEA3523C46654 /* YouTubeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeView.swift; sourceTree = "<group>"; };
 		79DF5D1CE59F6944F0B2B812 /* HomeSpeakerWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerWatchApp.swift; sourceTree = "<group>"; };
@@ -137,6 +145,7 @@
 		EB62922935DAAB7820E9B273 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F241EFDB1BBC7B42BF8AD924 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		F27C12BCCE016B6AC25E97E5 /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = System/Library/Frameworks/WatchConnectivity.framework; sourceTree = SDKROOT; };
+		F2D82ABFFCC115B98EF80A10 /* ServerEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEntity.swift; sourceTree = "<group>"; };
 		F4223DA2F0CDF7DF37CB1511 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		FAD72D0C245433BA64B16115 /* NowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingView.swift; sourceTree = "<group>"; };
 		FE72379FA5E35A1E24338A72 /* QueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueView.swift; sourceTree = "<group>"; };
@@ -168,6 +177,7 @@
 				66B6A956286916679528F1F1 /* WatchConnectivity.framework in Frameworks */,
 				4FB936FA2B2B8155D8599E51 /* AVFoundation.framework in Frameworks */,
 				96F16D770BBC0004BCE29747 /* MediaPlayer.framework in Frameworks */,
+				D9E9AE5722B45A06324A4197 /* AppIntents.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -251,12 +261,24 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		74812DE8131DA7912599C09A /* Intents */ = {
+			isa = PBXGroup;
+			children = (
+				1709BAEE278DD434166E942C /* HomeSpeakerIntents.swift */,
+				4079029A2C197EA0A4DB14CF /* HomeSpeakerShortcuts.swift */,
+				597E25C4A64424793FA0F786 /* IntentHelpers.swift */,
+				F2D82ABFFCC115B98EF80A10 /* ServerEntity.swift */,
+			);
+			path = Intents;
+			sourceTree = "<group>";
+		};
 		771C982BB7C6CED494318CEA /* iOS */ = {
 			isa = PBXGroup;
 			children = (
 				9FE39C0DB8FFD7DBDEC6E984 /* ContentView.swift */,
 				D1C3B78E7383B49C16C349A3 /* HomeSpeakerApp.swift */,
 				8E0801376B66A150D4878F32 /* LocalPlayer.swift */,
+				74812DE8131DA7912599C09A /* Intents */,
 				6AA690D5044B747696D6E870 /* Resources */,
 				9640FB9053993F506946BA33 /* Views */,
 			);
@@ -447,6 +469,9 @@
 				BC18B967C3D72E4E311A3A36 /* ConnectionStore.swift in Sources */,
 				5DBB028FCF8D559EA3178DC6 /* ContentView.swift in Sources */,
 				292C764312EA87DCAE62E163 /* HomeSpeakerApp.swift in Sources */,
+				C4836BE207096383CD1E652A /* HomeSpeakerIntents.swift in Sources */,
+				EFE57C1AEABFFD95F81531ED /* HomeSpeakerShortcuts.swift in Sources */,
+				D4351CD4DDACED6A3DBC7B04 /* IntentHelpers.swift in Sources */,
 				655E5098AB3B6A11E9910F7F /* LocalPlayer.swift in Sources */,
 				4BA5FB8B5FE0E93D029DC294 /* Models.swift in Sources */,
 				F4089D82DB9CCF24A58D7150 /* MoreView.swift in Sources */,
@@ -455,6 +480,7 @@
 				E67C1946D2602902FAEF6B24 /* PlaylistsView.swift in Sources */,
 				A08875BB22B217481D8F8A2B /* QueueView.swift in Sources */,
 				90BDA85488C40C638B27DEF3 /* RadioStreamsView.swift in Sources */,
+				991EE3BA897BB77766B29131 /* ServerEntity.swift in Sources */,
 				E9CFA7C6C54884491EE42B74 /* ServerListView.swift in Sources */,
 				D03D1C8F483822096AD105C4 /* WatchSync.swift in Sources */,
 				7AB23637168FDA6113A1E116 /* YouTubeView.swift in Sources */,

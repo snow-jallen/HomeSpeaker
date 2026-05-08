@@ -3,9 +3,11 @@ import SwiftUI
 struct AIPlaylistsView: View {
     @Environment(ConnectionStore.self) private var store
     @State private var playlists: [AiPlaylistSummaryDto] = []
+    @State private var aiStatus: AiLibraryStatusDto?
     @State private var isLoading = false
     @State private var actionMessage: String?
-    
+    @State private var navigateToStatus = false
+
     var body: some View {
         NavigationStack {
             Group {
@@ -19,6 +21,9 @@ struct AIPlaylistsView: View {
                 }
             }
             .navigationTitle("AI Playlists")
+            .navigationDestination(isPresented: $navigateToStatus) {
+                AIStatusView()
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
@@ -42,21 +47,37 @@ struct AIPlaylistsView: View {
             }
         }
     }
-    
+
     private var emptyState: some View {
         ContentUnavailableView {
             Label("No AI Playlists", systemImage: "sparkles")
         } description: {
-            Text("AI playlists will appear here once your library has been analyzed.")
+            if aiStatus?.isProcessing == true {
+                Text("AI playlists will appear here as your library is analyzed.")
+            } else {
+                Text("AI playlists will appear here once your library has been analyzed.")
+            }
         } actions: {
             Button("View Status") {
-                // Navigation handled by toolbar
+                navigateToStatus = true
             }
         }
     }
-    
+
     private var playlistList: some View {
         List {
+            if let status = aiStatus, status.isProcessing {
+                Section {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Processing library… \(Int(status.percentComplete))% complete")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
             ForEach(playlists) { playlist in
                 NavigationLink {
                     AIPlaylistDetailView(playlist: playlist)
@@ -90,21 +111,26 @@ struct AIPlaylistsView: View {
             }
         }
     }
-    
+
     private func load() async {
         guard let api = store.api else { return }
         isLoading = true
         defer { isLoading = false }
-        playlists = (try? await api.getAiPlaylists()) ?? []
+        async let playlistsTask = api.getAiPlaylists()
+        async let statusTask = api.getAiStatus()
+        let fetched = try? await playlistsTask
+        let status = try? await statusTask
+        playlists = fetched ?? []
         playlists.sort { $0.sortOrder < $1.sortOrder }
+        aiStatus = status
     }
-    
+
     private func play(playlist: AiPlaylistSummaryDto) async {
         guard let api = store.api else { return }
         try? await api.playAiPlaylist(genreKey: playlist.genreKey)
         showMessage("Playing AI playlist: \(playlist.displayName)")
     }
-    
+
     private func showMessage(_ msg: String) {
         withAnimation { actionMessage = msg }
         Task {
@@ -116,12 +142,12 @@ struct AIPlaylistsView: View {
 
 struct AIPlaylistDetailView: View {
     let playlist: AiPlaylistSummaryDto
-    
+
     @Environment(ConnectionStore.self) private var store
     @State private var detail: AiPlaylistDto?
     @State private var isLoading = false
     @State private var actionMessage: String?
-    
+
     var body: some View {
         Group {
             if isLoading && detail == nil {
@@ -160,7 +186,7 @@ struct AIPlaylistDetailView: View {
             }
         }
     }
-    
+
     private func songList(detail: AiPlaylistDto) -> some View {
         List {
             Section {
@@ -168,7 +194,7 @@ struct AIPlaylistDetailView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            
+
             Section("Songs") {
                 ForEach(detail.songs) { song in
                     HStack {
@@ -192,26 +218,26 @@ struct AIPlaylistDetailView: View {
             }
         }
     }
-    
+
     private func load() async {
         guard let api = store.api else { return }
         isLoading = true
         defer { isLoading = false }
         detail = try? await api.getAiPlaylist(genreKey: playlist.genreKey)
     }
-    
+
     private func playAll() async {
         guard let api = store.api else { return }
         try? await api.playAiPlaylist(genreKey: playlist.genreKey)
         showMessage("Playing: \(playlist.displayName)")
     }
-    
+
     private func playSong(_ song: Song) async {
         guard let api = store.api else { return }
         try? await api.playSong(song.songId)
         showMessage("Playing: \(song.displayTitle)")
     }
-    
+
     private func showMessage(_ msg: String) {
         withAnimation { actionMessage = msg }
         Task {
