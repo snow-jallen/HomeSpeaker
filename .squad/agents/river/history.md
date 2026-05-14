@@ -17,6 +17,9 @@
 - **2026-05-01:** AI Playlists tab navigation: Added as 5th tab (tag 4) between "Playlists" and "More" in `MainTabView`. Uses "sparkles" SF Symbol for AI branding. Separate detail view (`AIPlaylistDetailView`) shows genre description and song list with play/enqueue actions.
 - **2026-05-01:** AI Status screen pattern: Polling every 3 seconds when `status.isProcessing == true`, stops when idle. Shows progress bar, track counts by state (completed/queued/processing/failed), and manual "Resume Processing" button. Accessible via toolbar icon in AI Playlists view.
 - **2026-05-01:** Swift model extensions: Added `AiPlayerContextDto`, `AiPlaylistSummaryDto`, `AiPlaylistDto`, `AiLibraryStatusDto`, `AiFeedbackRequest` to `Models.swift`. All conform to `Codable` and use optional properties to gracefully handle partial server responses.
+- **2026-05-14:** Siri/App Shortcuts work better in this app when phrases are fixed and app-scoped (`HomeSpeakerShortcuts.swift`) while broad media-query intents stay undiscoverable in `HomeSpeakerIntents.swift`.
+- **2026-05-14:** Offline playback is client-managed in `HomeSpeakerMobile/iOS/OfflineDownloadsStore.swift`: it reuses `GET /api/music/{songId}`, stores files under Application Support `HomeSpeakerOffline`, and injects the store into SwiftUI via `HomeSpeakerApp`.
+- **2026-05-14:** Library offline affordances live in `MusicLibraryView.swift` with artist/album buttons, per-track status icons, and a management surface in `OfflineDownloadsView.swift` linked from `MoreView.swift`.
 
 
 
@@ -32,3 +35,21 @@ Mapped iOS SwiftUI structure for AI playlists. Analyzed state management pattern
 - State management and polling patterns
 - SwiftUI component stubs started
 - Ready for feature implementation
+## Siri/Offline Release — Complete (2026-05-14T21:32:28Z)
+
+**Status:** ✅ APPROVED FOR RELEASE
+
+**Team completion summary:**
+- Mal: Architecture & final release review → approved
+- River: Siri commands & mobile UX → complete
+- Wash: Backend offline contract & critical fixes → complete
+- Kaylee: Offline keying revision → approved
+- Book: Integration & legacy migration → complete
+- Zoe: QA & final verdict → APPROVED FOR RELEASE
+
+**Final decision:** All review criteria met. Feature approved for production deployment.
+
+**Platform limitation:** Apple device/simulator validation required remote procedures (Windows host).
+
+---
+

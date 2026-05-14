@@ -21,6 +21,11 @@ Mapped AI integration points for OpenAI-backed playlisting. Use in-process servi
 ## Learnings
 <!-- Recent entries below -->
 
+### 2026-05-14 — Mobile release fixes for Siri shortcuts and offline download status
+Locked the fixed-command Siri path to exact backend targets instead of alias search where the target is already decided: `PlayFunMusicOnHomeSpeakerIntent` now calls AI genre `family-singalong` directly, and the shared `PlayerStatus.quietDownVolume` helper is the contract for halving volume without collapsing non-zero levels to zero. `Quiet Down` on both iOS intents and the watch widget must use that shared helper so 1 stays 1 and higher values still halve predictably.
+
+Offline download summaries must count `failed` separately from `pending`; pending is only `.pending`, `.queued`, or `.downloading`. Key release paths: `HomeSpeakerMobile\iOS\Intents\HomeSpeakerIntents.swift`, `HomeSpeakerMobile\watchOS\Widget\WidgetIntents.swift`, `HomeSpeakerMobile\Shared\Models.swift`, `HomeSpeakerMobile\iOS\OfflineDownloadsStore.swift`, and `HomeSpeakerMobile\iOS\Views\OfflineDownloadsView.swift`. Host-side validation available here remains `dotnet build HomeSpeaker.sln`, `dotnet test HomeSpeaker.sln`, and `dotnet ef migrations has-pending-model-changes`; Swift/Xcode toolchains are not installed on this Windows host.
+
 ### 2026-05-06 (COMPLETED): Music page play replaces queue
 Music-page Play dropdown now routes through dedicated `PlaySongsAsync` path that stops playback, clears queue, starts first song immediately, and queues remaining songs. Preserves add-to-queue append semantics through separate code path. Coordinated with Kaylee on AI playlist playback. Build: ✅ SUCCESS
 
@@ -73,3 +78,26 @@ Traced malformed-model failures to `AiMusicAnalyzer.AnalyzeBatchAsync()` deseria
 
 ### 2026-05-02 — AI Playlist Detail Payload Enrichment (Completed)
 Extended the existing AI playlist detail flow (`/api/ai/playlists/{genreKey}`) to include per-track scoring metadata. `AiPlaylistDto.Tracks` now carries `Song`, `GenreScore`, `GenreRank`, `Why` text, and `Markers[]` (key/value/confidence). Legacy `Songs` list remains populated for backward compatibility. Reused existing endpoint rather than creating a second details API, avoiding duplicate contracts. Validated by Zoe: build clean, all pages load, scoring data visible. ✅ APPROVED & COMPLETE
+
+### 2026-05-14 — Offline mobile download manifest
+Implemented offline mobile support as a small server-side manifest, not a separate sync subsystem. Persist only offline selection rules in SQLite (`OfflineDownloadTargets`) and resolve them against the live library on demand so artist/album/song marks stay durable even if runtime `SongId` values move.
+
+The mobile contract lives in shared DTOs (`OfflineDownloadManifestDto`, `OfflineDownloadTargetDto`, `OfflineDownloadSongDto`) and the server flow lives in `HomeSpeaker.Server2\Services\OfflineDownloadService.cs` plus `/api/homespeaker/offline*` endpoints. Downloadable media is exposed through a validated `/api/homespeaker/offline/media?songPath=...` endpoint with range support, ETag, and last-modified headers, using `Song.Path` as the durable content key.
+## Siri/Offline Release — Complete (2026-05-14T21:32:28Z)
+
+**Status:** ✅ APPROVED FOR RELEASE
+
+**Team completion summary:**
+- Mal: Architecture & final release review → approved
+- River: Siri commands & mobile UX → complete
+- Wash: Backend offline contract & critical fixes → complete
+- Kaylee: Offline keying revision → approved
+- Book: Integration & legacy migration → complete
+- Zoe: QA & final verdict → APPROVED FOR RELEASE
+
+**Final decision:** All review criteria met. Feature approved for production deployment.
+
+**Platform limitation:** Apple device/simulator validation required remote procedures (Windows host).
+
+---
+

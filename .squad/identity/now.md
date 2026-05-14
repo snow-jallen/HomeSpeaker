@@ -1,9 +1,9 @@
 ---
-updated_at: 2026-05-01T03:44:23Z
-focus_area: AI playlists and music intelligence
+updated_at: 2026-05-14T20:18:09Z
+focus_area: Siri controls and offline mobile downloads
 active_issues: []
 ---
 
 # What We're Focused On
 
-Implementing AI-powered library analysis, genre-based playlist generation, similarity markers, resumable processing, and matching status/controls in Blazor and iOS.
+Improving Siri/App Intents so the mobile app exposes reliable playback commands, and adding offline download marking plus download management for artists, albums, and tracks in the iOS app.

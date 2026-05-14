@@ -24,6 +24,9 @@ Mapped Blazor UI structure for AI playlists: New pages in Pages/Music/, componen
 ## Learnings
 <!-- Recent entries below -->
 
+### 2026-05-14: iOS Offline Downloads Durable Keying Fix
+Revised the iOS offline download flow so durable local state keys by `Song.path`, not `songId`, because library scan IDs are transient. `HomeSpeakerMobile/iOS/OfflineDownloadsStore.swift` now stores track selections/download records by path, migrates legacy `songId` manifest entries when the library loads, and names local files from a deterministic path-derived token; `HomeSpeakerMobile/iOS/LocalPlayer.swift` now prefers downloaded files by `song.path`.
+
 ### 2026-05-06 (COMPLETED): AI Playlist Detail Playback Controls
 Added per-track play buttons to AI playlist details page. Individual track play reuses AI genre playback flow by rotating the playlist queue so chosen songs start immediately while the rest queues behind. Coordinated with Wash on Music-page queue replacement. Build: ✅ SUCCESS
 
@@ -52,3 +55,21 @@ Implemented /ai-playlists/{genreKey} details page showing full playlist metadata
 
 ### 2026-05-02 (Evening): AI Playlists In-Progress Gallery Fix (Completed)
 Completed partial fix for /ai-playlists visibility during AI enrichment. The gallery now keeps playlist cards visible while processing is active instead of showing misleading empty state. Cards display current track counts with "so far" suffix during processing and show pending copy for playlists without matches. Catalog summary loading optimized to grouped queries for counts/last-updated. All existing status, details, and play flows preserved. HomeSpeaker.Server2 build: ✅ SUCCESS
+## Siri/Offline Release — Complete (2026-05-14T21:32:28Z)
+
+**Status:** ✅ APPROVED FOR RELEASE
+
+**Team completion summary:**
+- Mal: Architecture & final release review → approved
+- River: Siri commands & mobile UX → complete
+- Wash: Backend offline contract & critical fixes → complete
+- Kaylee: Offline keying revision → approved
+- Book: Integration & legacy migration → complete
+- Zoe: QA & final verdict → APPROVED FOR RELEASE
+
+**Final decision:** All review criteria met. Feature approved for production deployment.
+
+**Platform limitation:** Apple device/simulator validation required remote procedures (Windows host).
+
+---
+

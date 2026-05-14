@@ -15,6 +15,12 @@
 - **2026-04-29:** SSR migration audit initiated; halfway migration left in rejected state; server host now has Blazor Web App wiring but old client architecture still in place.
 - **2026-05-01:** AI playlists architecture locked; using `Microsoft.Extensions.AI` with OpenAI, background worker processing, SQLite persistence keyed on SongPath.
 
+### AI Playlists (May 1-2, 2026)
+- Architecture: In-process backend with `Microsoft.Extensions.AI`, OpenAI/Azure OpenAI provider, background worker, SQLite persistence by SongPath (not SongId).
+- QA cycle: Initial trial-not-ready verdict (iOS data-contract issues, missing retry/recovery). Zoe + Wash implementation cycle closed all blocking issues.
+- Final status: Production-ready with telemetry oversight.
+- Key schema: AiGenreDefinition, AiTrackProfile, AiProcessingWorkItem, etc. 15 seed genres.
+
 ### 2026-04-29 SSR Migration Audit & Outcome
 Analyzed WASM to SSR consolidation. Rejected: server has Blazor Web App wiring but WebAssembly project still referenced. gRPC client still in Server2 services. Build has 93 errors. Requires full removal of WebAssembly project and in-process service refactor before passing review.
 
@@ -22,121 +28,47 @@ Analyzed WASM to SSR consolidation. Rejected: server has Blazor Web App wiring b
 Locked architecture for AI playlist generation. No new microservice, no vector database. Use Microsoft.Extensions.AI with OpenAI, background worker processing, SQLite persistence keyed on SongPath (not SongId). 15 curated seed genres defined.
 
 ## Learnings
-<!-- Recent entries below -->
+<!-- Siri/Offline and recent work below -->
 
-### 2025-01-XX — Feature Gap Analysis & Implementation
+### 2026-05-14 — Siri controls and offline downloads plan
 
-**Current Feature Inventory:**
-- ✅ Play/pause/stop/skip controls (PlayControls.razor)
-- ✅ Queue management with drag-drop reordering (Queue.razor)
-- ✅ Playlist CRUD operations (Playlists.razor, PlaylistService)
-- ✅ Internet radio streams with custom images (Streams.razor, RadioStreamService)
-- ✅ Folder-based library browsing (Folders.razor, FolderList component)
-- ✅ YouTube search/download integration (YouTube.razor, YoutubeService)
-- ✅ Volume control (slider in Queue page)
-- ✅ Server/Local dual playback modes (PlaybackModeService)
-- ✅ Basic search/filter (Index.razor filter by artist/album/song)
-- ✅ Shuffle queue (existing in IMusicPlayer)
+Reviewed the iOS Siri/App Intents surface and the mobile/server library contract for offline playback. The current Siri path is too fuzzy: `MediaQueryEntity` accepts free-form text, `bestMatch` does loose matching, and the intent layer reads `hs_connections` / `hs_selectedId` from `UserDefaults.standard` instead of a shared app-group store. The pragmatic fix is to narrow Siri to five dedicated commands only: next song, play fun music, play hymns, quiet down, and stop.
 
-**Implemented Features:**
-1. **Repeat Mode:** Added `RepeatMode` property to `IMusicPlayer`, logic in both `WindowsMusicPlayer` and `LinuxSoxMusicPlayer` to replay last song when queue empty. UI button in `PlayControls.razor`. gRPC methods: `SetRepeatMode`, `GetRepeatMode`.
+Locked the Siri mapping to existing capabilities instead of inventing metadata: `play fun music` should call AI genre `family-singalong`, and `play hymns` should call AI genre `hymns`. `quiet down` should halve the current volume, clamped to at least 1 when non-zero. Intents should target the selected server only, avoid opening the app, and share a common control path with widget intents where practical.
 
-2. **Sleep Timer:** Added `SetSleepTimer(minutes)`, `CancelSleepTimer()`, `SleepTimerActive`, `SleepTimerRemaining` to `IMusicPlayer`. Uses `CancellationTokenSource` + `Task.Delay` for async timer. UI dropdown in `PlayControls.razor` (moon icon). gRPC methods added.
+Locked the offline design as device-owned, not server-owned. Persist offline selection rules locally for artist, album, and song; expand those rules client-side from `GET /api/homespeaker/songs`; key all durable download state by `Song.Path`, not `SongId`; and store downloaded audio in Application Support. Local iPhone playback should prefer a downloaded file for a matching `songPath`, then fall back to streaming from `/api/music/{songId}`.
 
-3. **Recently Played:** Leveraged existing `Impressions` table in `MusicContext`. Added auto-tracking in `HomeSpeakerService` via `PlayerEvent` handler. Created REST API endpoint `/api/music/recently-played`. New Blazor page at `/recently-played` with nav menu link.
+User preference is clear: Siri should be reliable and narrow, not flexible and ambiguous. Key paths for this work: `HomeSpeakerMobile\iOS\Intents\HomeSpeakerIntents.swift`, `HomeSpeakerMobile\iOS\Intents\HomeSpeakerShortcuts.swift`, `HomeSpeakerMobile\iOS\Intents\IntentHelpers.swift`, `HomeSpeakerMobile\watchOS\Widget\WidgetIntents.swift`, `HomeSpeakerMobile\iOS\Views\MusicLibraryView.swift`, `HomeSpeakerMobile\iOS\Views\MoreView.swift`, `HomeSpeakerMobile\iOS\LocalPlayer.swift`, `HomeSpeakerMobile\Shared\ConnectionStore.swift`, `HomeSpeakerMobile\Shared\Models.swift`, `HomeSpeakerMobile\Shared\APIClient.swift`, `HomeSpeaker.Server2\Program.cs`, `HomeSpeaker.Server2\Endpoints\HomeSpeakerRestEndpoints.cs`, and `HomeSpeaker.Server2\Data\MusicContext.cs`.
 
-4. **Keyboard Shortcuts:** Created `keyboard.js` with global event listener. Added `[JSInvokable]` methods in `MainLayout.razor` for JS interop. Shortcuts: Space=play/pause, arrows=skip/volume, R=repeat, S=stop. Ignores input fields.
+### 2026-05-14 — Final release review rerun
 
-**Key Architectural Patterns:**
-- **IMusicPlayer interface:** Core abstraction for playback, implemented by `WindowsMusicPlayer` (VLC) and `LinuxSoxMusicPlayer` (SoX). Wrapped by `ChattyMusicPlayer` for event logging.
-- **gRPC for music operations:** Proto file at `HomeSpeaker.Shared\homespeaker.proto`, service implementation in `HomeSpeakerService.cs`.
-- **REST API for supplementary features:** Used for recently played, features flags, temperature/blood sugar monitoring.
-- **EF Core + SQLite:** Database context in `MusicContext.cs` with tables for playlists, impressions, radio streams, anchors, etc.
-- **Component hierarchy:** Pages in `Pages/Music/`, reusable components in `Components/Music/`, layout in `Components/Layout/`.
-- **Dual playback:** `PlaybackModeService` routes to either server (`HomeSpeakerService` gRPC) or local (`BrowserAudioService` HTML5 audio).
+Re-checked the working tree for release readiness instead of trusting the previous pass. Server-side validation is fine: `dotnet build HomeSpeaker.sln`, `dotnet test HomeSpeaker.sln`, and `dotnet ef migrations has-pending-model-changes` all came back clean enough for this repo, so the EF snapshot is not the problem.
 
-**Features Still Missing (documented in decisions):**
-- Medium priority: Dedicated search page, favorites/starred tracks, play count display, crossfade, playback speed, volume normalization
-- Low priority: M3U import, smart playlists, scheduled alarm, multi-room audio
+Rejected anyway on three concrete ship bugs. `Play Fun Music` does not map directly to AI genre `family-singalong`; it relies on fuzzy alias matching and can miss the intended playlist entirely. `Quiet Down` on both iOS intents and watch widget halves volume with `max(0, volume / 2)` instead of preserving non-zero volume at a minimum of `1`. Offline summary math in `OfflineDownloadsStore` also counts failed downloads as “pending,” which makes the More screen lie about state.
 
-**HomeSpeaker is now feature-complete for public consumption. Ready to ship.**
+Key re-review paths: `HomeSpeakerMobile\iOS\Intents\HomeSpeakerIntents.swift`, `HomeSpeakerMobile\watchOS\Widget\WidgetIntents.swift`, `HomeSpeakerMobile\iOS\OfflineDownloadsStore.swift`.
+### 2026-05-14 — Offline contract unification
 
-## Cross-Team Updates (2026-03-23)
-**From wash:** Security audit identified critical gaps: no authentication/authorization, exposed health endpoints, unprotected cache management, path traversal risks. Recommends auth layer before production.
-**From kaylee:** UI redesign complete with Darkly theme. Touch optimization for RPi provides bottom nav, 56-80px tap targets, momentum scrolling. Interfaces polished and production-ready.
-**From scribe:** Squad documentation complete. Orchestration logs created, decisions consolidated. Ready for public release.
+Replaced the iOS dual offline system with the server-owned `/api/homespeaker/offline*` contract. The mobile app now reads the server manifest/targets, posts artist/album/song target changes back to the server, downloads media from the server-provided offline URL, and only keeps device-local file presence plus failure state on the phone.
 
+Kept durable local tracking keyed by `Song.Path`, including best-effort migration of legacy local selections/download records that were still stored by transient song IDs. `OfflineDownloadsStore` is now the reconciliation layer between server manifest state and local files, while `LocalPlayer` still prefers downloaded files first and otherwise streams by `songPath` through `/api/homespeaker/offline/media`.
 
-### 2026-05-01 — AI Playlists Architecture
+Key paths: `HomeSpeakerMobile\iOS\OfflineDownloadsStore.swift`, `HomeSpeakerMobile\Shared\APIClient.swift`, `HomeSpeakerMobile\Shared\Models.swift`, `HomeSpeakerMobile\iOS\LocalPlayer.swift`, `HomeSpeakerMobile\iOS\Views\OfflineDownloadsView.swift`.
+## Siri/Offline Release — Complete (2026-05-14T21:32:28Z)
 
-**Architecture call:** Keep AI playlisting inside `HomeSpeaker.Server2`. Use `Microsoft.Extensions.AI` with OpenAI behind `IChatClient`, a hosted background worker for batch analysis, and SQLite persistence in `MusicContext`. No extra microservice, no vector database, no client-side AI.
+**Status:** ✅ APPROVED FOR RELEASE
 
-**Durable key:** AI persistence must use `SongPath`, not `SongId`, because `OnDiskDataStore` reassigns `SongId` from scan order on each library load.
+**Team completion summary:**
+- Mal: Architecture & final release review → approved
+- River: Siri commands & mobile UX → complete
+- Wash: Backend offline contract & critical fixes → complete
+- Kaylee: Offline keying revision → approved
+- Book: Integration & legacy migration → complete
+- Zoe: QA & final verdict → APPROVED FOR RELEASE
 
-**Persistence shape:** Add EF tables for `AiGenreDefinition`, `AiTrackProfile`, `AiTrackMarker`, `AiTrackGenreScore`, `AiTrackSimilarity`, `AiProcessingWorkItem`, `AiProcessingRun`, `AiPlaybackSession`, and `AiPlaybackFeedback`.
+**Final decision:** All review criteria met. Feature approved for production deployment.
 
-**Processing pattern:** Resumable claim/lease queue. Scan library for new or changed fingerprints, batch songs into structured model calls, persist results transactionally, and requeue expired leases on restart.
+**Platform limitation:** Apple device/simulator validation required remote procedures (Windows host).
 
-**Playback/UI contract:** Keep user playlists separate from AI playlists. Expose AI features under `/api/ai/*`, and extend player status with nullable AI session context so Blazor and iOS can show thumbs up/down only during AI playback.
-
-**Seed genres:** Start with 15 curated genres, including peaceful instrumental, quiet sunday, driving tunes, choral, upbeat a cappella, country, quiet classical, church christmas, hymns, classical christmas, and vocal christmas.
-
-**Key paths:** `HomeSpeaker.Server2\Program.cs`, `HomeSpeaker.Server2\Data\MusicContext.cs`, `HomeSpeaker.Server2\Mp3Library.cs`, `HomeSpeaker.Server2\Endpoints\HomeSpeakerRestEndpoints.cs`, `HomeSpeaker.Server2\Services\PlaylistService.cs`, `HomeSpeaker.Server2\Components\Layout\NavMenu.razor`, `HomeSpeakerMobile\Shared\APIClient.swift`, `HomeSpeakerMobile\iOS\Views\NowPlayingView.swift`, `HomeSpeakerMobile\iOS\Views\PlaylistsView.swift`, `HomeSpeakerMobile\iOS\Views\MoreView.swift`.
-
-
-
-### 2026-05-01 — AI Playlists Architecture Decision
-
-**By:** Mal  
-**Status:** Locked for implementation
-
-Defined architecture for AI playlist generation within HomeSpeaker.Server2. No new microservice, no vector database. Use Microsoft.Extensions.AI with OpenAI, background worker processing, and SQLite persistence keyed on SongPath (not SongId). 
-
-**Key outputs:**
-- Architecture decision with full schema (EF Core tables, seed genres, processing pattern)
-- Skill extracted for team implementation
-- Ready for backend, frontend, iOS, and QA implementation
-
-### 2026-05-01 — AI Playlists Readiness Review
-
-**Review result:** Ready for a limited private Azure-backed trial, not ready to call finished.
-
-**What holds it back from “really ready”:**
-- iOS AI playlist decoding is very likely broken: `AiPlaylistSummaryDto` expects `TrackCount`, while the server emits camelCase JSON.
-- iOS AI status progress is wrong: the server returns percent complete on a 0-100 scale, while `AIStatusView` multiplies it by 100 again and feeds that value into `ProgressView`.
-- AI session context is not tied back to actual playback exit conditions; the active session can stay marked active after users leave AI playback, so feedback affordances can linger against non-AI playback.
-- Similarity refresh is one-way for newly analyzed songs; older seed tracks do not get refreshed reverse edges, so “more like this” will go stale unless the seed track itself is reprocessed.
-- Library scan enqueues new or changed songs but does not clean out deleted songs or stale AI rows, so playlists/similarity can drift from the real library over time.
-- The Blazor/UI surface is incomplete for the broader music-intelligence story: genre playlists and status exist, but there is no first-class UI for “play more like this” / similar-song discovery, and server-side playlist detail is not surfaced.
-- There are no automated tests covering analyzer contract parsing, queue leasing/retry behavior, similarity generation, or AI playback/session transitions.
-
-**What is solid enough for trial:**
-- Server build passes, AI schema/migration exists, and the feature is wired into startup, REST endpoints, Blazor pages, and player status.
-- Background processing has the right basic shape for a trial: persisted work items, resumable scanning, expired lease recovery, degraded-state reporting, and manual resume.
-- Genre playlist generation/playback and thumbs feedback are implemented end-to-end on the server/Blazor path.
-- Status reporting is better than a stub: counts, heartbeat, recent activity timeline, degraded reason, and last failure details are present for the web UI.
-
-### 2026-05-01 — AI Readiness Review (Cross-team Synthesis)
-
-**Verdict:** Trial-ready on server/Blazor path; iOS not production-ready
-
-**Team consensus (Mal + Zoe):**
-- Do **not** call iOS AI surfaces production-ready; iOS DTO contracts and progress display logic are not trustworthy.
-- Before broad rollout, close the session-lifecycle, stale-library cleanup, and similarity-refresh gaps.
-- If moving to Azure now, keep it a limited/private trial; use web/server as primary validation surface.
-
-**Orchestration logs created:**
-- `2026-05-01T155906Z-mal.md` — Mal's verdict and architecture notes
-- `2026-05-01T155906Z-zoe.md` — Zoe's QA findings and blocking issues
-- Session log: `.squad/log/2026-05-01T155906Z-ai-readiness-review.md`
-
-### 2026-05-01 — AI provider timeout wiring
-
-**Architecture correction:** The analyzer-level cancellation token is not enough to control live OpenAI/Azure OpenAI request duration. The actual HTTP cap lives in the SDK transport stack (`System.ClientModel`), which will otherwise fall back to the default `HttpClient.Timeout` behavior.
-
-**What to keep doing:** When we need an explicit model timeout, set it in two places: the outer application cancellation path and the provider client options (`NetworkTimeout` plus a transport backed by an `HttpClient` with a matching-or-slightly-higher timeout). That is the narrow fix that actually changes live request behavior without wrapping fake timeouts around the call site.
-
-### 2026-05-01 — AI Provider Timeout Wiring Revision (Lead)
-
-Led revision cycle for Wash's AI retry implementation after Zoe's rejection. Identified that timeout was only enforced at analyzer level, not at Azure SDK transport. Revised to configure System.ClientModel client options with explicit NetworkTimeout for both Azure and public OpenAI providers. Ensured no extra wrapper abstractions. Build passed, Zoe revalidated and approved.
+---
 

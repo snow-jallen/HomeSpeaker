@@ -10,142 +10,107 @@
 Blazor WebAssembly to Server-Side Rendering migration completed over Q1 2026. Four QA validation attempts; final approval post-rendermode fixes. Build succeeds (0 errors, 20 warnings), all pages accessible, 100+ Blazor components migrated, 11/14 pages with Interactive Server rendermode. Zero automated tests; manual smoke testing only. Status: ✅ APPROVED & LIVE.
 
 ### AI Playlists Feature Matrix (2026-05-01)
-Comprehensive QA matrix defined covering 8 risk domains (restart safety, incremental pickup, multi-genre classification, similarity & autoplay, feedback loop, progress visibility, data consistency, E2E integration). 77 total test cases. Key risks identified: CRITICAL on restart safety (RPi kiosk needs transaction guarantee), CRITICAL on incremental pickup (new file detection), HIGH on progress visibility (RPi touch users need feedback), HIGH on similarity/autoplay (user exposure), MEDIUM on data consistency. Awaiting implementation completion before QA validation.
+Comprehensive QA matrix defined covering 8 risk domains (restart safety, incremental pickup, multi-genre classification, similarity & autoplay, feedback loop, progress visibility, data consistency, E2E integration). 77 total test cases. Key risks identified: CRITICAL on restart safety (RPi kiosk needs transaction guarantee), CRITICAL on incremental pickup (new file detection), HIGH on progress visibility (RPi touch users need feedback), HIGH on similarity/autoplay (user exposure), MEDIUM on data consistency. All blocking issues resolved through team implementation cycle (Wash + Zoe validation) by May 2. Final status: Production-ready with telemetry oversight.
 
 ### AI Readiness Cycle (2026-05-01 → 2026-05-02)
 Initial readiness assessment identified critical iOS data-contract issues (TrackCount vs trackCount, percentComplete scaling), missing autoplay UX, and weak error handling — NOT READY for trial. Team implemented fixes: Wash completed retry/recovery, JSON repair, and Azure OpenAI support; numeric JSON normalization validated. Zoe re-validated end-to-end after each fix cycle. Final state: AI features smoke-tested and approved for production. **May 2 Status: All blocking issues resolved; production-ready.**
 
-### Q1 2026 AI Playlists Planning (2025-03-24)
-Produced comprehensive QA matrix covering AI playlist generation, feedback mechanisms, edge cases, and performance benchmarks. Test strategy aligns with in-process architecture (no vector DB, OpenAI backend). Full test coverage matrix and case definitions prepared for implementation phase.
-
 
 ## Learnings
-<!-- Recent entries below -->
+<!-- Siri/Offline and release work below -->
 
-### 2026-05-01: AI Playlists Readiness Assessment - NOT READY
-**Status:** ⚠️ Developer-preview only
-**Validated by:** Zoe
-
-**What I verified:**
-- `dotnet build HomeSpeaker.sln` succeeds.
-- `dotnet test HomeSpeaker.sln` runs with no actual automated tests present.
-- Existing smoke evidence only proves `/ai-playlists` and `/ai-status` load; it does not prove AI generation, feedback adaptation, or autoplay behavior.
-
-**Blocking readiness findings:**
-- iOS AI playlist decoding is wired to `TrackCount` instead of the server's camelCase `trackCount`, so real playlist payloads are likely to decode as empty.
-- iOS AI status multiplies `percentComplete` by 100 even though the server already returns 0-100, so progress display is unreliable.
-- Similar-song autoplay exists as an API endpoint, but I found no Blazor or iOS control that exposes it to users.
-- Resume processing only nudges the worker; failed items are not re-queued, so transient AI failures remain stuck.
-- Error handling is weak in user-facing flows: Blazor playlist/status pages collapse failures into empty/idle states, and iOS feedback/playlist actions mostly swallow errors.
-
-**Release recommendation:**
-- Do not treat this as trial-ready for real users until the iOS data-contract issues, retry/recovery behavior, and end-to-end validation of playlist generation / feedback / autoplay are completed.
-
-### 2026-05-01: AI Library Enrichment E2E Smoke Test - PASSED
-
-End-to-end smoke test passed after backend fixes. Build succeeded, server startup healthy. Playwright automated testing confirmed all 6 pages load successfully (/, /music, /queue, /playlists, /ai-playlists, /ai-status all HTTP 200). Health endpoint confirmed Healthy. Build quality: 0 errors, 20 warnings (non-blocking).
-
-
-### 2026-05-01 — AI Playlists QA Strategy
-
-Produced comprehensive QA matrix covering AI playlist generation, feedback mechanisms, edge cases, and performance benchmarks. Test strategy aligns with in-process architecture (no vector DB, OpenAI backend). Full test coverage matrix and case definitions prepared for implementation phase.
-
-### 2026-05-01: Azure OpenAI Provider QA Validation - APPROVED
-
-Validated HomeSpeaker.Server2 built successfully, server started healthy with all AI config blank, and Playwright smoke coverage passed for /, /music, /queue, /playlists, /ai-playlists, /ai-status (HTTP 200, no errors). `/ai-status` showed provider-aware degraded summary. Additional validation with dummy Azure OpenAI env vars succeeded.
-
-### 2026-05-01 — AI Readiness Review Finalized (Cross-team Synthesis)
-
-**Verdict:** NOT READY for any user trial
-
-**Team consensus (Zoe + Mal):**
-- Developer-preview status only; do not attempt user trial in current state.
-- iOS data-contract issues block any iOS exposure.
-- Retry/recovery missing for failed analyses.
-- Similar-song autoplay not exposed to users.
-- Error handling weak in user-facing flows.
-
-**Blocking issues for trial readiness:**
-1. iOS playlist decoding uses `TrackCount` instead of server's camelCase `trackCount`
-2. iOS status multiplies `percentComplete` by 100 (server 0-100 → display 0-10000)
-3. Similar-song autoplay API exists but not exposed in Blazor/iOS UIs
-4. Failed analyses not re-queued; transient failures strand tracks
-5. Blazor/iOS error handling collapses to empty/idle states
-
-**Required before trial:**
-- Fix iOS data contracts
-- Implement retry/recovery for failed items
-- Expose and test similar-song autoplay flow
-- End-to-end validation: generation → playlists → play → feedback → ranking
-
-### 2026-05-02 — AI JSON Numeric Repair Validation
-
-Validated Wash's AI malformed JSON numeric repair implementation. Tested: build succeeded, server startup healthy, browser smoke tests on pages (/, /music, /queue, /playlists, /ai-playlists, /ai-status). Harness-style validation confirmed malformed numeric values (e.g., 00.42) are properly repaired while non-target/truncated JSON still fails as intended. ✅ APPROVED for production.
-
-**Orchestration logs created:**
-- `2026-05-01T155906Z-zoe.md` — QA findings and blocking issues
-- `2026-05-01T155906Z-mal.md` — Mal's verdict and next steps
-- Session log: `.squad/log/2026-05-01T155906Z-ai-readiness-review.md`
-
-### 2026-05-01: AI Retry + Batch/Timeout Validation - REJECTED
-**Status:** ❌ Rejected
+### 2026-05-14: Siri Commands + Offline Downloads QA Assessment - REJECTED
+**Status:** ❌ Rejected for requested scope
 **Validated by:** Zoe
 
 **What I verified:**
 - `dotnet build D:\homespeaker\HomeSpeaker.sln` succeeds.
-- Server starts and `/health` reports Healthy with current configuration.
-- Playwright smoke coverage passed for `/`, `/music`, `/queue`, `/playlists`, `/ai-playlists`, and `/ai-status` (all HTTP 200).
-- Code defaults and config now read as batch size `6` and model timeout `200` seconds.
-- Runtime/database evidence shows failed work items are being re-queued automatically: previously failed items were picked back up as `Processing` with `Attempts = 2`, so manual DB edits are no longer required just to retry.
+- `dotnet test D:\homespeaker\HomeSpeaker.sln` completes, but there are still no automated test projects in the solution, so it only proves the solution builds.
+- Current Siri coverage is limited to content-picking App Shortcuts in `HomeSpeakerMobile\iOS\Intents\HomeSpeakerShortcuts.swift` and `HomeSpeakerMobile\iOS\Intents\HomeSpeakerIntents.swift` for artist/album/playlist/AI playlist/stream playback.
+- The requested Siri command set is not implemented: there are no dedicated discoverable intents for **next song**, **fun music**, **hymns**, **quiet down**, or **stop**.
+- Current volume control is only an absolute slider/API call (`setVolume(level)`); I found no atomic "cut current volume in half" workflow.
+- Offline mobile downloads are not implemented for the library: no artist/album/track offline flags, no local download manager, no download state in `Models.swift`, and no management UI in `MusicLibraryView.swift` / `NowPlayingView.swift`.
 
-**Blocking finding:**
-- Azure OpenAI requests are still timing out at **0:01:40 (~100s)** in live runtime/status output. `AiMusicAnalyzer` wraps the call in a 200s cancellation token, but `Program.cs` still constructs `AzureOpenAIClient` without setting the Azure SDK network timeout, so the provider-level 100s timeout wins first. That means the requested explicit doubled timeout is not actually proven end-to-end and appears ineffective for the active provider.
+**Blocking findings:**
+- The current Siri approach still depends on free-form `MediaQueryEntity` phrases plus the app name, which does not match the user's request for short, explicit commands and remains high-risk for recognition ambiguity.
+- `parseContentAndServer()` only parses `" on "` server hints, while the shipped shortcut phrases now use `" in "`, so the parser/phrase contract is already out of sync.
+- Offline playback today streams from `/api/music/{songId}` via `LocalPlayer`; there is no persisted on-device media store or download lifecycle to validate.
 
-**What I did NOT prove:**
-- I did not wait through a full fresh 200s request cycle after code changes; instead I used current runtime/status evidence plus code inspection. The retry path itself is proven, but the doubled timeout behavior is not.
+**High-risk manual cases to run once implementation lands:**
+- Siri: "next song", "play fun music", "play hymns", "quiet down", and "stop" with the app open, closed, and after device restart.
+- Siri ambiguity: similar phrases with background noise, alternate wording, and no explicit app name.
+- Quiet-down behavior when volume is odd, already low, already zero, or server status fetch fails.
+- Offline downloads: mark/unmark song, album, and artist; duplicate downloads; partial downloads; cancel/retry; delete while playing; out-of-space; server unreachable; stale metadata after library edits.
+- Download management: mixed states (queued/downloading/downloaded/failed), bulk delete, selective delete, and correct fallback between offline and server playback.
 
 **Revision recommendation:**
-- Reject and assign **Mal** for revision/redirect so the Azure provider timeout is wired at the client level and then re-validated end-to-end.
+- Route Siri command revision to **Kaylee** (not the current shortcut author) so the app gets explicit App Intents for the requested commands instead of generic media-query phrases.
+- Route offline-download design/implementation to **Mal + Kaylee** for a concrete download-state contract and client workflow before QA re-validation.
 
-### 2026-05-01: Timeout Wiring Re-Validation - APPROVED WITH CAVEAT
-**Status:** ✅ Approved for requested regression scope
+### 2026-05-14: Siri Commands + Offline Downloads Final Review - REJECTED
+**Status:** ❌ Rejected for final requested scope
 **Validated by:** Zoe
 
 **What I verified:**
-- `dotnet build HomeSpeaker.sln` succeeds.
-- No dedicated test projects are present, so there was no meaningful automated test suite to run.
-- Server starts on the HTTP profile and `/health` reports Healthy after startup and after smoke testing.
-- Browser smoke passes for `/`, `/music`, `/queue`, `/playlists`, `/ai-playlists`, and `/ai-status`.
-- Batch size is still 6 in configuration and the worker still claims `Take(batchSize)` work items.
-- Failed-item auto-requeue remains in place in code, and live `/api/ai/status` activity showed retries plus `Lease expired; re-queued.` behavior.
-- Mal's timeout revision now wires the configured AI timeout into provider client options (`NetworkTimeout` and `HttpClient.Timeout`) in addition to the analyzer-level cancellation token.
+- `dotnet build D:\homespeaker\HomeSpeaker.sln` succeeds.
+- `dotnet test D:\homespeaker\HomeSpeaker.sln` succeeds, but there are still no real automated test projects in the solution.
+- Runtime smoke on Windows succeeds for the server paths I can exercise here: `/health`, `/api/homespeaker/offline`, `/`, `/music`, and `/playlists` all returned HTTP 200.
+- The iOS Siri/App Intents implementation is now explicit and app-scoped in code for the requested commands: next song, play fun music, play hymns, quiet down, and stop.
+- The iPhone UI now exposes offline marking for artists/albums/tracks plus a dedicated Offline Downloads management screen under More / Library.
+- `LocalPlayer` is wired to prefer a downloaded local file before falling back to `/api/music/{songId}`.
 
-**Timeout-specific caveat:**
-- I did not get a clean live repro of a ~200 second timeout because the current provider/runtime behavior in this environment failed faster with 404 and invalid-JSON responses instead of hanging long enough to exercise the timeout path.
-- Static validation shows the old provider-level ~100 second cap should no longer win: `ModelRequestTimeoutSeconds` is 200, `AiMusicAnalyzer` cancels at that window, and `Program.cs` now applies a transport timeout of request timeout + 15 seconds to both Azure OpenAI and OpenAI client creation.
+**Blocking finding:**
+- The offline workflow still stores durable local state by **`songId`**, not by **`Song.Path`**. In this repo, `SongId` is assigned from the current in-memory scan order (`OnDiskDataStore` sets `song.SongId = songs.Count`), so adding/removing/rescanning library items can shift IDs. Because `OfflineDownloadsStore` names files and selections by `songId`, and `LocalPlayer` resolves offline files by `songId`, a rescan can make a saved download disappear or, worse, attach the wrong local audio file to a different song. That breaks the requested offline reliability and does not match Mal's accepted durable-key decision.
 
-**Recommendation:**
-- Accept Mal's timeout wiring fix for this revision, but treat end-to-end timeout duration as code-validated rather than fully live-reproduced in this environment.
+**Artifacts rejected for revision:**
+- `HomeSpeakerMobile\iOS\OfflineDownloadsStore.swift` → **Kaylee**
+- `HomeSpeakerMobile\iOS\LocalPlayer.swift` → **Kaylee**
+- `HomeSpeakerMobile\iOS\Views\MusicLibraryView.swift` → **Kaylee**
 
-### 2026-05-01 — AI Retry/Timeout Fix Validation (Reject & Revalidate)
+**Acceptable limitations noted:**
+- I could not run Xcode/iOS simulator validation from this Windows host, so Siri invocation and on-device offline playback remain code-reviewed rather than device-proven in this session.
 
-Performed initial validation of Wash's AI retry timeout implementation. Identified critical issue: end-to-end timeout ineffective because Azure SDK using default HttpClient.Timeout. Documented root cause and assigned Mal for provider-level revision. Revalidated post-revision with smoke tests across routes, auto-requeue state transitions, and timeout wiring. Approved final implementation.
-
-### 2026-05-02: AI JSON Parse Fix Validation - APPROVED
-**Status:** ✅ Approved
+### 2026-05-14: Offline Mobile Re-Review - APPROVED WITH CAVEAT
+**Status:** ✅ Approved for the offline durable-key regression scope
 **Validated by:** Zoe
 
 **What I verified:**
-- `dotnet build D:\homespeaker\HomeSpeaker.Server2\HomeSpeaker.Server2.csproj` succeeds.
-- Server starts on the HTTP launch profile and `/health` stays Healthy before and after smoke coverage.
-- Browser automation smoke passed for `/`, `/music`, `/queue`, `/playlists`, `/ai-playlists`, and `/ai-status`.
-- `AiMusicAnalyzer` now applies a narrow numeric-token repair only for the allowlisted numeric fields (`energy`, score/value/confidence-style fields, etc.) before re-deserializing the batch payload.
-- A targeted harness against the built assembly proved a reported-shape case (`$.songs[5].energy` with `00.42`) is repaired to `0.42`, after which the full 6-song batch deserializes successfully.
-- The same harness proved the repair is not broad/unsafe: a malformed non-target field and a truncated JSON payload both remained unrepaired and still throw JSON parse errors.
+- `dotnet build D:\homespeaker\HomeSpeaker.sln` succeeds.
+- `dotnet test D:\homespeaker\HomeSpeaker.sln` succeeds, but there are still no real automated test projects in the solution.
+- Durable offline manifest records, track selections, and downloaded-file lookup now key off `Song.path` in `HomeSpeakerMobile\iOS\OfflineDownloadsStore.swift`.
+- Local playback now prefers a downloaded file by `Song.path` plus `connection.id` before falling back to `/api/music/{songId}` in `HomeSpeakerMobile\iOS\LocalPlayer.swift`.
+- Library and management UI wiring remains present in `HomeSpeakerMobile\iOS\Views\MusicLibraryView.swift`, `HomeSpeakerMobile\iOS\Views\MoreView.swift`, `HomeSpeakerMobile\iOS\Views\OfflineDownloadsView.swift`, and `HomeSpeakerMobile\iOS\HomeSpeakerApp.swift`.
 
-**What I did NOT prove live:**
-- I did not capture a fresh runtime log entry showing the repair happening against the active model provider. The live `/api/ai/status` data still contains historical parse failures, so repair behavior in production traffic is code+harness validated here, not directly observed from the provider during this session.
+**Acceptable residual limitation:**
+- Legacy migration from the old `songId`-keyed manifest is only best-effort because the old key was scan-order based. If a library changed before the first post-upgrade refresh, some pre-existing legacy selections/downloads may not map perfectly. Going forward, newly persisted offline state is using the durable path key the team asked for.
+- I still cannot run Xcode/iOS simulator validation from this Windows host, so on-device playback and download lifecycle remain code-reviewed rather than device-proven here.
 
+### 2026-05-14: Final Release Review - Offline Contract Gap
+Rejected the final release pass because the new server-side offline manifest path is still not wired into the iOS client. `HomeSpeakerMobile/iOS/OfflineDownloadsStore.swift` keeps its own local manifest and still downloads from `/api/music/{songId}`, while the new persisted server contract in `HomeSpeaker.Server2/Services/OfflineDownloadService.cs` and `/api/homespeaker/offline*` is never called from `HomeSpeakerMobile/Shared/APIClient.swift`.
 
-### 2026-05-02: AI Playlist Details Feature Validation - APPROVED
-Validated AI playlist details feature end-to-end: backend payload enrichment with per-track scoring (Wash), frontend /ai-playlists/{genreKey} details page with scoring table (Kaylee), and integration. Build succeeds, server starts healthy, smoke tests pass on all pages including details route with visible scoring data and functional play actions. No blocking issues. ✅ APPROVED & COMPLETE
+Host validation still passed for what Windows can prove: `dotnet build D:\homespeaker\HomeSpeaker.sln`, `dotnet test D:\homespeaker\HomeSpeaker.sln` (no real tests), runtime smoke on `/health`, `/api/homespeaker/offline`, `/`, `/music`, and `/playlists`, plus scratch-SQLite confirmation that the `OfflineDownloadTargets` table and unique index are created by migration startup. Siri explicit commands exist in code, but iOS/watch invocation remains code-reviewed only from this host.
+
+### 2026-05-14: Post-fix Release Review - APPROVED
+Validated the final Siri/offline pass after one last server-side fix. The requested blockers are now in place in code: `PlayFunMusicOnHomeSpeakerIntent` directly targets AI genre `family-singalong`, `PlayerStatus.quietDownVolume` preserves non-zero volume at a minimum of 1 for both iOS and watch flows, and `OfflineDownloadsStore.summaryLine` reports failed downloads separately instead of folding them into pending work.
+
+The iOS offline client is now wired to the `/api/homespeaker/offline*` contract through `HomeSpeakerMobile/Shared/APIClient.swift` and `HomeSpeakerMobile/iOS/OfflineDownloadsStore.swift`, with durable `Song.path` keys carried through `OfflineSongKey`, local-file lookup, and playback fallback in `HomeSpeakerMobile/iOS/LocalPlayer.swift`. I also caught and fixed a release-blocking server bug in `HomeSpeaker.Server2/Services/OfflineDownloadService.cs`: offline media responses must resolve catalog paths to full filesystem paths before calling `Results.File`, or device downloads fail on relative library paths even though manifest creation succeeds.
+
+Host validation for the approved state: `dotnet build D:\homespeaker\HomeSpeaker.sln -c Release`, `dotnet test D:\homespeaker\HomeSpeaker.sln -c Release --no-build` (still no real automated tests), route smoke on `/health`, `/api/homespeaker/offline`, `/`, `/music`, and `/playlists`, plus live create/download/delete exercise of `/api/homespeaker/offline/targets` and `/api/homespeaker/offline/media` against a real song. I still cannot prove Siri invocation or on-device iOS playback lifecycle from this Windows host, so those remain code-reviewed rather than simulator/device-verified here.
+## Siri/Offline Release — Complete (2026-05-14T21:32:28Z)
+
+**Status:** ✅ APPROVED FOR RELEASE
+
+**Team completion summary:**
+- Mal: Architecture & final release review → approved
+- River: Siri commands & mobile UX → complete
+- Wash: Backend offline contract & critical fixes → complete
+- Kaylee: Offline keying revision → approved
+- Book: Integration & legacy migration → complete
+- Zoe: QA & final verdict → APPROVED FOR RELEASE
+
+**Final decision:** All review criteria met. Feature approved for production deployment.
+
+**Platform limitation:** Apple device/simulator validation required remote procedures (Windows host).
+
+---
+
