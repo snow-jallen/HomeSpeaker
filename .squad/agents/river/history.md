@@ -20,6 +20,7 @@
 - **2026-05-14:** Siri/App Shortcuts work better in this app when phrases are fixed and app-scoped (`HomeSpeakerShortcuts.swift`) while broad media-query intents stay undiscoverable in `HomeSpeakerIntents.swift`.
 - **2026-05-14:** Offline playback is client-managed in `HomeSpeakerMobile/iOS/OfflineDownloadsStore.swift`: it reuses `GET /api/music/{songId}`, stores files under Application Support `HomeSpeakerOffline`, and injects the store into SwiftUI via `HomeSpeakerApp`.
 - **2026-05-14:** Library offline affordances live in `MusicLibraryView.swift` with artist/album buttons, per-track status icons, and a management surface in `OfflineDownloadsView.swift` linked from `MoreView.swift`.
+- **2026-05-14:** In `HomeSpeakerMobile/iOS/Intents/HomeSpeakerIntents.swift`, nested alias-matching closures must bind the playlist item explicitly (`playlist in`) before using an inner `alias` closure; mixing explicit inner args with outer `$0` breaks Swift compilation.
 
 
 
@@ -52,4 +53,3 @@ Mapped iOS SwiftUI structure for AI playlists. Analyzed state management pattern
 **Platform limitation:** Apple device/simulator validation required remote procedures (Windows host).
 
 ---
-

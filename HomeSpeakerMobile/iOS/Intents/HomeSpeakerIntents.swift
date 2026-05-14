@@ -22,17 +22,17 @@ private func matchedAiPlaylist(
     from playlists: [AiPlaylistSummaryDto],
     aliases: [String]
 ) -> AiPlaylistSummaryDto? {
-    playlists.first {
+    playlists.first { playlist in
         aliases.contains { alias in
-            matchesShortcutAlias($0.displayName, aliases: [alias]) ||
-            matchesShortcutAlias($0.genreKey, aliases: [alias])
+            matchesShortcutAlias(playlist.displayName, aliases: [alias]) ||
+            matchesShortcutAlias(playlist.genreKey, aliases: [alias])
         }
     }
 }
 
 private func matchedPlaylist(from playlists: [Playlist], aliases: [String]) -> Playlist? {
-    playlists.first {
-        aliases.contains { alias in matchesShortcutAlias($0.name, aliases: [alias]) }
+    playlists.first { playlist in
+        aliases.contains { alias in matchesShortcutAlias(playlist.name, aliases: [alias]) }
     }
 }
 
