@@ -59,6 +59,7 @@ builder.Services.AddHostedService<AirPlayReceiverService>();
 builder.Services.AddScoped<HomeSpeakerService>(); // Scoped for Blazor components
 builder.Services.AddScoped<PlaylistService>();
 builder.Services.AddScoped<AnchorService>();
+builder.Services.AddScoped<OfflineDownloadService>();
 builder.Services.AddScoped<IAnchorNotificationService, AnchorNotificationService>();
 builder.Services.AddSignalR();
 builder.Services.AddDbContext<MusicContext>(options => options.UseSqlite(builder.Configuration["SqliteConnectionString"]));

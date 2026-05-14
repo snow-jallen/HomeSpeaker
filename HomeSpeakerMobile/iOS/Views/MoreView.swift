@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MoreView: View {
     @Environment(ConnectionStore.self) private var store
+    @Environment(OfflineDownloadsStore.self) private var offlineDownloads
     @State private var recentlyPlayed: [Song] = []
     @State private var features: Features?
     @State private var temperature: TemperatureStatus?
@@ -21,6 +22,8 @@ struct MoreView: View {
                 youtubeSection
 
                 aiSection
+
+                offlineSection
 
                 if features?.temperatureEnabled == true {
                     temperatureSection
@@ -132,6 +135,22 @@ struct MoreView: View {
                 AIStatusView()
             } label: {
                 Label("AI Status", systemImage: "cpu")
+            }
+        }
+    }
+
+    private var offlineSection: some View {
+        Section("Offline") {
+            NavigationLink {
+                OfflineDownloadsView()
+            } label: {
+                HStack {
+                    Label("Offline Downloads", systemImage: "arrow.down.circle")
+                    Spacer()
+                    Text(offlineDownloads.summaryLine)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }

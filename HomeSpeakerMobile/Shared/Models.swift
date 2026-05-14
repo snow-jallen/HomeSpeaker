@@ -85,6 +85,7 @@ struct PlayerStatus: Codable {
     let aiContext: AiPlayerContextDto?
 
     var isPlaying: Bool { stillPlaying }
+    var quietDownVolume: Int { volume > 0 ? max(1, volume / 2) : 0 }
 
     var elapsedFormatted: String {
         elapsed.flatMap { formatDuration($0) } ?? "0:00"
@@ -224,6 +225,63 @@ struct UpdateSongRequest: Codable {
     let name: String
     let artist: String
     let album: String
+}
+
+struct OfflineDownloadTargetRequestBody: Codable {
+    let targetType: OfflineDownloadTargetType
+    let songId: Int?
+    let songPath: String?
+    let artistName: String?
+    let albumName: String?
+}
+
+enum OfflineDownloadTargetType: String, Codable {
+    case artist = "Artist"
+    case album = "Album"
+    case song = "Song"
+}
+
+enum OfflineDownloadTargetStatus: String, Codable {
+    case ready = "Ready"
+    case missing = "Missing"
+}
+
+struct OfflineDownloadManifestDto: Codable {
+    let generatedUtc: String?
+    let targets: [OfflineDownloadTargetDto]
+    let songs: [OfflineDownloadSongDto]
+}
+
+struct OfflineDownloadTargetDto: Codable, Identifiable {
+    let id: Int
+    let targetType: OfflineDownloadTargetType
+    let status: OfflineDownloadTargetStatus
+    let displayName: String
+    let artistName: String?
+    let albumName: String?
+    let songPath: String?
+    let song: Song?
+    let resolvedSongCount: Int
+    let createdUtc: String?
+}
+
+struct OfflineDownloadSongDto: Codable, Identifiable {
+    let song: Song
+    let songPath: String
+    let fileName: String
+    let fileSizeBytes: Int64
+    let lastModifiedUtc: String?
+    let eTag: String
+    let downloadUrl: String
+    let sources: [OfflineDownloadSourceDto]
+
+    var id: String { songPath }
+}
+
+struct OfflineDownloadSourceDto: Codable, Hashable {
+    let targetId: Int
+    let targetType: OfflineDownloadTargetType
+    let displayName: String
 }
 
 // MARK: - AI Playlists Models

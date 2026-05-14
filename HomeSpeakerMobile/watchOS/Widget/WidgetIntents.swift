@@ -21,7 +21,7 @@ struct PlayPauseIntent: AppIntent {
 }
 
 struct SkipIntent: AppIntent {
-    static let title: LocalizedStringResource = "Skip in HomeSpeaker"
+    static let title: LocalizedStringResource = "HomeSpeaker Next Song"
     static let isDiscoverable = false
 
     func perform() async throws -> some IntentResult {
@@ -38,6 +38,20 @@ struct StopIntent: AppIntent {
 
     func perform() async throws -> some IntentResult {
         try? await widgetAPI()?.stop()
+        try? await Task.sleep(for: .milliseconds(500))
+        WidgetCenter.shared.reloadAllTimelines()
+        return .result()
+    }
+}
+
+struct QuietDownIntent: AppIntent {
+    static let title: LocalizedStringResource = "Quiet Down HomeSpeaker"
+    static let isDiscoverable = false
+
+    func perform() async throws -> some IntentResult {
+        if let api = widgetAPI(), let status = try? await api.getPlayerStatus() {
+            try? await api.setVolume(status.quietDownVolume)
+        }
         try? await Task.sleep(for: .milliseconds(500))
         WidgetCenter.shared.reloadAllTimelines()
         return .result()

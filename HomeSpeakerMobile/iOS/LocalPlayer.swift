@@ -34,7 +34,7 @@ final class LocalPlayer {
     @ObservationIgnored private let player = AVPlayer()
     @ObservationIgnored private var timeObserver: Any?
     @ObservationIgnored private var rateObservation: NSKeyValueObservation?
-    @ObservationIgnored var baseURL: URL?
+    @ObservationIgnored var connection: ServerConnection?
 
     // MARK: - Init
 
@@ -64,14 +64,14 @@ final class LocalPlayer {
 
     // MARK: - Public queue operations
 
-    func play(songs: [Song], from index: Int = 0, baseURL: URL) {
-        self.baseURL = baseURL
+    func play(songs: [Song], from index: Int = 0, connection: ServerConnection) {
+        self.connection = connection
         self.songs = songs
         loadItem(at: index)
     }
 
-    func enqueue(songs newSongs: [Song], baseURL: URL) {
-        if self.baseURL == nil { self.baseURL = baseURL }
+    func enqueue(songs newSongs: [Song], connection: ServerConnection) {
+        if self.connection == nil { self.connection = connection }
         let wasEmpty = songs.isEmpty
         songs.append(contentsOf: newSongs)
         if wasEmpty { loadItem(at: 0) }
@@ -118,21 +118,28 @@ final class LocalPlayer {
     // MARK: - Private
 
     private func loadItem(at index: Int) {
-        guard index >= 0, index < songs.count, let base = baseURL else { return }
+        guard index >= 0, index < songs.count, let connection else { return }
         currentIndex = index
         let song = songs[index]
-        guard let url = streamURL(songId: song.songId, base: base) else { return }
+        guard let url = audioURL(for: song, connection: connection) else { return }
         let item = AVPlayerItem(url: url)
         player.replaceCurrentItem(with: item)
         player.play()
         updateNowPlayingInfo()
     }
 
-    private func streamURL(songId: Int, base: URL) -> URL? {
-        let str = base.absoluteString.hasSuffix("/")
-            ? String(base.absoluteString.dropLast())
-            : base.absoluteString
-        return URL(string: "\(str)/api/music/\(songId)")
+    private func audioURL(for song: Song, connection: ServerConnection) -> URL? {
+        if let path = song.path,
+           let localURL = OfflineDownloadPaths.existingFileURL(for: path, connectionId: connection.id) {
+            return localURL
+        }
+
+        let api = APIClient(baseURL: connection.baseURL)
+        if let path = song.path, !path.isEmpty {
+            return api.offlineSongMediaURL(songPath: path)
+        }
+
+        return api.musicFileURL(songId: song.songId)
     }
 
     @objc private func itemDidEnd() {

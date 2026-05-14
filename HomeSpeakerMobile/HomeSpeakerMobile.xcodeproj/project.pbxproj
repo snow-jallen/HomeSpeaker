@@ -28,6 +28,7 @@
 		8BA769F8273F5002C64F9957 /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE72379FA5E35A1E24338A72 /* QueueView.swift */; };
 		8CAA466DE8E1AC4DDC182682 /* AIPlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5AB2945906B9634A6C844C9 /* AIPlaylistsView.swift */; };
 		8E27D4675795777A6FF971AD /* AIStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0708C23DBE902CD2AF78140D /* AIStatusView.swift */; };
+		8F19CA0B0CF8A14C6277FC0B /* OfflineDownloadsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1297287854A8D56CC65CA9A /* OfflineDownloadsStore.swift */; };
 		90BDA85488C40C638B27DEF3 /* RadioStreamsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97987F210143A29FA1EA204 /* RadioStreamsView.swift */; };
 		96F16D770BBC0004BCE29747 /* MediaPlayer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CAF6F1D2EC5D2112E6D5AECA /* MediaPlayer.framework */; };
 		97D4A59656382C9B54FD48D9 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F4223DA2F0CDF7DF37CB1511 /* SwiftUI.framework */; };
@@ -53,6 +54,7 @@
 		DE6051148FA4909B497ECA63 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0387EAEB26350D3D2A73FB79 /* Models.swift */; };
 		E67C1946D2602902FAEF6B24 /* PlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1ED18F91C6D18A84AC2CE2D /* PlaylistsView.swift */; };
 		E9CFA7C6C54884491EE42B74 /* ServerListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAA123689971EE3504312BBE /* ServerListView.swift */; };
+		EAF2A83051D1C3B135F5F21C /* OfflineDownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67AE50D977A86AB778373CCB /* OfflineDownloadsView.swift */; };
 		ED6AA397244C91B925E949AF /* PlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B0125C146E59A5A2A1943C /* PlaylistsView.swift */; };
 		EE56A00AE4A62D3A70F3C141 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 348CD51028183AD1583AC3BC /* AppIntents.framework */; };
 		EFE57C1AEABFFD95F81531ED /* HomeSpeakerShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4079029A2C197EA0A4DB14CF /* HomeSpeakerShortcuts.swift */; };
@@ -132,6 +134,7 @@
 		AA9B6AB8BBD67679356966D6 /* WatchSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSync.swift; sourceTree = "<group>"; };
 		AAE825C6CA30C690E37852BB /* RadioStreamsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioStreamsView.swift; sourceTree = "<group>"; };
 		B97987F210143A29FA1EA204 /* RadioStreamsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioStreamsView.swift; sourceTree = "<group>"; };
+		B1297287854A8D56CC65CA9A /* OfflineDownloadsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineDownloadsStore.swift; sourceTree = "<group>"; };
 		CAA123689971EE3504312BBE /* ServerListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerListView.swift; sourceTree = "<group>"; };
 		CAF6F1D2EC5D2112E6D5AECA /* MediaPlayer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MediaPlayer.framework; path = System/Library/Frameworks/MediaPlayer.framework; sourceTree = SDKROOT; };
 		CE5E33A6DF228F089492D54D /* HomeSpeakerWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HomeSpeakerWatch.entitlements; sourceTree = "<group>"; };
@@ -149,6 +152,7 @@
 		F4223DA2F0CDF7DF37CB1511 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		FAD72D0C245433BA64B16115 /* NowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingView.swift; sourceTree = "<group>"; };
 		FE72379FA5E35A1E24338A72 /* QueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueView.swift; sourceTree = "<group>"; };
+		67AE50D977A86AB778373CCB /* OfflineDownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineDownloadsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -278,6 +282,7 @@
 				9FE39C0DB8FFD7DBDEC6E984 /* ContentView.swift */,
 				D1C3B78E7383B49C16C349A3 /* HomeSpeakerApp.swift */,
 				8E0801376B66A150D4878F32 /* LocalPlayer.swift */,
+				B1297287854A8D56CC65CA9A /* OfflineDownloadsStore.swift */,
 				74812DE8131DA7912599C09A /* Intents */,
 				6AA690D5044B747696D6E870 /* Resources */,
 				9640FB9053993F506946BA33 /* Views */,
@@ -304,6 +309,7 @@
 				7DC249750CEAD1C046D5E9F8 /* MoreView.swift */,
 				5362492C8FDA890DA502B7AE /* MusicLibraryView.swift */,
 				FAD72D0C245433BA64B16115 /* NowPlayingView.swift */,
+				67AE50D977A86AB778373CCB /* OfflineDownloadsView.swift */,
 				A1ED18F91C6D18A84AC2CE2D /* PlaylistsView.swift */,
 				991398AE4AA449825359CD71 /* QueueView.swift */,
 				B97987F210143A29FA1EA204 /* RadioStreamsView.swift */,
@@ -477,6 +483,8 @@
 				F4089D82DB9CCF24A58D7150 /* MoreView.swift in Sources */,
 				AFBC50135B32EEDDB784AC73 /* MusicLibraryView.swift in Sources */,
 				FF6AC4DBAC26C4591175E5C6 /* NowPlayingView.swift in Sources */,
+				EAF2A83051D1C3B135F5F21C /* OfflineDownloadsView.swift in Sources */,
+				8F19CA0B0CF8A14C6277FC0B /* OfflineDownloadsStore.swift in Sources */,
 				E67C1946D2602902FAEF6B24 /* PlaylistsView.swift in Sources */,
 				A08875BB22B217481D8F8A2B /* QueueView.swift in Sources */,
 				90BDA85488C40C638B27DEF3 /* RadioStreamsView.swift in Sources */,

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Shared;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 using TagLib;
 using TagFile = TagLib.File;
 
@@ -31,6 +32,9 @@ public static class HomeSpeakerRestEndpoints
 
         // Radio Stream Endpoints
         mapRadioEndpoints(homeSpeakerGroup);
+
+        // Offline download endpoints
+        mapOfflineDownloadEndpoints(homeSpeakerGroup);
 
         return homeSpeakerGroup;
     }
@@ -1230,6 +1234,29 @@ public static class HomeSpeakerRestEndpoints
             .WithDescription("Removes a radio stream from the library");
     }
 
+    private static void mapOfflineDownloadEndpoints(RouteGroupBuilder group)
+    {
+        group.MapGet("/offline", getOfflineDownloadManifest)
+            .WithName("GetOfflineDownloadManifest")
+            .WithSummary("Get offline download manifest")
+            .WithDescription("Returns saved offline targets plus the resolved songs and download metadata needed by mobile clients.");
+
+        group.MapPost("/offline/targets", addOfflineDownloadTarget)
+            .WithName("AddOfflineDownloadTarget")
+            .WithSummary("Mark content for offline use")
+            .WithDescription("Marks an artist, album, or song for offline mobile sync.");
+
+        group.MapDelete("/offline/targets/{targetId:int}", removeOfflineDownloadTarget)
+            .WithName("RemoveOfflineDownloadTarget")
+            .WithSummary("Remove offline target")
+            .WithDescription("Removes a saved offline artist, album, or song target.");
+
+        group.MapGet("/offline/media", getOfflineSongMedia)
+            .WithName("GetOfflineSongMedia")
+            .WithSummary("Download song media")
+            .WithDescription("Streams playable MP3 media for an offline-marked song.");
+    }
+
     private static async Task<IResult> getRadioStreams(
         [FromServices] RadioStreamService radioStreamService,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
@@ -1251,6 +1278,109 @@ public static class HomeSpeakerRestEndpoints
         {
             logger.LogError(ex, "Failed to get radio streams");
             return Results.Problem($"Failed to get radio streams: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> getOfflineDownloadManifest(
+        [FromServices] OfflineDownloadService offlineDownloadService,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var manifest = await offlineDownloadService.GetManifestAsync(cancellationToken);
+            logger.LogInformation("Retrieved offline download manifest with {TargetCount} targets and {SongCount} songs", manifest.Targets.Count, manifest.Songs.Count);
+            return Results.Ok(manifest);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to get offline download manifest");
+            return Results.Problem($"Failed to get offline download manifest: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> addOfflineDownloadTarget(
+        [FromBody] OfflineDownloadTargetRequest request,
+        [FromServices] OfflineDownloadService offlineDownloadService,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var target = await offlineDownloadService.AddTargetAsync(request, cancellationToken);
+            logger.LogInformation("Added offline download target {TargetId} ({TargetType})", target.Id, target.TargetType);
+            return Results.Created($"/api/homespeaker/offline/targets/{target.Id}", target);
+        }
+        catch (ArgumentException ex)
+        {
+            logger.LogWarning(ex, "Invalid offline target request");
+            return Results.BadRequest(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            logger.LogWarning(ex, "Offline target request could not be resolved");
+            return Results.NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to add offline download target");
+            return Results.Problem($"Failed to add offline download target: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> removeOfflineDownloadTarget(
+        [FromRoute] int targetId,
+        [FromServices] OfflineDownloadService offlineDownloadService,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var removed = await offlineDownloadService.RemoveTargetAsync(targetId, cancellationToken);
+            if (!removed)
+            {
+                return Results.NotFound($"Offline target {targetId} was not found.");
+            }
+
+            logger.LogInformation("Removed offline download target {TargetId}", targetId);
+            return Results.NoContent();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to remove offline download target {TargetId}", targetId);
+            return Results.Problem($"Failed to remove offline download target: {ex.Message}");
+        }
+    }
+
+    private static IResult getOfflineSongMedia(
+        [FromQuery] string songPath,
+        HttpContext httpContext,
+        [FromServices] OfflineDownloadService offlineDownloadService,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        try
+        {
+            var media = offlineDownloadService.GetMedia(songPath);
+            if (media is null)
+            {
+                return Results.NotFound("Song media was not found.");
+            }
+
+            httpContext.Response.Headers.ETag = media.ETag;
+            httpContext.Response.Headers.LastModified = media.LastModifiedUtc.ToString("R");
+            httpContext.Response.Headers[HeaderNames.CacheControl] = "private, max-age=0";
+
+            logger.LogInformation("Serving offline media for {SongPath}", songPath);
+            return Results.File(
+                media.FilePath,
+                media.ContentType,
+                media.DownloadFileName,
+                enableRangeProcessing: true);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to serve offline media for {SongPath}", songPath);
+            return Results.Problem($"Failed to serve offline media: {ex.Message}");
         }
     }
 

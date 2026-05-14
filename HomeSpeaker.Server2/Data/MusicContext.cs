@@ -1,3 +1,4 @@
+using HomeSpeaker.Shared;
 using Microsoft.EntityFrameworkCore;
 
 namespace HomeSpeaker.Server2.Data;
@@ -133,6 +134,20 @@ public class MusicContext : DbContext
 
         modelBuilder.Entity<AiPlaybackFeedback>()
             .HasIndex(f => f.SongPath);
+
+        modelBuilder.Entity<OfflineDownloadTarget>()
+            .Property(target => target.TargetType)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<OfflineDownloadTarget>()
+            .HasIndex(target => new
+            {
+                target.TargetType,
+                target.ArtistName,
+                target.AlbumName,
+                target.SongPath
+            })
+            .IsUnique();
 
         modelBuilder.Entity<AiGenreDefinition>().HasData(
             new AiGenreDefinition
@@ -273,6 +288,7 @@ public class MusicContext : DbContext
     public DbSet<AiProcessingRun> AiProcessingRuns { get; set; }
     public DbSet<AiPlaybackSession> AiPlaybackSessions { get; set; }
     public DbSet<AiPlaybackFeedback> AiPlaybackFeedbacks { get; set; }
+    public DbSet<OfflineDownloadTarget> OfflineDownloadTargets { get; set; }
 }
 
 public class Thumbnail
@@ -467,6 +483,16 @@ public class AiPlaybackFeedback
     public AiFeedbackType Feedback { get; set; }
     public string? PreviousSongPath { get; set; }
     public string? GenreKey { get; set; }
+    public DateTime CreatedUtc { get; set; }
+}
+
+public class OfflineDownloadTarget
+{
+    public int Id { get; set; }
+    public OfflineDownloadTargetType TargetType { get; set; }
+    public string ArtistName { get; set; } = string.Empty;
+    public string AlbumName { get; set; } = string.Empty;
+    public string SongPath { get; set; } = string.Empty;
     public DateTime CreatedUtc { get; set; }
 }
 

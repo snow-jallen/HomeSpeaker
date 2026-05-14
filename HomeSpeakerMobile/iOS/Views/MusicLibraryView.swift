@@ -4,6 +4,7 @@ import PhotosUI
 struct MusicLibraryView: View {
     @Environment(ConnectionStore.self) private var store
     @Environment(LocalPlayer.self) private var localPlayer
+    @Environment(OfflineDownloadsStore.self) private var offlineDownloads
     @State private var songs: [Song] = []
     @State private var searchText = ""
     @State private var isLoading = false
@@ -73,7 +74,12 @@ struct MusicLibraryView: View {
             }
             .refreshable { await loadSongs() }
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    NavigationLink {
+                        OfflineDownloadsView()
+                    } label: {
+                        Image(systemName: "arrow.down.circle")
+                    }
                     destinationToggle
                 }
             }
@@ -87,7 +93,10 @@ struct MusicLibraryView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .task { await loadSongs() }
+            .task(id: store.selectedConnection?.id) {
+                offlineDownloads.updateConnection(store.selectedConnection)
+                await loadSongs()
+            }
             .sheet(item: $editingSong) { song in
                 if let api = store.api {
                     EditSongSheet(song: song, api: api) { updated in
@@ -127,6 +136,7 @@ struct MusicLibraryView: View {
     private var songList: some View {
         List {
             ForEach(groupedByArtistAndAlbum, id: \.artist) { artistEntry in
+                let artistSongs = artistEntry.albums.flatMap(\.songs)
                 DisclosureGroup(
                     isExpanded: Binding(
                         get: { expandedArtists.contains(artistEntry.artist) },
@@ -148,7 +158,13 @@ struct MusicLibraryView: View {
                             )
                         ) {
                             ForEach(albumEntry.songs) { song in
-                                SongRow(song: song) { action in
+                                SongRow(
+                                    song: song,
+                                    downloadStatus: offlineDownloads.status(for: song, connection: store.selectedConnection),
+                                    onToggleOffline: {
+                                        offlineDownloads.toggleTrack(song, connection: store.selectedConnection)
+                                    }
+                                ) { action in
                                     await handleAction(action, song: song)
                                 }
                             }
@@ -166,6 +182,20 @@ struct MusicLibraryView: View {
                                 Text(albumEntry.album)
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
+                                Spacer()
+                                OfflineCollectionButton(
+                                    status: offlineDownloads.collectionStatus(
+                                        for: albumEntry.songs,
+                                        connection: store.selectedConnection
+                                    )
+                                ) {
+                                    offlineDownloads.toggleAlbum(
+                                        artist: artistEntry.artist,
+                                        album: albumEntry.album,
+                                        songs: albumEntry.songs,
+                                        connection: store.selectedConnection
+                                    )
+                                }
                             }
                             .contextMenu {
                                 Button {
@@ -177,6 +207,23 @@ struct MusicLibraryView: View {
                                     Task { await handleAlbumAction(.enqueue, album: albumEntry.album) }
                                 } label: {
                                     Label("Add Album to Queue", systemImage: "text.badge.plus")
+                                }
+                                Button {
+                                    offlineDownloads.toggleAlbum(
+                                        artist: artistEntry.artist,
+                                        album: albumEntry.album,
+                                        songs: albumEntry.songs,
+                                        connection: store.selectedConnection
+                                    )
+                                } label: {
+                                    Label(
+                                        offlineDownloads.isAlbumSelected(
+                                            artist: artistEntry.artist,
+                                            album: albumEntry.album,
+                                            connection: store.selectedConnection
+                                        ) ? "Remove Album Download" : "Keep Album Offline",
+                                        systemImage: "arrow.down.circle"
+                                    )
                                 }
                                 if let firstSong = albumEntry.songs.first {
                                     Button {
@@ -192,20 +239,49 @@ struct MusicLibraryView: View {
                         }
                     }
                 } label: {
-                    Text(artistEntry.artist)
-                        .font(.headline)
-                        .contextMenu {
-                            Button {
-                                Task { await handleArtistAction(.play, artist: artistEntry.artist) }
-                            } label: {
-                                Label("Play Artist", systemImage: "play.fill")
-                            }
-                            Button {
-                                Task { await handleArtistAction(.enqueue, artist: artistEntry.artist) }
-                            } label: {
-                                Label("Add Artist to Queue", systemImage: "text.badge.plus")
-                            }
+                    HStack {
+                        Text(artistEntry.artist)
+                            .font(.headline)
+                        Spacer()
+                        OfflineCollectionButton(
+                            status: offlineDownloads.collectionStatus(
+                                for: artistSongs,
+                                connection: store.selectedConnection
+                            )
+                        ) {
+                            offlineDownloads.toggleArtist(
+                                artistEntry.artist,
+                                songs: artistSongs,
+                                connection: store.selectedConnection
+                            )
                         }
+                    }
+                    .contextMenu {
+                        Button {
+                            Task { await handleArtistAction(.play, artist: artistEntry.artist) }
+                        } label: {
+                            Label("Play Artist", systemImage: "play.fill")
+                        }
+                        Button {
+                            Task { await handleArtistAction(.enqueue, artist: artistEntry.artist) }
+                        } label: {
+                            Label("Add Artist to Queue", systemImage: "text.badge.plus")
+                        }
+                        Button {
+                            offlineDownloads.toggleArtist(
+                                artistEntry.artist,
+                                songs: artistSongs,
+                                connection: store.selectedConnection
+                            )
+                        } label: {
+                            Label(
+                                offlineDownloads.isArtistSelected(artistEntry.artist, connection: store.selectedConnection)
+                                    ? "Remove Artist Download"
+                                    : "Keep Artist Offline",
+                                systemImage: "arrow.down.circle"
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -219,13 +295,13 @@ struct MusicLibraryView: View {
             return
         }
         if localPlayer.destination == .device {
-            guard let baseURL = store.selectedConnection?.baseURL else { return }
+            guard let connection = store.selectedConnection else { return }
             switch action {
             case .play:
-                localPlayer.play(songs: [song], from: 0, baseURL: baseURL)
+                localPlayer.play(songs: [song], from: 0, connection: connection)
                 showMessage("Playing on this iPhone: \(song.displayTitle)")
             case .enqueue:
-                localPlayer.enqueue(songs: [song], baseURL: baseURL)
+                localPlayer.enqueue(songs: [song], connection: connection)
                 showMessage("Added to iPhone queue")
             case .editInfo: break
             }
@@ -249,16 +325,16 @@ struct MusicLibraryView: View {
 
     private func handleArtistAction(_ action: SongAction, artist: String) async {
         if localPlayer.destination == .device {
-            guard let baseURL = store.selectedConnection?.baseURL else { return }
+            guard let connection = store.selectedConnection else { return }
             let artistSongs = groupedByArtistAndAlbum
                 .first(where: { $0.artist == artist })?
                 .albums.flatMap(\.songs) ?? []
             switch action {
             case .play:
-                localPlayer.play(songs: artistSongs, from: 0, baseURL: baseURL)
+                localPlayer.play(songs: artistSongs, from: 0, connection: connection)
                 showMessage("Playing on this iPhone: \(artist)")
             case .enqueue:
-                localPlayer.enqueue(songs: artistSongs, baseURL: baseURL)
+                localPlayer.enqueue(songs: artistSongs, connection: connection)
                 showMessage("Added \(artist) to iPhone queue")
             case .editInfo: break
             }
@@ -282,17 +358,17 @@ struct MusicLibraryView: View {
 
     private func handleAlbumAction(_ action: SongAction, album: String) async {
         if localPlayer.destination == .device {
-            guard let baseURL = store.selectedConnection?.baseURL else { return }
+            guard let connection = store.selectedConnection else { return }
             let albumSongs = groupedByArtistAndAlbum
                 .flatMap(\.albums)
                 .first(where: { $0.album == album })?
                 .songs ?? []
             switch action {
             case .play:
-                localPlayer.play(songs: albumSongs, from: 0, baseURL: baseURL)
+                localPlayer.play(songs: albumSongs, from: 0, connection: connection)
                 showMessage("Playing on this iPhone: \(album)")
             case .enqueue:
-                localPlayer.enqueue(songs: albumSongs, baseURL: baseURL)
+                localPlayer.enqueue(songs: albumSongs, connection: connection)
                 showMessage("Added \(album) to iPhone queue")
             case .editInfo: break
             }
@@ -319,7 +395,10 @@ struct MusicLibraryView: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            songs = try await api.getSongs()
+            let fetchedSongs = try await api.getSongs()
+            error = nil
+            songs = fetchedSongs
+            offlineDownloads.updateLibrary(fetchedSongs, connection: store.selectedConnection)
         } catch {
             self.error = error.localizedDescription
         }
@@ -338,6 +417,8 @@ enum SongAction { case play, enqueue, editInfo }
 
 struct SongRow: View {
     let song: Song
+    let downloadStatus: OfflineDownloadStatus
+    let onToggleOffline: () -> Void
     let onAction: (SongAction) async -> Void
 
     var body: some View {
@@ -352,6 +433,13 @@ struct SongRow: View {
                     .lineLimit(1)
             }
             Spacer()
+            Button {
+                onToggleOffline()
+            } label: {
+                downloadLabel
+            }
+            .buttonStyle(.borderless)
+            .disabled(downloadStatus == .downloading)
             Button {
                 Task { await onAction(.play) }
             } label: {
@@ -372,6 +460,84 @@ struct SongRow: View {
             } label: {
                 Label("Edit Song Info", systemImage: "pencil")
             }
+            Button {
+                onToggleOffline()
+            } label: {
+                Label(
+                    downloadStatus == .notTracked ? "Keep Offline" : "Remove Offline Download",
+                    systemImage: "arrow.down.circle"
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var downloadLabel: some View {
+        switch downloadStatus {
+        case .downloading:
+            ProgressView()
+                .frame(width: 24, height: 24)
+        case .downloaded:
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+        case .queued:
+            Image(systemName: "arrow.down.circle.fill")
+                .foregroundStyle(.blue)
+        case .pending:
+            Image(systemName: "arrow.down.circle")
+                .foregroundStyle(.secondary)
+        case .failed:
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundStyle(.red)
+        case .notTracked:
+            Image(systemName: "arrow.down.circle")
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+struct OfflineCollectionButton: View {
+    let status: OfflineCollectionStatus
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            label
+                .frame(width: 24, height: 24)
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    @ViewBuilder
+    private var label: some View {
+        switch status {
+        case .downloading:
+            ProgressView()
+        case .downloaded:
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+        case .queued:
+            Image(systemName: "arrow.down.circle.fill")
+                .foregroundStyle(.blue)
+        case .pending:
+            Image(systemName: "arrow.down.circle")
+                .foregroundStyle(.secondary)
+        case .failed:
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundStyle(.red)
+        case .notTracked:
+            Image(systemName: "arrow.down.circle")
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var accessibilityText: String {
+        switch status {
+        case .downloaded:
+            return "Remove offline download"
+        default:
+            return "Keep offline"
         }
     }
 }

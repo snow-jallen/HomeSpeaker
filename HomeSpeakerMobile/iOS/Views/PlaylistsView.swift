@@ -127,8 +127,8 @@ struct PlaylistsView: View {
 
     private func play(playlist: Playlist) async {
         if localPlayer.destination == .device {
-            guard let baseURL = store.selectedConnection?.baseURL else { return }
-            localPlayer.play(songs: playlist.songs, from: 0, baseURL: baseURL)
+            guard let connection = store.selectedConnection else { return }
+            localPlayer.play(songs: playlist.songs, from: 0, connection: connection)
             showMessage("Playing on this iPhone: \(playlist.name)")
             return
         }
@@ -230,8 +230,8 @@ struct PlaylistDetailView: View {
 
     private func play() async {
         if localPlayer.destination == .device {
-            guard let baseURL = store.selectedConnection?.baseURL else { return }
-            localPlayer.play(songs: songs, from: 0, baseURL: baseURL)
+            guard let connection = store.selectedConnection else { return }
+            localPlayer.play(songs: songs, from: 0, connection: connection)
             return
         }
         guard let api = store.api else { return }
@@ -240,8 +240,8 @@ struct PlaylistDetailView: View {
 
     private func enqueueSong(_ song: Song) async {
         if localPlayer.destination == .device {
-            guard let baseURL = store.selectedConnection?.baseURL else { return }
-            localPlayer.enqueue(songs: [song], baseURL: baseURL)
+            guard let connection = store.selectedConnection else { return }
+            localPlayer.enqueue(songs: [song], connection: connection)
             return
         }
         guard let api = store.api else { return }

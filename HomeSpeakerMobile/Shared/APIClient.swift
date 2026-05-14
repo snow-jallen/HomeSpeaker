@@ -36,6 +36,17 @@ class APIClient {
         return URL(string: "\(base)/\(path)")!
     }
 
+    func resolveURL(_ pathOrURL: String) -> URL {
+        if let absoluteURL = URL(string: pathOrURL), absoluteURL.scheme != nil {
+            return absoluteURL
+        }
+
+        let normalizedPath = pathOrURL.hasPrefix("/")
+            ? String(pathOrURL.dropFirst())
+            : pathOrURL
+        return url(normalizedPath)
+    }
+
     private func request<T: Decodable>(_ path: String, method: String = "GET", body: (any Encodable)? = nil) async throws -> T {
         var req = URLRequest(url: url(path))
         req.httpMethod = method
@@ -140,6 +151,47 @@ class APIClient {
 
     func playSong(_ songId: Int) async throws {
         try await requestVoid("api/homespeaker/songs/\(songId)/play", method: "POST")
+    }
+
+    func musicFileURL(songId: Int) -> URL {
+        url("api/music/\(songId)")
+    }
+
+    func getOfflineDownloadManifest() async throws -> OfflineDownloadManifestDto {
+        try await request("api/homespeaker/offline")
+    }
+
+    func addOfflineDownloadTarget(
+        targetType: OfflineDownloadTargetType,
+        songId: Int? = nil,
+        songPath: String? = nil,
+        artistName: String? = nil,
+        albumName: String? = nil
+    ) async throws -> OfflineDownloadTargetDto {
+        try await request(
+            "api/homespeaker/offline/targets",
+            method: "POST",
+            body: OfflineDownloadTargetRequestBody(
+                targetType: targetType,
+                songId: songId,
+                songPath: songPath,
+                artistName: artistName,
+                albumName: albumName
+            )
+        )
+    }
+
+    func removeOfflineDownloadTarget(targetId: Int) async throws {
+        try await requestVoid("api/homespeaker/offline/targets/\(targetId)", method: "DELETE")
+    }
+
+    func offlineDownloadURL(_ pathOrURL: String) -> URL {
+        resolveURL(pathOrURL)
+    }
+
+    func offlineSongMediaURL(songPath: String) -> URL {
+        let encodedSongPath = songPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? songPath
+        return url("api/homespeaker/offline/media?songPath=\(encodedSongPath)")
     }
 
     func enqueueSong(_ songId: Int) async throws {

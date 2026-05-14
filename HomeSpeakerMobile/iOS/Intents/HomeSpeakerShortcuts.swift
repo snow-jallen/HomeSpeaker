@@ -1,55 +1,56 @@
 import AppIntents
 
-// Phrases use a single MediaQueryEntity parameter per phrase (AppIntents requirement).
-// The entity captures "content" or "content on server" (e.g., "Kings Singers on kitchen")
-// and perform() parses it to extract the server hint automatically.
+// Keep Siri phrases explicit and app-scoped so playback commands don't collide with
+// more generic system music requests.
 
 struct HomeSpeakerShortcuts: AppShortcutsProvider {
     static var shortcutTileColor: ShortcutTileColor = .blue
 
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
-            intent: PlayArtistOnHomeSpeakerIntent(),
+            intent: NextSongOnHomeSpeakerIntent(),
             phrases: [
-                "Play \(\.$artist) in \(.applicationName)",
-                "Shuffle \(\.$artist) in \(.applicationName)",
+                "Next song in \(.applicationName)",
+                "In \(.applicationName), next song",
             ],
-            shortTitle: "Play Artist",
-            systemImageName: "music.mic"
+            shortTitle: "Next Song",
+            systemImageName: "forward.fill"
         )
         AppShortcut(
-            intent: PlayAlbumOnHomeSpeakerIntent(),
+            intent: PlayFunMusicOnHomeSpeakerIntent(),
             phrases: [
-                "Play album \(\.$album) in \(.applicationName)",
+                "Play fun music in \(.applicationName)",
+                "In \(.applicationName), play fun music",
             ],
-            shortTitle: "Play Album",
-            systemImageName: "opticaldisc"
-        )
-        AppShortcut(
-            intent: PlayPlaylistOnHomeSpeakerIntent(),
-            phrases: [
-                "Play playlist \(\.$playlist) in \(.applicationName)",
-            ],
-            shortTitle: "Play Playlist",
-            systemImageName: "music.note.list"
-        )
-        AppShortcut(
-            intent: PlayAiPlaylistOnHomeSpeakerIntent(),
-            phrases: [
-                "Play AI playlist \(\.$genre) in \(.applicationName)",
-                "Play \(\.$genre) AI playlist in \(.applicationName)",
-            ],
-            shortTitle: "Play AI Playlist",
+            shortTitle: "Fun Music",
             systemImageName: "sparkles"
         )
         AppShortcut(
-            intent: PlayStreamOnHomeSpeakerIntent(),
+            intent: PlayHymnsOnHomeSpeakerIntent(),
             phrases: [
-                "Stream \(\.$streamName) in \(.applicationName)",
-                "Play stream \(\.$streamName) in \(.applicationName)",
+                "Play hymns in \(.applicationName)",
+                "In \(.applicationName), play hymns",
             ],
-            shortTitle: "Play Stream",
-            systemImageName: "antenna.radiowaves.left.and.right"
+            shortTitle: "Hymns",
+            systemImageName: "music.note"
+        )
+        AppShortcut(
+            intent: QuietDownOnHomeSpeakerIntent(),
+            phrases: [
+                "Quiet down in \(.applicationName)",
+                "In \(.applicationName), quiet down",
+            ],
+            shortTitle: "Quiet Down",
+            systemImageName: "speaker.wave.1.fill"
+        )
+        AppShortcut(
+            intent: StopHomeSpeakerIntent(),
+            phrases: [
+                "Stop HomeSpeaker in \(.applicationName)",
+                "In \(.applicationName), stop HomeSpeaker",
+            ],
+            shortTitle: "Stop",
+            systemImageName: "stop.fill"
         )
     }
 }
