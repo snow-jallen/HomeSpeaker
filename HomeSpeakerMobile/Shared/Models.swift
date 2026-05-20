@@ -313,10 +313,8 @@ struct AiPlaylistSummaryDto: Codable, Identifiable {
         genreKey = try container.decode(String.self, forKey: .genreKey)
         displayName = try container.decode(String.self, forKey: .displayName)
         description = try container.decode(String.self, forKey: .description)
-        if let trackCountValue = try (
-            container.decodeIfPresent(Int.self, forKey: .trackCount)
-                ?? container.decodeIfPresent(Int.self, forKey: .legacyTrackCount)
-        )
+        if let trackCountValue = (try? container.decodeIfPresent(Int.self, forKey: .trackCount))
+            ?? (try? container.decodeIfPresent(Int.self, forKey: .legacyTrackCount))
         {
             trackCount = trackCountValue
         } else {
