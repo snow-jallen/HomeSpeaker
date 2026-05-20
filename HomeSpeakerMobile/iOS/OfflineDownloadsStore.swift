@@ -559,7 +559,7 @@ final class OfflineDownloadsStore {
 
         let songs = existingDownloads.enumerated().map { index, record in
             Song(
-                songId: -(index + 1),
+                songId: Int.max - index,
                 name: record.title,
                 path: record.key.songPath,
                 album: record.album.isEmpty ? nil : record.album,

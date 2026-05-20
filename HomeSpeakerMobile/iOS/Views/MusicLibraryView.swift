@@ -409,7 +409,6 @@ struct MusicLibraryView: View {
 
             songs = offlineSongs
             self.error = nil
-            offlineDownloads.updateLibrary(offlineSongs, connection: store.selectedConnection)
             showMessage("Server unavailable. Showing downloaded media.")
         }
     }
