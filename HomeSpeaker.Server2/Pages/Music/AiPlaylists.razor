@@ -82,32 +82,11 @@ else
                         </a>
                         <div class="ai-playlist-header">
                             <h5 class="ai-playlist-title">@playlist.DisplayName</h5>
-                            <span class="ai-playlist-count">@GetTrackCountLabel(playlist)</span>
+                            <span class="badge rounded-pill ai-playlist-count">@GetTrackCountLabel(playlist)</span>
                         </div>
                         <p class="ai-playlist-desc">@playlist.Description</p>
-                        @if (playlist.LastUpdated.HasValue)
-                        {
-                            <div class="ai-playlist-updated">
-                                Updated @FormatRelativeTime(playlist.LastUpdated.Value)
-                            </div>
-                        }
-                        else if (HasAnalysisInProgress)
-                        {
-                            <div class="ai-playlist-updated ai-playlist-updated--pending">
-                                Still collecting matches
-                            </div>
-                        }
                         <div class="ai-playlist-footer">
-                            <div class="ai-playlist-hint">
-                                <i class="fas fa-table-list" aria-hidden="true"></i>
-                                <span>Tap anywhere to preview tracks and scores</span>
-                            </div>
                             <div class="ai-playlist-actions-row">
-                                <a href="@GetPlaylistDetailsUrl(playlist.GenreKey)"
-                                   class="btn btn-outline-secondary btn-touch"
-                                   title="View details for @playlist.DisplayName">
-                                    <i class="fas fa-arrow-right me-2"></i>View details
-                                </a>
                                 <button @onclick="() => PlayPlaylist(playlist.GenreKey)"
                                         class="btn btn-primary btn-touch"
                                         title="Play @playlist.DisplayName">
@@ -216,16 +195,6 @@ else
         return parts.Count > 0
             ? string.Join(" ", parts)
             : "Counts will grow automatically as the worker scores more songs.";
-    }
-
-    private string FormatRelativeTime(DateTime dateTime)
-    {
-        var diff = DateTime.UtcNow - dateTime;
-        if (diff.TotalMinutes < 1) return "just now";
-        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
-        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
-        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}d ago";
-        return dateTime.ToString("MMM d");
     }
 
     public void Dispose()
