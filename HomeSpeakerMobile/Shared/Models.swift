@@ -305,7 +305,7 @@ struct AiPlaylistSummaryDto: Codable, Identifiable {
     var songCount: Int { trackCount }
     
     enum CodingKeys: String, CodingKey {
-        case genreKey, displayName, description, trackCount = "TrackCount", sortOrder
+        case genreKey, displayName, description, trackCount, legacyTrackCount = "TrackCount", sortOrder
     }
     
     init(from decoder: Decoder) throws {
@@ -313,7 +313,8 @@ struct AiPlaylistSummaryDto: Codable, Identifiable {
         genreKey = try container.decode(String.self, forKey: .genreKey)
         displayName = try container.decode(String.self, forKey: .displayName)
         description = try container.decode(String.self, forKey: .description)
-        trackCount = try container.decode(Int.self, forKey: .trackCount)
+        trackCount = try container.decodeIfPresent(Int.self, forKey: .trackCount)
+            ?? container.decode(Int.self, forKey: .legacyTrackCount)
         sortOrder = (try? container.decode(Int.self, forKey: .sortOrder)) ?? 0
     }
     
