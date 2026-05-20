@@ -400,7 +400,17 @@ struct MusicLibraryView: View {
             songs = fetchedSongs
             offlineDownloads.updateLibrary(fetchedSongs, connection: store.selectedConnection)
         } catch {
-            self.error = error.localizedDescription
+            let offlineSongs = offlineDownloads.offlineLibrarySongs(connection: store.selectedConnection)
+            if offlineSongs.isEmpty {
+                songs = []
+                self.error = error.localizedDescription
+                return
+            }
+
+            songs = offlineSongs
+            self.error = nil
+            offlineDownloads.updateLibrary(offlineSongs, connection: store.selectedConnection)
+            showMessage("Server unavailable. Showing downloaded media.")
         }
     }
 

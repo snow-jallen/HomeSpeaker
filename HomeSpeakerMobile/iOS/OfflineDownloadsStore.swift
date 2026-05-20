@@ -548,6 +548,28 @@ final class OfflineDownloadsStore {
         syncDesiredState()
     }
 
+    func offlineLibrarySongs(connection: ServerConnection?) -> [Song] {
+        guard let connection else { return [] }
+
+        let existingDownloads = localState.downloads.filter {
+            $0.key.connectionId == connection.id &&
+                !$0.key.songPath.isEmpty &&
+                OfflineDownloadPaths.existingFileURL(for: $0.key.songPath, connectionId: connection.id) != nil
+        }
+
+        let songs = existingDownloads.enumerated().map { index, record in
+            Song(
+                songId: -(index + 1),
+                name: record.title,
+                path: record.key.songPath,
+                album: record.album.isEmpty ? nil : record.album,
+                artist: record.artist.isEmpty ? nil : record.artist
+            )
+        }
+
+        return sortedSongs(songs)
+    }
+
     func isArtistSelected(_ artist: String, connection: ServerConnection?) -> Bool {
         guard connection?.id == currentConnection?.id else { return false }
         return artistTarget(named: artist) != nil
