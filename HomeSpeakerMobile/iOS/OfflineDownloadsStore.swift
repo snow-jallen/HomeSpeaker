@@ -557,9 +557,9 @@ final class OfflineDownloadsStore {
                 OfflineDownloadPaths.existingFileURL(for: $0.key.songPath, connectionId: connection.id) != nil
         }
 
-        let songs = existingDownloads.enumerated().map { index, record in
+        let songs = existingDownloads.map { record in
             Song(
-                songId: -(index + 1),
+                songId: offlineSongId(for: record.key),
                 name: record.title,
                 path: record.key.songPath,
                 album: record.album.isEmpty ? nil : record.album,
@@ -1023,6 +1023,18 @@ final class OfflineDownloadsStore {
             }
             return $0.displayArtist < $1.displayArtist
         }
+    }
+
+    private func offlineSongId(for key: OfflineSongKey) -> Int {
+        let value = "\(key.connectionId.uuidString)|\(key.songPath)"
+        var hash: UInt64 = 14_695_981_039_346_656_037
+        for byte in value.utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 1_099_511_628_211
+        }
+
+        let bounded = Int(hash % UInt64(Int.max - 1)) + 1
+        return -bounded
     }
 
     private func stringsEqual(_ lhs: String, _ rhs: String) -> Bool {
