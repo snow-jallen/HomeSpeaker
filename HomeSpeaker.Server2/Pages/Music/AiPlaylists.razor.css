@@ -136,7 +136,8 @@
 }
 
 .ai-playlist-count {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
+    background: rgba(255, 255, 255, 0.12);
     color: var(--bs-secondary);
     white-space: nowrap;
 }
@@ -149,31 +150,12 @@
     min-height: 2.6em;
 }
 
-.ai-playlist-updated {
-    font-size: 0.75rem;
-    color: var(--bs-secondary);
-    opacity: 0.7;
-}
-
-.ai-playlist-updated--pending {
-    color: rgba(29, 185, 84, 0.9);
-    opacity: 1;
-}
-
 .ai-playlist-footer {
     display: flex;
     flex-direction: column;
     gap: var(--hs-space-sm, 0.5rem);
     margin-top: auto;
     padding-top: var(--hs-space-sm, 0.5rem);
-}
-
-.ai-playlist-hint {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    color: var(--bs-secondary);
 }
 
 .ai-playlist-actions-row {
@@ -185,7 +167,7 @@
 }
 
 .ai-playlist-actions-row .btn-touch {
-    flex: 1 1 140px;
+    flex: 0 0 auto;
 }
 
 .ai-playlist-card .btn-touch {
