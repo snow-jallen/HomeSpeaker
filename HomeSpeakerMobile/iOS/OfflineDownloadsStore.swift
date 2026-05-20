@@ -312,6 +312,8 @@ private enum OfflineDownloadError: LocalizedError {
 @Observable
 final class OfflineDownloadsStore {
     static let shared = OfflineDownloadsStore()
+    private static let fnv1aOffsetBasis: UInt64 = 14_695_981_039_346_656_037
+    private static let fnv1aPrime: UInt64 = 1_099_511_628_211
 
     private let manifestURL = OfflineDownloadPaths.rootDirectory().appendingPathComponent("manifest.json")
 
@@ -1027,14 +1029,14 @@ final class OfflineDownloadsStore {
 
     private func offlineSongId(for key: OfflineSongKey) -> Int {
         let value = "\(key.connectionId.uuidString)|\(key.songPath)"
-        var hash: UInt64 = 14_695_981_039_346_656_037
+        var hash: UInt64 = Self.fnv1aOffsetBasis
         for byte in value.utf8 {
             hash ^= UInt64(byte)
-            hash &*= 1_099_511_628_211
+            hash &*= Self.fnv1aPrime
         }
 
-        let bounded = Int(hash % UInt64(Int.max - 1)) + 1
-        return -bounded
+        let bounded = Int(hash % UInt64(Int.max))
+        return -max(1, bounded)
     }
 
     private func stringsEqual(_ lhs: String, _ rhs: String) -> Bool {
