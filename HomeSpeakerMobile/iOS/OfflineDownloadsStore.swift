@@ -1035,8 +1035,8 @@ final class OfflineDownloadsStore {
             hash &*= Self.fnv1aPrime
         }
 
-        let bounded = Int(hash % UInt64(Int.max))
-        return -max(1, bounded)
+        let bounded = Int(hash % UInt64(Int.max - 1)) + 1
+        return -bounded
     }
 
     private func stringsEqual(_ lhs: String, _ rhs: String) -> Bool {
