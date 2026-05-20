@@ -409,7 +409,7 @@ struct MusicLibraryView: View {
 
             songs = offlineSongs
             self.error = nil
-            showMessage("Unable to load library. Showing downloaded media.")
+            showMessage("Unable to connect to server. Displaying downloaded media only.")
         }
     }
 
