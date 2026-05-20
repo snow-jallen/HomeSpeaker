@@ -313,17 +313,19 @@ struct AiPlaylistSummaryDto: Codable, Identifiable {
         genreKey = try container.decode(String.self, forKey: .genreKey)
         displayName = try container.decode(String.self, forKey: .displayName)
         description = try container.decode(String.self, forKey: .description)
-        trackCount = try container.decodeIfPresent(Int.self, forKey: .trackCount)
+        if let trackCountValue = try container.decodeIfPresent(Int.self, forKey: .trackCount)
             ?? container.decodeIfPresent(Int.self, forKey: .legacyTrackCount)
-            ?? {
-                throw DecodingError.keyNotFound(
-                    CodingKeys.trackCount,
-                    .init(
-                        codingPath: container.codingPath,
-                        debugDescription: "Missing both 'trackCount' and legacy 'TrackCount' in AI playlist summary payload."
-                    )
+        {
+            trackCount = trackCountValue
+        } else {
+            throw DecodingError.keyNotFound(
+                CodingKeys.trackCount,
+                .init(
+                    codingPath: container.codingPath,
+                    debugDescription: "Missing both 'trackCount' and legacy 'TrackCount' in AI playlist summary payload."
                 )
-            }()
+            )
+        }
         sortOrder = (try? container.decode(Int.self, forKey: .sortOrder)) ?? 0
     }
     
