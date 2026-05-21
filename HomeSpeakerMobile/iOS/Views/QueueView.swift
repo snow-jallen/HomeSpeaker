@@ -268,7 +268,7 @@ struct QueueView: View {
 
     private func saveAsPlaylist() async {
         guard !newPlaylistName.isEmpty, let api = store.api else { return }
-        let sourceSongs = (showTabs && selectedTab == .device) ? localPlayer.songs : serverQueue
+        let sourceSongs = (selectedTab == .device && !localPlayer.songs.isEmpty) ? localPlayer.songs : serverQueue
         let paths = sourceSongs.compactMap(\.path)
         guard !paths.isEmpty else { return }
         for path in paths {

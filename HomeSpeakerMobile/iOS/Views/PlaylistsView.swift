@@ -200,7 +200,7 @@ struct PlaylistsView: View {
 
         var added = 0
         var failed = 0
-        for song in playlist.songs where !(song.path?.isEmpty ?? true) {
+        for song in playlist.songs where song.path?.isEmpty == false {
             if offlineDownloads.isTrackSelected(song, connection: connection) { continue }
             do {
                 let createdTarget = try await api.addOfflineDownloadTarget(

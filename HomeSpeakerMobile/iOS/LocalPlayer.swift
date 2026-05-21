@@ -132,7 +132,9 @@ final class LocalPlayer {
             if let newIndex = remaining.firstIndex(where: \.isCurrent) {
                 currentIndex = newIndex
             } else {
-                assertionFailure("LocalPlayer.move: current song marker not found after move")
+                assertionFailure(
+                    "LocalPlayer.move: current song at index \(currentIndex) not found after move (queue size: \(songs.count))"
+                )
             }
         }
     }
