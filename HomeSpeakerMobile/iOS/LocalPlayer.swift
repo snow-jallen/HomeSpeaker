@@ -115,6 +115,39 @@ final class LocalPlayer {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
+    func move(fromOffsets: IndexSet, toOffset: Int) {
+        guard !fromOffsets.isEmpty else { return }
+
+        let indexedSongs = songs.enumerated().map { (index: $0.offset, song: $0.element) }
+        let moving = fromOffsets.sorted().map { indexedSongs[$0] }
+        var remaining = indexedSongs
+        for idx in fromOffsets.sorted(by: >) {
+            remaining.remove(at: idx)
+        }
+        let destination = min(toOffset, remaining.count)
+        remaining.insert(contentsOf: moving, at: destination)
+        songs = remaining.map(\.song)
+
+        if currentIndex >= 0, let newIndex = remaining.firstIndex(where: { $0.index == currentIndex }) {
+            currentIndex = newIndex
+        }
+    }
+
+    func shuffleQueue() {
+        guard songs.count > 1 else { return }
+
+        if currentIndex >= 0, currentIndex < songs.count {
+            let currentSong = songs[currentIndex]
+            var remaining = songs
+            remaining.remove(at: currentIndex)
+            remaining.shuffle()
+            songs = [currentSong] + remaining
+            currentIndex = 0
+        } else {
+            songs.shuffle()
+        }
+    }
+
     // MARK: - Private
 
     private func loadItem(at index: Int) {

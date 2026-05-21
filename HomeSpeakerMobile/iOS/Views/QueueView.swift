@@ -159,7 +159,11 @@ struct QueueView: View {
                     }
                 }
             }
+            .onMove { from, to in
+                localPlayer.move(fromOffsets: from, toOffset: to)
+            }
         }
+        .environment(\.editMode, .constant(.active))
     }
 
     // MARK: - Toolbar
@@ -189,6 +193,18 @@ struct QueueView: View {
                 }
             } else {
                 if !localPlayer.songs.isEmpty {
+                    Button {
+                        localPlayer.shuffleQueue()
+                    } label: {
+                        Image(systemName: "shuffle")
+                    }
+
+                    Button {
+                        showSavePlaylist = true
+                    } label: {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+
                     Button(role: .destructive) {
                         localPlayer.clearQueue()
                     } label: {
@@ -221,12 +237,8 @@ struct QueueView: View {
     }
 
     private func removeServerSong(at index: Int) async {
-        guard index < serverQueue.count, let api = store.api else { return }
-        let song = serverQueue[index]
+        guard index < serverQueue.count else { return }
         serverQueue.remove(at: index)
-        if let path = song.path {
-            try? await api.removeSongFromPlaylist(playlistName: "", songPath: path)
-        }
         await reorderServerQueue()
     }
 
@@ -238,7 +250,9 @@ struct QueueView: View {
 
     private func saveAsPlaylist() async {
         guard !newPlaylistName.isEmpty, let api = store.api else { return }
-        let paths = serverQueue.compactMap(\.path)
+        let sourceSongs = (showTabs && selectedTab == .device) ? localPlayer.songs : serverQueue
+        let paths = sourceSongs.compactMap(\.path)
+        guard !paths.isEmpty else { return }
         for path in paths {
             try? await api.addSongToPlaylist(playlistName: newPlaylistName, songPath: path)
         }
