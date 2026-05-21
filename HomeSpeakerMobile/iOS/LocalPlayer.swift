@@ -118,7 +118,7 @@ final class LocalPlayer {
     func move(fromOffsets: IndexSet, toOffset: Int) {
         guard !fromOffsets.isEmpty else { return }
 
-        let indexedSongs = songs.enumerated().map { (index: $0.offset, song: $0.element) }
+        let indexedSongs = songs.enumerated().map { (originalIndex: $0.offset, song: $0.element) }
         let moving = fromOffsets.sorted().map { indexedSongs[$0] }
         var remaining = indexedSongs
         for idx in fromOffsets.sorted(by: >) {
@@ -128,7 +128,7 @@ final class LocalPlayer {
         remaining.insert(contentsOf: moving, at: destination)
         songs = remaining.map(\.song)
 
-        if currentIndex >= 0, let newIndex = remaining.firstIndex(where: { $0.index == currentIndex }) {
+        if currentIndex >= 0, let newIndex = remaining.firstIndex(where: { $0.originalIndex == currentIndex }) {
             currentIndex = newIndex
         }
     }

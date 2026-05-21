@@ -148,9 +148,15 @@ struct PlaylistsView: View {
     private var displayedPlaylists: [Playlist] {
         guard localPlayer.destination == .device else { return playlists }
         guard let connection = store.selectedConnection else { return [] }
+        let downloadedPaths = Set(
+            offlineDownloads.currentDownloadRecords
+                .filter { $0.key.connectionId == connection.id }
+                .map(\.key.songPath)
+        )
         return playlists.filter { playlist in
             playlist.songs.contains { song in
-                offlineDownloads.status(for: song, connection: connection) == .downloaded
+                guard let path = song.path, !path.isEmpty else { return false }
+                return downloadedPaths.contains(path)
             }
         }
     }
@@ -193,7 +199,7 @@ struct PlaylistsView: View {
         await offlineDownloads.refreshLibrary(force: false)
 
         var added = 0
-        for song in playlist.songs where song.path?.isEmpty == false {
+        for song in playlist.songs where !(song.path?.isEmpty ?? true) {
             if offlineDownloads.isTrackSelected(song, connection: connection) { continue }
             do {
                 _ = try await api.addOfflineDownloadTarget(targetType: .song, songId: song.songId, songPath: song.path)
