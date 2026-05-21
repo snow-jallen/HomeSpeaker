@@ -147,18 +147,23 @@ struct PlaylistsView: View {
 
     private var displayedPlaylists: [Playlist] {
         guard localPlayer.destination == .device else { return playlists }
-        guard let connection = store.selectedConnection else { return [] }
-        let downloadedPaths = Set(
-            offlineDownloads.currentDownloadRecords
-                .filter { $0.key.connectionId == connection.id }
-                .map(\.key.songPath)
-        )
+        let downloadedPaths = downloadedSongPathsForCurrentConnection
+        guard !downloadedPaths.isEmpty else { return [] }
         return playlists.filter { playlist in
             playlist.songs.contains { song in
                 guard let path = song.path, !path.isEmpty else { return false }
                 return downloadedPaths.contains(path)
             }
         }
+    }
+
+    private var downloadedSongPathsForCurrentConnection: Set<String> {
+        guard let connection = store.selectedConnection else { return [] }
+        return Set(
+            offlineDownloads.currentDownloadRecords
+                .filter { $0.key.connectionId == connection.id }
+                .map(\.key.songPath)
+        )
     }
 
     private func load() async {

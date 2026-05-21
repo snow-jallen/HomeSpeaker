@@ -133,7 +133,7 @@ final class LocalPlayer {
                 currentIndex = newIndex
             } else {
                 assertionFailure(
-                    "LocalPlayer.move: current song at index \(currentIndex) not found after move (queue size: \(songs.count))"
+                    "LocalPlayer.move: current song at index \(currentIndex) not found after move from \(Array(fromOffsets)) to \(toOffset) (queue size: \(songs.count))"
                 )
             }
         }
