@@ -10,6 +10,7 @@ struct QueueView: View {
     @State private var showSavePlaylist = false
     @State private var newPlaylistName = ""
     @State private var selectedTab: QueueTab = .speaker
+    @State private var isEditingLocalQueue = false
 
     private var showTabs: Bool { !localPlayer.songs.isEmpty }
 
@@ -163,7 +164,7 @@ struct QueueView: View {
                 localPlayer.move(fromOffsets: from, toOffset: to)
             }
         }
-        .environment(\.editMode, .constant(.active))
+        .environment(\.editMode, .constant(isEditingLocalQueue ? .active : .inactive))
     }
 
     // MARK: - Toolbar
@@ -193,6 +194,12 @@ struct QueueView: View {
                 }
             } else {
                 if !localPlayer.songs.isEmpty {
+                    Button {
+                        isEditingLocalQueue.toggle()
+                    } label: {
+                        Text(isEditingLocalQueue ? "Done" : "Reorder")
+                    }
+
                     Button {
                         localPlayer.shuffleQueue()
                     } label: {

@@ -129,7 +129,7 @@ final class LocalPlayer {
         songs = remaining.map(\.song)
 
         if currentIndex >= 0 {
-            currentIndex = remaining.firstIndex(where: \.isCurrent) ?? currentIndex
+            currentIndex = remaining.firstIndex(where: \.isCurrent) ?? -1
         }
     }
 

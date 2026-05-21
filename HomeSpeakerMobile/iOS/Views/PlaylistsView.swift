@@ -211,7 +211,7 @@ struct PlaylistsView: View {
                     added += 1
                 }
             } catch {
-                showMessage("Unable to download \(playlist.name)")
+                showMessage("Unable to download \(playlist.name): \(error.localizedDescription)")
                 return
             }
         }
