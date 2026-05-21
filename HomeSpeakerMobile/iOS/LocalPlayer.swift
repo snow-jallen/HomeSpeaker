@@ -129,7 +129,11 @@ final class LocalPlayer {
         songs = remaining.map(\.song)
 
         if currentIndex >= 0 {
-            currentIndex = remaining.firstIndex(where: \.isCurrent) ?? -1
+            if let newIndex = remaining.firstIndex(where: \.isCurrent) {
+                currentIndex = newIndex
+            } else {
+                assertionFailure("LocalPlayer.move: current song marker not found after move")
+            }
         }
     }
 

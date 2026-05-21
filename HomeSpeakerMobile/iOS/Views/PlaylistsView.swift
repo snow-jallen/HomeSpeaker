@@ -199,6 +199,7 @@ struct PlaylistsView: View {
         await offlineDownloads.refreshLibrary(force: false)
 
         var added = 0
+        var failed = 0
         for song in playlist.songs where !(song.path?.isEmpty ?? true) {
             if offlineDownloads.isTrackSelected(song, connection: connection) { continue }
             do {
@@ -211,13 +212,16 @@ struct PlaylistsView: View {
                     added += 1
                 }
             } catch {
-                showMessage("Unable to download \(playlist.name): \(error.localizedDescription)")
-                return
+                failed += 1
             }
         }
 
         await offlineDownloads.refreshLibrary(force: true)
-        showMessage(added > 0 ? "Downloading \(playlist.name)" : "\(playlist.name) is already downloaded")
+        if failed > 0 {
+            showMessage("Downloading \(playlist.name): \(added) added, \(failed) failed")
+        } else {
+            showMessage(added > 0 ? "Downloading \(playlist.name)" : "\(playlist.name) is already downloaded")
+        }
     }
 
     private func showMessage(_ msg: String) {

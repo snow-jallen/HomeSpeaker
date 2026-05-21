@@ -104,7 +104,11 @@ struct QueueView: View {
             }
             .onMove { from, to in
                 serverQueue.move(fromOffsets: from, toOffset: to)
-                Task { await reorderServerQueue() }
+                Task {
+                    if await reorderServerQueue() == false {
+                        await loadServerQueue()
+                    }
+                }
             }
         }
         .environment(\.editMode, .constant(.active))
@@ -245,14 +249,21 @@ struct QueueView: View {
 
     private func removeServerSong(at index: Int) async {
         guard index < serverQueue.count else { return }
-        serverQueue.remove(at: index)
-        await reorderServerQueue()
+        let removedSong = serverQueue.remove(at: index)
+        if await reorderServerQueue() == false {
+            serverQueue.insert(removedSong, at: index)
+        }
     }
 
-    private func reorderServerQueue() async {
-        guard let api = store.api else { return }
+    private func reorderServerQueue() async -> Bool {
+        guard let api = store.api else { return false }
         let paths = serverQueue.compactMap(\.path)
-        try? await api.updateQueue(songPaths: paths)
+        do {
+            try await api.updateQueue(songPaths: paths)
+            return true
+        } catch {
+            return false
+        }
     }
 
     private func saveAsPlaylist() async {
