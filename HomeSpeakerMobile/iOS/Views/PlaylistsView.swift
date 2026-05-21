@@ -202,8 +202,14 @@ struct PlaylistsView: View {
         for song in playlist.songs where !(song.path?.isEmpty ?? true) {
             if offlineDownloads.isTrackSelected(song, connection: connection) { continue }
             do {
-                _ = try await api.addOfflineDownloadTarget(targetType: .song, songId: song.songId, songPath: song.path)
-                added += 1
+                let createdTarget = try await api.addOfflineDownloadTarget(
+                    targetType: .song,
+                    songId: song.songId,
+                    songPath: song.path
+                )
+                if createdTarget.id > 0 {
+                    added += 1
+                }
             } catch {
                 showMessage("Unable to download \(playlist.name)")
                 return
