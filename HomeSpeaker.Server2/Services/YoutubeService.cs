@@ -103,7 +103,7 @@ public class YoutubeService : IDisposable
         return audioStream?.Url;
     }
 
-    public async Task CacheVideoAsync(string id, string title, IProgress<double> progress)
+    public async Task CacheVideoAsync(string id, string title, string? channelName, IProgress<double> progress)
     {
         var fileName = string.Join("_", $"{title}.mp3".Split(Path.GetInvalidFileNameChars()));
         var destinationPath = Path.Combine(config[ConfigKeys.MediaFolder]!, "YouTube Cache");
@@ -125,8 +125,8 @@ public class YoutubeService : IDisposable
         try
         {
             using var mediaFile = MediaFile.Create(destinationPath, timeProvider);
-            mediaFile.SetArtist("Youtube Cache");
-            mediaFile.SetAlbum("Youtube Cache");
+            mediaFile.SetArtist("YouTube");
+            mediaFile.SetAlbum(string.IsNullOrWhiteSpace(channelName) ? "YouTube" : channelName);
             mediaFile.SetTitle(title);
         }
         catch

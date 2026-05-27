@@ -1185,7 +1185,7 @@ public static class HomeSpeakerRestEndpoints
                     {
                         logger.LogDebug("Caching progress for {Title}: {Percent:P}", request.Video.Title, percent);
                     });
-                    await youtubeService.CacheVideoAsync(request.Video.Id, request.Video.Title, progress);
+                    await youtubeService.CacheVideoAsync(request.Video.Id, request.Video.Title, request.Video.Author, progress);
                     library.IsDirty = true;
                     logger.LogInformation("Successfully cached video: {Title}", request.Video.Title);
                 }

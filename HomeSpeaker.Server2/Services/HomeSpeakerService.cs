@@ -464,7 +464,7 @@ public class HomeSpeakerService
 
     public async Task CacheVideoAsync(VideoDto video, IProgress<double> progress, CancellationToken cancellationToken = default)
     {
-        await youtubeService.CacheVideoAsync(video.Id, video.Title, progress);
+        await youtubeService.CacheVideoAsync(video.Id, video.Title, video.Author, progress);
         library.IsDirty = true;
     }
 
