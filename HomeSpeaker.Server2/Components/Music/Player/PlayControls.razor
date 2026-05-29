@@ -1,6 +1,5 @@
 @inject HomeSpeakerService svc
 @inject PlayerStateService PlayerState
-@implements IDisposable
 
 <div class="play-controls">
     <button @onclick="PlayOrStop"
@@ -16,11 +15,6 @@
 @code {
     bool IsPlaying => PlayerState.Status?.StillPlaying == true;
 
-    protected override void OnInitialized()
-    {
-        PlayerState.StateChanged += OnPlayerStateChanged;
-    }
-
     async Task PlayOrStop()
     {
         if (IsPlaying)
@@ -33,11 +27,4 @@
     }
 
     async Task Skip() => await svc.SkipToNextAsync();
-
-    private void OnPlayerStateChanged() => InvokeAsync(StateHasChanged);
-
-    public void Dispose()
-    {
-        PlayerState.StateChanged -= OnPlayerStateChanged;
-    }
 }
