@@ -41,7 +41,9 @@
       "Bash(xcodebuild -project HomeSpeakerMobile/HomeSpeakerMobile.xcodeproj -scheme HomeSpeaker -destination \"generic/platform=iOS Simulator\" -configuration Debug build)",
       "Bash(/opt/homebrew/bin/xcodegen generate *)",
       "Bash(xcodebuild -project HomeSpeakerMobile.xcodeproj -scheme HomeSpeaker -destination 'platform=iOS Simulator,name=iPhone 16' build)",
-      "Bash(xcodebuild -project HomeSpeakerMobile.xcodeproj -scheme HomeSpeaker -destination 'platform=iOS Simulator,name=iPhone 17' build)"
+      "Bash(xcodebuild -project HomeSpeakerMobile.xcodeproj -scheme HomeSpeaker -destination 'platform=iOS Simulator,name=iPhone 17' build)",
+      "Skill(superpowers:systematic-debugging)",
+      "PowerShell(Head *)"
     ],
     "deny": [],
     "ask": []

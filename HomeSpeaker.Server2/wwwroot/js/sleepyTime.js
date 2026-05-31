@@ -4,6 +4,9 @@ window.sleepyTime = (function () {
     let _dotnet = null;
 
     function resetIdle() {
+        // Hide via DOM immediately so dismissal works even when the Blazor circuit is dead
+        const overlay = document.querySelector('.sleepy-overlay');
+        if (overlay) overlay.style.display = 'none';
         if (_dotnet) {
             _dotnet.invokeMethodAsync('OnUserActivity').catch(() => {});
         }
