@@ -2,7 +2,7 @@ namespace HomeSpeaker.Shared;
 
 public record OfflineDownloadSongDto
 {
-    public Song Song { get; init; } = new();
+    public Song Song { get; init; } = new() { Name = string.Empty };
     public string SongPath { get; init; } = string.Empty;
     public string FileName { get; init; } = string.Empty;
     public long FileSizeBytes { get; init; }

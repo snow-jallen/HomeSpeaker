@@ -1262,7 +1262,88 @@ AiMusicAnalyzer already had a narrow numeric repair pass and a truncated-batch f
 
 # Offline unification decision
 
+## Decision (archived — see decisions-archive.md)
+
+---
+
+# Inbox Merge — 2026-05-15T15:00:00Z
+
+## From: river-push-rebuild
+
+# River Decision — Push rebuild surface
+
+- **Date:** 2026-05-15
+- **Agent:** River
+
 ## Decision
+Rebuild iOS push notifications around an installation-scoped `PushNotificationStore` injected from `HomeSpeakerApp`, with a dedicated `PushNotificationsView` reached from `MoreView` instead of scattering toggles across existing weather rows.
+
+## Why
+- Push permission, APNs token sync, and per-server registration state need one clear owner on iOS.
+- A separate screen keeps the flow finger-friendly and makes unsupported-server states easy to explain without cluttering the rest of More.
+- The server contract is modeled as registration + per-module subscription, with `temperature` as the first module key.
+
+## Implementation notes
+- `PushNotificationStore` requests notification permission, receives APNs tokens through `PushNotificationAppDelegate`, and syncs with the selected server.
+- API methods target `api/homespeaker/push/installations/{installationId}` and `.../modules/{moduleKey}`.
+- Unsupported servers are treated as unavailable (404 → graceful UI) instead of hard-failing the screen.
+
+---
+
+## From: wash-push-rebuild
+
+# Wash — Push rebuild decision
+
+## Decision
+Rebuild push notifications on top of the existing `TemperatureService` and `BloodSugarService` flows instead of reviving the split monitoring module.
+
+## Why
+- The user explicitly wanted the reverted direct health flow preserved.
+- The smallest safe server shape is device registration + delivery + dedupe, not a second alert-processing subsystem.
+- Alert spam is the main failure mode, so notification state is persisted separately in `PushNotificationAlertStates` and only advanced when a send succeeds.
+
+## Resulting contract
+- Device registration/status/subscription endpoints live under `/api/homespeaker/push/installations/{installationId}`.
+- APNs device registrations live in `PushNotificationDevices`.
+- Existing health services call `PushNotificationService` only after fresh upstream reads, and failures are logged without breaking the primary API response.
+
+---
+
+## From: zoe-push-rebuild
+
+# Zoe Decision — Push rebuild validation surface
+
+- **Date:** 2026-05-15
+- **Agent:** Zoe
+
+## Decision
+Keep the rebuilt push backend flat: expose the installation/module endpoints the iOS client expects, but map those module toggles directly onto the existing `PushNotificationDevice` booleans instead of reviving a separate push-module persistence layer.
+
+## Why
+- The mobile contract already depends on `api/homespeaker/push/installations/{installationId}` and `.../modules/{moduleKey}`.
+- The current server model already has enough durable state for the first rollout (`TemperatureAlertsEnabled`, `BloodSugarAlertsEnabled`, device token, install ID), so adding another abstraction would be churn without extra coverage value.
+- This kept the validation target concrete: API contract + persisted subscription state + backend send throttling.
+
+## Validated
+- Installation upsert/status returns registered state, normalized APNs token metadata, and module status payload.
+- Temperature module toggles persist through the new endpoint contract.
+- Temperature pushes send once per state until cleared, then send again after the alert resets.
+
+## Limitation
+- APNs receipt on a physical Apple device is still not host-verifiable from this Windows environment.
+
+---
+
+## From: copilot-directive-2026-05-15T14-43-12
+
+## From: copilot-directive-2026-05-15T14-59-42
+
+### 2026-05-15T14:59:42Z: User directive
+**By:** Jonathan Allen (via Copilot)  
+**What:** Leave all module-related changes out and only keep push notifications.  
+**Why:** User request — captured for team memory
+
+---
 The iOS client will use the existing server offline contract as the source of truth: `GET /api/homespeaker/offline` for manifest state, `POST /api/homespeaker/offline/targets` to mark artist/album/song content, `DELETE /api/homespeaker/offline/targets/{id}` to unmark it, and `/api/homespeaker/offline/media` for media bytes.
 
 ## Why
@@ -1755,5 +1836,46 @@ Do not send this revision back through the same shortcut approach unchanged.
 
 ---
 
+## Decision: Wash — Remove Module Shape from Backend Push API (2026-05-15)
+
+The backend push installation contract is now a single resource: `PUT/GET /api/homespeaker/push/installations/{installationId}` with direct `temperatureAlertsEnabled` and `bloodSugarAlertsEnabled` flags on the installation payload/status.
+
+### Why
+
+The module subresource added indirection without changing the underlying storage model. The server already persisted alert preferences as booleans on `PushNotificationDevice`. Flattening the contract keeps registration idempotent, simplifies docs/tests, and still lets the existing temperature and blood sugar services deliver APNs alerts through the current paths.
+
+### Impact
+
+`Program.cs`, `PushNotificationService`, shared push DTOs, backend tests, and deployment docs no longer describe `/modules/{moduleKey}` or module DTOs. Mobile/server consumers should treat push preferences as fields on the installation document instead of a separate module API.
+
+---
+
+## Decision: River — Simplify iOS Push to Registration-Only (2026-05-15)
+
+The iOS notifications surface is now registration-only. Mobile keeps APNs permission, device token sync, and server registration status, but drops module-specific toggles and wording.
+
+### Why
+
+Wash is simplifying the server push shape, so a generic push status screen avoids coupling the app to temperature-specific or module-specific contracts. This keeps the iOS surface more resilient to future product changes.
+
+### Impact
+
+`PushNotificationStore`, `PushNotificationsView`, `APIClient`, `Models.swift`, and `DEPLOYMENT.md` now describe push registration in generic terms and treat missing push endpoints as unsupported.
+
+---
+
+## Decision: Zoe — Push QA Validates Registration + Delivery Only (2026-05-15)
+
+QA is treating push as a registration-plus-delivery feature only. The validation surface covers installation lifecycle (`PUT/GET`, plus compatibility unregister) and alert delivery from the existing temperature/blood-sugar services, not any module-style subresource.
+
+### Why
+
+The server already stores alert preferences as direct booleans on `PushNotificationDevice`, so module-shaped validation adds noise without increasing confidence. Registration, opt-in flags, unregister behavior, device eligibility, and repeat suppression are the behaviors that actually protect the user-facing push flow.
+
+### Impact
+
+Backend tests now explicitly cover unregister and eligibility gating. Future push QA should reject new module terminology unless the product truly introduces a separate subscription lifecycle.
+
+---
 
 

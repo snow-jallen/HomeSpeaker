@@ -227,7 +227,6 @@ else
     private List<string> existingUsers = new();
     private List<string> filteredUsers = new();
     private bool showUserSuggestions = false;
-
     private IEnumerable<AnchorDefinition> availableDefinitions =>
         anchorDefinitions.Where(d => !userAnchors.Any(ua => ua.AnchorDefinitionId == d.Id));    protected override async Task OnInitializedAsync()
     {
@@ -529,9 +528,8 @@ else
             isSaving = false;
             StateHasChanged();
         }
-    }    private void NavigateToHistory()
+    }        private void NavigateToHistory()
     {
         Navigation.NavigateTo("/anchors");
     }
 }
-

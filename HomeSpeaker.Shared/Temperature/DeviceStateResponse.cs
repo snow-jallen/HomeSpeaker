@@ -1,8 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using System.Linq;
-
 namespace HomeSpeaker.Shared.Temperature;
 
 #nullable enable

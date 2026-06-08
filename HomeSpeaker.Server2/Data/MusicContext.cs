@@ -149,6 +149,24 @@ public class MusicContext : DbContext
             })
             .IsUnique();
 
+        modelBuilder.Entity<PushNotificationDevice>()
+            .Property(device => device.Platform)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<PushNotificationDevice>()
+            .HasIndex(device => device.InstallationId)
+            .IsUnique();
+
+        modelBuilder.Entity<PushNotificationDevice>()
+            .HasIndex(device => device.DeviceToken)
+            .IsUnique();
+
+        modelBuilder.Entity<PushNotificationDevice>()
+            .HasIndex(device => new { device.IsActive, device.Platform });
+
+        modelBuilder.Entity<PushNotificationAlertState>()
+            .HasKey(state => state.AlertKey);
+
         modelBuilder.Entity<AiGenreDefinition>().HasData(
             new AiGenreDefinition
             {
@@ -289,6 +307,8 @@ public class MusicContext : DbContext
     public DbSet<AiPlaybackSession> AiPlaybackSessions { get; set; }
     public DbSet<AiPlaybackFeedback> AiPlaybackFeedbacks { get; set; }
     public DbSet<OfflineDownloadTarget> OfflineDownloadTargets { get; set; }
+    public DbSet<PushNotificationDevice> PushNotificationDevices { get; set; }
+    public DbSet<PushNotificationAlertState> PushNotificationAlertStates { get; set; }
 }
 
 public class Thumbnail
@@ -494,6 +514,32 @@ public class OfflineDownloadTarget
     public string AlbumName { get; set; } = string.Empty;
     public string SongPath { get; set; } = string.Empty;
     public DateTime CreatedUtc { get; set; }
+}
+
+public class PushNotificationDevice
+{
+    public int Id { get; set; }
+    public string InstallationId { get; set; } = string.Empty;
+    public HomeSpeaker.Shared.PushNotificationPlatform Platform { get; set; }
+    public string DeviceToken { get; set; } = string.Empty;
+    public string? DeviceName { get; set; }
+    public string? BundleId { get; set; }
+    public bool TemperatureAlertsEnabled { get; set; }
+    public bool BloodSugarAlertsEnabled { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime RegisteredUtc { get; set; }
+    public DateTime UpdatedUtc { get; set; }
+    public DateTime? DeviceTokenUpdatedUtc { get; set; }
+    public DateTime? LastNotificationAttemptUtc { get; set; }
+    public DateTime? LastSuccessfulNotificationUtc { get; set; }
+}
+
+public class PushNotificationAlertState
+{
+    public string AlertKey { get; set; } = string.Empty;
+    public string? ActiveStateKey { get; set; }
+    public DateTime? LastSentUtc { get; set; }
+    public DateTime UpdatedUtc { get; set; }
 }
 
 public enum AiProcessingStatus

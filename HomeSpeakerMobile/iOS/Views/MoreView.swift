@@ -3,6 +3,7 @@ import SwiftUI
 struct MoreView: View {
     @Environment(ConnectionStore.self) private var store
     @Environment(OfflineDownloadsStore.self) private var offlineDownloads
+    @Environment(PushNotificationStore.self) private var pushNotifications
     @State private var recentlyPlayed: [Song] = []
     @State private var features: Features?
     @State private var temperature: TemperatureStatus?
@@ -24,6 +25,8 @@ struct MoreView: View {
                 aiSection
 
                 offlineSection
+
+                notificationsSection
 
                 if features?.temperatureEnabled == true {
                     temperatureSection
@@ -148,6 +151,22 @@ struct MoreView: View {
                     Label("Offline Downloads", systemImage: "arrow.down.circle")
                     Spacer()
                     Text(offlineDownloads.summaryLine)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var notificationsSection: some View {
+        Section("Notifications") {
+            NavigationLink {
+                PushNotificationsView()
+            } label: {
+                HStack {
+                    Label("Push Alerts", systemImage: "bell.badge")
+                    Spacer()
+                    Text(pushNotifications.summaryLine)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

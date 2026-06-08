@@ -36,10 +36,17 @@ public class OnDiskDataStore : IDataStore
                               orderby albums.Key
                               select new { AlbumName = albums.Key, Songs = albums })
         {
+            var albumSongs = album.Songs.AsQueryable();
             yield return new Album
             {
-                Name = album.AlbumName,
-                Songs = album.Songs.AsQueryable()
+                Name = album.AlbumName ?? string.Empty,
+                Songs = albumSongs,
+                Artist = new Artist
+                {
+                    Name = album.Songs.Select(s => s.Artist).FirstOrDefault(a => !string.IsNullOrEmpty(a)) ?? "[Artist Unknown]",
+                    Albums = Enumerable.Empty<Album>().AsQueryable(),
+                    Songs = albumSongs
+                }
             };
         }
     }
@@ -53,7 +60,8 @@ public class OnDiskDataStore : IDataStore
         {
             yield return new Artist
             {
-                Name = artist.ArtistName,
+                Name = artist.ArtistName ?? "[Artist Unknown]",
+                Albums = Enumerable.Empty<Album>().AsQueryable(),
                 Songs = artist.Songs.AsQueryable()
             };
         }

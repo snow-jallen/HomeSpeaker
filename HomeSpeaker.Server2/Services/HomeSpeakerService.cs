@@ -1,9 +1,9 @@
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Models;
 using HomeSpeaker.Shared;
+using Microsoft.EntityFrameworkCore;
 using SharedPlayerStatus = HomeSpeaker.Shared.PlayerStatus;
 using SharedSong = HomeSpeaker.Shared.Song;
-using Microsoft.EntityFrameworkCore;
 
 namespace HomeSpeaker.Server2.Services;
 

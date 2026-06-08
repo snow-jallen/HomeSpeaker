@@ -21,6 +21,9 @@
 - **2026-05-14:** Offline playback is client-managed in `HomeSpeakerMobile/iOS/OfflineDownloadsStore.swift`: it reuses `GET /api/music/{songId}`, stores files under Application Support `HomeSpeakerOffline`, and injects the store into SwiftUI via `HomeSpeakerApp`.
 - **2026-05-14:** Library offline affordances live in `MusicLibraryView.swift` with artist/album buttons, per-track status icons, and a management surface in `OfflineDownloadsView.swift` linked from `MoreView.swift`.
 - **2026-05-14:** In `HomeSpeakerMobile/iOS/Intents/HomeSpeakerIntents.swift`, nested alias-matching closures must bind the playlist item explicitly (`playlist in`) before using an inner `alias` closure; mixing explicit inner args with outer `$0` breaks Swift compilation.
+- **2026-05-15:** Push alerts on iOS are installation-scoped per selected server: `PushNotificationStore` owns APNs permission/token sync, `HomeSpeakerApp` binds it through a `UIApplicationDelegateAdaptor`, and `PushNotificationsView` manages the `temperature` module subscription while treating missing server endpoints as unsupported rather than fatal.
+- **2026-05-15:** Keep iOS notifications registration-focused: `PushNotificationStore` should sync APNs permission/token plus server registration state, and `PushNotificationsView` should avoid module-specific toggles or copy so simplified and older push servers fit the same screen.
+
 
 
 
@@ -51,5 +54,18 @@ Mapped iOS SwiftUI structure for AI playlists. Analyzed state management pattern
 **Final decision:** All review criteria met. Feature approved for production deployment.
 
 **Platform limitation:** Apple device/simulator validation required remote procedures (Windows host).
+
+---
+
+## Push Module Cleanup — Complete (2026-05-15T21:05:56Z)
+
+**Status:** ✅ COMPLETE
+
+**Team execution summary:**
+- Wash: Removed `/modules/...` shape from backend push API → flattened to `temperatureAlertsEnabled` and `bloodSugarAlertsEnabled` direct flags on installation resource
+- River: Simplified iOS push to registration-only, removed module toggles and module-specific wording
+- Zoe: Validated no module-coupled push behavior remains; registration lifecycle, unregister, opt-in gating, and deduped delivery all verified
+
+**Final outcome:** iOS push surface is now registration-only. `PushNotificationStore`, `PushNotificationsView`, `APIClient`, and `Models.swift` describe push registration in generic terms. Missing server push endpoints are treated as unsupported rather than fatal, avoiding coupling to temperature-specific or module-specific contracts.
 
 ---

@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0A7A4D3E1C5B6A7980010001 /* PushNotificationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A7A4D3E1C5B6A7980010101 /* PushNotificationStore.swift */; };
+		0A7A4D3E1C5B6A7980010002 /* PushNotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A7A4D3E1C5B6A7980010102 /* PushNotificationsView.swift */; };
+		0A7A4D3E1C5B6A7980010003 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A7A4D3E1C5B6A7980010104 /* UserNotifications.framework */; };
 		10258C83F88F6E77B1FEA837 /* HomeSpeakerWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79DF5D1CE59F6944F0B2B812 /* HomeSpeakerWatchApp.swift */; };
 		1AC5BD96E6D7BC208D94897F /* NowPlayingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16F2A1CA99C67EB4935F82B4 /* NowPlayingView.swift */; };
 		1B5A2C58A13005BB7A96EA14 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F27C12BCCE016B6AC25E97E5 /* WatchConnectivity.framework */; };
@@ -105,6 +108,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0A7A4D3E1C5B6A7980010101 /* PushNotificationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationStore.swift; sourceTree = "<group>"; };
+		0A7A4D3E1C5B6A7980010102 /* PushNotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationsView.swift; sourceTree = "<group>"; };
+		0A7A4D3E1C5B6A7980010103 /* HomeSpeaker.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HomeSpeaker.entitlements; sourceTree = "<group>"; };
+		0A7A4D3E1C5B6A7980010104 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
 		0387EAEB26350D3D2A73FB79 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		0708C23DBE902CD2AF78140D /* AIStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIStatusView.swift; sourceTree = "<group>"; };
 		16D6F1E4E46A26F966D05A65 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
@@ -182,6 +189,7 @@
 				4FB936FA2B2B8155D8599E51 /* AVFoundation.framework in Frameworks */,
 				96F16D770BBC0004BCE29747 /* MediaPlayer.framework in Frameworks */,
 				D9E9AE5722B45A06324A4197 /* AppIntents.framework in Frameworks */,
+				0A7A4D3E1C5B6A7980010003 /* UserNotifications.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -230,6 +238,7 @@
 				DFF600AE780822B97E207F38 /* AVFoundation.framework */,
 				CAF6F1D2EC5D2112E6D5AECA /* MediaPlayer.framework */,
 				F4223DA2F0CDF7DF37CB1511 /* SwiftUI.framework */,
+				0A7A4D3E1C5B6A7980010104 /* UserNotifications.framework */,
 				F27C12BCCE016B6AC25E97E5 /* WatchConnectivity.framework */,
 				F241EFDB1BBC7B42BF8AD924 /* WidgetKit.framework */,
 			);
@@ -281,8 +290,10 @@
 			children = (
 				9FE39C0DB8FFD7DBDEC6E984 /* ContentView.swift */,
 				D1C3B78E7383B49C16C349A3 /* HomeSpeakerApp.swift */,
+				0A7A4D3E1C5B6A7980010103 /* HomeSpeaker.entitlements */,
 				8E0801376B66A150D4878F32 /* LocalPlayer.swift */,
 				B1297287854A8D56CC65CA9A /* OfflineDownloadsStore.swift */,
+				0A7A4D3E1C5B6A7980010101 /* PushNotificationStore.swift */,
 				74812DE8131DA7912599C09A /* Intents */,
 				6AA690D5044B747696D6E870 /* Resources */,
 				9640FB9053993F506946BA33 /* Views */,
@@ -311,6 +322,7 @@
 				FAD72D0C245433BA64B16115 /* NowPlayingView.swift */,
 				67AE50D977A86AB778373CCB /* OfflineDownloadsView.swift */,
 				A1ED18F91C6D18A84AC2CE2D /* PlaylistsView.swift */,
+				0A7A4D3E1C5B6A7980010102 /* PushNotificationsView.swift */,
 				991398AE4AA449825359CD71 /* QueueView.swift */,
 				B97987F210143A29FA1EA204 /* RadioStreamsView.swift */,
 				CAA123689971EE3504312BBE /* ServerListView.swift */,
@@ -486,6 +498,8 @@
 				EAF2A83051D1C3B135F5F21C /* OfflineDownloadsView.swift in Sources */,
 				8F19CA0B0CF8A14C6277FC0B /* OfflineDownloadsStore.swift in Sources */,
 				E67C1946D2602902FAEF6B24 /* PlaylistsView.swift in Sources */,
+				0A7A4D3E1C5B6A7980010001 /* PushNotificationStore.swift in Sources */,
+				0A7A4D3E1C5B6A7980010002 /* PushNotificationsView.swift in Sources */,
 				A08875BB22B217481D8F8A2B /* QueueView.swift in Sources */,
 				90BDA85488C40C638B27DEF3 /* RadioStreamsView.swift in Sources */,
 				991EE3BA897BB77766B29131 /* ServerEntity.swift in Sources */,
@@ -696,8 +710,10 @@
 		979D8143BD99836A36CDEC40 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APS_ENVIRONMENT = production;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_ENTITLEMENTS = iOS/HomeSpeaker.entitlements;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = iOS/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -714,8 +730,10 @@
 		D204504CE1EC9EE48AF97AAF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APS_ENVIRONMENT = development;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_ENTITLEMENTS = iOS/HomeSpeaker.entitlements;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = iOS/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

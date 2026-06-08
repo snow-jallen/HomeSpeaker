@@ -169,6 +169,33 @@ struct TemperatureStatus: Codable {
     let temperatureDifference: Double?
 }
 
+// MARK: - Push Notifications
+
+struct PushRegistrationStatusDto: Codable {
+    let installationId: String
+    let platform: String?
+    let isRegistered: Bool
+    let bundleId: String?
+    let deviceTokenUpdatedUtc: String?
+
+    enum CodingKeys: String, CodingKey {
+        case installationId
+        case platform
+        case isRegistered
+        case bundleId
+        case deviceTokenUpdatedUtc
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        installationId = (try? container.decode(String.self, forKey: .installationId)) ?? ""
+        platform = try? container.decode(String.self, forKey: .platform)
+        isRegistered = (try? container.decode(Bool.self, forKey: .isRegistered)) ?? false
+        bundleId = try? container.decode(String.self, forKey: .bundleId)
+        deviceTokenUpdatedUtc = try? container.decode(String.self, forKey: .deviceTokenUpdatedUtc)
+    }
+}
+
 // MARK: - Request Bodies (used by APIClient)
 
 struct PlayerControlRequest: Codable {
@@ -244,6 +271,14 @@ enum OfflineDownloadTargetType: String, Codable {
 enum OfflineDownloadTargetStatus: String, Codable {
     case ready = "Ready"
     case missing = "Missing"
+}
+
+struct UpsertPushInstallationRequest: Codable {
+    let installationId: String
+    let platform: String
+    let deviceToken: String
+    let deviceName: String?
+    let bundleId: String?
 }
 
 struct OfflineDownloadManifestDto: Codable {

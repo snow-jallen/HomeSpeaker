@@ -644,6 +644,86 @@ namespace HomeSpeaker.Server2.Migrations
                     b.ToTable("PlaylistItems");
                 });
 
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.PushNotificationAlertState", b =>
+                {
+                    b.Property<string>("AlertKey")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ActiveStateKey")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastSentUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("AlertKey");
+
+                    b.ToTable("PushNotificationAlertStates");
+                });
+
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.PushNotificationDevice", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("BloodSugarAlertsEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BundleId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeviceName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeviceToken")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeviceTokenUpdatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InstallationId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastNotificationAttemptUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastSuccessfulNotificationUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Platform")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("RegisteredUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("TemperatureAlertsEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceToken")
+                        .IsUnique();
+
+                    b.HasIndex("InstallationId")
+                        .IsUnique();
+
+                    b.HasIndex("IsActive", "Platform");
+
+                    b.ToTable("PushNotificationDevices");
+                });
+
             modelBuilder.Entity("HomeSpeaker.Server2.Data.RadioStream", b =>
                 {
                     b.Property<int>("Id")

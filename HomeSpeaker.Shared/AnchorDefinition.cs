@@ -1,5 +1,3 @@
-using System;
-
 namespace HomeSpeaker.Shared;
 
 /// <summary>

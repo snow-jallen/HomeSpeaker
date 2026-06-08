@@ -384,3 +384,4 @@ DerivedData/
 .build/
 /Packages/
 Package.resolved
+HomeSpeaker.Server2/HomeSpeaker.Server2.csproj.lscache
