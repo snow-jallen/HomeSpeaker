@@ -62,15 +62,15 @@ public class AudioDeviceDetector
         }
 
         // Priority selection:
-        // 1. "Headphones" (Raspberry Pi headphone jack - most reliable)
-        // 2. USB audio devices (external DACs or speakers)
+        // 1. USB audio devices (external DACs or speakers)
+        // 2. "Headphones" (Raspberry Pi headphone jack fallback)
         // 3. Any device with "Speaker" in the name (built-in screen speakers)
         // 4. HDMI audio
         // 5. First available device
 
         var selected = devices
-            .OrderByDescending(d => d.CardName.Equals("Headphones", StringComparison.OrdinalIgnoreCase) ? 100 : 0)
-            .ThenByDescending(d => d.IsUsb ? 50 : 0)
+            .OrderByDescending(d => d.IsUsb ? 100 : 0)
+            .ThenByDescending(d => d.CardName.Equals("Headphones", StringComparison.OrdinalIgnoreCase) ? 50 : 0)
             .ThenByDescending(d => d.Description.Contains("Speaker", StringComparison.OrdinalIgnoreCase) ? 40 : 0)
             .ThenByDescending(d => d.Description.Contains("HDMI", StringComparison.OrdinalIgnoreCase) ? 10 : 0)
             .ThenBy(d => d.CardNumber)
