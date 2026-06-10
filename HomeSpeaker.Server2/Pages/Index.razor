@@ -69,7 +69,7 @@
                                                        min="0" max="100"
                                                        value="@volumeLevel"
                                                        aria-label="Volume"
-                                                       @oninput="@(e => { if (int.TryParse(e.Value?.ToString(), out var v)) volumeLevel = v; })"
+                                                       @oninput="@(e => { if (int.TryParse(e.Value?.ToString(), out var v)) { volumeLevel = v; isDraggingVolume = true; } })"
                                                        @onchange="OnVolumeChanged" />
                                             </div>
                                         </div>
@@ -131,6 +131,7 @@ else if (showTemperature)
     private Timer? refreshTimer;
     private bool showVolumePopup;
     private int volumeLevel;
+    private bool isDraggingVolume;
     private bool featuresLoaded;
     private bool isStatusLoading = true;
 
@@ -141,7 +142,13 @@ else if (showTemperature)
         PlayerState.StateChanged += OnStateChanged;
     }
 
-    private void OnStateChanged() => InvokeAsync(async () => { StateHasChanged(); await FitNowPlayingAsync(); });
+    private void OnStateChanged() => InvokeAsync(async () =>
+    {
+        if (!showVolumePopup)
+            volumeLevel = PlayerState.Volume;
+        StateHasChanged();
+        await FitNowPlayingAsync();
+    });
 
     private async Task FitNowPlayingAsync()
     {
@@ -195,10 +202,16 @@ else if (showTemperature)
         }
     }
 
-    private void ToggleVolumePopup() => showVolumePopup = !showVolumePopup;
+    private void ToggleVolumePopup()
+    {
+        showVolumePopup = !showVolumePopup;
+        if (showVolumePopup)
+            volumeLevel = PlayerState.Volume;
+    }
     private void CloseVolumePopup() => showVolumePopup = false;
     private async Task OnVolumeChanged(ChangeEventArgs e)
     {
+        isDraggingVolume = false;
         if (int.TryParse(e.Value?.ToString(), out var v))
         {
             try
@@ -221,7 +234,7 @@ else if (showTemperature)
 
             PlayerState.UpdateStatus(status);
             PlayerState.UpdateRepeatMode(repeatMode);
-            volumeLevel = status?.Volume ?? volumeLevel;
+            PlayerState.UpdateVolume(status?.Volume ?? PlayerState.Volume);
         }
         catch (Exception ex)
         {

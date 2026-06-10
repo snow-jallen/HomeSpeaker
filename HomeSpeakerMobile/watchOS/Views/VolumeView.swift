@@ -43,14 +43,19 @@ struct WatchVolumeView: View {
         .padding()
         .task {
             guard let api = store.api else { return }
-            if let status = try? await api.getPlayerStatus() {
-                volume = Double(status.volume)
+            while !Task.isCancelled {
+                if !isUpdating, let status = try? await api.getPlayerStatus() {
+                    volume = Double(status.volume)
+                }
+                try? await Task.sleep(for: .seconds(3))
             }
         }
     }
 
     private func setVolume(_ level: Int) async {
         guard let api = store.api else { return }
+        isUpdating = true
         try? await api.setVolume(level)
+        isUpdating = false
     }
 }

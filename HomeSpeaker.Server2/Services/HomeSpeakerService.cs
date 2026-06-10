@@ -22,6 +22,7 @@ public class HomeSpeakerService
     private readonly AiMusicCatalogService aiCatalogService;
     private readonly AiPlaybackService aiPlaybackService;
     private readonly AiProcessingSignal aiProcessingSignal;
+    private readonly PlayerStateService playerStateService;
 
     public event EventHandler? QueueChanged;
     public event Action<string>? StatusChanged;
@@ -37,7 +38,8 @@ public class HomeSpeakerService
         IServiceProvider serviceProvider,
         AiMusicCatalogService aiCatalogService,
         AiPlaybackService aiPlaybackService,
-        AiProcessingSignal aiProcessingSignal)
+        AiProcessingSignal aiProcessingSignal,
+        PlayerStateService playerStateService)
     {
         this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
         this.library = library ?? throw new ArgumentNullException(nameof(library));
@@ -49,6 +51,7 @@ public class HomeSpeakerService
         this.aiCatalogService = aiCatalogService;
         this.aiPlaybackService = aiPlaybackService;
         this.aiProcessingSignal = aiProcessingSignal;
+        this.playerStateService = playerStateService;
 
         // Forward player events
         this.musicPlayer.PlayerEvent += (sender, msg) =>
@@ -67,6 +70,7 @@ public class HomeSpeakerService
     public async Task SetVolumeAsync(int volume0to100)
     {
         await Task.Run(() => musicPlayer.SetVolume(volume0to100));
+        playerStateService.UpdateVolume(volume0to100);
     }
 
     public async Task<int> GetVolumeAsync()

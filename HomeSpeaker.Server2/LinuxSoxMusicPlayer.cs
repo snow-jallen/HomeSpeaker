@@ -398,22 +398,17 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         var card = audioDeviceDetector.SelectedCard ?? "0";
         var mixer = audioDeviceDetector.SelectedMixerControl ?? "PCM";
 
-        var actualMin = 40;
-        var actualMax = 100;
-        var percent = Math.Max(0, Math.Min(100, level0to100)) / 100M;
-        var newLevel = (actualMax - actualMin) * percent + actualMin;
-        logger.LogInformation("Setting volume on card {Card} mixer {Mixer}: {Level0to100}% -> {NewLevel}%",
-            card, mixer, level0to100, newLevel);
+        var level = Math.Max(0, Math.Min(100, level0to100));
+        logger.LogInformation("Setting volume on card {Card} mixer {Mixer}: {Level}%", card, mixer, level);
 
         try
         {
-            Process.Start("amixer", $"-c {card} sset {mixer} {newLevel}%");
+            Process.Start("amixer", $"-c {card} sset {mixer} {level}%");
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to set volume, trying fallback");
-            // Fallback to default card
-            Process.Start("amixer", $"sset PCM,0 {newLevel}%");
+            Process.Start("amixer", $"sset PCM,0 {level}%");
         }
     }
 

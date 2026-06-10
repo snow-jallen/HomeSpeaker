@@ -98,6 +98,7 @@ builder.Services.AddSingleton<AiMusicAnalyzer>();
 builder.Services.AddScoped<AiMusicCatalogService>();
 builder.Services.AddScoped<AiPlaybackService>();
 builder.Services.AddHostedService<AiMusicAnalysisWorker>();
+builder.Services.AddHostedService<HomeSpeaker.Server2.Services.VolumeMonitorService>();
 builder.Services.AddChatClient(sp =>
 {
     var aiOptions = sp.GetRequiredService<IOptions<AiMusicOptions>>().Value;
@@ -201,7 +202,7 @@ builder.Services.AddHealthChecks()
     .AddDbContextCheck<MusicContext>("database");
 
 // Add browser-specific services for Blazor components
-builder.Services.AddScoped<HomeSpeaker.Server2.Services.PlayerStateService>();
+builder.Services.AddSingleton<HomeSpeaker.Server2.Services.PlayerStateService>();
 builder.Services.AddScoped<HomeSpeaker.Server2.Services.IBrowserAudioService, HomeSpeaker.Server2.Services.BrowserAudioService>();
 builder.Services.AddScoped<HomeSpeaker.Server2.Services.ILocalQueueService, HomeSpeaker.Server2.Services.LocalQueueService>();
 builder.Services.AddScoped<HomeSpeaker.Server2.Services.IPlaybackModeService, HomeSpeaker.Server2.Services.PlaybackModeService>();
