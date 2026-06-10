@@ -144,7 +144,9 @@ else if (showTemperature)
 
     private void OnStateChanged() => InvokeAsync(async () =>
     {
-        if (!showVolumePopup)
+        // Don't let a live volume push (physical knob, another client) override
+        // the slider while the user is actively dragging it.
+        if (!showVolumePopup && !isDraggingVolume)
             volumeLevel = PlayerState.Volume;
         StateHasChanged();
         await FitNowPlayingAsync();

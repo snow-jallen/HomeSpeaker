@@ -371,11 +371,14 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
 
             if (volumeLine != null)
             {
-                return volumeLine
+                var actual = volumeLine
                     .Split('[', ']', '%')
                     .Skip(1)
                     .Select(p => int.TryParse(p, out var v) ? v : -1)
                     .FirstOrDefault(v => v >= 0);
+
+                // Map the raw ALSA reading back into the 0-100 slider range.
+                return ActualToSlider(actual);
             }
         }
         catch (Exception ex)
@@ -398,18 +401,38 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         var card = audioDeviceDetector.SelectedCard ?? "0";
         var mixer = audioDeviceDetector.SelectedMixerControl ?? "PCM";
 
-        var level = Math.Max(0, Math.Min(100, level0to100));
-        logger.LogInformation("Setting volume on card {Card} mixer {Mixer}: {Level}%", card, mixer, level);
+        var actualLevel = SliderToActual(level0to100);
+        logger.LogInformation("Setting volume on card {Card} mixer {Mixer}: {Slider}% (slider) -> {Actual}% (amixer)",
+            card, mixer, Math.Max(0, Math.Min(100, level0to100)), actualLevel);
 
         try
         {
-            Process.Start("amixer", $"-c {card} sset {mixer} {level}%");
+            Process.Start("amixer", $"-c {card} sset {mixer} {actualLevel}%");
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to set volume, trying fallback");
-            Process.Start("amixer", $"sset PCM,0 {level}%");
+            Process.Start("amixer", $"sset PCM,0 {actualLevel}%");
         }
+    }
+
+    // The speaker is inaudible below ~40% on the ALSA mixer, so the 0-100 slider
+    // presented to clients is mapped onto the usable 40-100 ALSA range. The two
+    // mappings below are exact inverses so a value written by SetVolume reads back
+    // unchanged through GetVolume (otherwise the slider snaps up after each set).
+    private const int VolumeFloor = 40;
+
+    internal static int SliderToActual(int slider0to100)
+    {
+        var slider = Math.Max(0, Math.Min(100, slider0to100));
+        return (int)Math.Round(VolumeFloor + (100 - VolumeFloor) * (slider / 100.0));
+    }
+
+    internal static int ActualToSlider(int actual0to100)
+    {
+        var actual = Math.Max(0, Math.Min(100, actual0to100));
+        var slider = (actual - VolumeFloor) * 100.0 / (100 - VolumeFloor);
+        return (int)Math.Round(Math.Max(0, Math.Min(100, slider)));
     }
 
     public void ShuffleQueue()
