@@ -132,7 +132,8 @@ public class AudioDeviceDetector
                     Description = description,
                     IsUsb = description.Contains("USB", StringComparison.OrdinalIgnoreCase) ||
                             cardName.Contains("USB", StringComparison.OrdinalIgnoreCase) ||
-                            cardName.StartsWith("UAC", StringComparison.OrdinalIgnoreCase)
+                            cardName.StartsWith("UAC", StringComparison.OrdinalIgnoreCase) ||
+                            File.Exists($"/proc/asound/card{cardNumber}/usbid")
                 });
             }
         }
