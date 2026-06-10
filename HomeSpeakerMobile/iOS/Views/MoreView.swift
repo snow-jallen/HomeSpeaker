@@ -3,19 +3,19 @@ import SwiftUI
 struct MoreView: View {
     @Environment(ConnectionStore.self) private var store
     @Environment(OfflineDownloadsStore.self) private var offlineDownloads
-    @State private var recentlyPlayed: [Song] = []
     @State private var features: Features?
     @State private var temperature: TemperatureStatus?
-    @State private var forecast: ForecastStatus?
     @State private var bloodSugar: BloodSugarStatus?
     @State private var showServerList = false
 
     var body: some View {
         NavigationStack {
             List {
-                serverSection
+                if features?.bloodSugarEnabled == true {
+                    bloodSugarSection
+                }
 
-                recentlyPlayedSection
+                serverSection
 
                 radioSection
 
@@ -27,10 +27,6 @@ struct MoreView: View {
 
                 if features?.temperatureEnabled == true {
                     temperatureSection
-                }
-
-                if features?.bloodSugarEnabled == true {
-                    bloodSugarSection
                 }
 
                 settingsSection
@@ -65,42 +61,6 @@ struct MoreView: View {
                 }
             }
             .foregroundStyle(.primary)
-        }
-    }
-
-    private var recentlyPlayedSection: some View {
-        Section("Recently Played") {
-            if recentlyPlayed.isEmpty {
-                Text("No recent plays")
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(Array(recentlyPlayed.prefix(5))) { (song: Song) in
-                    HStack {
-                        Image(systemName: "music.note")
-                            .foregroundStyle(.secondary)
-                            .frame(width: 20)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(song.displayTitle)
-                                .lineLimit(1)
-                            Text(song.displayArtist)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                        Spacer()
-                        Button {
-                            Task {
-                                guard let api = store.api else { return }
-                                try? await api.playSong(song.songId)
-                            }
-                        } label: {
-                            Image(systemName: "play.fill")
-                                .foregroundStyle(Color.accentColor)
-                        }
-                        .buttonStyle(.borderless)
-                    }
-                }
-            }
         }
     }
 
@@ -242,17 +202,21 @@ struct MoreView: View {
 
     private func loadAll() async {
         guard let api = store.api else { return }
-        async let recentTask = api.getRecentlyPlayed(limit: 5)
-        async let featuresTask = api.getFeatures()
-        recentlyPlayed = (try? await recentTask) ?? []
-        features = try? await featuresTask
 
-        if features?.temperatureEnabled == true {
-            temperature = try? await api.getTemperature()
-            forecast = try? await api.getForecast()
-        }
-        if features?.bloodSugarEnabled == true {
-            bloodSugar = try? await api.getBloodSugar()
-        }
+        // Features is a quick local-config lookup that tells us which optional
+        // widgets to show.
+        features = try? await api.getFeatures()
+        let bloodSugarEnabled = features?.bloodSugarEnabled == true
+        let temperatureEnabled = features?.temperatureEnabled == true
+
+        // Load the optional widgets concurrently so a slow or unreachable
+        // endpoint (each has a 10s timeout) can't block the others.
+        async let bloodSugarResult: BloodSugarStatus? =
+            bloodSugarEnabled ? (try? await api.getBloodSugar()) : nil
+        async let temperatureResult: TemperatureStatus? =
+            temperatureEnabled ? (try? await api.getTemperature()) : nil
+
+        bloodSugar = await bloodSugarResult
+        temperature = await temperatureResult
     }
 }

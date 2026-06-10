@@ -76,31 +76,33 @@ struct NowPlayingView: View {
     }
 
     private func playerContent(api: APIClient) -> some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                artworkPlaceholder
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(spacing: 24) {
+                    artworkPlaceholder
 
-                songInfo
+                    songInfo
 
-                if let status {
-                    progressSection(status: status)
-                    
-                    if let aiContext = status.aiContext, aiContext.allowFeedback, let songId = status.currentSong?.songId {
-                        aiFeedbackButtons(api: api, songId: songId, sessionId: aiContext.sessionId)
+                    if let status {
+                        progressSection(status: status)
+
+                        transportControls(api: api, status: status)
+                    } else {
+                        transportControls(api: api, status: nil)
                     }
-                    
-                    transportControls(api: api, status: status)
-                } else {
-                    transportControls(api: api, status: nil)
-                }
 
-                volumeSection(api: api)
-
-                if let status, let remaining = status.sleepTimerRemainingMinutes, status.sleepTimerActive == true {
-                    sleepTimerBadge(remainingMinutes: remaining, api: api)
+                    if let status, let remaining = status.sleepTimerRemainingMinutes, status.sleepTimerActive == true {
+                        sleepTimerBadge(remainingMinutes: remaining, api: api)
+                    }
                 }
+                .padding()
             }
-            .padding()
+
+            // Pinned below the scroll view so the volume slider is always visible.
+            Divider()
+            volumeSection(api: api)
+                .padding(.horizontal)
+                .padding(.vertical, 12)
         }
         .task {
             volume = Double(status?.volume ?? 50)
@@ -112,12 +114,12 @@ struct NowPlayingView: View {
     }
 
     private var artworkPlaceholder: some View {
-        RoundedRectangle(cornerRadius: 20)
+        RoundedRectangle(cornerRadius: 16)
             .fill(Color(.systemGray5))
-            .frame(width: 240, height: 240)
+            .frame(width: 160, height: 160)
             .overlay {
                 Image(systemName: "music.note")
-                    .font(.system(size: 80))
+                    .font(.system(size: 56))
                     .foregroundStyle(.secondary)
             }
             .shadow(radius: 8)
@@ -230,35 +232,6 @@ struct NowPlayingView: View {
         .background(.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 10))
     }
     
-    private func aiFeedbackButtons(api: APIClient, songId: Int, sessionId: String?) -> some View {
-        HStack(spacing: 32) {
-            Button {
-                Task { await sendFeedback(api: api, songId: songId, feedback: "Down", sessionId: sessionId) }
-            } label: {
-                Image(systemName: "hand.thumbsdown")
-                    .font(.title2)
-                    .frame(width: 48, height: 48)
-                    .background(Color(.systemGray5), in: Circle())
-            }
-            .foregroundStyle(.primary)
-            
-            Text("How's this pick?")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            
-            Button {
-                Task { await sendFeedback(api: api, songId: songId, feedback: "Up", sessionId: sessionId) }
-            } label: {
-                Image(systemName: "hand.thumbsup")
-                    .font(.title2)
-                    .frame(width: 48, height: 48)
-                    .background(Color(.systemGray5), in: Circle())
-            }
-            .foregroundStyle(Color.accentColor)
-        }
-        .padding(.vertical, 8)
-    }
-
     @MainActor
     private func refresh(api: APIClient) async {
         do {
@@ -269,11 +242,6 @@ struct NowPlayingView: View {
         } catch {
             // Silently ignore polling errors
         }
-    }
-    
-    @MainActor
-    private func sendFeedback(api: APIClient, songId: Int, feedback: String, sessionId: String?) async {
-        try? await api.sendAiFeedback(songId: songId, feedback: feedback, sessionId: sessionId)
     }
 }
 
