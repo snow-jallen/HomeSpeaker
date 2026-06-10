@@ -113,6 +113,8 @@ public class AudioDeviceDetector
             var cardRegex = new Regex(@"card (\d+): (\w+) \[([^\]]+)\]", RegexOptions.Multiline);
             var matches = cardRegex.Matches(output);
 
+            var outputLines = output.Split('\n');
+
             foreach (Match match in matches)
             {
                 var cardNumber = int.Parse(match.Groups[1].Value);
@@ -125,6 +127,10 @@ public class AudioDeviceDetector
                     continue;
                 }
 
+                // Check the full aplay line — "USB Audio" appears in the device portion
+                // which the card regex doesn't capture (e.g. "device 0: USB Audio [USB Audio]")
+                var fullCardLine = outputLines.FirstOrDefault(l => l.Contains($"card {cardNumber}:")) ?? "";
+
                 devices.Add(new AudioDevice
                 {
                     CardNumber = cardNumber,
@@ -133,7 +139,8 @@ public class AudioDeviceDetector
                     IsUsb = description.Contains("USB", StringComparison.OrdinalIgnoreCase) ||
                             cardName.Contains("USB", StringComparison.OrdinalIgnoreCase) ||
                             cardName.StartsWith("UAC", StringComparison.OrdinalIgnoreCase) ||
-                            File.Exists($"/proc/asound/card{cardNumber}/usbid")
+                            File.Exists($"/proc/asound/card{cardNumber}/usbid") ||
+                            fullCardLine.Contains("USB", StringComparison.OrdinalIgnoreCase)
                 });
             }
         }
