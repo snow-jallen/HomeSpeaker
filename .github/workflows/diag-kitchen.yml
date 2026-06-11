@@ -1,0 +1,54 @@
+name: Diagnose Pi (manual)
+
+# Manual-only. Runs read-only diagnostics on a self-hosted Pi runner.
+# Does NOT pull images, cycle containers, or change any state.
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: Which Pi runner to diagnose
+        required: true
+        default: kitchen
+        type: choice
+        options:
+          - kitchen
+          - upstairs
+
+jobs:
+  diagnose:
+    runs-on: [self-hosted, "${{ inputs.runner }}"]
+    steps:
+      - name: Container status
+        run: docker ps -a --filter name=homespeaker || true
+
+      - name: Healthcheck state
+        run: docker inspect --format '{{json .State.Health}}' homespeaker || true
+
+      - name: Running image vs latest (did the fix actually deploy?)
+        run: |
+          echo "Running container image id:"
+          docker inspect homespeaker --format '{{.Image}}' || true
+          echo "Local :latest image id + digest:"
+          docker image inspect ghcr.io/snow-jallen/homespeaker:latest --format '{{.Id}} {{.RepoDigests}}' || true
+
+      - name: Is the /alive endpoint present (only exists in the fixed build)
+        run: curl -fsS --max-time 5 -o /dev/null -w "alive HTTP %{http_code} time=%{time_total}s\n" http://localhost/alive || echo "alive probe failed"
+
+      - name: /health DB-backed response time
+        run: curl -fsS --max-time 12 -o /dev/null -w "health HTTP %{http_code} time=%{time_total}s\n" http://localhost/health || echo "health probe failed/timed out"
+
+      - name: Recent app logs
+        run: docker logs --tail 200 --timestamps homespeaker 2>&1 || true
+
+      - name: Processes inside container
+        run: docker exec homespeaker ps -eo pid,ppid,etimes,comm --sort=-etimes 2>&1 | head -40 || true
+
+      - name: Resource pressure
+        run: |
+          uptime || true
+          free -h || true
+          df -h / /home/piuser/music 2>&1 || true
+          docker stats --no-stream homespeaker || true
+
+      - name: Kernel OOM check
+        run: (dmesg 2>/dev/null || sudo dmesg 2>/dev/null) | grep -i 'out of memory\|oom-kill\|killed process' | tail || echo "no OOM lines or dmesg not permitted"
