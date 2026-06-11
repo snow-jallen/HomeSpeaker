@@ -5,8 +5,11 @@
 
 FROM ghcr.io/snow-jallen/homespeaker-base:latest AS base
 
+# --max-time/--connect-timeout ensure the probe curl can never hang and leak
+# orphaned processes (dotnet is PID 1 and does not reap children). /alive is a
+# DB-free liveness check, so a contended SQLite DB can't fail the probe.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:80/health || exit 1
+    CMD curl -fsS --max-time 5 --connect-timeout 2 http://localhost:80/alive || exit 1
 
 WORKDIR /app
 EXPOSE 80

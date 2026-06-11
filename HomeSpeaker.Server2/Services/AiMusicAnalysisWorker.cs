@@ -109,10 +109,13 @@ public sealed class AiMusicAnalysisWorker : BackgroundService
     {
         var scanDelay = TimeSpan.FromMinutes(Math.Max(1, options.Processing.ScanIntervalMinutes));
         var retryDelay = TimeSpan.FromMinutes(Math.Max(1, options.Processing.FailedItemRequeueDelayMinutes));
+        var maxAttempts = Math.Max(1, options.Processing.MaxAttempts);
         var now = timeProvider.GetUtcNow().UtcDateTime;
 
+        // Only items still eligible for retry should pull the next cycle earlier;
+        // exhausted (MaxAttempts) items must not keep waking the worker.
         var failedCompletionTimes = await dbContext.AiProcessingWorkItems.AsNoTracking()
-            .Where(w => w.Status == AiProcessingStatus.Failed && w.CompletedUtc != null)
+            .Where(w => w.Status == AiProcessingStatus.Failed && w.CompletedUtc != null && w.Attempts < maxAttempts)
             .Select(w => w.CompletedUtc)
             .ToListAsync(cancellationToken);
 
@@ -184,8 +187,12 @@ public sealed class AiMusicAnalysisWorker : BackgroundService
     {
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var retryCutoffUtc = now.AddMinutes(-Math.Max(1, options.Processing.FailedItemRequeueDelayMinutes));
+        var maxAttempts = Math.Max(1, options.Processing.MaxAttempts);
         var failedItems = await dbContext.AiProcessingWorkItems
-            .Where(w => w.Status == AiProcessingStatus.Failed && w.CompletedUtc != null && w.CompletedUtc <= retryCutoffUtc)
+            .Where(w => w.Status == AiProcessingStatus.Failed
+                && w.CompletedUtc != null
+                && w.CompletedUtc <= retryCutoffUtc
+                && w.Attempts < maxAttempts)
             .OrderBy(w => w.CompletedUtc)
             .ToListAsync(cancellationToken);
 

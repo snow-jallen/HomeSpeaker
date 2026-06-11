@@ -9,6 +9,9 @@ services:
       context: .
       dockerfile: HomeSpeaker.Server2/Dockerfile
     restart: unless-stopped
+    # Run an init (tini) as PID 1 so orphaned child processes (e.g. timed-out
+    # healthcheck curls) are reaped instead of accumulating against dotnet.
+    init: true
     devices:
     - /dev/snd:/dev/snd
     ports:

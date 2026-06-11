@@ -37,7 +37,23 @@ public sealed class ForecastService : IForecastService
 
         // Cache miss, fetch new data
         logger.LogInformation("Forecast cache miss, fetching fresh data...");
-        var forecastStatus = await getForecastStatusInternalAsync(cancellationToken);
+
+        ForecastStatus forecastStatus;
+        try
+        {
+            forecastStatus = await getForecastStatusInternalAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // Surface the failure honestly instead of caching placeholder data.
+            // Not cached, so the next request retries rather than showing a stale error for 30 minutes.
+            logger.LogError(ex, "Failed to fetch forecast data");
+            return new ForecastStatus
+            {
+                LastUpdated = timeProvider.GetUtcNow().UtcDateTime,
+                Error = ex.Message
+            };
+        }
 
         // Set cache timestamp
         forecastStatus.LastCachedAt = timeProvider.GetUtcNow().UtcDateTime;
@@ -98,143 +114,108 @@ public sealed class ForecastService : IForecastService
 
         logger.LogInformation("Fetching forecast for configured location");
 
-        try
+        // Use Open-Meteo API (free, no API key required). Exceptions propagate to
+        // GetForecastStatusAsync, which reports the failure rather than caching placeholder data.
+        var url = $"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,weather_code&temperature_unit=fahrenheit&timezone=auto&forecast_days=2";
+
+        var response = await httpClient.GetAsync(url, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var weatherData = JsonSerializer.Deserialize<OpenMeteoResponse>(json, jsonOptions);
+
+        if (weatherData?.Hourly == null)
         {
-            // Use Open-Meteo API (free, no API key required)
-            var url = $"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,weather_code&temperature_unit=fahrenheit&timezone=auto&forecast_days=2";
-
-            var response = await httpClient.GetAsync(url, cancellationToken);
-            response.EnsureSuccessStatusCode();
-
-            var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            var weatherData = JsonSerializer.Deserialize<OpenMeteoResponse>(json, jsonOptions);
-
-            if (weatherData?.Hourly == null)
-            {
-                logger.LogWarning("No forecast data received from API");
-                return new ForecastStatus { LastUpdated = timeProvider.GetUtcNow().UtcDateTime };
-            }
-
-            var now = getForecastNow(weatherData.Timezone);
-            var forecastStatus = new ForecastStatus
-            {
-                LastUpdated = timeProvider.GetUtcNow().UtcDateTime
-            };
-
-            // Find tonight's low (remaining hours of today in forecast timezone)
-            var todayStart = now.Date;
-            var todayEnd = todayStart.AddDays(1);
-            var tonightTemps = new List<(DateTime time, double temp, int index)>();
-
-            for (var i = 0; i < weatherData.Hourly.Time.Length; i++)
-            {
-                var time = DateTime.Parse(weatherData.Hourly.Time[i]);
-                if (time >= now && time < todayEnd)
-                {
-                    tonightTemps.Add((time, weatherData.Hourly.Temperature2m[i], i));
-                }
-            }
-
-            if (tonightTemps.Any())
-            {
-                var lowestTemp = tonightTemps.MinBy(t => t.temp);
-
-                forecastStatus.TonightLow = new ForecastData
-                {
-                    DateTime = lowestTemp.time,
-                    Temperature = lowestTemp.temp,
-                    Conditions = getConditionDescription(weatherData.Hourly.WeatherCode[lowestTemp.index]),
-                    PrecipitationChance = weatherData.Hourly.PrecipitationProbability?[lowestTemp.index]
-                };
-            }
-
-            // Find today's high (all hours of today in forecast timezone)
-            var todayTemps = new List<(DateTime time, double temp, int index)>();
-
-            for (var i = 0; i < weatherData.Hourly.Time.Length; i++)
-            {
-                var time = DateTime.Parse(weatherData.Hourly.Time[i]);
-                if (time >= todayStart && time < todayEnd)
-                {
-                    todayTemps.Add((time, weatherData.Hourly.Temperature2m[i], i));
-                }
-            }
-
-            if (todayTemps.Any())
-            {
-                var highestTodayTemp = todayTemps.MaxBy(t => t.temp);
-
-                forecastStatus.TodayHigh = new ForecastData
-                {
-                    DateTime = highestTodayTemp.time,
-                    Temperature = highestTodayTemp.temp,
-                    Conditions = getConditionDescription(weatherData.Hourly.WeatherCode[highestTodayTemp.index]),
-                    PrecipitationChance = weatherData.Hourly.PrecipitationProbability?[highestTodayTemp.index]
-                };
-            }
-
-            // Find tomorrow's high in forecast timezone
-            var tomorrowStart = todayEnd;
-            var tomorrowEnd = tomorrowStart.AddDays(1);
-            var tomorrowTemps = new List<(DateTime time, double temp, int index)>();
-
-            for (var i = 0; i < weatherData.Hourly.Time.Length; i++)
-            {
-                var time = DateTime.Parse(weatherData.Hourly.Time[i]);
-                if (time >= tomorrowStart && time < tomorrowEnd)
-                {
-                    tomorrowTemps.Add((time, weatherData.Hourly.Temperature2m[i], i));
-                }
-            }
-
-            if (tomorrowTemps.Any())
-            {
-                var highestTemp = tomorrowTemps.MaxBy(t => t.temp);
-
-                forecastStatus.TomorrowHigh = new ForecastData
-                {
-                    DateTime = highestTemp.time,
-                    Temperature = highestTemp.temp,
-                    Conditions = getConditionDescription(weatherData.Hourly.WeatherCode[highestTemp.index]),
-                    PrecipitationChance = weatherData.Hourly.PrecipitationProbability?[highestTemp.index]
-                };
-            }
-
-            return forecastStatus;
+            logger.LogWarning("No forecast data received from API");
+            return new ForecastStatus { LastUpdated = timeProvider.GetUtcNow().UtcDateTime };
         }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to fetch forecast data");
-            logger.LogInformation("Using sample forecast data for testing");
 
-            // Return sample data when API is unavailable (for testing/demo purposes)
-            var utcNow = timeProvider.GetUtcNow().UtcDateTime;
-            return new ForecastStatus
+        var now = getForecastNow(weatherData.Timezone);
+        var forecastStatus = new ForecastStatus
+        {
+            LastUpdated = timeProvider.GetUtcNow().UtcDateTime
+        };
+
+        // Find tonight's low (remaining hours of today in forecast timezone)
+        var todayStart = now.Date;
+        var todayEnd = todayStart.AddDays(1);
+        var tonightTemps = new List<(DateTime time, double temp, int index)>();
+
+        for (var i = 0; i < weatherData.Hourly.Time.Length; i++)
+        {
+            var time = DateTime.Parse(weatherData.Hourly.Time[i]);
+            if (time >= now && time < todayEnd)
             {
-                LastUpdated = utcNow,
-                TonightLow = new ForecastData
-                {
-                    DateTime = utcNow.Date.AddHours(22),
-                    Temperature = 45.0,
-                    Conditions = "Clear",
-                    PrecipitationChance = 10
-                },
-                TodayHigh = new ForecastData
-                {
-                    DateTime = utcNow.Date.AddHours(14),
-                    Temperature = 72.0,
-                    Conditions = "Sunny",
-                    PrecipitationChance = 5
-                },
-                TomorrowHigh = new ForecastData
-                {
-                    DateTime = utcNow.Date.AddDays(1).AddHours(14),
-                    Temperature = 68.0,
-                    Conditions = "Partly Cloudy",
-                    PrecipitationChance = 20
-                }
+                tonightTemps.Add((time, weatherData.Hourly.Temperature2m[i], i));
+            }
+        }
+
+        if (tonightTemps.Any())
+        {
+            var lowestTemp = tonightTemps.MinBy(t => t.temp);
+
+            forecastStatus.TonightLow = new ForecastData
+            {
+                DateTime = lowestTemp.time,
+                Temperature = lowestTemp.temp,
+                Conditions = getConditionDescription(weatherData.Hourly.WeatherCode[lowestTemp.index]),
+                PrecipitationChance = weatherData.Hourly.PrecipitationProbability?[lowestTemp.index]
             };
         }
+
+        // Find today's high (all hours of today in forecast timezone)
+        var todayTemps = new List<(DateTime time, double temp, int index)>();
+
+        for (var i = 0; i < weatherData.Hourly.Time.Length; i++)
+        {
+            var time = DateTime.Parse(weatherData.Hourly.Time[i]);
+            if (time >= todayStart && time < todayEnd)
+            {
+                todayTemps.Add((time, weatherData.Hourly.Temperature2m[i], i));
+            }
+        }
+
+        if (todayTemps.Any())
+        {
+            var highestTodayTemp = todayTemps.MaxBy(t => t.temp);
+
+            forecastStatus.TodayHigh = new ForecastData
+            {
+                DateTime = highestTodayTemp.time,
+                Temperature = highestTodayTemp.temp,
+                Conditions = getConditionDescription(weatherData.Hourly.WeatherCode[highestTodayTemp.index]),
+                PrecipitationChance = weatherData.Hourly.PrecipitationProbability?[highestTodayTemp.index]
+            };
+        }
+
+        // Find tomorrow's high in forecast timezone
+        var tomorrowStart = todayEnd;
+        var tomorrowEnd = tomorrowStart.AddDays(1);
+        var tomorrowTemps = new List<(DateTime time, double temp, int index)>();
+
+        for (var i = 0; i < weatherData.Hourly.Time.Length; i++)
+        {
+            var time = DateTime.Parse(weatherData.Hourly.Time[i]);
+            if (time >= tomorrowStart && time < tomorrowEnd)
+            {
+                tomorrowTemps.Add((time, weatherData.Hourly.Temperature2m[i], i));
+            }
+        }
+
+        if (tomorrowTemps.Any())
+        {
+            var highestTemp = tomorrowTemps.MaxBy(t => t.temp);
+
+            forecastStatus.TomorrowHigh = new ForecastData
+            {
+                DateTime = highestTemp.time,
+                Temperature = highestTemp.temp,
+                Conditions = getConditionDescription(weatherData.Hourly.WeatherCode[highestTemp.index]),
+                PrecipitationChance = weatherData.Hourly.PrecipitationProbability?[highestTemp.index]
+            };
+        }
+
+        return forecastStatus;
     }
 
     private static string getConditionDescription(int weatherCode)

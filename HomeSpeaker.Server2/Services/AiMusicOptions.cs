@@ -52,6 +52,9 @@ public class AiMusicOptions
         public int ScanIntervalMinutes { get; set; } = 30;
         public int StaleLeaseMinutes { get; set; } = 10;
         public int FailedItemRequeueDelayMinutes { get; set; } = 5;
+        // Items that fail this many times are left failed instead of being re-queued
+        // forever, preventing a poison-pill loop that re-runs ffmpeg+AI every cooldown.
+        public int MaxAttempts { get; set; } = 5;
     }
 
     private string? getConfigurationIssue()

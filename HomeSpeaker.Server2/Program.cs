@@ -169,7 +169,7 @@ builder.Services.AddHttpClient<TemperatureService>();
 builder.Services.AddScoped<ITemperatureService>(sp => sp.GetRequiredService<TemperatureService>());
 builder.Services.AddHttpClient<BloodSugarService>();
 builder.Services.AddScoped<IBloodSugarService>(sp => sp.GetRequiredService<BloodSugarService>());
-builder.Services.AddHttpClient<ForecastService>();
+builder.Services.AddHttpClient<ForecastService>(client => client.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddScoped<IForecastService>(sp => sp.GetRequiredService<ForecastService>());
 
 // Add HttpClient for RadioStreamService (favicon downloads)
@@ -199,7 +199,10 @@ builder.Services.AddHttpClient("BacklightClient", client =>
 });
 
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<MusicContext>("database");
+    // "live" = cheap liveness probe (no I/O); the Docker HEALTHCHECK hits this so a
+    // slow/contended DB can't wedge the container. "ready" = DB-backed readiness.
+    .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(), tags: ["live"])
+    .AddDbContextCheck<MusicContext>("database", tags: ["ready"]);
 
 // Add browser-specific services for Blazor components
 builder.Services.AddSingleton<HomeSpeaker.Server2.Services.PlayerStateService>();
@@ -280,6 +283,13 @@ app.MapHealthChecks("/health", new HealthCheckOptions
         };
         await context.Response.WriteAsJsonAsync(response, context.RequestAborted);
     }
+});
+
+// Liveness probe: only "live"-tagged checks run (no DB), so the Docker HEALTHCHECK
+// can never be wedged by a slow/contended SQLite database.
+app.MapHealthChecks("/alive", new HealthCheckOptions
+{
+    Predicate = r => r.Tags.Contains("live")
 });
 app.UseRouting();
 app.UseCors(LocalCorsPolicy);
