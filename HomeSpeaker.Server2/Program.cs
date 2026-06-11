@@ -198,10 +198,11 @@ builder.Services.AddHttpClient("BacklightClient", client =>
     ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
 });
 
+// A "self" check tagged "live" is already registered by AddServiceDefaults()
+// (Extensions.cs AddDefaultHealthChecks) — the Docker HEALTHCHECK hits /alive, which
+// runs only "live"-tagged checks (no DB). Here we add just the DB-backed readiness
+// check, tagged "ready" so it is excluded from the liveness probe.
 builder.Services.AddHealthChecks()
-    // "live" = cheap liveness probe (no I/O); the Docker HEALTHCHECK hits this so a
-    // slow/contended DB can't wedge the container. "ready" = DB-backed readiness.
-    .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(), tags: ["live"])
     .AddDbContextCheck<MusicContext>("database", tags: ["ready"]);
 
 // Add browser-specific services for Blazor components
