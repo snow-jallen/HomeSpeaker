@@ -64,13 +64,16 @@ services:
     volumes:
       - airplay-shared:/tmp/airplay-shared  # Shared volume for state files
       - /run/user/1000/pulse:/run/user/1000/pulse:rw  # PulseAudio socket
+      - ./scripts:/scripts:ro  # Startup scripts (including ALSA device detection)
     devices:
       - /dev/snd:/dev/snd  # Add direct ALSA device access
     environment:
       - PULSE_SERVER=unix:/run/user/1000/pulse/native
       - PULSE_RUNTIME_PATH=/run/user/1000/pulse
       - AIRPLAY_NAME=${AIRPLAY_NAME:-HomeSpeaker}
-    command: ["/bin/sh", "-c", "exec /init -a \"$$AIRPLAY_NAME\" -o pa"]
+      # ALSA_CARD is auto-detected by start-shairport.sh. Uncomment to override:
+      # - ALSA_CARD=Headphones
+    command: ["/bin/sh", "/scripts/start-shairport.sh"]
     depends_on:
       - homespeaker.server2
 
