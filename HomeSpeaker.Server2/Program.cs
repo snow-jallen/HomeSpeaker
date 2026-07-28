@@ -68,6 +68,7 @@ builder.Services.AddSingleton<IDataStore, OnDiskDataStore>();
 builder.Services.AddSingleton<IFileSource>(_ => new DefaultFileSource(builder.Configuration[ConfigKeys.MediaFolder] ?? throw new MissingConfigException(ConfigKeys.MediaFolder)));
 builder.Services.AddSingleton<ITagParser, DefaultTagParser>();
 builder.Services.AddSingleton<YoutubeService>();
+builder.Services.AddSingleton<AmazonMusicService>();
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
     builder.Services.AddSingleton<WindowsMusicPlayer>();
