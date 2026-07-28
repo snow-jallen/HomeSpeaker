@@ -114,3 +114,5 @@ Host validation for the approved state: `dotnet build D:\homespeaker\HomeSpeaker
 
 ---
 
+## Learnings
+<!-- Append new learnings below. Each entry is something lasting about the project. -->

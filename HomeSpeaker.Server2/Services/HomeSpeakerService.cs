@@ -726,4 +726,207 @@ public class HomeSpeakerService
             logger.LogError(ex, "Error submitting AI feedback");
         }
     }
+
+    public override async Task<GetRadioStreamsReply> GetRadioStreams(GetRadioStreamsRequest request, ServerCallContext context)
+    {
+        var streams = await radioStreamService.GetAllStreamsAsync();
+        var reply = new GetRadioStreamsReply();
+
+        foreach (var stream in streams)
+        {
+            reply.Streams.Add(new RadioStreamMessage
+            {
+                Id = stream.Id,
+                Name = stream.Name,
+                Url = stream.Url,
+                FaviconFileName = stream.FaviconFileName ?? string.Empty,
+                PlayCount = stream.PlayCount,
+                DisplayOrder = stream.DisplayOrder,
+                CreatedAt = Timestamp.FromDateTime(stream.CreatedAt.ToUniversalTime()),
+                LastPlayedAt = stream.LastPlayedAt.HasValue
+                    ? Timestamp.FromDateTime(stream.LastPlayedAt.Value.ToUniversalTime())
+                    : null
+            });
+        }
+
+        return reply;
+    }
+
+    public override async Task<PlayRadioStreamReply> PlayRadioStream(PlayRadioStreamRequest request, ServerCallContext context)
+    {
+        logger.LogInformation("PlayRadioStream request for stream ID {StreamId}", request.StreamId);
+
+        var stream = await radioStreamService.GetStreamByIdAsync(request.StreamId);
+        if (stream == null)
+        {
+            logger.LogWarning("Stream {StreamId} not found", request.StreamId);
+            return new PlayRadioStreamReply { Ok = false };
+        }
+
+        // Increment play count
+        await radioStreamService.IncrementPlayCountAsync(request.StreamId);
+
+        // Play the stream
+        musicPlayer.PlayStream(stream.Url, stream.Name);
+
+        return new PlayRadioStreamReply { Ok = true };
+    }
+
+    public override async Task<RadioStreamMessage> CreateRadioStream(CreateRadioStreamRequest request, ServerCallContext context)
+    {
+        logger.LogInformation("CreateRadioStream request for {Name}", request.Name);
+
+        var stream = await radioStreamService.CreateStreamAsync(
+            request.Name,
+            request.Url,
+            string.IsNullOrWhiteSpace(request.FaviconUrl) ? null : request.FaviconUrl,
+            string.IsNullOrWhiteSpace(request.FaviconFileName) ? null : request.FaviconFileName
+        );
+
+        return new RadioStreamMessage
+        {
+            Id = stream.Id,
+            Name = stream.Name,
+            Url = stream.Url,
+            FaviconFileName = stream.FaviconFileName ?? string.Empty,
+            PlayCount = stream.PlayCount,
+            DisplayOrder = stream.DisplayOrder,
+            CreatedAt = Timestamp.FromDateTime(stream.CreatedAt.ToUniversalTime())
+        };
+    }
+
+    public override async Task<RadioStreamMessage> UpdateRadioStream(UpdateRadioStreamRequest request, ServerCallContext context)
+    {
+        logger.LogInformation("UpdateRadioStream request for stream ID {StreamId}", request.StreamId);
+
+        await radioStreamService.UpdateStreamAsync(
+            request.StreamId,
+            request.Name,
+            request.Url,
+            string.IsNullOrWhiteSpace(request.FaviconUrl) ? null : request.FaviconUrl,
+            string.IsNullOrWhiteSpace(request.FaviconFileName) ? null : request.FaviconFileName
+        );
+
+        var stream = await radioStreamService.GetStreamByIdAsync(request.StreamId);
+
+        return new RadioStreamMessage
+        {
+            Id = stream!.Id,
+            Name = stream.Name,
+            Url = stream.Url,
+            FaviconFileName = stream.FaviconFileName ?? string.Empty,
+            PlayCount = stream.PlayCount,
+            DisplayOrder = stream.DisplayOrder,
+            CreatedAt = Timestamp.FromDateTime(stream.CreatedAt.ToUniversalTime()),
+            LastPlayedAt = stream.LastPlayedAt.HasValue
+                ? Timestamp.FromDateTime(stream.LastPlayedAt.Value.ToUniversalTime())
+                : null
+        };
+    }
+
+    public override async Task<DeleteRadioStreamReply> DeleteRadioStream(DeleteRadioStreamRequest request, ServerCallContext context)
+    {
+        logger.LogInformation("DeleteRadioStream request for stream ID {StreamId}", request.StreamId);
+
+        await radioStreamService.DeleteStreamAsync(request.StreamId);
+        return new DeleteRadioStreamReply { Success = true };
+    }
+
+    public override Task<SetRepeatModeReply> SetRepeatMode(SetRepeatModeRequest request, ServerCallContext context)
+    {
+        logger.LogInformation("SetRepeatMode request: {RepeatMode}", request.RepeatMode);
+        musicPlayer.RepeatMode = request.RepeatMode;
+        return Task.FromResult(new SetRepeatModeReply { Success = true });
+    }
+
+    public override Task<GetRepeatModeReply> GetRepeatMode(GetRepeatModeRequest request, ServerCallContext context)
+    {
+        return Task.FromResult(new GetRepeatModeReply { RepeatMode = musicPlayer.RepeatMode });
+    }
+
+    public override Task<SetSleepTimerReply> SetSleepTimer(SetSleepTimerRequest request, ServerCallContext context)
+    {
+        logger.LogInformation("SetSleepTimer request: {Minutes} minutes", request.Minutes);
+        musicPlayer.SetSleepTimer(request.Minutes);
+        return Task.FromResult(new SetSleepTimerReply { Success = true });
+    }
+
+    public override Task<CancelSleepTimerReply> CancelSleepTimer(CancelSleepTimerRequest request, ServerCallContext context)
+    {
+        logger.LogInformation("CancelSleepTimer request");
+        musicPlayer.CancelSleepTimer();
+        return Task.FromResult(new CancelSleepTimerReply { Success = true });
+    }
+
+    public override Task<GetSleepTimerReply> GetSleepTimer(GetSleepTimerRequest request, ServerCallContext context)
+    {
+        var remaining = musicPlayer.SleepTimerRemaining;
+        return Task.FromResult(new GetSleepTimerReply
+        {
+            Active = musicPlayer.SleepTimerActive,
+            RemainingSeconds = remaining.HasValue ? (int)remaining.Value.TotalSeconds : 0
+        });
+    }
+
+    public override Task<GetAmazonMusicStatusReply> GetAmazonMusicStatus(GetAmazonMusicStatusRequest request, ServerCallContext context)
+    {
+        var isConfigured = this.amazonMusicService.IsConfigured();
+        var cliAvailable = this.amazonMusicService.IsCliAvailable();
+
+        var instructions = isConfigured && cliAvailable
+            ? string.Empty
+            : buildSetupInstructions(isConfigured, cliAvailable);
+
+        return Task.FromResult(new GetAmazonMusicStatusReply
+        {
+            IsConfigured = isConfigured,
+            CliAvailable = cliAvailable,
+            SetupInstructions = instructions
+        });
+    }
+
+    public override Task<GetAmazonPlaylistsReply> GetAmazonPlaylists(GetAmazonPlaylistsRequest request, ServerCallContext context)
+    {
+        this.logger.LogInformation("GetAmazonPlaylists called");
+        var playlists = this.amazonMusicService.GetConfiguredPlaylists().ToList();
+
+        var reply = new GetAmazonPlaylistsReply { IsConfigured = playlists.Count > 0 };
+        reply.Playlists.AddRange(playlists.Select(p => new AmazonPlaylistMessage
+        {
+            PlaylistId = p.Id,
+            PlaylistName = p.Name,
+            PlaylistUrl = p.Url,
+            TrackCount = p.TrackCount
+        }));
+
+        return Task.FromResult(reply);
+    }
+
+    public override async Task<PlayAmazonPlaylistReply> PlayAmazonPlaylist(PlayAmazonPlaylistRequest request, ServerCallContext context)
+    {
+        this.logger.LogInformation("PlayAmazonPlaylist called for id '{PlaylistId}'", request.PlaylistId);
+        var (success, message) = await this.amazonMusicService.PlayAmazonPlaylistAsync(request.PlaylistId);
+        return new PlayAmazonPlaylistReply { Started = success, Message = message };
+    }
+
+    private static string buildSetupInstructions(bool isConfigured, bool cliAvailable)
+    {
+        var steps = new List<string>();
+
+        if (!cliAvailable)
+        {
+            steps.Add("1. Install the amazon-music CLI: pip install amazon-music");
+            steps.Add("2. Get your token at https://amz.dezalty.com/login");
+            steps.Add("3. Add your token to appsettings.json: \"AmazonMusic\": { \"Token\": \"<your-token>\" }");
+        }
+
+        if (!isConfigured)
+        {
+            steps.Add("4. Find your playlist URLs at https://music.amazon.com and add them to appsettings.json:");
+            steps.Add("   \"Playlists\": [{ \"Id\": \"favorites\", \"Name\": \"My Favorites\", \"Url\": \"https://music.amazon.com/playlists/B0FBL3CC8M\" }]");
+        }
+
+        return string.Join("\n", steps);
+    }
+
 }
