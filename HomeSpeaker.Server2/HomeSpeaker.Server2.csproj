@@ -54,6 +54,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="AngleSharp" Version="1.6.0" />
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
     <PackageReference Include="YoutubeExplode" Version="6.6.0" />
     <PackageReference Include="YoutubeExplode.Converter" Version="6.6.0" />
   </ItemGroup>
