@@ -1,0 +1,230 @@
+@page "/autoplay"
+@using HomeSpeaker.Server2.Models
+@inject AutoPlayService autoPlayService
+@inject HomeSpeakerService svc
+@inject IJSRuntime JsRuntime
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Autoplay</h3>
+    <button @onclick="SaveSettings" class="btn btn-success" disabled="@isSaving">
+        @if (isSaving)
+        {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        }
+        else
+        {
+            <span class="oi oi-check me-1"></span>
+        }
+        Save
+    </button>
+</div>
+
+@if (isLoading)
+{
+    <div class="d-flex justify-content-center p-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Silence timeout (minutes)</label>
+                    <input type="number" min="1" max="1440" class="form-control" @bind="settings.SilenceTimeoutMinutes" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Autoplay volume</label>
+                    <input type="number" min="0" max="100" class="form-control" @bind="settings.VolumeLevel" />
+                </div>
+            </div>
+            <div class="form-text mt-2">
+                When autoplay chooses a playlist, it shuffles that playlist before starting playback.
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Configured sources</h5>
+                </div>
+                <div class="card-body">
+                    @if (settings.Sources.Count == 0)
+                    {
+                        <p class="text-muted mb-0">No autoplay sources selected.</p>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var source in settings.Sources)
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    <div>
+                                        <span class="badge bg-secondary me-2">@GetSourceTypeLabel(source.SourceType)</span>
+                                        <span>@source.DisplayName</span>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveSource(source)">
+                                        <span class="oi oi-trash"></span>
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Add source</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Playlist</label>
+                        <div class="input-group">
+                            <select class="form-select" @bind="selectedPlaylistName">
+                                <option value="">Select a playlist...</option>
+                                @foreach (var playlistName in playlistNames)
+                                {
+                                    <option value="@playlistName">@playlistName</option>
+                                }
+                            </select>
+                            <button class="btn btn-outline-primary" @onclick="AddPlaylistSource" disabled="@string.IsNullOrWhiteSpace(selectedPlaylistName)">
+                                Add
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="form-label">Stream</label>
+                        <div class="input-group">
+                            <select class="form-select" @bind="selectedStreamIdText">
+                                <option value="">Select a stream...</option>
+                                @foreach (var stream in streams)
+                                {
+                                    <option value="@stream.Id">@stream.Name</option>
+                                }
+                            </select>
+                            <button class="btn btn-outline-primary" @onclick="AddStreamSource" disabled="@string.IsNullOrWhiteSpace(selectedStreamIdText)">
+                                Add
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private AutoPlaySettingsViewModel settings = new();
+    private List<string> playlistNames = new();
+    private List<RadioStreamViewModel> streams = new();
+    private bool isLoading = true;
+    private bool isSaving;
+    private string selectedPlaylistName = string.Empty;
+    private string selectedStreamIdText = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            settings = await autoPlayService.GetSettingsAsync();
+            playlistNames = (await svc.GetPlaylistsAsync())
+                .Select(playlist => playlist.Name)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            streams = (await svc.GetRadioStreamsAsync()).ToList();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void AddPlaylistSource()
+    {
+        if (string.IsNullOrWhiteSpace(selectedPlaylistName) ||
+            settings.Sources.Any(source =>
+                source.SourceType == AutoPlaySourceType.Playlist &&
+                string.Equals(source.PlaylistName, selectedPlaylistName, StringComparison.OrdinalIgnoreCase)))
+        {
+            selectedPlaylistName = string.Empty;
+            return;
+        }
+
+        settings.Sources.Add(new AutoPlaySourceViewModel
+        {
+            SourceType = AutoPlaySourceType.Playlist,
+            PlaylistName = selectedPlaylistName,
+            DisplayName = selectedPlaylistName
+        });
+        selectedPlaylistName = string.Empty;
+    }
+
+    private void AddStreamSource()
+    {
+        if (!int.TryParse(selectedStreamIdText, out var streamId))
+        {
+            selectedStreamIdText = string.Empty;
+            return;
+        }
+
+        var stream = streams.FirstOrDefault(item => item.Id == streamId);
+        if (stream == null || settings.Sources.Any(source => source.SourceType == AutoPlaySourceType.RadioStream && source.RadioStreamId == streamId))
+        {
+            selectedStreamIdText = string.Empty;
+            return;
+        }
+
+        settings.Sources.Add(new AutoPlaySourceViewModel
+        {
+            SourceType = AutoPlaySourceType.RadioStream,
+            RadioStreamId = streamId,
+            DisplayName = stream.Name
+        });
+        selectedStreamIdText = string.Empty;
+    }
+
+    private void RemoveSource(AutoPlaySourceViewModel source)
+    {
+        settings.Sources.Remove(source);
+    }
+
+    private async Task SaveSettings()
+    {
+        isSaving = true;
+
+        try
+        {
+            await autoPlayService.SaveSettingsAsync(settings);
+            settings = await autoPlayService.GetSettingsAsync();
+            await JsRuntime.InvokeVoidAsync("alert", "Autoplay settings saved.");
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", $"Failed to save autoplay settings: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private static string GetSourceTypeLabel(AutoPlaySourceType sourceType) =>
+        sourceType == AutoPlaySourceType.Playlist ? "Playlist" : "Stream";
+}

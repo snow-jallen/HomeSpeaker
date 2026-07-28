@@ -58,6 +58,7 @@ builder.Services.AddHostedService<DailyAnchorWorker>();
 builder.Services.AddHostedService<AirPlayReceiverService>();
 builder.Services.AddScoped<HomeSpeakerService>(); // Scoped for Blazor components
 builder.Services.AddScoped<PlaylistService>();
+builder.Services.AddScoped<AutoPlayService>();
 builder.Services.AddScoped<AnchorService>();
 builder.Services.AddScoped<OfflineDownloadService>();
 builder.Services.AddScoped<IAnchorNotificationService, AnchorNotificationService>();
@@ -87,6 +88,7 @@ builder.Services.AddSingleton<IMusicPlayer>(services =>
 });
 builder.Services.AddSingleton<Mp3Library>();
 builder.Services.AddHostedService<LifecycleEvents>();
+builder.Services.AddHostedService<AutoPlayMonitorService>();
 
 // Add memory cache for caching services
 builder.Services.AddMemoryCache();
