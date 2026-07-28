@@ -82,7 +82,7 @@ public class PlaylistService
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task PlayPlaylistAsync(string playlistName)
+    public async Task PlayPlaylistAsync(string playlistName, bool shuffleOverride = false)
     {
         var playlist = await dbContext.Playlists.Include(p => p.Songs).AsNoTracking().FirstOrDefaultAsync(p => p.Name == playlistName);
         if (playlist == null)
@@ -95,18 +95,18 @@ public class PlaylistService
         // Performance: Build dictionary once instead of O(n) lookup for each song
         var songsByPath = mp3Library.Songs.Where(s => s.Path != null).ToDictionary(s => s.Path!, s => s);
 
-        IEnumerable<PlaylistItem> songsToPlay;
-        if (playlist.AlwaysShuffle)
+        IEnumerable<PlaylistItem> songsToPlay = playlist.Songs.OrderBy(s => s.Order);
+        if (shuffleOverride)
+        {
+            songsToPlay = shufflePlaylistItems(playlist.Songs);
+        }
+        else if (playlist.AlwaysShuffle)
         {
             logger.LogInformation("Playlist {PlaylistName} has AlwaysShuffle enabled, shuffling before playing", playlistName);
             await ShufflePlaylistAsync(playlistName);
             // Reload playlist to get shuffled order
             playlist = await dbContext.Playlists.Include(p => p.Songs).FirstOrDefaultAsync(p => p.Name == playlistName);
             songsToPlay = playlist!.Songs.OrderBy(s => s.Order);
-        }
-        else
-        {
-            songsToPlay = playlist.Songs.OrderBy(s => s.Order);
         }
 
         foreach (var playlistItem in songsToPlay)
@@ -243,6 +243,19 @@ public class PlaylistService
         logger.LogInformation("Successfully shuffled {Count} songs in playlist {PlaylistName}", shuffledSongs.Count, playlistName);
 
         return shuffledSongs.Select(s => s.Item.SongPath).ToList();
+    }
+
+    private IReadOnlyList<PlaylistItem> shufflePlaylistItems(IEnumerable<PlaylistItem> playlistItems)
+    {
+        var songsWithArtists = playlistItems.Select(item =>
+        {
+            var song = mp3Library.Songs.FirstOrDefault(s => s.Path == item.SongPath);
+            return new { Item = item, Artist = song?.Artist ?? "Unknown" };
+        }).ToList();
+
+        return shuffleWithArtistDistribution(songsWithArtists)
+            .Select(song => song.Item)
+            .ToList();
     }
 
     private List<T> shuffleWithArtistDistribution<T>(List<T> items) where T : class

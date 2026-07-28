@@ -496,6 +496,52 @@ namespace HomeSpeaker.Server2.Migrations
                     b.ToTable("AnchorDefinitions");
                 });
 
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.AutoPlaySettingsEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SilenceTimeoutMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("VolumeLevel")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AutoPlaySettings");
+                });
+
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.AutoPlaySourceEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AutoPlaySettingsId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PlaylistName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("RadioStreamId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AutoPlaySettingsId", "SortOrder");
+
+                    b.ToTable("AutoPlaySources");
+                });
+
             modelBuilder.Entity("HomeSpeaker.Server2.Data.DailyAnchorEntity", b =>
                 {
                     b.Property<int>("Id")
@@ -745,6 +791,15 @@ namespace HomeSpeaker.Server2.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.AutoPlaySourceEntity", b =>
+                {
+                    b.HasOne("HomeSpeaker.Server2.Data.AutoPlaySettingsEntity", null)
+                        .WithMany("Sources")
+                        .HasForeignKey("AutoPlaySettingsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("HomeSpeaker.Server2.Data.UserAnchorEntity", b =>
                 {
                     b.HasOne("HomeSpeaker.Server2.Data.AnchorDefinitionEntity", "AnchorDefinition")
@@ -754,6 +809,11 @@ namespace HomeSpeaker.Server2.Migrations
                         .IsRequired();
 
                     b.Navigation("AnchorDefinition");
+                });
+
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.AutoPlaySettingsEntity", b =>
+                {
+                    b.Navigation("Sources");
                 });
 
             modelBuilder.Entity("HomeSpeaker.Server2.Data.Playlist", b =>
