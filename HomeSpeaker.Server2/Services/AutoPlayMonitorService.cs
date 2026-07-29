@@ -76,6 +76,12 @@ public sealed class AutoPlayMonitorService : BackgroundService
             return;
         }
 
+        if (isInSleepWindow())
+        {
+            silenceStartedAt = now;
+            return;
+        }
+
         await using var scope = serviceProvider.CreateAsyncScope();
         var autoPlayService = scope.ServiceProvider.GetRequiredService<AutoPlayService>();
         var settings = await autoPlayService.GetSettingsAsync(cancellationToken);
@@ -94,5 +100,13 @@ public sealed class AutoPlayMonitorService : BackgroundService
         }
 
         silenceStartedAt = now;
+    }
+
+    private bool isInSleepWindow()
+    {
+        var localNow = timeProvider.GetLocalNow().TimeOfDay;
+        var start = new TimeSpan(22, 0, 0);
+        var end = new TimeSpan(6, 30, 0);
+        return localNow >= start || localNow < end;
     }
 }
