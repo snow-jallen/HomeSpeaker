@@ -146,7 +146,19 @@
         {
             volumeLevel = value;
             logger.LogInformation("Setting volume to {volume}", volumeLevel);
-            _ = svc.SetVolumeAsync(volumeLevel);
+            _ = setVolumeSafeAsync(volumeLevel);
+        }
+    }
+
+    private async Task setVolumeSafeAsync(int volume)
+    {
+        try
+        {
+            await svc.SetVolumeAsync(volume);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to set volume to {volume}", volume);
         }
     }
 

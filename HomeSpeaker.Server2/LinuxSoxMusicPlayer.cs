@@ -17,6 +17,23 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     private bool disposed;
     private bool deviceDetectionComplete;
 
+    // Volume set/get coordination. amixer only offers ~1% granularity over the
+    // 40-100 usable range, so the 0-100 slider can't be losslessly round-tripped
+    // through ALSA for every value (61 raw steps can't represent 101 slider
+    // positions). Caching the slider value we last successfully wrote lets
+    // GetVolume() return that exact value back when the hardware still reads the
+    // same raw level, instead of a quantization-rounded neighbor - which is what
+    // made the UI slider visibly "snap" a step within a couple seconds of being
+    // dragged. When the raw level no longer matches (e.g. the physical volume
+    // knob was turned), we fall through to recomputing from the raw reading so
+    // real external changes still show up.
+    private readonly SemaphoreSlim volumeSetLock = new(1, 1);
+    private int volumeRequestVersion;
+    private int? lastSetActualLevel;
+    private int? lastSetSliderLevel;
+    private int consecutiveAmixerFailures;
+    private bool redetectInProgress;
+
     public LinuxSoxMusicPlayer(ILogger<LinuxSoxMusicPlayer> logger, Mp3Library library, ILoggerFactory loggerFactory, AudioDeviceDetector audioDeviceDetector, TimeProvider timeProvider)
     {
         this.logger = logger;
@@ -236,6 +253,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
                 stopPlaying();
                 sleepTimerCts?.Dispose();
                 icyReader.Dispose();
+                volumeSetLock.Dispose();
             }
 
             disposed = true;
@@ -361,7 +379,16 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         {
             var result = await CliWrap.Cli.Wrap("amixer")
                                  .WithArguments($"-c {card} sget {mixer}")
+                                 .WithValidation(CliWrap.CommandResultValidation.None)
                                   .ExecuteBufferedAsync(CancellationToken.None);
+
+            if (result.ExitCode != 0)
+            {
+                logger.LogWarning("amixer sget exited with code {Code} for card {Card} mixer {Mixer}: {Error}",
+                    result.ExitCode, card, mixer, result.StandardError);
+                await noteAmixerFailureAsync();
+                return lastSetSliderLevel ?? 50;
+            }
 
             // Try to find a line with volume percentage
             var lines = result.StandardOutput.Split(Environment.NewLine);
@@ -377,42 +404,125 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
                     .Select(p => int.TryParse(p, out var v) ? v : -1)
                     .FirstOrDefault(v => v >= 0);
 
-                // Map the raw ALSA reading back into the 0-100 slider range.
-                return ActualToSlider(actual);
+                consecutiveAmixerFailures = 0;
+
+                // If the raw ALSA level still matches what we last wrote, hand back the
+                // exact slider value we set rather than re-deriving it - the 40-100 raw
+                // range can't represent all 101 slider positions, so re-deriving would
+                // sometimes land one step off and make the UI slider jitter on its own.
+                // If the raw level has moved (e.g. someone turned the physical knob),
+                // fall through and recompute so the real change is reflected.
+                if (lastSetActualLevel.HasValue && actual == lastSetActualLevel.Value)
+                {
+                    return lastSetSliderLevel!.Value;
+                }
+
+                var slider = ActualToSlider(actual);
+                lastSetActualLevel = actual;
+                lastSetSliderLevel = slider;
+                return slider;
             }
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to get volume from card {Card} mixer {Mixer}", card, mixer);
+            await noteAmixerFailureAsync();
         }
 
-        return 50; // Default fallback
+        return lastSetSliderLevel ?? 50; // Default fallback
     }
 
     public void SetVolume(int level0to100)
     {
-        _ = setVolumeAsync(level0to100);
+        var myVersion = Interlocked.Increment(ref volumeRequestVersion);
+        _ = setVolumeAsync(level0to100, myVersion);
     }
 
-    private async Task setVolumeAsync(int level0to100)
+    private async Task setVolumeAsync(int level0to100, int myVersion)
     {
         await ensureDeviceDetectedAsync();
 
-        var card = audioDeviceDetector.SelectedCard ?? "0";
-        var mixer = audioDeviceDetector.SelectedMixerControl ?? "PCM";
-
-        var actualLevel = SliderToActual(level0to100);
-        logger.LogInformation("Setting volume on card {Card} mixer {Mixer}: {Slider}% (slider) -> {Actual}% (amixer)",
-            card, mixer, Math.Max(0, Math.Min(100, level0to100)), actualLevel);
-
+        await volumeSetLock.WaitAsync(CancellationToken.None);
         try
         {
-            Process.Start("amixer", $"-c {card} sset {mixer} {actualLevel}%");
+            // A newer SetVolume call already arrived while we were waiting our turn
+            // (e.g. the user dragged the slider several times in a row) - only the
+            // most recent request should actually reach amixer.
+            if (myVersion != Volatile.Read(ref volumeRequestVersion))
+            {
+                return;
+            }
+
+            var card = audioDeviceDetector.SelectedCard ?? "0";
+            var mixer = audioDeviceDetector.SelectedMixerControl ?? "PCM";
+            var slider = Math.Max(0, Math.Min(100, level0to100));
+            var actualLevel = SliderToActual(slider);
+
+            logger.LogInformation("Setting volume on card {Card} mixer {Mixer}: {Slider}% (slider) -> {Actual}% (amixer)",
+                card, mixer, slider, actualLevel);
+
+            try
+            {
+                var result = await CliWrap.Cli.Wrap("amixer")
+                                     .WithArguments($"-c {card} sset {mixer} {actualLevel}%")
+                                     .WithValidation(CliWrap.CommandResultValidation.None)
+                                     .ExecuteBufferedAsync(CancellationToken.None);
+
+                if (result.ExitCode == 0)
+                {
+                    consecutiveAmixerFailures = 0;
+                    lastSetActualLevel = actualLevel;
+                    lastSetSliderLevel = slider;
+                }
+                else
+                {
+                    logger.LogWarning("amixer sset exited with code {Code} for card {Card} mixer {Mixer}: {Error}",
+                        result.ExitCode, card, mixer, result.StandardError);
+                    await noteAmixerFailureAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to set volume on card {Card} mixer {Mixer}", card, mixer);
+                await noteAmixerFailureAsync();
+            }
+        }
+        finally
+        {
+            volumeSetLock.Release();
+        }
+    }
+
+    // amixer failures usually mean the card we auto-detected at startup no longer
+    // exists - most commonly because the USB speaker was unplugged/replugged (or
+    // reset by its hub) and ALSA renumbered the cards. Re-running detection lets
+    // us recover without requiring a restart.
+    private async Task noteAmixerFailureAsync()
+    {
+        if (Interlocked.Increment(ref consecutiveAmixerFailures) < 3 || redetectInProgress)
+        {
+            return;
+        }
+
+        redetectInProgress = true;
+        try
+        {
+            logger.LogWarning("Repeated amixer failures on card {Card}; re-running audio device detection",
+                audioDeviceDetector.SelectedCard);
+            await audioDeviceDetector.DetectAndSelectDeviceAsync();
+            consecutiveAmixerFailures = 0;
+            lastSetActualLevel = null;
+            lastSetSliderLevel = null;
+            logger.LogInformation("Re-detected audio device: card={Card} mixer={Mixer}",
+                audioDeviceDetector.SelectedCard, audioDeviceDetector.SelectedMixerControl);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to set volume, trying fallback");
-            Process.Start("amixer", $"sset PCM,0 {actualLevel}%");
+            logger.LogError(ex, "Failed to re-detect audio device after repeated amixer failures");
+        }
+        finally
+        {
+            redetectInProgress = false;
         }
     }
 

@@ -630,6 +630,7 @@ public static class HomeSpeakerRestEndpoints
     private static async Task<IResult> playerControl(
         [FromBody] PlayerControlRequest request,
         [FromServices] IMusicPlayer musicPlayer,
+        [FromServices] PlayerStateService playerStateService,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("PlayerControl");
@@ -666,6 +667,7 @@ public static class HomeSpeakerRestEndpoints
             if (request.SetVolume)
             {
                 musicPlayer.SetVolume(request.VolumeLevel);
+                playerStateService.UpdateVolume(request.VolumeLevel);
                 activity?.SetTag("volume_level", request.VolumeLevel);
                 activity?.AddEvent(new ActivityEvent($"Volume set to {request.VolumeLevel}"));
             }
