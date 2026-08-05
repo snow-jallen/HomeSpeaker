@@ -173,6 +173,20 @@ struct MusicLibraryView: View {
                                 ) { action in
                                     await handleAction(action, song: song)
                                 }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button {
+                                        Task { await handleAction(.play, song: song) }
+                                    } label: {
+                                        Label("Play", systemImage: "play.fill")
+                                    }
+                                    .tint(.green)
+                                    Button {
+                                        Task { await handleAction(.enqueue, song: song) }
+                                    } label: {
+                                        Label("Queue", systemImage: "text.badge.plus")
+                                    }
+                                    .tint(.blue)
+                                }
                             }
                         } label: {
                             HStack(spacing: 8) {
@@ -242,6 +256,23 @@ struct MusicLibraryView: View {
                                     }
                                 }
                             }
+                            // Attached to the label, not the DisclosureGroup, so the
+                            // actions apply to the album header row only and don't
+                            // propagate to the song rows inside.
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button {
+                                    Task { await handleAlbumAction(.play, album: albumEntry.album) }
+                                } label: {
+                                    Label("Play", systemImage: "play.fill")
+                                }
+                                .tint(.green)
+                                Button {
+                                    Task { await handleAlbumAction(.enqueue, album: albumEntry.album) }
+                                } label: {
+                                    Label("Queue", systemImage: "text.badge.plus")
+                                }
+                                .tint(.blue)
+                            }
                         }
                     }
                 } label: {
@@ -287,6 +318,20 @@ struct MusicLibraryView: View {
                                 systemImage: "arrow.down.circle"
                             )
                         }
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button {
+                            Task { await handleArtistAction(.play, artist: artistEntry.artist) }
+                        } label: {
+                            Label("Play", systemImage: "play.fill")
+                        }
+                        .tint(.green)
+                        Button {
+                            Task { await handleArtistAction(.enqueue, artist: artistEntry.artist) }
+                        } label: {
+                            Label("Queue", systemImage: "text.badge.plus")
+                        }
+                        .tint(.blue)
                     }
                 }
             }
