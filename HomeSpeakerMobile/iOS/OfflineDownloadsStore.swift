@@ -60,6 +60,10 @@ enum OfflineDownloadPaths {
         try? FileManager.default.moveItem(at: legacyURL, to: targetURL)
     }
 
+    static func fileStem(for songPath: String) -> String {
+        encodedFileStem(for: songPath)
+    }
+
     private static func encodedFileStem(for value: String) -> String {
         Data(value.utf8)
             .base64EncodedString()
@@ -329,6 +333,54 @@ final class OfflineDownloadsStore {
     private var queuedKeys: [OfflineSongKey] = []
     @ObservationIgnored private var downloadTask: Task<Void, Never>?
 
+    // status(for:) runs for every visible row on every render. Without these
+    // caches each call re-listed the downloads directory and rebuilt key sets
+    // from scratch, which froze the main thread for seconds on large
+    // libraries. All are invalidated together at the mutation chokepoints.
+    @ObservationIgnored private var downloadedStemsCache: [UUID: Set<String>] = [:]
+    @ObservationIgnored private var desiredKeysCache: [UUID: Set<OfflineSongKey>] = [:]
+    @ObservationIgnored private var downloadKeysCache: Set<OfflineSongKey>?
+    @ObservationIgnored private var queuedKeySetCache: Set<OfflineSongKey>?
+
+    private func invalidateStatusCaches() {
+        downloadedStemsCache.removeAll()
+        desiredKeysCache.removeAll()
+        downloadKeysCache = nil
+        queuedKeySetCache = nil
+    }
+
+    private var downloadKeys: Set<OfflineSongKey> {
+        if let downloadKeysCache { return downloadKeysCache }
+        let keys = Set(localState.downloads.map(\.key))
+        downloadKeysCache = keys
+        return keys
+    }
+
+    private var queuedKeySet: Set<OfflineSongKey> {
+        if let queuedKeySetCache { return queuedKeySetCache }
+        let keys = Set(queuedKeys)
+        queuedKeySetCache = keys
+        return keys
+    }
+
+    private func downloadedStems(for connectionId: UUID) -> Set<String> {
+        if let cached = downloadedStemsCache[connectionId] { return cached }
+        let directoryURL = OfflineDownloadPaths.directory(for: connectionId)
+        let names = (try? FileManager.default.contentsOfDirectory(
+            at: directoryURL,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ))?.map(\.lastPathComponent) ?? []
+        let stems = Set(names.map { String($0.prefix(while: { $0 != "." })) })
+        downloadedStemsCache[connectionId] = stems
+        return stems
+    }
+
+    private func hasDownloadedFile(for key: OfflineSongKey) -> Bool {
+        guard !key.songPath.isEmpty else { return false }
+        return downloadedStems(for: key.connectionId).contains(OfflineDownloadPaths.fileStem(for: key.songPath))
+    }
+
     init() {
         loadManifest()
         repairDownloadedRecords()
@@ -500,6 +552,7 @@ final class OfflineDownloadsStore {
         serverManifest = nil
         librarySongs = []
         lastError = nil
+        invalidateStatusCaches()
 
         guard connection != nil else { return }
         Task { await refreshLibrary(force: true) }
@@ -519,6 +572,7 @@ final class OfflineDownloadsStore {
 
         do {
             serverManifest = try await api.getOfflineDownloadManifest()
+            invalidateStatusCaches()
             lastError = nil
 
             if needsLegacySongResolution(for: connection.id), librarySongs.isEmpty {
@@ -529,6 +583,7 @@ final class OfflineDownloadsStore {
 
             if try await migrateLegacySelectionsIfNeeded(connection: connection, api: api) {
                 serverManifest = try await api.getOfflineDownloadManifest()
+                invalidateStatusCaches()
             }
 
             syncDesiredState()
@@ -556,7 +611,7 @@ final class OfflineDownloadsStore {
         let existingDownloads = localState.downloads.filter {
             $0.key.connectionId == connection.id &&
                 !$0.key.songPath.isEmpty &&
-                OfflineDownloadPaths.existingFileURL(for: $0.key.songPath, connectionId: connection.id) != nil
+                hasDownloadedFile(for: $0.key)
         }
 
         let songs = existingDownloads.map { record in
@@ -644,6 +699,7 @@ final class OfflineDownloadsStore {
         failedMessages.removeValue(forKey: song.key)
         if !queuedKeys.contains(song.key) {
             queuedKeys.append(song.key)
+            queuedKeySetCache = nil
         }
         ensureDownloadLoop()
     }
@@ -666,9 +722,8 @@ final class OfflineDownloadsStore {
 
     private func status(for key: OfflineSongKey) -> OfflineDownloadStatus {
         if activeDownloadKey == key { return .downloading }
-        if queuedKeys.contains(key) { return .queued }
-        if localState.downloads.contains(where: { $0.key == key }) &&
-            OfflineDownloadPaths.existingFileURL(for: key.songPath, connectionId: key.connectionId) != nil {
+        if queuedKeySet.contains(key) { return .queued }
+        if downloadKeys.contains(key) && hasDownloadedFile(for: key) {
             return .downloaded
         }
         if failedMessages[key] != nil { return .failed }
@@ -678,11 +733,14 @@ final class OfflineDownloadsStore {
 
     private func desiredSongKeys(for connectionId: UUID) -> Set<OfflineSongKey> {
         guard currentConnection?.id == connectionId else { return [] }
-        return Set(manifestSongs.compactMap { entry in
+        if let cached = desiredKeysCache[connectionId] { return cached }
+        let keys = Set(manifestSongs.compactMap { entry -> OfflineSongKey? in
             let path = entry.songPath
             guard !path.isEmpty else { return nil }
             return OfflineSongKey(connectionId: connectionId, songPath: path)
         })
+        desiredKeysCache[connectionId] = keys
+        return keys
     }
 
     private func syncDesiredState() {
@@ -707,12 +765,18 @@ final class OfflineDownloadsStore {
         queuedKeys.removeAll { !desired.contains($0) }
         failedMessages = failedMessages.filter { desired.contains($0.key) }
 
+        // Sets computed once up front - the naive per-key linear scans made
+        // this loop quadratic in the number of selected songs.
+        let existingDownloadKeys = Set(localState.downloads.map(\.key))
+        var queued = Set(queuedKeys)
+        let manifestPaths = Set(manifestSongs.map { $0.songPath.lowercased() })
         for key in desired {
-            guard localState.downloads.contains(where: { $0.key == key }) == false else { continue }
+            guard existingDownloadKeys.contains(key) == false else { continue }
             guard activeDownloadKey != key else { continue }
-            guard queuedKeys.contains(key) == false else { continue }
-            guard manifestSong(for: key) != nil else { continue }
+            guard queued.contains(key) == false else { continue }
+            guard manifestPaths.contains(key.songPath.lowercased()) else { continue }
             queuedKeys.append(key)
+            queued.insert(key)
         }
 
         persistManifest()
@@ -750,6 +814,7 @@ final class OfflineDownloadsStore {
     private func nextQueuedKey() -> OfflineSongKey? {
         guard let first = queuedKeys.first else { return nil }
         queuedKeys.removeFirst()
+        queuedKeySetCache = nil
         activeDownloadKey = first
         return first
     }
@@ -798,8 +863,7 @@ final class OfflineDownloadsStore {
     private func repairDownloadedRecords() {
         let originalCount = localState.downloads.count
         localState.downloads.removeAll {
-            !$0.key.songPath.isEmpty &&
-                OfflineDownloadPaths.existingFileURL(for: $0.key.songPath, connectionId: $0.key.connectionId) == nil
+            !$0.key.songPath.isEmpty && !hasDownloadedFile(for: $0.key)
         }
         if originalCount != localState.downloads.count {
             persistManifest()
@@ -1082,6 +1146,9 @@ final class OfflineDownloadsStore {
     }
 
     private func persistManifest() {
+        // persistManifest follows every mutation of downloads/queue/manifest
+        // state, so it doubles as the cache-invalidation chokepoint.
+        invalidateStatusCaches()
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         guard let data = try? encoder.encode(localState) else { return }

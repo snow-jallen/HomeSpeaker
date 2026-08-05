@@ -14,6 +14,7 @@ struct MusicLibraryView: View {
     @State private var expandedAlbums: Set<String> = []
     @State private var editingSong: Song?
     @State private var editingAlbumArt: AlbumArtEditTarget?
+    @State private var loadedConnectionId: UUID?
 
     var filteredSongs: [Song] {
         if searchText.isEmpty { return songs }
@@ -95,7 +96,12 @@ struct MusicLibraryView: View {
             }
             .task(id: store.selectedConnection?.id) {
                 offlineDownloads.updateConnection(store.selectedConnection)
-                await loadSongs()
+                // .task re-fires every time the tab appears; only re-fetch the
+                // full library when the server changed or nothing is loaded.
+                // Pull-to-refresh handles manual reloads.
+                if songs.isEmpty || loadedConnectionId != store.selectedConnection?.id {
+                    await loadSongs()
+                }
             }
             .sheet(item: $editingSong) { song in
                 if let api = store.api {
@@ -398,6 +404,7 @@ struct MusicLibraryView: View {
             let fetchedSongs = try await api.getSongs()
             error = nil
             songs = fetchedSongs
+            loadedConnectionId = store.selectedConnection?.id
             offlineDownloads.updateLibrary(fetchedSongs, connection: store.selectedConnection)
         } catch {
             let offlineSongs = offlineDownloads.offlineLibrarySongs(connection: store.selectedConnection)
