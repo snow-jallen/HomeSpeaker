@@ -10,6 +10,7 @@ public sealed class AutoPlayMonitorService : BackgroundService
     private bool wasPlaying;
     private bool autoplayIsPlaying;
     private bool armed;
+    private bool wasInQuietHours;
     private DateTimeOffset? silenceStartedAt;
 
     public AutoPlayMonitorService(
@@ -27,10 +28,11 @@ public sealed class AutoPlayMonitorService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         wasPlaying = musicPlayer.StillPlaying;
+        wasInQuietHours = QuietHours.IsQuietTime(timeProvider);
         if (!wasPlaying)
         {
             silenceStartedAt = timeProvider.GetUtcNow();
-            armed = !QuietHours.IsQuietTime(timeProvider);
+            armed = !wasInQuietHours;
         }
 
         while (!stoppingToken.IsCancellationRequested)
@@ -57,6 +59,8 @@ public sealed class AutoPlayMonitorService : BackgroundService
         var isPlaying = musicPlayer.StillPlaying;
         var now = timeProvider.GetUtcNow();
         var inQuietHours = QuietHours.IsQuietTime(timeProvider);
+        var quietHoursJustEnded = wasInQuietHours && !inQuietHours;
+        wasInQuietHours = inQuietHours;
 
         if (isPlaying)
         {
@@ -80,9 +84,9 @@ public sealed class AutoPlayMonitorService : BackgroundService
 
         if (wasPlaying)
         {
-            // Playback just ended; that (re)arms the silence timer. Silence that
-            // begins during quiet hours must not trigger autoplay - not now, and
-            // not when the quiet window ends in the morning.
+            // Playback just ended; that (re)arms the silence timer. If it ended
+            // during quiet hours, stay disarmed for the night - the morning
+            // wake-up transition below re-arms with a fresh clock.
             wasPlaying = false;
             silenceStartedAt = now;
             armed = !inQuietHours;
@@ -92,9 +96,20 @@ public sealed class AutoPlayMonitorService : BackgroundService
         if (inQuietHours)
         {
             // Quiet hours veto any pending trigger, including one armed earlier
-            // in the evening - otherwise autoplay would fire the moment the
-            // window ends, without anyone having played anything.
+            // in the evening - silence accumulated overnight must not count
+            // toward the timeout.
             armed = false;
+            return;
+        }
+
+        if (quietHoursJustEnded)
+        {
+            // The screen just woke up for the day. Start the silence clock
+            // fresh so autoplay begins the configured number of minutes after
+            // wake-up rather than instantly (overnight silence would have
+            // long exceeded the timeout).
+            armed = true;
+            silenceStartedAt = now;
             return;
         }
 
