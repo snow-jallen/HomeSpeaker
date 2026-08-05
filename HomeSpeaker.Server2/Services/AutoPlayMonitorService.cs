@@ -8,7 +8,8 @@ public sealed class AutoPlayMonitorService : BackgroundService
     private readonly ILogger<AutoPlayMonitorService> logger;
 
     private bool wasPlaying;
-    private bool autoplayStartedForCurrentSilence;
+    private bool autoplayIsPlaying;
+    private bool armed;
     private DateTimeOffset? silenceStartedAt;
 
     public AutoPlayMonitorService(
@@ -29,6 +30,7 @@ public sealed class AutoPlayMonitorService : BackgroundService
         if (!wasPlaying)
         {
             silenceStartedAt = timeProvider.GetUtcNow();
+            armed = !QuietHours.IsQuietTime(timeProvider);
         }
 
         while (!stoppingToken.IsCancellationRequested)
@@ -54,24 +56,49 @@ public sealed class AutoPlayMonitorService : BackgroundService
     {
         var isPlaying = musicPlayer.StillPlaying;
         var now = timeProvider.GetUtcNow();
+        var inQuietHours = QuietHours.IsQuietTime(timeProvider);
 
         if (isPlaying)
         {
+            if (inQuietHours && autoplayIsPlaying)
+            {
+                logger.LogInformation("Quiet hours began; stopping autoplay playback for the night.");
+                musicPlayer.Stop();
+                musicPlayer.ClearQueue();
+                autoplayIsPlaying = false;
+                wasPlaying = false;
+                armed = false;
+                silenceStartedAt = now;
+                return;
+            }
+
             wasPlaying = true;
-            autoplayStartedForCurrentSilence = false;
-            silenceStartedAt = null;
             return;
         }
 
-        if (wasPlaying || silenceStartedAt is null)
+        autoplayIsPlaying = false;
+
+        if (wasPlaying)
         {
+            // Playback just ended; that (re)arms the silence timer. Silence that
+            // begins during quiet hours must not trigger autoplay - not now, and
+            // not when the quiet window ends in the morning.
             wasPlaying = false;
-            autoplayStartedForCurrentSilence = false;
             silenceStartedAt = now;
+            armed = !inQuietHours;
             return;
         }
 
-        if (autoplayStartedForCurrentSilence)
+        if (inQuietHours)
+        {
+            // Quiet hours veto any pending trigger, including one armed earlier
+            // in the evening - otherwise autoplay would fire the moment the
+            // window ends, without anyone having played anything.
+            armed = false;
+            return;
+        }
+
+        if (!armed || silenceStartedAt is null)
         {
             return;
         }
@@ -89,7 +116,8 @@ public sealed class AutoPlayMonitorService : BackgroundService
         if (started)
         {
             logger.LogInformation("Autoplay started after {TimeoutMinutes} minutes of silence.", settings.SilenceTimeoutMinutes);
-            autoplayStartedForCurrentSilence = true;
+            autoplayIsPlaying = true;
+            armed = false;
             return;
         }
 

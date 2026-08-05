@@ -96,7 +96,10 @@ struct PlayerStatus: Codable {
     }
 
     private func formatDuration(_ value: String) -> String? {
-        let parts = value.split(separator: ":").map { Int($0) ?? 0 }
+        // TimeSpans arrive as "hh:mm:ss.fffffff" - the seconds component has a
+        // fractional part, so parse as Double (Int("31.75") is nil, which froze
+        // the displayed time at whole minutes).
+        let parts = value.split(separator: ":").map { Int(Double($0) ?? 0) }
         if parts.count == 3 {
             let h = parts[0], m = parts[1], s = parts[2]
             if h > 0 {

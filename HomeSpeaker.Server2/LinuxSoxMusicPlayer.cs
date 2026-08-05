@@ -29,6 +29,8 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     // real external changes still show up.
     private readonly SemaphoreSlim volumeSetLock = new(1, 1);
     private int volumeRequestVersion;
+    private int appliedVolumeVersion;
+    private int lastRequestedSliderLevel = -1;
     private int? lastSetActualLevel;
     private int? lastSetSliderLevel;
     private int consecutiveAmixerFailures;
@@ -370,6 +372,17 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
 
     public async Task<int> GetVolume()
     {
+        // While a SetVolume is still in flight, report the level that was just
+        // requested instead of the soon-to-be-stale hardware reading. Clients
+        // poll status every couple seconds; reading amixer mid-set would hand
+        // them the old level and make their sliders snap back before jumping
+        // to the new value.
+        var requested = Volatile.Read(ref lastRequestedSliderLevel);
+        if (requested >= 0 && Volatile.Read(ref appliedVolumeVersion) != Volatile.Read(ref volumeRequestVersion))
+        {
+            return requested;
+        }
+
         await ensureDeviceDetectedAsync();
 
         var card = audioDeviceDetector.SelectedCard ?? "0";
@@ -434,6 +447,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
 
     public void SetVolume(int level0to100)
     {
+        Volatile.Write(ref lastRequestedSliderLevel, Math.Max(0, Math.Min(100, level0to100)));
         var myVersion = Interlocked.Increment(ref volumeRequestVersion);
         _ = setVolumeAsync(level0to100, myVersion);
     }
@@ -486,6 +500,10 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
                 logger.LogWarning(ex, "Failed to set volume on card {Card} mixer {Mixer}", card, mixer);
                 await noteAmixerFailureAsync();
             }
+
+            // Whether or not amixer succeeded, this request is no longer in
+            // flight - GetVolume should go back to trusting hardware reads.
+            Volatile.Write(ref appliedVolumeVersion, myVersion);
         }
         finally
         {
