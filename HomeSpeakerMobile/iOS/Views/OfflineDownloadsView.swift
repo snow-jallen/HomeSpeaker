@@ -68,7 +68,7 @@ struct OfflineDownloadsView: View {
                         HStack {
                             Label(selection.artist, systemImage: "music.mic")
                             Spacer()
-                            Text("\(offlineDownloads.songCount(for: selection)) songs")
+                            Text(songCountText(offlineDownloads.songCount(for: selection)))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -86,14 +86,15 @@ struct OfflineDownloadsView: View {
             if !offlineDownloads.currentAlbumSelections.isEmpty {
                 Section("Albums") {
                     ForEach(offlineDownloads.currentAlbumSelections) { selection in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(selection.album)
-                            Text(selection.artist)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .overlay(alignment: .trailing) {
-                            Text("\(offlineDownloads.songCount(for: selection)) songs")
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(selection.album)
+                                Text(selection.artist)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text(songCountText(offlineDownloads.songCount(for: selection)))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -159,6 +160,10 @@ struct OfflineDownloadsView: View {
                 }
             }
         }
+    }
+
+    private func songCountText(_ count: Int) -> String {
+        count == 1 ? "1 song" : "\(count) songs"
     }
 
     @ViewBuilder
