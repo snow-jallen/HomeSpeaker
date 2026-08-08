@@ -706,6 +706,35 @@ final class OfflineDownloadsStore {
         return added
     }
 
+    /// Deletes every downloaded file on this device and clears all offline
+    /// selections, across every server connection. Selections must go too —
+    /// leaving them would make the next sync re-download everything.
+    func clearAllOfflineFiles() {
+        downloadTask?.cancel()
+        downloadTask = nil
+        queuedKeys.removeAll()
+        activeDownloadKey = nil
+        failedMessages.removeAll()
+
+        localState.artists.removeAll()
+        localState.albums.removeAll()
+        localState.tracks.removeAll()
+        localState.downloads.removeAll()
+
+        let root = OfflineDownloadPaths.rootDirectory()
+        if let contents = try? FileManager.default.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) {
+            for url in contents where url.lastPathComponent != manifestURL.lastPathComponent {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        persistManifest()
+    }
+
     func removeArtistSelection(_ selection: OfflineArtistSelection) {
         guard let connectionId = currentConnection?.id else { return }
         localState.artists.removeAll {
