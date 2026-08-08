@@ -627,16 +627,6 @@ final class OfflineDownloadsStore {
         return sortedSongs(songs)
     }
 
-    func isArtistSelected(_ artist: String, connection: ServerConnection?) -> Bool {
-        guard connection?.id == currentConnection?.id else { return false }
-        return artistTarget(named: artist) != nil
-    }
-
-    func isAlbumSelected(artist: String, album: String, connection: ServerConnection?) -> Bool {
-        guard connection?.id == currentConnection?.id else { return false }
-        return albumTarget(artist: artist, album: album) != nil
-    }
-
     func isTrackSelected(_ song: Song, connection: ServerConnection?) -> Bool {
         guard connection?.id == currentConnection?.id, let path = song.path else { return false }
         return trackTarget(songPath: path) != nil
@@ -663,14 +653,24 @@ final class OfflineDownloadsStore {
         return .notTracked
     }
 
-    func toggleArtist(_ artist: String, songs _: [Song], connection: ServerConnection?) {
+    func toggleArtist(_ artist: String, songs: [Song], connection: ServerConnection?) {
         guard let connection else { return }
-        Task { await toggleArtistSelection(artist, connection: connection) }
+        Task { await toggleArtistSelection(artist, songs: songs, connection: connection) }
     }
 
-    func toggleAlbum(artist: String, album: String, songs _: [Song], connection: ServerConnection?) {
+    func toggleAlbum(artist: String, album: String, songs: [Song], connection: ServerConnection?) {
         guard let connection else { return }
-        Task { await toggleAlbumSelection(artist: artist, album: album, connection: connection) }
+        Task { await toggleAlbumSelection(artist: artist, album: album, songs: songs, connection: connection) }
+    }
+
+    /// True when every song is already kept offline, regardless of whether the
+    /// coverage comes from an artist, album, or individual track target.
+    func areSongsKeptOffline(_ songs: [Song], connection: ServerConnection?) -> Bool {
+        guard let connection, connection.id == currentConnection?.id else { return false }
+        let keys = songs.compactMap { $0.offlineSongKey(connectionId: connection.id) }
+        guard !keys.isEmpty else { return false }
+        let desired = desiredSongKeys(for: connection.id)
+        return keys.allSatisfy { desired.contains($0) }
     }
 
     func toggleTrack(_ song: Song, connection: ServerConnection?) {
@@ -1001,13 +1001,13 @@ final class OfflineDownloadsStore {
         return didAddServerTarget
     }
 
-    private func toggleArtistSelection(_ artist: String, connection: ServerConnection) async {
+    private func toggleArtistSelection(_ artist: String, songs: [Song], connection: ServerConnection) async {
         guard currentConnection?.id == connection.id else { return }
         let api = APIClient(baseURL: connection.baseURL)
 
         do {
-            if let target = artistTarget(named: artist) {
-                try await api.removeOfflineDownloadTarget(targetId: target.id)
+            if areSongsKeptOffline(songs, connection: connection) {
+                try await removeArtistCoverage(artist: artist, songs: songs, api: api)
             } else {
                 _ = try await api.addOfflineDownloadTarget(targetType: .artist, artistName: artist)
             }
@@ -1017,19 +1017,70 @@ final class OfflineDownloadsStore {
         }
     }
 
-    private func toggleAlbumSelection(artist: String, album: String, connection: ServerConnection) async {
+    private func toggleAlbumSelection(artist: String, album: String, songs: [Song], connection: ServerConnection) async {
         guard currentConnection?.id == connection.id else { return }
         let api = APIClient(baseURL: connection.baseURL)
 
         do {
-            if let target = albumTarget(artist: artist, album: album) {
-                try await api.removeOfflineDownloadTarget(targetId: target.id)
+            if areSongsKeptOffline(songs, connection: connection) {
+                try await removeAlbumCoverage(artist: artist, album: album, songs: songs, api: api)
             } else {
                 _ = try await api.addOfflineDownloadTarget(targetType: .album, artistName: artist, albumName: album)
             }
             await refreshLibrary(force: true)
         } catch {
             lastError = error.localizedDescription
+        }
+    }
+
+    /// Removes every target that keeps this artist's songs offline: the artist
+    /// target itself plus any album or track targets for the same songs.
+    private func removeArtistCoverage(artist: String, songs: [Song], api: APIClient) async throws {
+        if let target = artistTarget(named: artist) {
+            try await api.removeOfflineDownloadTarget(targetId: target.id)
+        }
+
+        for target in manifestTargets
+        where target.targetType == .album && stringsEqual(target.artistName ?? "", artist) {
+            try await api.removeOfflineDownloadTarget(targetId: target.id)
+        }
+
+        try await removeTrackTargets(coveringAnyOf: songs, api: api)
+    }
+
+    /// Removes every target that keeps this album's songs offline. An artist
+    /// target covering the album is split: it is removed and the artist's other
+    /// albums are re-added as album targets so they stay offline.
+    private func removeAlbumCoverage(artist: String, album: String, songs: [Song], api: APIClient) async throws {
+        if let target = albumTarget(artist: artist, album: album) {
+            try await api.removeOfflineDownloadTarget(targetId: target.id)
+        }
+
+        try await removeTrackTargets(coveringAnyOf: songs, api: api)
+
+        guard let artistTarget = artistTarget(named: artist) else { return }
+
+        let otherAlbums = Set(
+            manifestSongs
+                .filter { entry in entry.sources.contains { $0.targetId == artistTarget.id } }
+                .compactMap { $0.song.album }
+                .filter { !stringsEqual($0, album) }
+        )
+
+        try await api.removeOfflineDownloadTarget(targetId: artistTarget.id)
+        for otherAlbum in otherAlbums.sorted() {
+            _ = try await api.addOfflineDownloadTarget(targetType: .album, artistName: artist, albumName: otherAlbum)
+        }
+    }
+
+    private func removeTrackTargets(coveringAnyOf songs: [Song], api: APIClient) async throws {
+        let paths = songs.compactMap(\.path)
+        for target in manifestTargets where target.targetType == .song {
+            let targetPath = target.songPath ?? target.song?.path ?? ""
+            guard !targetPath.isEmpty else { continue }
+            if paths.contains(where: { songsEqual($0, targetPath) }) {
+                try await api.removeOfflineDownloadTarget(targetId: target.id)
+            }
         }
     }
 

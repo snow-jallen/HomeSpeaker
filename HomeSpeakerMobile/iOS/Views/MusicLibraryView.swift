@@ -237,9 +237,8 @@ struct MusicLibraryView: View {
                                     )
                                 } label: {
                                     Label(
-                                        offlineDownloads.isAlbumSelected(
-                                            artist: artistEntry.artist,
-                                            album: albumEntry.album,
+                                        offlineDownloads.areSongsKeptOffline(
+                                            albumEntry.songs,
                                             connection: store.selectedConnection
                                         ) ? "Remove Album Download" : "Keep Album Offline",
                                         systemImage: "arrow.down.circle"
@@ -312,7 +311,7 @@ struct MusicLibraryView: View {
                             )
                         } label: {
                             Label(
-                                offlineDownloads.isArtistSelected(artistEntry.artist, connection: store.selectedConnection)
+                                offlineDownloads.areSongsKeptOffline(artistSongs, connection: store.selectedConnection)
                                     ? "Remove Artist Download"
                                     : "Keep Artist Offline",
                                 systemImage: "arrow.down.circle"
