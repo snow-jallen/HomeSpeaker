@@ -1,4 +1,3 @@
-using HomeSpeaker.Shared;
 using HomeSpeaker.Server2.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -136,19 +135,6 @@ public class MusicContext : DbContext
         modelBuilder.Entity<AiPlaybackFeedback>()
             .HasIndex(f => f.SongPath);
 
-        modelBuilder.Entity<OfflineDownloadTarget>()
-            .Property(target => target.TargetType)
-            .HasConversion<string>();
-
-        modelBuilder.Entity<OfflineDownloadTarget>()
-            .HasIndex(target => new
-            {
-                target.TargetType,
-                target.ArtistName,
-                target.AlbumName,
-                target.SongPath
-            })
-            .IsUnique();
 
         modelBuilder.Entity<AutoPlaySourceEntity>()
             .Property(source => source.SourceType)
@@ -301,7 +287,6 @@ public class MusicContext : DbContext
     public DbSet<AiProcessingRun> AiProcessingRuns { get; set; }
     public DbSet<AiPlaybackSession> AiPlaybackSessions { get; set; }
     public DbSet<AiPlaybackFeedback> AiPlaybackFeedbacks { get; set; }
-    public DbSet<OfflineDownloadTarget> OfflineDownloadTargets { get; set; }
     public DbSet<AutoPlaySettingsEntity> AutoPlaySettings { get; set; }
     public DbSet<AutoPlaySourceEntity> AutoPlaySources { get; set; }
 }
@@ -519,15 +504,6 @@ public class AiPlaybackFeedback
     public DateTime CreatedUtc { get; set; }
 }
 
-public class OfflineDownloadTarget
-{
-    public int Id { get; set; }
-    public OfflineDownloadTargetType TargetType { get; set; }
-    public string ArtistName { get; set; } = string.Empty;
-    public string AlbumName { get; set; } = string.Empty;
-    public string SongPath { get; set; } = string.Empty;
-    public DateTime CreatedUtc { get; set; }
-}
 
 public enum AiProcessingStatus
 {

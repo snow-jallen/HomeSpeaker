@@ -157,38 +157,6 @@ class APIClient {
         url("api/music/\(songId)")
     }
 
-    func getOfflineDownloadManifest() async throws -> OfflineDownloadManifestDto {
-        try await request("api/homespeaker/offline")
-    }
-
-    func addOfflineDownloadTarget(
-        targetType: OfflineDownloadTargetType,
-        songId: Int? = nil,
-        songPath: String? = nil,
-        artistName: String? = nil,
-        albumName: String? = nil
-    ) async throws -> OfflineDownloadTargetDto {
-        try await request(
-            "api/homespeaker/offline/targets",
-            method: "POST",
-            body: OfflineDownloadTargetRequestBody(
-                targetType: targetType,
-                songId: songId,
-                songPath: songPath,
-                artistName: artistName,
-                albumName: albumName
-            )
-        )
-    }
-
-    func removeOfflineDownloadTarget(targetId: Int) async throws {
-        try await requestVoid("api/homespeaker/offline/targets/\(targetId)", method: "DELETE")
-    }
-
-    func offlineDownloadURL(_ pathOrURL: String) -> URL {
-        resolveURL(pathOrURL)
-    }
-
     func offlineSongMediaURL(songPath: String) -> URL {
         let encodedSongPath = songPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? songPath
         return url("api/homespeaker/offline/media?songPath=\(encodedSongPath)")

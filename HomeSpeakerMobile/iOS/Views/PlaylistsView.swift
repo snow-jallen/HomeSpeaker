@@ -200,33 +200,10 @@ struct PlaylistsView: View {
 
     private func download(playlist: Playlist) async {
         guard localPlayer.destination == .speaker, let connection = store.selectedConnection else { return }
-        let api = APIClient(baseURL: connection.baseURL)
         await offlineDownloads.refreshLibrary(force: false)
 
-        var added = 0
-        var failed = 0
-        for song in playlist.songs where song.path?.isEmpty == false {
-            if offlineDownloads.isTrackSelected(song, connection: connection) { continue }
-            do {
-                let createdTarget = try await api.addOfflineDownloadTarget(
-                    targetType: .song,
-                    songId: song.songId,
-                    songPath: song.path
-                )
-                if createdTarget.id > 0 {
-                    added += 1
-                }
-            } catch {
-                failed += 1
-            }
-        }
-
-        await offlineDownloads.refreshLibrary(force: true)
-        if failed > 0 {
-            showMessage("Downloading \(playlist.name): \(added) added, \(failed) failed")
-        } else {
-            showMessage(added > 0 ? "Downloading \(playlist.name)" : "\(playlist.name) is already downloaded")
-        }
+        let added = offlineDownloads.keepTracksOffline(playlist.songs, connection: connection)
+        showMessage(added > 0 ? "Downloading \(playlist.name)" : "\(playlist.name) is already downloaded")
     }
 
     private func showMessage(_ msg: String) {
