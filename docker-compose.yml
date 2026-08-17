@@ -28,7 +28,7 @@ services:
     env_file:
       - /home/piuser/homespeaker-secrets.env
     depends_on:
-    - aspire    
+    - openobserve
     environment:
     - TZ=America/Denver
     - MediaFolder=/music
@@ -38,21 +38,37 @@ services:
     - ASPNETCORE_URLS=https://+443;http://+:80
     - ASPNETCORE_Kestrel__Certificates__Default__Path=/certs/certificate.pfx
     - FFMpegLocation=/usr/bin/ffmpeg
-    - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-    - OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire:18889
+    # OpenObserve replaces the (memory-only) Aspire dashboard. Its OTLP/HTTP
+    # ingest needs Basic auth: OTEL_EXPORTER_OTLP_HEADERS comes from the
+    # secrets env file above (see homespeaker-secrets.env.example).
+    - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+    - OTEL_EXPORTER_OTLP_ENDPOINT=http://openobserve:5080/api/default
     - OTEL_SERVICE_NAME=HomeSpeaker
     - PULSE_SERVER=unix:/run/user/1000/pulse/native
     networks:
       speakernet:
 
-  aspire:
-    container_name: aspire
-    image: mcr.microsoft.com/dotnet/aspire-dashboard
+  # Persistent logs/traces/metrics for HomeSpeaker AND Metanoeo (whose stack
+  # reaches it via the published host port 5080). Root credentials live in the
+  # secrets env file: ZO_ROOT_USER_EMAIL / ZO_ROOT_USER_PASSWORD.
+  openobserve:
+    container_name: openobserve
+    # OpenObserve does not publish `latest` as a multi-arch manifest; the
+    # arch-specific tag is required. Plain -arm64 (NOT -arm64-simd, whose CPU
+    # features the Pi 4's Cortex-A72 lacks and which dies with SIGILL).
+    image: openobserve/openobserve:latest-arm64
+    restart: unless-stopped
     environment:
-    - DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true
+    - ZO_DATA_DIR=/data
+    # Hard cap on disk growth: compaction drops anything older than 30 days
+    # (default is 3650 — effectively unbounded on a Pi SD card).
+    - ZO_COMPACT_DATA_RETENTION_DAYS=30
+    env_file:
+      - /home/piuser/homespeaker-secrets.env
+    volumes:
+      - openobserve-data:/data
     ports:
-    - 18888:18888 # web
-    - 4317:18889  # OTLP
+    - 5080:5080 # web UI + OTLP/HTTP ingest
     networks:
       speakernet:
 
@@ -82,3 +98,4 @@ networks:
 
 volumes:
   airplay-shared:
+  openobserve-data:
