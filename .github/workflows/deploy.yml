@@ -13,6 +13,7 @@ jobs:
     # Only deploy if the build workflow succeeded
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - runner: kitchen
@@ -48,7 +49,19 @@ jobs:
       run: touch /home/piuser/homespeaker-secrets.env
 
     - name: Pull latest images
-      run: docker-compose pull
+      env:
+        COMPOSE_HTTP_TIMEOUT: 200
+      run: |
+        # Registry pulls from docker.io/public.ecr.aws are flaky from the Pis;
+        # retry, and as a last resort tolerate sidecar pull failures - those
+        # images are already cached locally, and the app image comes from ghcr.
+        for attempt in 1 2 3; do
+          echo "Pull attempt $attempt/3..."
+          docker-compose pull && exit 0
+          [ $attempt -lt 3 ] && echo "Retrying in 10s..." && sleep 10
+        done
+        echo "Full pull failed; tolerating failed sidecar pulls..."
+        docker-compose pull --ignore-pull-failures
 
     - name: Stop containers
       env:
