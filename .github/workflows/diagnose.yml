@@ -1,0 +1,67 @@
+name: Diagnose Pi
+
+# Manual-only diagnostics for the Pis: container health, clocks, app logs,
+# and a screenshot of the touchscreen so display issues (like the sleepy-time
+# overlay not appearing) can be debugged without physical access.
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: [self-hosted, "${{ matrix.runner }}"]
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [kitchen, upstairs]
+
+    steps:
+    - name: Host clock and timezone
+      continue-on-error: true
+      run: date; timedatectl 2>/dev/null || true
+
+    - name: Container status
+      continue-on-error: true
+      run: docker ps -a
+
+    - name: App container clock
+      continue-on-error: true
+      run: docker exec homespeaker date
+
+    - name: App logs (last 150 lines)
+      continue-on-error: true
+      run: docker logs --tail 150 homespeaker 2>&1
+
+    - name: OpenObserve logs (last 30 lines)
+      continue-on-error: true
+      run: docker logs --tail 30 openobserve 2>&1
+
+    - name: Player status endpoint
+      continue-on-error: true
+      run: curl -sk --max-time 10 https://localhost/api/homespeaker/player/status; echo
+
+    - name: Chromium open pages (debug port)
+      continue-on-error: true
+      run: curl -s --max-time 5 http://localhost:9222/json/list || echo "debug port not available"
+
+    - name: Screenshot touchscreen
+      continue-on-error: true
+      run: |
+        export DISPLAY=:0
+        XAUTH=$(find /home/piuser -name '.Xauthority' 2>/dev/null | head -1)
+        [ -n "$XAUTH" ] && export XAUTHORITY=$XAUTH
+        mkdir -p /tmp/pi-diag
+        if command -v scrot >/dev/null 2>&1; then
+          scrot /tmp/pi-diag/screen-$(hostname).png && echo "screenshot captured via scrot"
+        elif command -v import >/dev/null 2>&1; then
+          import -window root /tmp/pi-diag/screen-$(hostname).png && echo "screenshot captured via import"
+        else
+          xwd -root -out /tmp/pi-diag/screen-$(hostname).xwd && echo "screenshot captured via xwd (raw)"
+        fi
+
+    - name: Upload screenshot
+      uses: actions/upload-artifact@v4
+      continue-on-error: true
+      with:
+        name: screen-${{ matrix.runner }}
+        path: /tmp/pi-diag/
+        if-no-files-found: ignore
