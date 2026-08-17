@@ -3,7 +3,6 @@ import SwiftUI
 struct WatchNowPlayingView: View {
     @Environment(ConnectionStore.self) private var store
     @State private var status: PlayerStatus?
-    @State private var volume: Int = 50
 
     var body: some View {
         VStack(spacing: 8) {
@@ -101,6 +100,5 @@ struct WatchNowPlayingView: View {
     private func refresh() async {
         guard let api = store.api else { return }
         status = try? await api.getPlayerStatus()
-        if let vol = status?.volume { volume = vol }
     }
 }

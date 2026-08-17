@@ -105,7 +105,6 @@ struct NowPlayingView: View {
                 .padding(.vertical, 12)
         }
         .task {
-            volume = Double(status?.volume ?? 50)
             while !Task.isCancelled {
                 await refresh(api: api)
                 try? await Task.sleep(for: .seconds(2))
@@ -205,9 +204,16 @@ struct NowPlayingView: View {
             Image(systemName: "speaker.fill")
                 .foregroundStyle(.secondary)
             Slider(value: $volume, in: 0...100, step: 1) { editing in
-                isDraggingVolume = editing
-                if !editing {
-                    Task { try? await api.setVolume(Int(volume)) }
+                if editing {
+                    isDraggingVolume = true
+                } else {
+                    // Keep the guard up until the server has accepted the new level,
+                    // otherwise a status poll landing between finger-up and the
+                    // request completing snaps the slider back to the old value.
+                    Task {
+                        try? await api.setVolume(Int(volume))
+                        isDraggingVolume = false
+                    }
                 }
             }
             Image(systemName: "speaker.wave.3.fill")

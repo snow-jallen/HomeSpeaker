@@ -56,7 +56,10 @@
                     <span class="fw-semibold">Volume</span>
                     <span class="ms-auto text-muted">@volumeLevel%</span>
                 </div>
-                <input type="range" @bind-value="@VolumeLevel" class="w-100" min="0" max="100" />
+                <input type="range" class="w-100" min="0" max="100"
+                       value="@volumeLevel"
+                       @oninput="@(e => { if (int.TryParse(e.Value?.ToString(), out var v)) { volumeLevel = v; isDraggingVolume = true; } })"
+                       @onchange="OnVolumeChanged" />
             </div>
 
             <div class="d-flex align-items-start mb-3">
@@ -138,27 +141,22 @@
     private int serverDraggedIndex = -1;
     private int? serverDropTargetIndex = null;
 
-    int volumeLevel = 40;
-    public int VolumeLevel
-    {
-        get => volumeLevel;
-        set
-        {
-            volumeLevel = value;
-            logger.LogInformation("Setting volume to {volume}", volumeLevel);
-            _ = setVolumeSafeAsync(volumeLevel);
-        }
-    }
+    int volumeLevel = 50;
+    bool isDraggingVolume;
 
-    private async Task setVolumeSafeAsync(int volume)
+    private async Task OnVolumeChanged(ChangeEventArgs e)
     {
-        try
+        isDraggingVolume = false;
+        if (int.TryParse(e.Value?.ToString(), out var v))
         {
-            await svc.SetVolumeAsync(volume);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to set volume to {volume}", volume);
+            try
+            {
+                await svc.SetVolumeAsync(v);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to set volume to {volume}", v);
+            }
         }
     }
 
@@ -175,7 +173,7 @@
 
         try
         {
-            VolumeLevel = await svc.GetVolumeAsync();
+            volumeLevel = await svc.GetVolumeAsync();
         }
         catch (Exception ex)
         {
@@ -190,13 +188,6 @@
             // Initialize Bootstrap tabs
             await JSRuntime.InvokeVoidAsync("initializeTabs");
         }
-    }
-
-    async Task volumeChanged(int volume)
-    {
-        volumeLevel = volume;
-        logger.LogInformation("Setting volume to {volumeLevel}", volumeLevel);
-        await svc.SetVolumeAsync(volumeLevel);
     }
 
     async Task saveQueueAsPlaylist()
@@ -236,7 +227,14 @@
         await svc.UpdateQueueAsync(queue);
     }
 
-    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    private void OnStateChanged() => InvokeAsync(() =>
+    {
+        // Reflect volume changes from other clients or the physical knob, but not
+        // while the user is actively dragging this slider.
+        if (!isDraggingVolume)
+            volumeLevel = PlayerState.Volume;
+        StateHasChanged();
+    });
 
     private async void OnQueueChanged(object? sender, EventArgs e)
     {

@@ -12,6 +12,7 @@ public sealed class AutoPlayService
     private readonly IMusicPlayer musicPlayer;
     private readonly PlaylistService playlistService;
     private readonly RadioStreamService radioStreamService;
+    private readonly PlayerStateService playerStateService;
     private readonly ILogger<AutoPlayService> logger;
 
     public AutoPlayService(
@@ -19,12 +20,14 @@ public sealed class AutoPlayService
         IMusicPlayer musicPlayer,
         PlaylistService playlistService,
         RadioStreamService radioStreamService,
+        PlayerStateService playerStateService,
         ILogger<AutoPlayService> logger)
     {
         this.dbContext = dbContext;
         this.musicPlayer = musicPlayer;
         this.playlistService = playlistService;
         this.radioStreamService = radioStreamService;
+        this.playerStateService = playerStateService;
         this.logger = logger;
     }
 
@@ -88,6 +91,7 @@ public sealed class AutoPlayService
         var candidate = candidates[Random.Shared.Next(candidates.Count)];
         var volumeLevel = Math.Clamp(settings.VolumeLevel, 0, 100);
         musicPlayer.SetVolume(volumeLevel);
+        playerStateService.UpdateVolume(volumeLevel);
         musicPlayer.Stop();
         musicPlayer.ClearQueue();
 

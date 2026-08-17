@@ -388,7 +388,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
     {
         try
         {
-            return Task.FromResult((int)(Audio.Volume * 100));
+            return Task.FromResult((int)Math.Round(Audio.Volume * 100));
         }
         catch (COMException ex) when (ex.HResult == unchecked((int)0x80070490))
         {

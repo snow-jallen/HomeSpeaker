@@ -66,7 +66,11 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
         PlayerEvent?.Invoke(this, "Resumed play.");
     }
 
-    public void SetVolume(int level0to100) => actualPlayer.SetVolume(level0to100);
+    public void SetVolume(int level0to100)
+    {
+        actualPlayer.SetVolume(level0to100);
+        PlayerEvent?.Invoke(this, $"Volume set to {level0to100}");
+    }
 
     public void ShuffleQueue()
     {

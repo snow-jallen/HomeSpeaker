@@ -28,6 +28,24 @@ fi
 
 if [ -n "$CARD" ]; then
     echo "start-shairport: Using ALSA card: $CARD"
+
+    # Pick a hardware mixer control with the same priority AudioDeviceDetector.cs
+    # uses, so AirPlay volume moves the same ALSA control as the HomeSpeaker app
+    # and the physical knob instead of applying invisible software attenuation.
+    MIXER=""
+    for CANDIDATE in PCM Master Speaker Headphone Digital; do
+        if amixer -c "$CARD" sget "$CANDIDATE" >/dev/null 2>&1; then
+            MIXER="$CANDIDATE"
+            break
+        fi
+    done
+
+    if [ -n "$MIXER" ]; then
+        echo "start-shairport: Using mixer control: $MIXER"
+        exec /init -a "$AIRPLAY_NAME" -o alsa -- -d hw:"$CARD" -c "$MIXER"
+    fi
+
+    echo "start-shairport: No known mixer control found; using software volume"
     exec /init -a "$AIRPLAY_NAME" -o alsa -- -d hw:"$CARD"
 else
     echo "start-shairport: No ALSA card detected, falling back to PulseAudio"

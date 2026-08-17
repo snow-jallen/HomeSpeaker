@@ -36,7 +36,6 @@
 		991EE3BA897BB77766B29131 /* ServerEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D82ABFFCC115B98EF80A10 /* ServerEntity.swift */; };
 		9C5C4BA3EC5EB7A7A650895B /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16D6F1E4E46A26F966D05A65 /* LibraryView.swift */; };
 		A08875BB22B217481D8F8A2B /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 991398AE4AA449825359CD71 /* QueueView.swift */; };
-		A2FCE01C84D30A8E2F20E610 /* VolumeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D03CEE4EBF33F56CE6560A47 /* VolumeView.swift */; };
 		A9B7146EC9427277CF98A290 /* HomeSpeakerWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 3E6E950B3D6D2B30EA71133D /* HomeSpeakerWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AFBC50135B32EEDDB784AC73 /* MusicLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5362492C8FDA890DA502B7AE /* MusicLibraryView.swift */; };
 		B4920B1AB331FAD8F211E305 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0387EAEB26350D3D2A73FB79 /* Models.swift */; };
@@ -138,7 +137,6 @@
 		CAA123689971EE3504312BBE /* ServerListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerListView.swift; sourceTree = "<group>"; };
 		CAF6F1D2EC5D2112E6D5AECA /* MediaPlayer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MediaPlayer.framework; path = System/Library/Frameworks/MediaPlayer.framework; sourceTree = SDKROOT; };
 		CE5E33A6DF228F089492D54D /* HomeSpeakerWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HomeSpeakerWatch.entitlements; sourceTree = "<group>"; };
-		D03CEE4EBF33F56CE6560A47 /* VolumeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeView.swift; sourceTree = "<group>"; };
 		D1C3B78E7383B49C16C349A3 /* HomeSpeakerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerApp.swift; sourceTree = "<group>"; };
 		D3B0125C146E59A5A2A1943C /* PlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistsView.swift; sourceTree = "<group>"; };
 		DE860A8EC2BC7A3510B7D5BE /* HomeSpeakerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerWidget.swift; sourceTree = "<group>"; };
@@ -208,7 +206,6 @@
 				FE72379FA5E35A1E24338A72 /* QueueView.swift */,
 				AAE825C6CA30C690E37852BB /* RadioStreamsView.swift */,
 				719AD39AF69258B48ABFB67D /* ServerPickerView.swift */,
-				D03CEE4EBF33F56CE6560A47 /* VolumeView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -511,7 +508,6 @@
 				8BA769F8273F5002C64F9957 /* QueueView.swift in Sources */,
 				211F727D91953107DB0A5371 /* RadioStreamsView.swift in Sources */,
 				35E15319F2930366E1238C96 /* ServerPickerView.swift in Sources */,
-				A2FCE01C84D30A8E2F20E610 /* VolumeView.swift in Sources */,
 				D5E9B351F36941F8BD43F65E /* WatchSync.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
