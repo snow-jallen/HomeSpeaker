@@ -1,0 +1,33 @@
+name: Test OpenObserve versions on Pi
+
+# One-off compatibility probe: run several openobserve arm64 tags briefly on
+# the kitchen Pi and report which ones actually execute on its Cortex-A72
+# (exit 124 = survived the timeout = runs; 132 = SIGILL = incompatible).
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: [self-hosted, kitchen]
+    steps:
+    - name: Probe candidate versions
+      run: |
+        for tag in v0.92.2-arm64 v0.91.5-arm64 v0.70.2-arm64 v0.60.4-arm64 v0.40.4-arm64 v0.20.3-arm64; do
+          img="openobserve/openobserve:$tag"
+          echo "=== $img ==="
+          if ! docker pull -q "$img" >/dev/null 2>&1; then
+            echo "RESULT $tag: pull failed"
+            continue
+          fi
+          timeout 25 docker run --rm \
+            -e ZO_ROOT_USER_EMAIL=probe@example.com \
+            -e ZO_ROOT_USER_PASSWORD=probe12345 \
+            "$img" >/dev/null 2>&1
+          code=$?
+          case $code in
+            124) echo "RESULT $tag: RUNS (survived 25s)" ;;
+            132) echo "RESULT $tag: SIGILL (illegal instruction)" ;;
+            *)   echo "RESULT $tag: exit $code" ;;
+          esac
+          docker rmi "$img" >/dev/null 2>&1 || true
+        done
