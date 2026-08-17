@@ -90,6 +90,11 @@
             // Start the sleepy-time window checker (fires immediately, then every 60s)
             _windowTimer = new Timer(async _ =>
             {
+                // Heartbeat for the kiosk circuit watchdog in App.razor: while
+                // this arrives the page knows its circuit is alive.
+                try { await JSRuntime.InvokeVoidAsync("circuitWatchdog.beat"); }
+                catch { }
+
                 if (IsInSleepWindow())
                 {
                     if (!_watching)

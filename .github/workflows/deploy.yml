@@ -81,6 +81,10 @@ jobs:
           echo "  Attempt $i/12 - waiting 5s..."
           sleep 5
         done
+        # First HTTP response doesn't mean the Blazor circuit endpoint is warm;
+        # refreshing the kiosk too early loads prerendered HTML whose circuit
+        # never connects, leaving a frozen page. Give Kestrel a moment to settle.
+        sleep 10
 
     - name: Refresh browser on touchscreen
       run: |

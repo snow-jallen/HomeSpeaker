@@ -39,13 +39,40 @@
 
     <script src="_framework/blazor.web.js"></script>
     <script>
-        (function () {
-            new MutationObserver(function () {
-                if (document.body.classList.contains('components-reconnect-failed') ||
-                    document.body.classList.contains('components-reconnect-rejected')) {
+        // Kiosk self-healing: the touchscreen Pis have no keyboard, so a dead
+        // circuit must recover on its own. (The old version of this watched
+        // body classes, which blazor.server.js used - blazor.web.js signals
+        // reconnect state on its own #components-reconnect-modal element, so
+        // that watchdog never fired and a frozen page stayed frozen.)
+        //  1. Fast path: blazor.web.js marks the reconnect modal with a
+        //     terminal class when it gives up - reload right away.
+        //  2. Heartbeat: MainLayout beats over JS interop every minute. If
+        //     beats stop but the server answers HTTP, the circuit is dead
+        //     (typically the page loaded while the app was still warming up
+        //     after a deploy and the circuit never connected) - reload as
+        //     soon as the server is reachable again.
+        window.circuitWatchdog = (function () {
+            let lastBeat = Date.now();
+
+            setInterval(function () {
+                const modal = document.getElementById('components-reconnect-modal');
+                if (modal && (modal.classList.contains('components-reconnect-failed') ||
+                              modal.classList.contains('components-reconnect-rejected'))) {
                     location.reload();
                 }
-            }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+            }, 5000);
+
+            setInterval(async function () {
+                if (Date.now() - lastBeat < 90000) return;
+                try {
+                    const resp = await fetch('/api/features', { cache: 'no-store' });
+                    if (resp.ok) location.reload();
+                } catch {
+                    // Server unreachable (mid-deploy); try again in 30s.
+                }
+            }, 30000);
+
+            return { beat: function () { lastBeat = Date.now(); } };
         })();
     </script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
