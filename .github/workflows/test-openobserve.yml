@@ -12,6 +12,7 @@ jobs:
     steps:
     - name: Probe candidate versions
       run: |
+        set +e  # exit codes are the data here; don't let -e abort the loop
         for tag in v0.92.2-arm64 v0.91.5-arm64 v0.70.2-arm64 v0.60.4-arm64 v0.40.4-arm64 v0.20.3-arm64; do
           img="openobserve/openobserve:$tag"
           echo "=== $img ==="
