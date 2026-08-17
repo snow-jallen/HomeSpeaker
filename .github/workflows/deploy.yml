@@ -115,37 +115,42 @@ jobs:
           fi
         fi
         
-        # Strategy 2: Try xdotool with proper XAUTHORITY
+        # Strategy 2: xdotool - but activate the Chromium window first. A bare
+        # `xdotool key F5` goes to whichever window has focus, which on the
+        # kiosk is often NOT Chromium, so the refresh silently did nothing
+        # while reporting success.
         if command -v xdotool > /dev/null 2>&1; then
           echo "Trying xdotool with XAUTHORITY..."
           export DISPLAY=:0
-          
+
           # Find the X authority file
           XAUTH=$(find /home/piuser -name '.Xauthority' 2>/dev/null | head -1)
           if [ -z "$XAUTH" ]; then
             XAUTH=$(find /run/user -name 'Xauthority' 2>/dev/null | head -1)
           fi
-          
-          if [ -n "$XAUTH" ]; then
-            export XAUTHORITY=$XAUTH
-            echo "  Using XAUTHORITY=$XAUTH"
-            if xdotool key F5 2>&1; then
-              echo "✓ Browser refreshed via xdotool"
+          [ -z "$XAUTH" ] && XAUTH=/home/piuser/.Xauthority
+          export XAUTHORITY=$XAUTH
+          echo "  Using XAUTHORITY=$XAUTH"
+
+          WID=$(xdotool search --onlyvisible --class chromium 2>/dev/null | head -1)
+          [ -z "$WID" ] && WID=$(xdotool search --onlyvisible --class chrome 2>/dev/null | head -1)
+
+          if [ -n "$WID" ]; then
+            xdotool windowactivate --sync "$WID"
+            sleep 1
+            if xdotool key --clearmodifiers F5 2>&1; then
+              echo "✓ Browser refreshed via xdotool (window $WID activated)"
               exit 0
             fi
           else
-            echo "  Warning: Could not find .Xauthority file"
+            echo "  Warning: No Chromium window found; sending blind F5"
+            if xdotool key F5 2>&1; then
+              echo "✓ F5 sent (no window targeting)"
+              exit 0
+            fi
           fi
         fi
-        
-        # Strategy 3: Fallback - try xdotool anyway (might work if runner is piuser)
-        export DISPLAY=:0
-        export XAUTHORITY=/home/piuser/.Xauthority
-        if xdotool key F5 2>&1; then
-          echo "✓ Browser refreshed via xdotool (fallback)"
-          exit 0
-        fi
-        
+
         echo "⚠ All refresh strategies failed - browser may need manual refresh (F5)"
         exit 1
 

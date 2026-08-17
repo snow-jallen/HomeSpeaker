@@ -1,0 +1,45 @@
+name: Refresh Pi Browser
+
+# Manually reload the kiosk Chromium on the Pis. Unlike a bare `xdotool key
+# F5` (which goes to whichever window has focus - historically NOT Chromium,
+# so refreshes silently did nothing), this activates the Chromium window
+# first and verifies what was focused.
+on:
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: [self-hosted, "${{ matrix.runner }}"]
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [kitchen, upstairs]
+
+    steps:
+    - name: Show kiosk browser process
+      continue-on-error: true
+      run: pgrep -af chromium | head -3 || pgrep -af chrome | head -3 || true
+
+    - name: Refresh Chromium
+      run: |
+        export DISPLAY=:0
+        XAUTH=$(find /home/piuser -name '.Xauthority' 2>/dev/null | head -1)
+        [ -n "$XAUTH" ] && export XAUTHORITY=$XAUTH
+
+        echo "Currently focused window: $(xdotool getactivewindow getwindowname 2>/dev/null || echo unknown)"
+
+        WID=$(xdotool search --onlyvisible --class chromium 2>/dev/null | head -1)
+        if [ -z "$WID" ]; then
+          WID=$(xdotool search --onlyvisible --class chrome 2>/dev/null | head -1)
+        fi
+
+        if [ -n "$WID" ]; then
+          echo "Activating Chromium window $WID ($(xdotool getwindowname $WID 2>/dev/null))"
+          xdotool windowactivate --sync "$WID"
+          sleep 1
+          xdotool key --clearmodifiers F5
+          echo "Sent F5 to activated Chromium window"
+        else
+          echo "No Chromium window found; falling back to blind F5"
+          xdotool key F5
+        fi
