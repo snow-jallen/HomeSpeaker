@@ -57,6 +57,9 @@ services:
     restart: unless-stopped
     environment:
     - ZO_DATA_DIR=/data
+    # Hard cap on disk growth: compaction drops anything older than 30 days
+    # (default is 3650 — effectively unbounded on a Pi SD card).
+    - ZO_COMPACT_DATA_RETENTION_DAYS=30
     env_file:
       - /home/piuser/homespeaker-secrets.env
     volumes:
