@@ -56,7 +56,7 @@ jobs:
       run: |
         for attempt in 1 2 3; do
           echo "Stop attempt $attempt/3..."
-          docker-compose down --timeout 120 && break
+          docker-compose down --timeout 120 --remove-orphans && break
           [ $attempt -lt 3 ] && echo "Retrying in 10s..." && sleep 10
         done
 
