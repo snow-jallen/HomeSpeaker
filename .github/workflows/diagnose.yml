@@ -31,9 +31,11 @@ jobs:
       continue-on-error: true
       run: docker logs --tail 150 homespeaker 2>&1
 
-    - name: OpenObserve logs (last 30 lines)
+    - name: Telemetry (lgtm) health and logs
       continue-on-error: true
-      run: docker logs --tail 30 openobserve 2>&1
+      run: |
+        curl -sf --max-time 10 http://localhost:3000/api/health && echo || echo "Grafana health check failed"
+        docker logs --tail 30 lgtm 2>&1
 
     - name: Player status endpoint
       continue-on-error: true
