@@ -1,0 +1,47 @@
+name: Test grafana/otel-lgtm on Pi
+
+# One-off compatibility probe before adopting the LGTM stack: run it on side
+# ports on the kitchen Pi, wait for Grafana health, push a test OTLP payload,
+# and report memory footprint.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: [self-hosted, kitchen]
+    steps:
+    - name: Run and health-check otel-lgtm
+      run: |
+        set +e
+        IMG=grafana/otel-lgtm:0.30.2
+        docker rm -f lgtm-probe >/dev/null 2>&1
+        docker pull -q "$IMG" || { echo "RESULT: pull failed"; exit 1; }
+        docker run -d --name lgtm-probe -p 13000:3000 -p 14317:4317 -p 14318:4318 "$IMG" || { echo "RESULT: run failed"; exit 1; }
+
+        ok=""
+        for i in $(seq 1 24); do
+          state=$(docker inspect -f '{{.State.Status}} {{.State.ExitCode}}' lgtm-probe 2>/dev/null)
+          case "$state" in
+            running*) ;;
+            *) echo "RESULT: container died early ($state)"; docker logs --tail 30 lgtm-probe 2>&1; docker rm -f lgtm-probe >/dev/null 2>&1; exit 1 ;;
+          esac
+          if curl -sf http://localhost:13000/api/health >/dev/null 2>&1; then ok=yes; break; fi
+          sleep 5
+        done
+
+        if [ -z "$ok" ]; then
+          echo "RESULT: Grafana not healthy after 120s"
+          docker logs --tail 30 lgtm-probe 2>&1
+        else
+          echo "RESULT: Grafana healthy after ~$((i*5))s"
+          echo "--- test OTLP/HTTP log ingest ---"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:14318/v1/logs \
+            -H 'Content-Type: application/json' \
+            -d '{"resourceLogs":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"probe"}}]},"scopeLogs":[{"logRecords":[{"body":{"stringValue":"lgtm probe test"}}]}]}]}')
+          echo "RESULT: OTLP/HTTP logs POST -> HTTP $code"
+          echo "--- memory footprint ---"
+          docker stats --no-stream --format '{{.Name}} {{.MemUsage}}' lgtm-probe
+        fi
+
+        docker rm -f lgtm-probe >/dev/null 2>&1
+        exit 0
