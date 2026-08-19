@@ -36,6 +36,9 @@ public static class HomeSpeakerRestEndpoints
         // Offline download endpoints
         mapOfflineDownloadEndpoints(homeSpeakerGroup);
 
+        // Amazon Music Endpoints
+        mapAmazonMusicEndpoints(homeSpeakerGroup);
+
         return homeSpeakerGroup;
     }
 
@@ -1533,6 +1536,63 @@ public static class HomeSpeakerRestEndpoints
             logger.LogError(ex, "Failed to set repeat mode");
             return Task.FromResult(Results.Problem($"Failed to set repeat mode: {ex.Message}"));
         }
+    }
+
+    #endregion
+
+    #region Amazon Music Endpoints
+
+    private static void mapAmazonMusicEndpoints(RouteGroupBuilder group)
+    {
+        // GET /api/homespeaker/amazon/playlists
+        group.MapGet("/amazon/playlists", getAmazonPlaylists)
+            .WithName("GetAmazonPlaylists")
+            .WithSummary("Get configured Amazon Music playlists")
+            .WithDescription("Returns playlists configured in appsettings.json under AmazonMusic:Playlists");
+
+        // GET /api/homespeaker/amazon/status
+        group.MapGet("/amazon/status", getAmazonStatus)
+            .WithName("GetAmazonStatus")
+            .WithSummary("Get Amazon Music CLI status")
+            .WithDescription("Returns whether the amz CLI is installed and playlists are configured");
+
+        // POST /api/homespeaker/amazon/playlists/{playlistId}/play
+        group.MapPost("/amazon/playlists/{playlistId}/play", playAmazonPlaylist)
+            .WithName("PlayAmazonPlaylist")
+            .WithSummary("Download and play an Amazon Music playlist")
+            .WithDescription("Downloads the playlist tracks using the amz CLI and starts shuffled playback");
+    }
+
+    private static IResult getAmazonPlaylists(
+        [FromServices] AmazonMusicService amazonSvc,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        logger.LogInformation("Getting configured Amazon Music playlists");
+        return Results.Ok(amazonSvc.GetConfiguredPlaylists());
+    }
+
+    private static IResult getAmazonStatus(
+        [FromServices] AmazonMusicService amazonSvc,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        var cliAvailable = amazonSvc.IsCliAvailable();
+        var configured = amazonSvc.IsConfigured();
+        logger.LogInformation("Amazon Music status: CLI={CliAvailable}, Configured={Configured}", cliAvailable, configured);
+        return Results.Ok(new { CliAvailable = cliAvailable, IsConfigured = configured });
+    }
+
+    private static async Task<IResult> playAmazonPlaylist(
+        [FromRoute] string playlistId,
+        [FromServices] AmazonMusicService amazonSvc,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        logger.LogInformation("Playing Amazon Music playlist {PlaylistId}", playlistId);
+        var (success, message) = await amazonSvc.PlayAmazonPlaylistAsync(playlistId);
+        if (success)
+            return Results.Ok(new { Success = true, Message = message });
+
+        logger.LogWarning("Amazon Music playlist {PlaylistId} failed: {Message}", playlistId, message);
+        return Results.Problem(message);
     }
 
     #endregion

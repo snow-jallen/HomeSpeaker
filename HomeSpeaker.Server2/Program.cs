@@ -68,6 +68,7 @@ builder.Services.AddSingleton<IDataStore, OnDiskDataStore>();
 builder.Services.AddSingleton<IFileSource>(_ => new DefaultFileSource(builder.Configuration[ConfigKeys.MediaFolder] ?? throw new MissingConfigException(ConfigKeys.MediaFolder)));
 builder.Services.AddSingleton<ITagParser, DefaultTagParser>();
 builder.Services.AddSingleton<YoutubeService>();
+builder.Services.AddSingleton<AmazonMusicService>();
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
     builder.Services.AddSingleton<WindowsMusicPlayer>();
@@ -218,6 +219,39 @@ builder.Services.AddScoped<HomeSpeaker.Server2.Services.YouTubeStateService>();
 // Add FluentUI and MudBlazor
 builder.Services.AddFluentUIComponents();
 builder.Services.AddMudServices();
+
+// Add forecast service with caching
+builder.Services.AddHttpClient<ForecastService>();
+builder.Services.AddSingleton<ForecastService>();
+
+// Add HttpClient for RadioStreamService (favicon downloads)
+builder.Services.AddHttpClient<RadioStreamService>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AutomaticDecompression = System.Net.DecompressionMethods.All
+    });
+
+// Add HttpClient for ImageSearchService (DDG + Wikipedia image search)
+builder.Services.AddHttpClient<ImageSearchService>(client =>
+{
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
+// Add named HttpClient for backlight control with SSL bypass
+builder.Services.AddHttpClient("BacklightClient", client =>
+{
+    client.BaseAddress = new Uri("https://192.168.1.111:5001");
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    ClientCertificateOptions = ClientCertificateOption.Manual,
+    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+});
+
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<MusicContext>("database");
 
 var app = builder.Build();
 

@@ -1,0 +1,158 @@
+@page "/amazon-music"
+@inject AmazonMusicService amazonSvc
+@inject ILogger<Amazon> Logger
+
+<PageTitle>Amazon Music</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3><i class="fab fa-amazon me-2"></i>Amazon Music</h3>
+    <button @onclick="Refresh" class="btn btn-outline-secondary btn-touch" title="Refresh">
+        <i class="fas fa-sync-alt me-1"></i>Refresh
+    </button>
+</div>
+
+@if (!isCliAvailable)
+{
+    <div class="alert alert-warning" role="alert">
+        <strong><i class="fas fa-exclamation-triangle me-1"></i>amz CLI not found.</strong>
+        Install it with: <code>pip install amazon-music</code>
+    </div>
+}
+
+@if (!isConfigured)
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Setup Required</h5>
+        </div>
+        <div class="card-body">
+            <ol class="mb-3">
+                <li class="mb-2">Install the CLI on the server: <code>pip install amazon-music</code></li>
+                <li class="mb-2">Get your token from <a href="https://amz.dezalty.com/login" target="_blank" rel="noopener">https://amz.dezalty.com/login</a></li>
+                <li class="mb-2">
+                    Add playlists to <code>appsettings.json</code> (or secrets):
+                    <pre class="mt-2 p-3 rounded bg-dark text-light small">
+"AmazonMusic": {
+  "Token": "your-token-here",
+  "Quality": "Normal",
+  "Playlists": [
+    {
+      "Id": "favorites",
+      "Name": "My Favorites",
+      "Url": "https://music.amazon.com/playlists/B0FBL3CC8M",
+      "TrackCount": 42
+    }
+  ]
+}</pre>
+                </li>
+            </ol>
+            <p class="text-muted mb-0">
+                <small>Supported quality levels: <code>Normal</code>, <code>High</code>, <code>Master</code></small>
+            </p>
+        </div>
+    </div>
+}
+else
+{
+    <p class="text-muted mb-3">
+        <i class="fas fa-list me-1"></i>@playlists.Count() playlist@(playlists.Count() == 1 ? "" : "s") configured
+    </p>
+
+    @foreach (var playlist in playlists)
+    {
+        <div class="card mb-2 @(activePlaylistId == playlist.Id ? "border-primary" : "")">
+            <div class="card-body p-3">
+                <div class="d-flex align-items-center">
+                    <div class="me-3 text-warning">
+                        <i class="fab fa-amazon fa-2x"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-0">@playlist.Name</h6>
+                        @if (playlist.TrackCount > 0)
+                        {
+                            <small class="text-muted">@playlist.TrackCount tracks</small>
+                        }
+                        @if (activePlaylistId == playlist.Id && !string.IsNullOrEmpty(statusMessage))
+                        {
+                            <div class="mt-1 small @(isSuccess ? "text-success" : "text-danger")">
+                                <i class="fas @(isSuccess ? "fa-check-circle" : "fa-times-circle") me-1"></i>@statusMessage
+                            </div>
+                        }
+                    </div>
+                    <div>
+                        @if (activePlaylistId == playlist.Id && isDownloading)
+                        {
+                            <button class="btn btn-primary btn-touch" disabled>
+                                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                Shuffling&hellip;
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-primary btn-touch" @onclick="() => PlayPlaylist(playlist.Id)">
+                                <i class="fas fa-random me-1"></i>Shuffle
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private bool isCliAvailable;
+    private bool isConfigured;
+    private IEnumerable<AmazonPlaylistConfig> playlists = [];
+    private string? activePlaylistId;
+    private bool isDownloading;
+    private bool isSuccess;
+    private string? statusMessage;
+
+    protected override Task OnInitializedAsync()
+    {
+        LoadData();
+        return Task.CompletedTask;
+    }
+
+    private void LoadData()
+    {
+        isCliAvailable = amazonSvc.IsCliAvailable();
+        isConfigured = amazonSvc.IsConfigured();
+        playlists = amazonSvc.GetConfiguredPlaylists();
+    }
+
+    private void Refresh()
+    {
+        LoadData();
+        statusMessage = null;
+        activePlaylistId = null;
+    }
+
+    private async Task PlayPlaylist(string playlistId)
+    {
+        activePlaylistId = playlistId;
+        isDownloading = true;
+        statusMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var (success, message) = await amazonSvc.PlayAmazonPlaylistAsync(playlistId);
+            isSuccess = success;
+            statusMessage = message;
+            Logger.LogInformation("Amazon playlist result for '{Id}': {Success} - {Message}", playlistId, success, message);
+        }
+        catch (Exception ex)
+        {
+            isSuccess = false;
+            statusMessage = $"Unexpected error: {ex.Message}";
+            Logger.LogError(ex, "Unexpected error playing Amazon playlist '{Id}'", playlistId);
+        }
+        finally
+        {
+            isDownloading = false;
+            StateHasChanged();
+        }
+    }
+}
