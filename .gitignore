@@ -384,3 +384,6 @@ DerivedData/
 .build/
 /Packages/
 Package.resolved
+
+# Vendored YoutubeExplode PR-965 build (see local-packages/README.md)
+!local-packages/*.nupkg
