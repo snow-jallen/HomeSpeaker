@@ -1,0 +1,38 @@
+name: Probe YouTube
+
+# One-off diagnostic: reproduce the YouTube search/cache flow on the Pi and
+# capture the real exception (cacheVideo is fire-and-forget, so failures only
+# ever appear in the container logs, never in the UI).
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: [self-hosted, kitchen]
+
+    steps:
+    - name: ffmpeg status
+      continue-on-error: true
+      run: curl -sk --max-time 15 https://localhost/api/homespeaker/youtube/ffmpeg-status; echo
+
+    - name: YouTube search
+      continue-on-error: true
+      run: |
+        curl -sk --max-time 90 -w "\nHTTP %{http_code}\n" \
+          "https://localhost/api/homespeaker/youtube/search?q=never%20gonna%20give%20you%20up" | head -c 2000
+        echo
+
+    - name: Start cache download
+      continue-on-error: true
+      run: |
+        curl -sk --max-time 30 -w "\nHTTP %{http_code}\n" \
+          -X POST https://localhost/api/homespeaker/youtube/cache \
+          -H 'Content-Type: application/json' \
+          -d '{"video":{"title":"Probe Test Video","id":"dQw4w9WgXcQ","url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","thumbnail":null,"author":"Rick Astley","duration":null}}'
+
+    - name: Wait for download and collect logs
+      continue-on-error: true
+      run: |
+        sleep 75
+        echo "=== youtube/cache-related log lines (last 10 min) ==="
+        docker logs --since 10m homespeaker 2>&1 | grep -iE "youtube|cach|error|fail|exception|at " | tail -80
