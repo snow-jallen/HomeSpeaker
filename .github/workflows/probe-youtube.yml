@@ -11,28 +11,25 @@ jobs:
     runs-on: [self-hosted, kitchen]
 
     steps:
-    - name: ffmpeg status
-      continue-on-error: true
-      run: curl -sk --max-time 15 https://localhost/api/homespeaker/youtube/ffmpeg-status; echo
-
-    - name: YouTube search
-      continue-on-error: true
-      run: |
-        curl -sk --max-time 90 -w "\nHTTP %{http_code}\n" \
-          "https://localhost/api/homespeaker/youtube/search?q=never%20gonna%20give%20you%20up" | head -c 2000
-        echo
-
-    - name: Start cache download
+    - name: Cache download of previously-failing video
       continue-on-error: true
       run: |
         curl -sk --max-time 30 -w "\nHTTP %{http_code}\n" \
           -X POST https://localhost/api/homespeaker/youtube/cache \
           -H 'Content-Type: application/json' \
-          -d '{"video":{"title":"Probe Test Video","id":"dQw4w9WgXcQ","url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","thumbnail":null,"author":"Rick Astley","duration":null}}'
+          -d '{"video":{"title":"Probe Folded Test","id":"e-BRSeHBu2c","url":"https://www.youtube.com/watch?v=e-BRSeHBu2c","thumbnail":null,"author":"New York Vocal Collective","duration":null}}'
 
     - name: Wait for download and collect logs
       continue-on-error: true
       run: |
         sleep 75
-        echo "=== youtube/cache-related log lines (last 10 min) ==="
-        docker logs --since 10m homespeaker 2>&1 | grep -iE "youtube|cach|error|fail|exception|at " | tail -80
+        echo "=== youtube/cache log lines (last 5 min) ==="
+        docker logs --since 5m homespeaker 2>&1 | grep -iE "youtube|cach|unavailable|exception" | grep -v "blood sugar\|temperature\|forecast" | tail -40
+        echo "=== cached file ==="
+        docker exec homespeaker ls -l "/music/YouTube Cache/" | grep -i probe || echo "no probe files"
+
+    - name: Clean up probe test files
+      continue-on-error: true
+      run: |
+        docker exec homespeaker rm -f "/music/YouTube Cache/Probe Folded Test.mp3" "/music/YouTube Cache/Probe Test Video.mp3"
+        echo "cleanup done"
