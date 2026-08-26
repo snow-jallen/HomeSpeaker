@@ -14,9 +14,21 @@ class ConnectionStore {
     var connections: [ServerConnection] = []
     var selectedConnection: ServerConnection?
 
+    // Reuse one APIClient (and its URLSession) per selected server. Building a
+    // fresh URLSession on every access leaks connections - sessions are never
+    // invalidated - and gets flaky over a long-running app session.
+    @ObservationIgnored private var cachedAPI: APIClient?
+    @ObservationIgnored private var cachedAPIBaseURL: URL?
+
     var api: APIClient? {
         guard let conn = selectedConnection else { return nil }
-        return APIClient(baseURL: conn.baseURL)
+        if let cachedAPI, cachedAPIBaseURL == conn.baseURL {
+            return cachedAPI
+        }
+        let client = APIClient(baseURL: conn.baseURL)
+        cachedAPI = client
+        cachedAPIBaseURL = conn.baseURL
+        return client
     }
 
     init() {

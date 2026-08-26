@@ -1,4 +1,4 @@
-using HomeSpeaker.Shared;
+using HomeSpeaker.Server2.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace HomeSpeaker.Server2.Data;
@@ -135,19 +135,18 @@ public class MusicContext : DbContext
         modelBuilder.Entity<AiPlaybackFeedback>()
             .HasIndex(f => f.SongPath);
 
-        modelBuilder.Entity<OfflineDownloadTarget>()
-            .Property(target => target.TargetType)
+
+        modelBuilder.Entity<AutoPlaySourceEntity>()
+            .Property(source => source.SourceType)
             .HasConversion<string>();
 
-        modelBuilder.Entity<OfflineDownloadTarget>()
-            .HasIndex(target => new
-            {
-                target.TargetType,
-                target.ArtistName,
-                target.AlbumName,
-                target.SongPath
-            })
-            .IsUnique();
+        modelBuilder.Entity<AutoPlaySourceEntity>()
+            .HasIndex(source => new { source.AutoPlaySettingsId, source.SortOrder });
+
+        modelBuilder.Entity<AutoPlaySourceEntity>()
+            .HasOne<AutoPlaySettingsEntity>()
+            .WithMany(settings => settings.Sources)
+            .HasForeignKey(source => source.AutoPlaySettingsId);
 
         modelBuilder.Entity<PushNotificationDevice>()
             .Property(device => device.Platform)
@@ -306,9 +305,10 @@ public class MusicContext : DbContext
     public DbSet<AiProcessingRun> AiProcessingRuns { get; set; }
     public DbSet<AiPlaybackSession> AiPlaybackSessions { get; set; }
     public DbSet<AiPlaybackFeedback> AiPlaybackFeedbacks { get; set; }
-    public DbSet<OfflineDownloadTarget> OfflineDownloadTargets { get; set; }
     public DbSet<PushNotificationDevice> PushNotificationDevices { get; set; }
     public DbSet<PushNotificationAlertState> PushNotificationAlertStates { get; set; }
+    public DbSet<AutoPlaySettingsEntity> AutoPlaySettings { get; set; }
+    public DbSet<AutoPlaySourceEntity> AutoPlaySources { get; set; }
 }
 
 public class Thumbnail
@@ -394,6 +394,24 @@ public class RadioStream
     public int DisplayOrder { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastPlayedAt { get; set; }
+}
+
+public class AutoPlaySettingsEntity
+{
+    public int Id { get; set; }
+    public int VolumeLevel { get; set; } = 30;
+    public int SilenceTimeoutMinutes { get; set; } = 30;
+    public List<AutoPlaySourceEntity> Sources { get; set; } = new();
+}
+
+public class AutoPlaySourceEntity
+{
+    public int Id { get; set; }
+    public int AutoPlaySettingsId { get; set; }
+    public AutoPlaySourceType SourceType { get; set; }
+    public string? PlaylistName { get; set; }
+    public int? RadioStreamId { get; set; }
+    public int SortOrder { get; set; }
 }
 
 public class AiGenreDefinition
@@ -506,15 +524,6 @@ public class AiPlaybackFeedback
     public DateTime CreatedUtc { get; set; }
 }
 
-public class OfflineDownloadTarget
-{
-    public int Id { get; set; }
-    public OfflineDownloadTargetType TargetType { get; set; }
-    public string ArtistName { get; set; } = string.Empty;
-    public string AlbumName { get; set; } = string.Empty;
-    public string SongPath { get; set; } = string.Empty;
-    public DateTime CreatedUtc { get; set; }
-}
 
 public class PushNotificationDevice
 {

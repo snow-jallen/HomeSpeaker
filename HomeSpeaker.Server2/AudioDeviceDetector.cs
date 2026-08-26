@@ -62,15 +62,15 @@ public class AudioDeviceDetector
         }
 
         // Priority selection:
-        // 1. "Headphones" (Raspberry Pi headphone jack - most reliable)
-        // 2. USB audio devices (external DACs or speakers)
+        // 1. USB audio devices (external DACs or speakers)
+        // 2. "Headphones" (Raspberry Pi headphone jack fallback)
         // 3. Any device with "Speaker" in the name (built-in screen speakers)
         // 4. HDMI audio
         // 5. First available device
 
         var selected = devices
-            .OrderByDescending(d => d.CardName.Equals("Headphones", StringComparison.OrdinalIgnoreCase) ? 100 : 0)
-            .ThenByDescending(d => d.IsUsb ? 50 : 0)
+            .OrderByDescending(d => d.IsUsb ? 100 : 0)
+            .ThenByDescending(d => d.CardName.Equals("Headphones", StringComparison.OrdinalIgnoreCase) ? 50 : 0)
             .ThenByDescending(d => d.Description.Contains("Speaker", StringComparison.OrdinalIgnoreCase) ? 40 : 0)
             .ThenByDescending(d => d.Description.Contains("HDMI", StringComparison.OrdinalIgnoreCase) ? 10 : 0)
             .ThenBy(d => d.CardNumber)
@@ -113,6 +113,8 @@ public class AudioDeviceDetector
             var cardRegex = new Regex(@"card (\d+): (\w+) \[([^\]]+)\]", RegexOptions.Multiline);
             var matches = cardRegex.Matches(output);
 
+            var outputLines = output.Split('\n');
+
             foreach (Match match in matches)
             {
                 var cardNumber = int.Parse(match.Groups[1].Value);
@@ -125,6 +127,10 @@ public class AudioDeviceDetector
                     continue;
                 }
 
+                // Check the full aplay line — "USB Audio" appears in the device portion
+                // which the card regex doesn't capture (e.g. "device 0: USB Audio [USB Audio]")
+                var fullCardLine = outputLines.FirstOrDefault(l => l.Contains($"card {cardNumber}:")) ?? "";
+
                 devices.Add(new AudioDevice
                 {
                     CardNumber = cardNumber,
@@ -132,7 +138,9 @@ public class AudioDeviceDetector
                     Description = description,
                     IsUsb = description.Contains("USB", StringComparison.OrdinalIgnoreCase) ||
                             cardName.Contains("USB", StringComparison.OrdinalIgnoreCase) ||
-                            cardName.StartsWith("UAC", StringComparison.OrdinalIgnoreCase)
+                            cardName.StartsWith("UAC", StringComparison.OrdinalIgnoreCase) ||
+                            File.Exists($"/proc/asound/card{cardNumber}/usbid") ||
+                            fullCardLine.Contains("USB", StringComparison.OrdinalIgnoreCase)
                 });
             }
         }

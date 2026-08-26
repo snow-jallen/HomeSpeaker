@@ -14,6 +14,7 @@ struct MusicLibraryView: View {
     @State private var expandedAlbums: Set<String> = []
     @State private var editingSong: Song?
     @State private var editingAlbumArt: AlbumArtEditTarget?
+    @State private var loadedConnectionId: UUID?
 
     var filteredSongs: [Song] {
         if searchText.isEmpty { return songs }
@@ -95,7 +96,12 @@ struct MusicLibraryView: View {
             }
             .task(id: store.selectedConnection?.id) {
                 offlineDownloads.updateConnection(store.selectedConnection)
-                await loadSongs()
+                // .task re-fires every time the tab appears; only re-fetch the
+                // full library when the server changed or nothing is loaded.
+                // Pull-to-refresh handles manual reloads.
+                if songs.isEmpty || loadedConnectionId != store.selectedConnection?.id {
+                    await loadSongs()
+                }
             }
             .sheet(item: $editingSong) { song in
                 if let api = store.api {
@@ -167,6 +173,20 @@ struct MusicLibraryView: View {
                                 ) { action in
                                     await handleAction(action, song: song)
                                 }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button {
+                                        Task { await handleAction(.play, song: song) }
+                                    } label: {
+                                        Label("Play", systemImage: "play.fill")
+                                    }
+                                    .tint(.green)
+                                    Button {
+                                        Task { await handleAction(.enqueue, song: song) }
+                                    } label: {
+                                        Label("Queue", systemImage: "text.badge.plus")
+                                    }
+                                    .tint(.blue)
+                                }
                             }
                         } label: {
                             HStack(spacing: 8) {
@@ -217,9 +237,8 @@ struct MusicLibraryView: View {
                                     )
                                 } label: {
                                     Label(
-                                        offlineDownloads.isAlbumSelected(
-                                            artist: artistEntry.artist,
-                                            album: albumEntry.album,
+                                        offlineDownloads.areSongsKeptOffline(
+                                            albumEntry.songs,
                                             connection: store.selectedConnection
                                         ) ? "Remove Album Download" : "Keep Album Offline",
                                         systemImage: "arrow.down.circle"
@@ -235,6 +254,23 @@ struct MusicLibraryView: View {
                                         Label("Edit Album Art", systemImage: "photo")
                                     }
                                 }
+                            }
+                            // Attached to the label, not the DisclosureGroup, so the
+                            // actions apply to the album header row only and don't
+                            // propagate to the song rows inside.
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button {
+                                    Task { await handleAlbumAction(.play, album: albumEntry.album) }
+                                } label: {
+                                    Label("Play", systemImage: "play.fill")
+                                }
+                                .tint(.green)
+                                Button {
+                                    Task { await handleAlbumAction(.enqueue, album: albumEntry.album) }
+                                } label: {
+                                    Label("Queue", systemImage: "text.badge.plus")
+                                }
+                                .tint(.blue)
                             }
                         }
                     }
@@ -275,12 +311,26 @@ struct MusicLibraryView: View {
                             )
                         } label: {
                             Label(
-                                offlineDownloads.isArtistSelected(artistEntry.artist, connection: store.selectedConnection)
+                                offlineDownloads.areSongsKeptOffline(artistSongs, connection: store.selectedConnection)
                                     ? "Remove Artist Download"
                                     : "Keep Artist Offline",
                                 systemImage: "arrow.down.circle"
                             )
                         }
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button {
+                            Task { await handleArtistAction(.play, artist: artistEntry.artist) }
+                        } label: {
+                            Label("Play", systemImage: "play.fill")
+                        }
+                        .tint(.green)
+                        Button {
+                            Task { await handleArtistAction(.enqueue, artist: artistEntry.artist) }
+                        } label: {
+                            Label("Queue", systemImage: "text.badge.plus")
+                        }
+                        .tint(.blue)
                     }
                 }
             }
@@ -398,9 +448,19 @@ struct MusicLibraryView: View {
             let fetchedSongs = try await api.getSongs()
             error = nil
             songs = fetchedSongs
+            loadedConnectionId = store.selectedConnection?.id
             offlineDownloads.updateLibrary(fetchedSongs, connection: store.selectedConnection)
         } catch {
-            self.error = error.localizedDescription
+            let offlineSongs = offlineDownloads.offlineLibrarySongs(connection: store.selectedConnection)
+            if offlineSongs.isEmpty {
+                songs = []
+                self.error = error.localizedDescription
+                return
+            }
+
+            songs = offlineSongs
+            self.error = nil
+            showMessage("Unable to connect to server. Displaying downloaded media only.")
         }
     }
 

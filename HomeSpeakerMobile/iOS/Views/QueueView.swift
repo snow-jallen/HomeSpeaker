@@ -10,6 +10,7 @@ struct QueueView: View {
     @State private var showSavePlaylist = false
     @State private var newPlaylistName = ""
     @State private var selectedTab: QueueTab = .speaker
+    @State private var isEditingLocalQueue = false
 
     private var showTabs: Bool { !localPlayer.songs.isEmpty }
 
@@ -103,7 +104,11 @@ struct QueueView: View {
             }
             .onMove { from, to in
                 serverQueue.move(fromOffsets: from, toOffset: to)
-                Task { await reorderServerQueue() }
+                Task {
+                    if await reorderServerQueue() == false {
+                        await loadServerQueue()
+                    }
+                }
             }
         }
         .environment(\.editMode, .constant(.active))
@@ -159,7 +164,11 @@ struct QueueView: View {
                     }
                 }
             }
+            .onMove { from, to in
+                localPlayer.move(fromOffsets: from, toOffset: to)
+            }
         }
+        .environment(\.editMode, .constant(isEditingLocalQueue ? .active : .inactive))
     }
 
     // MARK: - Toolbar
@@ -189,6 +198,24 @@ struct QueueView: View {
                 }
             } else {
                 if !localPlayer.songs.isEmpty {
+                    Button {
+                        isEditingLocalQueue.toggle()
+                    } label: {
+                        Text(isEditingLocalQueue ? "Done" : "Reorder")
+                    }
+
+                    Button {
+                        localPlayer.shuffleQueue()
+                    } label: {
+                        Image(systemName: "shuffle")
+                    }
+
+                    Button {
+                        showSavePlaylist = true
+                    } label: {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+
                     Button(role: .destructive) {
                         localPlayer.clearQueue()
                     } label: {
@@ -221,24 +248,29 @@ struct QueueView: View {
     }
 
     private func removeServerSong(at index: Int) async {
-        guard index < serverQueue.count, let api = store.api else { return }
-        let song = serverQueue[index]
-        serverQueue.remove(at: index)
-        if let path = song.path {
-            try? await api.removeSongFromPlaylist(playlistName: "", songPath: path)
+        guard index < serverQueue.count else { return }
+        let removedSong = serverQueue.remove(at: index)
+        if await reorderServerQueue() == false {
+            serverQueue.insert(removedSong, at: index)
         }
-        await reorderServerQueue()
     }
 
-    private func reorderServerQueue() async {
-        guard let api = store.api else { return }
+    private func reorderServerQueue() async -> Bool {
+        guard let api = store.api else { return false }
         let paths = serverQueue.compactMap(\.path)
-        try? await api.updateQueue(songPaths: paths)
+        do {
+            try await api.updateQueue(songPaths: paths)
+            return true
+        } catch {
+            return false
+        }
     }
 
     private func saveAsPlaylist() async {
         guard !newPlaylistName.isEmpty, let api = store.api else { return }
-        let paths = serverQueue.compactMap(\.path)
+        let sourceSongs = (selectedTab == .device && !localPlayer.songs.isEmpty) ? localPlayer.songs : serverQueue
+        let paths = sourceSongs.compactMap(\.path)
+        guard !paths.isEmpty else { return }
         for path in paths {
             try? await api.addSongToPlaylist(playlistName: newPlaylistName, songPath: path)
         }

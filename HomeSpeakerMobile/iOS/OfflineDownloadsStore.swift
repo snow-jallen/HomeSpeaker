@@ -60,6 +60,10 @@ enum OfflineDownloadPaths {
         try? FileManager.default.moveItem(at: legacyURL, to: targetURL)
     }
 
+    static func fileStem(for songPath: String) -> String {
+        encodedFileStem(for: songPath)
+    }
+
     private static func encodedFileStem(for value: String) -> String {
         Data(value.utf8)
             .base64EncodedString()
@@ -159,14 +163,14 @@ struct OfflineSongKey: Hashable, Codable, Identifiable {
     }
 }
 
-struct LegacyOfflineArtistSelection: Codable, Hashable, Identifiable {
+struct StoredArtistSelection: Codable, Hashable, Identifiable {
     let connectionId: UUID
     let artist: String
 
     var id: String { "\(connectionId.uuidString)-artist-\(artist)" }
 }
 
-struct LegacyOfflineAlbumSelection: Codable, Hashable, Identifiable {
+struct StoredAlbumSelection: Codable, Hashable, Identifiable {
     let connectionId: UUID
     let artist: String
     let album: String
@@ -174,7 +178,7 @@ struct LegacyOfflineAlbumSelection: Codable, Hashable, Identifiable {
     var id: String { "\(connectionId.uuidString)-album-\(artist)-\(album)" }
 }
 
-struct LegacyOfflineTrackSelection: Codable, Hashable, Identifiable {
+struct StoredTrackSelection: Codable, Hashable, Identifiable {
     let connectionId: UUID
     let songPath: String
     private let legacySongId: Int?
@@ -203,11 +207,11 @@ struct LegacyOfflineTrackSelection: Codable, Hashable, Identifiable {
         try container.encode(songPath, forKey: .songPath)
     }
 
-    func resolved(using songs: [Song]) -> LegacyOfflineTrackSelection? {
-        if !songPath.isEmpty { return LegacyOfflineTrackSelection(connectionId: connectionId, songPath: songPath) }
+    func resolved(using songs: [Song]) -> StoredTrackSelection? {
+        if !songPath.isEmpty { return StoredTrackSelection(connectionId: connectionId, songPath: songPath) }
         guard let legacySongId,
               let resolvedPath = songs.first(where: { $0.songId == legacySongId })?.path else { return nil }
-        return LegacyOfflineTrackSelection(connectionId: connectionId, songPath: resolvedPath)
+        return StoredTrackSelection(connectionId: connectionId, songPath: resolvedPath)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -248,29 +252,26 @@ private extension OfflineDownloadRecord {
 }
 
 struct OfflineArtistSelection: Hashable, Identifiable {
-    let targetId: Int
     let artist: String
     let resolvedSongCount: Int
 
-    var id: Int { targetId }
+    var id: String { artist }
 }
 
 struct OfflineAlbumSelection: Hashable, Identifiable {
-    let targetId: Int
     let artist: String
     let album: String
     let resolvedSongCount: Int
 
-    var id: Int { targetId }
+    var id: String { "\(artist)|\(album)" }
 }
 
 struct OfflineTrackSelection: Hashable, Identifiable {
-    let targetId: Int
     let songPath: String
     let title: String
     let subtitle: String
 
-    var id: Int { targetId }
+    var id: String { songPath }
 }
 
 struct OfflineManagedSong: Identifiable {
@@ -285,10 +286,14 @@ struct OfflineManagedSong: Identifiable {
 }
 
 private struct OfflineLocalState: Codable {
-    var artists: [LegacyOfflineArtistSelection] = []
-    var albums: [LegacyOfflineAlbumSelection] = []
-    var tracks: [LegacyOfflineTrackSelection] = []
+    var artists: [StoredArtistSelection] = []
+    var albums: [StoredAlbumSelection] = []
+    var tracks: [StoredTrackSelection] = []
     var downloads: [OfflineDownloadRecord] = []
+    // One-time upgrade marker: versions that kept selections on the server
+    // left the local arrays empty, so their downloads are re-seeded as track
+    // selections the first time this device-local build runs.
+    var selectionsSeeded: Bool?
 }
 
 private enum OfflineDownloadError: LocalizedError {
@@ -312,6 +317,8 @@ private enum OfflineDownloadError: LocalizedError {
 @Observable
 final class OfflineDownloadsStore {
     static let shared = OfflineDownloadsStore()
+    private static let fnv1aOffsetBasis: UInt64 = 14_695_981_039_346_656_037
+    private static let fnv1aPrime: UInt64 = 1_099_511_628_211
 
     private let manifestURL = OfflineDownloadPaths.rootDirectory().appendingPathComponent("manifest.json")
 
@@ -323,37 +330,85 @@ final class OfflineDownloadsStore {
     private(set) var failedMessages: [OfflineSongKey: String] = [:]
 
     private var localState = OfflineLocalState()
-    private var serverManifest: OfflineDownloadManifestDto?
     private var queuedKeys: [OfflineSongKey] = []
     @ObservationIgnored private var downloadTask: Task<Void, Never>?
+
+    // status(for:) runs for every visible row on every render. Without these
+    // caches each call re-listed the downloads directory and rebuilt key sets
+    // from scratch, which froze the main thread for seconds on large
+    // libraries. All are invalidated together at the mutation chokepoints.
+    @ObservationIgnored private var downloadedStemsCache: [UUID: Set<String>] = [:]
+    @ObservationIgnored private var desiredKeysCache: [UUID: Set<OfflineSongKey>] = [:]
+    @ObservationIgnored private var downloadKeysCache: Set<OfflineSongKey>?
+    @ObservationIgnored private var queuedKeySetCache: Set<OfflineSongKey>?
+
+    private func invalidateStatusCaches() {
+        downloadedStemsCache.removeAll()
+        desiredKeysCache.removeAll()
+        downloadKeysCache = nil
+        queuedKeySetCache = nil
+    }
+
+    private var downloadKeys: Set<OfflineSongKey> {
+        if let downloadKeysCache { return downloadKeysCache }
+        let keys = Set(localState.downloads.map(\.key))
+        downloadKeysCache = keys
+        return keys
+    }
+
+    private var queuedKeySet: Set<OfflineSongKey> {
+        if let queuedKeySetCache { return queuedKeySetCache }
+        let keys = Set(queuedKeys)
+        queuedKeySetCache = keys
+        return keys
+    }
+
+    private func downloadedStems(for connectionId: UUID) -> Set<String> {
+        if let cached = downloadedStemsCache[connectionId] { return cached }
+        let directoryURL = OfflineDownloadPaths.directory(for: connectionId)
+        let names = (try? FileManager.default.contentsOfDirectory(
+            at: directoryURL,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ))?.map(\.lastPathComponent) ?? []
+        let stems = Set(names.map { String($0.prefix(while: { $0 != "." })) })
+        downloadedStemsCache[connectionId] = stems
+        return stems
+    }
+
+    private func hasDownloadedFile(for key: OfflineSongKey) -> Bool {
+        guard !key.songPath.isEmpty else { return false }
+        return downloadedStems(for: key.connectionId).contains(OfflineDownloadPaths.fileStem(for: key.songPath))
+    }
 
     init() {
         loadManifest()
         repairDownloadedRecords()
+        seedSelectionsFromDownloadsIfNeeded()
     }
 
     var currentArtistSelections: [OfflineArtistSelection] {
-        manifestTargets
-            .filter { $0.targetType == .artist }
+        guard let connectionId = currentConnection?.id else { return [] }
+        return localState.artists
+            .filter { $0.connectionId == connectionId }
             .map {
                 OfflineArtistSelection(
-                    targetId: $0.id,
-                    artist: $0.artistName ?? $0.displayName,
-                    resolvedSongCount: $0.resolvedSongCount
+                    artist: $0.artist,
+                    resolvedSongCount: librarySongs(forArtist: $0.artist).count
                 )
             }
             .sorted { $0.artist < $1.artist }
     }
 
     var currentAlbumSelections: [OfflineAlbumSelection] {
-        manifestTargets
-            .filter { $0.targetType == .album }
+        guard let connectionId = currentConnection?.id else { return [] }
+        return localState.albums
+            .filter { $0.connectionId == connectionId }
             .map {
                 OfflineAlbumSelection(
-                    targetId: $0.id,
-                    artist: $0.artistName ?? "Unknown Artist",
-                    album: $0.albumName ?? $0.displayName,
-                    resolvedSongCount: $0.resolvedSongCount
+                    artist: $0.artist,
+                    album: $0.album,
+                    resolvedSongCount: librarySongs(forArtist: $0.artist, album: $0.album).count
                 )
             }
             .sorted {
@@ -363,13 +418,19 @@ final class OfflineDownloadsStore {
     }
 
     var currentTrackSelections: [OfflineTrackSelection] {
-        manifestTargets
-            .filter { $0.targetType == .song }
-            .map {
-                let title = $0.song?.displayTitle ?? $0.displayName
+        guard let connectionId = currentConnection?.id else { return [] }
+        return localState.tracks
+            .filter { $0.connectionId == connectionId && !$0.songPath.isEmpty }
+            .map { selection in
+                let song = librarySong(forPath: selection.songPath)
+                let key = OfflineSongKey(connectionId: connectionId, songPath: selection.songPath)
+                let record = localState.downloads.first { $0.key == key }
+                let title = song?.displayTitle
+                    ?? record?.title
+                    ?? URL(fileURLWithPath: selection.songPath).deletingPathExtension().lastPathComponent
                 let subtitle = [
-                    $0.song?.displayArtist ?? $0.artistName,
-                    $0.song?.displayAlbum ?? $0.albumName
+                    song?.displayArtist ?? record?.artist,
+                    song?.displayAlbum ?? record?.album
                 ]
                 .compactMap { value in
                     guard let value, !value.isEmpty else { return nil }
@@ -378,13 +439,24 @@ final class OfflineDownloadsStore {
                 .joined(separator: " • ")
 
                 return OfflineTrackSelection(
-                    targetId: $0.id,
-                    songPath: $0.songPath ?? $0.song?.path ?? "",
+                    songPath: selection.songPath,
                     title: title,
                     subtitle: subtitle.isEmpty ? "Saved track" : subtitle
                 )
             }
             .sorted { $0.title < $1.title }
+    }
+
+    private func librarySongs(forArtist artist: String) -> [Song] {
+        librarySongs.filter { stringsEqual($0.displayArtist, artist) }
+    }
+
+    private func librarySongs(forArtist artist: String, album: String) -> [Song] {
+        librarySongs.filter { stringsEqual($0.displayArtist, artist) && stringsEqual($0.displayAlbum, album) }
+    }
+
+    private func librarySong(forPath path: String) -> Song? {
+        librarySongs.first { songsEqual($0.path ?? "", path) }
     }
 
     var currentDownloadRecords: [OfflineDownloadRecord] {
@@ -406,13 +478,13 @@ final class OfflineDownloadsStore {
         var items: [OfflineSongKey: OfflineManagedSong] = [:]
         let desired = desiredSongKeys(for: connection.id)
 
-        for entry in manifestSongs {
-            let key = OfflineSongKey(connectionId: connection.id, songPath: entry.songPath)
+        for key in desired {
+            guard let song = librarySong(forPath: key.songPath) else { continue }
             items[key] = OfflineManagedSong(
                 key: key,
-                title: entry.song.displayTitle,
-                artist: entry.song.displayArtist,
-                album: entry.song.displayAlbum,
+                title: song.displayTitle,
+                artist: song.displayArtist,
+                album: song.displayAlbum,
                 status: status(for: key),
                 failureReason: failedMessages[key]
             )
@@ -473,17 +545,9 @@ final class OfflineDownloadsStore {
         return ByteCountFormatter.string(fromByteCount: byteCount, countStyle: .file)
     }
 
-    private var manifestTargets: [OfflineDownloadTargetDto] {
-        serverManifest?.targets ?? []
-    }
-
-    private var manifestSongs: [OfflineDownloadSongDto] {
-        serverManifest?.songs ?? []
-    }
-
     func updateConnection(_ connection: ServerConnection?) {
         guard currentConnection?.id != connection?.id else {
-            if connection != nil, serverManifest == nil {
+            if connection != nil, librarySongs.isEmpty {
                 Task { await refreshLibrary(force: true) }
             }
             return
@@ -495,9 +559,9 @@ final class OfflineDownloadsStore {
         activeDownloadKey = nil
         failedMessages.removeAll()
         currentConnection = connection
-        serverManifest = nil
         librarySongs = []
         lastError = nil
+        invalidateStatusCaches()
 
         guard connection != nil else { return }
         Task { await refreshLibrary(force: true) }
@@ -505,7 +569,7 @@ final class OfflineDownloadsStore {
 
     func refreshLibrary(force: Bool = true) async {
         guard let connection = currentConnection else { return }
-        if !force && serverManifest != nil {
+        if !force && !librarySongs.isEmpty {
             syncDesiredState()
             return
         }
@@ -516,19 +580,11 @@ final class OfflineDownloadsStore {
         let api = APIClient(baseURL: connection.baseURL)
 
         do {
-            serverManifest = try await api.getOfflineDownloadManifest()
+            let songs = try await api.getSongs()
+            librarySongs = sortedSongs(songs)
+            invalidateStatusCaches()
             lastError = nil
-
-            if needsLegacySongResolution(for: connection.id), librarySongs.isEmpty {
-                let songs = try await api.getSongs()
-                librarySongs = sortedSongs(songs)
-                migrateLegacyState(for: connection.id)
-            }
-
-            if try await migrateLegacySelectionsIfNeeded(connection: connection, api: api) {
-                serverManifest = try await api.getOfflineDownloadManifest()
-            }
-
+            migrateLegacyState(for: connection.id)
             syncDesiredState()
         } catch {
             lastError = error.localizedDescription
@@ -544,23 +600,33 @@ final class OfflineDownloadsStore {
         currentConnection = connection
         librarySongs = sortedSongs(songs)
         lastError = nil
+        // The desired-song set is resolved against librarySongs now, so any
+        // cached keys are stale the moment the library changes.
+        invalidateStatusCaches()
         migrateLegacyState(for: connection.id)
         syncDesiredState()
     }
 
-    func isArtistSelected(_ artist: String, connection: ServerConnection?) -> Bool {
-        guard connection?.id == currentConnection?.id else { return false }
-        return artistTarget(named: artist) != nil
-    }
+    func offlineLibrarySongs(connection: ServerConnection?) -> [Song] {
+        guard let connection else { return [] }
 
-    func isAlbumSelected(artist: String, album: String, connection: ServerConnection?) -> Bool {
-        guard connection?.id == currentConnection?.id else { return false }
-        return albumTarget(artist: artist, album: album) != nil
-    }
+        let existingDownloads = localState.downloads.filter {
+            $0.key.connectionId == connection.id &&
+                !$0.key.songPath.isEmpty &&
+                hasDownloadedFile(for: $0.key)
+        }
 
-    func isTrackSelected(_ song: Song, connection: ServerConnection?) -> Bool {
-        guard connection?.id == currentConnection?.id, let path = song.path else { return false }
-        return trackTarget(songPath: path) != nil
+        let songs = existingDownloads.map { record in
+            Song(
+                songId: offlineSongId(for: record.key),
+                name: record.title,
+                path: record.key.songPath,
+                album: record.album.isEmpty ? nil : record.album,
+                artist: record.artist.isEmpty ? nil : record.artist
+            )
+        }
+
+        return sortedSongs(songs)
     }
 
     func status(for song: Song, connection: ServerConnection?) -> OfflineDownloadStatus {
@@ -584,31 +650,217 @@ final class OfflineDownloadsStore {
         return .notTracked
     }
 
-    func toggleArtist(_ artist: String, songs _: [Song], connection: ServerConnection?) {
-        guard let connection else { return }
-        Task { await toggleArtistSelection(artist, connection: connection) }
+    func toggleArtist(_ artist: String, songs: [Song], connection: ServerConnection?) {
+        guard let connection, connection.id == currentConnection?.id else { return }
+        if areSongsKeptOffline(songs, connection: connection) {
+            removeArtistCoverage(artist: artist, songs: songs, connectionId: connection.id)
+        } else {
+            addArtistSelection(artist, connectionId: connection.id)
+        }
+        selectionsChanged()
     }
 
-    func toggleAlbum(artist: String, album: String, songs _: [Song], connection: ServerConnection?) {
-        guard let connection else { return }
-        Task { await toggleAlbumSelection(artist: artist, album: album, connection: connection) }
+    func toggleAlbum(artist: String, album: String, songs: [Song], connection: ServerConnection?) {
+        guard let connection, connection.id == currentConnection?.id else { return }
+        if areSongsKeptOffline(songs, connection: connection) {
+            removeAlbumCoverage(artist: artist, album: album, songs: songs, connectionId: connection.id)
+        } else {
+            addAlbumSelection(artist: artist, album: album, connectionId: connection.id)
+        }
+        selectionsChanged()
     }
 
     func toggleTrack(_ song: Song, connection: ServerConnection?) {
-        guard let connection, let songPath = song.path else { return }
-        Task { await toggleTrackSelection(songId: song.songId, songPath: songPath, connection: connection) }
+        guard let connection, connection.id == currentConnection?.id,
+              let songPath = song.path, !songPath.isEmpty else { return }
+        if areSongsKeptOffline([song], connection: connection) {
+            removeTrackCoverage(song: song, connectionId: connection.id)
+        } else {
+            addTrackSelection(songPath, connectionId: connection.id)
+        }
+        selectionsChanged()
+    }
+
+    /// True when every song is already kept offline, regardless of whether the
+    /// coverage comes from an artist, album, or individual track selection.
+    func areSongsKeptOffline(_ songs: [Song], connection: ServerConnection?) -> Bool {
+        guard let connection, connection.id == currentConnection?.id else { return false }
+        let keys = songs.compactMap { $0.offlineSongKey(connectionId: connection.id) }
+        guard !keys.isEmpty else { return false }
+        let desired = desiredSongKeys(for: connection.id)
+        return keys.allSatisfy { desired.contains($0) }
+    }
+
+    /// Marks each song to be kept offline; returns how many were newly added.
+    func keepTracksOffline(_ songs: [Song], connection: ServerConnection?) -> Int {
+        guard let connection, connection.id == currentConnection?.id else { return 0 }
+        let desired = desiredSongKeys(for: connection.id)
+        var added = 0
+        for song in songs {
+            guard let key = song.offlineSongKey(connectionId: connection.id) else { continue }
+            guard !desired.contains(key) else { continue }
+            addTrackSelection(key.songPath, connectionId: connection.id)
+            added += 1
+        }
+        if added > 0 { selectionsChanged() }
+        return added
+    }
+
+    /// Deletes every downloaded file on this device and clears all offline
+    /// selections, across every server connection. Selections must go too —
+    /// leaving them would make the next sync re-download everything.
+    func clearAllOfflineFiles() {
+        downloadTask?.cancel()
+        downloadTask = nil
+        queuedKeys.removeAll()
+        activeDownloadKey = nil
+        failedMessages.removeAll()
+
+        localState.artists.removeAll()
+        localState.albums.removeAll()
+        localState.tracks.removeAll()
+        localState.downloads.removeAll()
+
+        let root = OfflineDownloadPaths.rootDirectory()
+        if let contents = try? FileManager.default.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) {
+            for url in contents where url.lastPathComponent != manifestURL.lastPathComponent {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        persistManifest()
     }
 
     func removeArtistSelection(_ selection: OfflineArtistSelection) {
-        Task { await removeTarget(id: selection.targetId) }
+        guard let connectionId = currentConnection?.id else { return }
+        localState.artists.removeAll {
+            $0.connectionId == connectionId && stringsEqual($0.artist, selection.artist)
+        }
+        selectionsChanged()
     }
 
     func removeAlbumSelection(_ selection: OfflineAlbumSelection) {
-        Task { await removeTarget(id: selection.targetId) }
+        guard let connectionId = currentConnection?.id else { return }
+        localState.albums.removeAll {
+            $0.connectionId == connectionId
+                && stringsEqual($0.artist, selection.artist)
+                && stringsEqual($0.album, selection.album)
+        }
+        selectionsChanged()
     }
 
     func removeTrackSelection(_ selection: OfflineTrackSelection) {
-        Task { await removeTarget(id: selection.targetId) }
+        guard let connectionId = currentConnection?.id else { return }
+        localState.tracks.removeAll {
+            $0.connectionId == connectionId && songsEqual($0.songPath, selection.songPath)
+        }
+        selectionsChanged()
+    }
+
+    private func selectionsChanged() {
+        // Invalidate before syncing: the desired-keys cache still reflects the
+        // selections as they were before this mutation.
+        invalidateStatusCaches()
+        syncDesiredState()
+    }
+
+    private func addArtistSelection(_ artist: String, connectionId: UUID) {
+        guard !localState.artists.contains(where: {
+            $0.connectionId == connectionId && stringsEqual($0.artist, artist)
+        }) else { return }
+        localState.artists.append(StoredArtistSelection(connectionId: connectionId, artist: artist))
+    }
+
+    private func addAlbumSelection(artist: String, album: String, connectionId: UUID) {
+        guard !localState.albums.contains(where: {
+            $0.connectionId == connectionId && stringsEqual($0.artist, artist) && stringsEqual($0.album, album)
+        }) else { return }
+        localState.albums.append(StoredAlbumSelection(connectionId: connectionId, artist: artist, album: album))
+    }
+
+    private func addTrackSelection(_ songPath: String, connectionId: UUID) {
+        guard !localState.tracks.contains(where: {
+            $0.connectionId == connectionId && songsEqual($0.songPath, songPath)
+        }) else { return }
+        localState.tracks.append(StoredTrackSelection(connectionId: connectionId, songPath: songPath))
+    }
+
+    /// Removes every selection that keeps this artist's songs offline.
+    private func removeArtistCoverage(artist: String, songs: [Song], connectionId: UUID) {
+        localState.artists.removeAll { $0.connectionId == connectionId && stringsEqual($0.artist, artist) }
+        localState.albums.removeAll { $0.connectionId == connectionId && stringsEqual($0.artist, artist) }
+        removeTrackSelections(coveringAnyOf: songs, connectionId: connectionId)
+    }
+
+    /// Removes every selection that keeps this album's songs offline. A
+    /// whole-artist selection covering the album is split: it is replaced by
+    /// album selections for the artist's other albums so they stay offline.
+    private func removeAlbumCoverage(artist: String, album: String, songs: [Song], connectionId: UUID) {
+        localState.albums.removeAll {
+            $0.connectionId == connectionId && stringsEqual($0.artist, artist) && stringsEqual($0.album, album)
+        }
+        removeTrackSelections(coveringAnyOf: songs, connectionId: connectionId)
+
+        guard localState.artists.contains(where: {
+            $0.connectionId == connectionId && stringsEqual($0.artist, artist)
+        }) else { return }
+
+        localState.artists.removeAll { $0.connectionId == connectionId && stringsEqual($0.artist, artist) }
+        let otherAlbums = Set(librarySongs(forArtist: artist).map(\.displayAlbum))
+            .filter { !stringsEqual($0, album) }
+        for otherAlbum in otherAlbums.sorted() {
+            addAlbumSelection(artist: artist, album: otherAlbum, connectionId: connectionId)
+        }
+    }
+
+    /// Removes every selection that keeps this song offline. Covering album or
+    /// artist selections are split so their other songs stay offline.
+    private func removeTrackCoverage(song: Song, connectionId: UUID) {
+        guard let path = song.path else { return }
+        localState.tracks.removeAll { $0.connectionId == connectionId && songsEqual($0.songPath, path) }
+
+        let artist = song.displayArtist
+        let album = song.displayAlbum
+        var mustSplitAlbum = false
+
+        if localState.albums.contains(where: {
+            $0.connectionId == connectionId && stringsEqual($0.artist, artist) && stringsEqual($0.album, album)
+        }) {
+            localState.albums.removeAll {
+                $0.connectionId == connectionId && stringsEqual($0.artist, artist) && stringsEqual($0.album, album)
+            }
+            mustSplitAlbum = true
+        }
+
+        if localState.artists.contains(where: {
+            $0.connectionId == connectionId && stringsEqual($0.artist, artist)
+        }) {
+            localState.artists.removeAll { $0.connectionId == connectionId && stringsEqual($0.artist, artist) }
+            let otherAlbums = Set(librarySongs(forArtist: artist).map(\.displayAlbum))
+                .filter { !stringsEqual($0, album) }
+            for otherAlbum in otherAlbums.sorted() {
+                addAlbumSelection(artist: artist, album: otherAlbum, connectionId: connectionId)
+            }
+            mustSplitAlbum = true
+        }
+
+        if mustSplitAlbum {
+            for other in librarySongs(forArtist: artist, album: album) {
+                guard let otherPath = other.path, !songsEqual(otherPath, path) else { continue }
+                addTrackSelection(otherPath, connectionId: connectionId)
+            }
+        }
+    }
+
+    private func removeTrackSelections(coveringAnyOf songs: [Song], connectionId: UUID) {
+        let paths = songs.compactMap(\.path)
+        localState.tracks.removeAll { selection in
+            selection.connectionId == connectionId && paths.contains { songsEqual($0, selection.songPath) }
+        }
     }
 
     func retryFailedDownloads() {
@@ -620,6 +872,7 @@ final class OfflineDownloadsStore {
         failedMessages.removeValue(forKey: song.key)
         if !queuedKeys.contains(song.key) {
             queuedKeys.append(song.key)
+            queuedKeySetCache = nil
         }
         ensureDownloadLoop()
     }
@@ -642,9 +895,8 @@ final class OfflineDownloadsStore {
 
     private func status(for key: OfflineSongKey) -> OfflineDownloadStatus {
         if activeDownloadKey == key { return .downloading }
-        if queuedKeys.contains(key) { return .queued }
-        if localState.downloads.contains(where: { $0.key == key }) &&
-            OfflineDownloadPaths.existingFileURL(for: key.songPath, connectionId: key.connectionId) != nil {
+        if queuedKeySet.contains(key) { return .queued }
+        if downloadKeys.contains(key) && hasDownloadedFile(for: key) {
             return .downloaded
         }
         if failedMessages[key] != nil { return .failed }
@@ -654,11 +906,31 @@ final class OfflineDownloadsStore {
 
     private func desiredSongKeys(for connectionId: UUID) -> Set<OfflineSongKey> {
         guard currentConnection?.id == connectionId else { return [] }
-        return Set(manifestSongs.compactMap { entry in
-            let path = entry.songPath
-            guard !path.isEmpty else { return nil }
-            return OfflineSongKey(connectionId: connectionId, songPath: path)
-        })
+        if let cached = desiredKeysCache[connectionId] { return cached }
+
+        var keys = Set<OfflineSongKey>()
+        let artists = localState.artists.filter { $0.connectionId == connectionId }
+        let albums = localState.albums.filter { $0.connectionId == connectionId }
+
+        if !artists.isEmpty || !albums.isEmpty {
+            for song in librarySongs {
+                guard let path = song.path, !path.isEmpty else { continue }
+                let covered = artists.contains { stringsEqual($0.artist, song.displayArtist) }
+                    || albums.contains {
+                        stringsEqual($0.artist, song.displayArtist) && stringsEqual($0.album, song.displayAlbum)
+                    }
+                if covered {
+                    keys.insert(OfflineSongKey(connectionId: connectionId, songPath: path))
+                }
+            }
+        }
+
+        for track in localState.tracks where track.connectionId == connectionId && !track.songPath.isEmpty {
+            keys.insert(OfflineSongKey(connectionId: connectionId, songPath: track.songPath))
+        }
+
+        desiredKeysCache[connectionId] = keys
+        return keys
     }
 
     private func syncDesiredState() {
@@ -667,7 +939,9 @@ final class OfflineDownloadsStore {
             persistManifest()
             return
         }
-        guard serverManifest != nil else {
+        // Never prune files before the library has loaded — an empty library
+        // would make every download look undesired and delete them all.
+        guard !librarySongs.isEmpty else {
             persistManifest()
             return
         }
@@ -683,12 +957,18 @@ final class OfflineDownloadsStore {
         queuedKeys.removeAll { !desired.contains($0) }
         failedMessages = failedMessages.filter { desired.contains($0.key) }
 
+        // Sets computed once up front - the naive per-key linear scans made
+        // this loop quadratic in the number of selected songs.
+        let existingDownloadKeys = Set(localState.downloads.map(\.key))
+        var queued = Set(queuedKeys)
+        let libraryPaths = Set(librarySongs.compactMap { $0.path?.lowercased() })
         for key in desired {
-            guard localState.downloads.contains(where: { $0.key == key }) == false else { continue }
+            guard existingDownloadKeys.contains(key) == false else { continue }
             guard activeDownloadKey != key else { continue }
-            guard queuedKeys.contains(key) == false else { continue }
-            guard manifestSong(for: key) != nil else { continue }
+            guard queued.contains(key) == false else { continue }
+            guard libraryPaths.contains(key.songPath.lowercased()) else { continue }
             queuedKeys.append(key)
+            queued.insert(key)
         }
 
         persistManifest()
@@ -726,6 +1006,7 @@ final class OfflineDownloadsStore {
     private func nextQueuedKey() -> OfflineSongKey? {
         guard let first = queuedKeys.first else { return nil }
         queuedKeys.removeFirst()
+        queuedKeySetCache = nil
         activeDownloadKey = first
         return first
     }
@@ -734,12 +1015,12 @@ final class OfflineDownloadsStore {
         guard let connection = currentConnection, connection.id == key.connectionId else {
             throw OfflineDownloadError.noConnection
         }
-        guard let entry = manifestSong(for: key) else {
+        guard let song = librarySong(forPath: key.songPath) else {
             throw OfflineDownloadError.songUnavailable
         }
 
         let api = APIClient(baseURL: connection.baseURL)
-        let downloadURL = api.offlineDownloadURL(entry.downloadUrl)
+        let downloadURL = api.offlineSongMediaURL(songPath: key.songPath)
         let (tempURL, response) = try await URLSession.shared.download(from: downloadURL)
 
         guard let http = response as? HTTPURLResponse else {
@@ -749,7 +1030,7 @@ final class OfflineDownloadsStore {
             throw APIError.serverError(http.statusCode, "Download failed")
         }
 
-        let targetURL = OfflineDownloadPaths.plannedFileURL(for: entry.song, connectionId: connection.id)
+        let targetURL = OfflineDownloadPaths.plannedFileURL(for: song, connectionId: connection.id)
         if FileManager.default.fileExists(atPath: targetURL.path) {
             try? FileManager.default.removeItem(at: targetURL)
         }
@@ -757,9 +1038,9 @@ final class OfflineDownloadsStore {
 
         let record = OfflineDownloadRecord(
             key: key,
-            title: entry.song.displayTitle,
-            artist: entry.song.displayArtist,
-            album: entry.song.displayAlbum,
+            title: song.displayTitle,
+            artist: song.displayArtist,
+            album: song.displayAlbum,
             addedAt: Date()
         )
 
@@ -767,15 +1048,10 @@ final class OfflineDownloadsStore {
         localState.downloads.append(record)
     }
 
-    private func manifestSong(for key: OfflineSongKey) -> OfflineDownloadSongDto? {
-        manifestSongs.first { songsEqual($0.songPath, key.songPath) }
-    }
-
     private func repairDownloadedRecords() {
         let originalCount = localState.downloads.count
         localState.downloads.removeAll {
-            !$0.key.songPath.isEmpty &&
-                OfflineDownloadPaths.existingFileURL(for: $0.key.songPath, connectionId: $0.key.connectionId) == nil
+            !$0.key.songPath.isEmpty && !hasDownloadedFile(for: $0.key)
         }
         if originalCount != localState.downloads.count {
             persistManifest()
@@ -864,133 +1140,26 @@ final class OfflineDownloadsStore {
         }
     }
 
-    private func migrateLegacySelectionsIfNeeded(connection: ServerConnection, api: APIClient) async throws -> Bool {
-        let connectionId = connection.id
-        var didAddServerTarget = false
-        var didChangeLocalState = false
+    /// Upgrade path from the versions that kept selections on the server:
+    /// every song already downloaded to this device becomes a local track
+    /// selection, so nothing on the phone is deleted by the switch to
+    /// device-local selections.
+    private func seedSelectionsFromDownloadsIfNeeded() {
+        guard localState.selectionsSeeded != true else { return }
 
-        for selection in localState.artists.filter({ $0.connectionId == connectionId }) {
-            _ = try await api.addOfflineDownloadTarget(targetType: .artist, artistName: selection.artist)
-            localState.artists.removeAll { $0 == selection }
-            didAddServerTarget = true
-            didChangeLocalState = true
-        }
-
-        for selection in localState.albums.filter({ $0.connectionId == connectionId }) {
-            _ = try await api.addOfflineDownloadTarget(
-                targetType: .album,
-                artistName: selection.artist,
-                albumName: selection.album
-            )
-            localState.albums.removeAll { $0 == selection }
-            didAddServerTarget = true
-            didChangeLocalState = true
-        }
-
-        if localState.tracks.contains(where: { $0.connectionId == connectionId && $0.songPath.isEmpty }), librarySongs.isEmpty {
-            let songs = try await api.getSongs()
-            librarySongs = sortedSongs(songs)
-            migrateLegacyState(for: connectionId)
-        }
-
-        for selection in localState.tracks.filter({ $0.connectionId == connectionId }) {
-            guard let resolved = selection.resolved(using: librarySongs) else {
-                localState.tracks.removeAll { $0 == selection }
-                didChangeLocalState = true
-                continue
+        for record in localState.downloads where !record.key.songPath.isEmpty {
+            let alreadySelected = localState.tracks.contains {
+                $0.connectionId == record.key.connectionId && songsEqual($0.songPath, record.key.songPath)
             }
-
-            _ = try await api.addOfflineDownloadTarget(targetType: .song, songPath: resolved.songPath)
-            localState.tracks.removeAll { $0 == selection }
-            didAddServerTarget = true
-            didChangeLocalState = true
-        }
-
-        if didChangeLocalState {
-            persistManifest()
-        }
-
-        return didAddServerTarget
-    }
-
-    private func toggleArtistSelection(_ artist: String, connection: ServerConnection) async {
-        guard currentConnection?.id == connection.id else { return }
-        let api = APIClient(baseURL: connection.baseURL)
-
-        do {
-            if let target = artistTarget(named: artist) {
-                try await api.removeOfflineDownloadTarget(targetId: target.id)
-            } else {
-                _ = try await api.addOfflineDownloadTarget(targetType: .artist, artistName: artist)
+            if !alreadySelected {
+                localState.tracks.append(
+                    StoredTrackSelection(connectionId: record.key.connectionId, songPath: record.key.songPath)
+                )
             }
-            await refreshLibrary(force: true)
-        } catch {
-            lastError = error.localizedDescription
         }
-    }
 
-    private func toggleAlbumSelection(artist: String, album: String, connection: ServerConnection) async {
-        guard currentConnection?.id == connection.id else { return }
-        let api = APIClient(baseURL: connection.baseURL)
-
-        do {
-            if let target = albumTarget(artist: artist, album: album) {
-                try await api.removeOfflineDownloadTarget(targetId: target.id)
-            } else {
-                _ = try await api.addOfflineDownloadTarget(targetType: .album, artistName: artist, albumName: album)
-            }
-            await refreshLibrary(force: true)
-        } catch {
-            lastError = error.localizedDescription
-        }
-    }
-
-    private func toggleTrackSelection(songId: Int, songPath: String, connection: ServerConnection) async {
-        guard currentConnection?.id == connection.id else { return }
-        let api = APIClient(baseURL: connection.baseURL)
-
-        do {
-            if let target = trackTarget(songPath: songPath) {
-                try await api.removeOfflineDownloadTarget(targetId: target.id)
-            } else {
-                _ = try await api.addOfflineDownloadTarget(targetType: .song, songId: songId, songPath: songPath)
-            }
-            await refreshLibrary(force: true)
-        } catch {
-            lastError = error.localizedDescription
-        }
-    }
-
-    private func removeTarget(id targetId: Int) async {
-        guard let connection = currentConnection else { return }
-        let api = APIClient(baseURL: connection.baseURL)
-
-        do {
-            try await api.removeOfflineDownloadTarget(targetId: targetId)
-            await refreshLibrary(force: true)
-        } catch {
-            lastError = error.localizedDescription
-        }
-    }
-
-    private func artistTarget(named artist: String) -> OfflineDownloadTargetDto? {
-        manifestTargets.first {
-            $0.targetType == .artist && stringsEqual($0.artistName ?? $0.displayName, artist)
-        }
-    }
-
-    private func albumTarget(artist: String, album: String) -> OfflineDownloadTargetDto? {
-        manifestTargets.first {
-            $0.targetType == .album &&
-                stringsEqual($0.artistName ?? "", artist) &&
-                stringsEqual($0.albumName ?? $0.displayName, album)
-        }
-    }
-
-    private func trackTarget(songPath: String) -> OfflineDownloadTargetDto? {
-        manifestTargets.first {
-            $0.targetType == .song && songsEqual($0.songPath ?? $0.song?.path ?? "", songPath)
-        }
+        localState.selectionsSeeded = true
+        persistManifest()
     }
 
     private func sortedSongs(_ songs: [Song]) -> [Song] {
@@ -1003,36 +1172,24 @@ final class OfflineDownloadsStore {
         }
     }
 
+    private func offlineSongId(for key: OfflineSongKey) -> Int {
+        let value = "\(key.connectionId.uuidString)|\(key.songPath)"
+        var hash: UInt64 = Self.fnv1aOffsetBasis
+        for byte in value.utf8 {
+            hash ^= UInt64(byte)
+            hash &*= Self.fnv1aPrime
+        }
+
+        let bounded = Int(hash % UInt64(Int.max - 1)) + 1
+        return -bounded
+    }
+
     private func stringsEqual(_ lhs: String, _ rhs: String) -> Bool {
         lhs.compare(rhs, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
     }
 
     private func songsEqual(_ lhs: String, _ rhs: String) -> Bool {
         lhs.compare(rhs, options: [.caseInsensitive]) == .orderedSame
-    }
-
-    private func needsLegacySongResolution(for connectionId: UUID) -> Bool {
-        if localState.tracks.contains(where: { $0.connectionId == connectionId && $0.songPath.isEmpty }) {
-            return true
-        }
-
-        if localState.downloads.contains(where: { $0.key.connectionId == connectionId && $0.key.songPath.isEmpty }) {
-            return true
-        }
-
-        if queuedKeys.contains(where: { $0.connectionId == connectionId && $0.songPath.isEmpty }) {
-            return true
-        }
-
-        if failedMessages.keys.contains(where: { $0.connectionId == connectionId && $0.songPath.isEmpty }) {
-            return true
-        }
-
-        if let activeDownloadKey, activeDownloadKey.connectionId == connectionId, activeDownloadKey.songPath.isEmpty {
-            return true
-        }
-
-        return false
     }
 
     private func loadManifest() {
@@ -1046,6 +1203,9 @@ final class OfflineDownloadsStore {
     }
 
     private func persistManifest() {
+        // persistManifest follows every mutation of downloads/queue/manifest
+        // state, so it doubles as the cache-invalidation chokepoint.
+        invalidateStatusCaches()
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         guard let data = try? encoder.encode(localState) else { return }

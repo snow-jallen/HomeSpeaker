@@ -96,7 +96,10 @@ struct PlayerStatus: Codable {
     }
 
     private func formatDuration(_ value: String) -> String? {
-        let parts = value.split(separator: ":").map { Int($0) ?? 0 }
+        // TimeSpans arrive as "hh:mm:ss.fffffff" - the seconds component has a
+        // fractional part, so parse as Double (Int("31.75") is nil, which froze
+        // the displayed time at whole minutes).
+        let parts = value.split(separator: ":").map { Int(Double($0) ?? 0) }
         if parts.count == 3 {
             let h = parts[0], m = parts[1], s = parts[2]
             if h > 0 {
@@ -254,69 +257,12 @@ struct UpdateSongRequest: Codable {
     let album: String
 }
 
-struct OfflineDownloadTargetRequestBody: Codable {
-    let targetType: OfflineDownloadTargetType
-    let songId: Int?
-    let songPath: String?
-    let artistName: String?
-    let albumName: String?
-}
-
-enum OfflineDownloadTargetType: String, Codable {
-    case artist = "Artist"
-    case album = "Album"
-    case song = "Song"
-}
-
-enum OfflineDownloadTargetStatus: String, Codable {
-    case ready = "Ready"
-    case missing = "Missing"
-}
-
 struct UpsertPushInstallationRequest: Codable {
     let installationId: String
     let platform: String
     let deviceToken: String
     let deviceName: String?
     let bundleId: String?
-}
-
-struct OfflineDownloadManifestDto: Codable {
-    let generatedUtc: String?
-    let targets: [OfflineDownloadTargetDto]
-    let songs: [OfflineDownloadSongDto]
-}
-
-struct OfflineDownloadTargetDto: Codable, Identifiable {
-    let id: Int
-    let targetType: OfflineDownloadTargetType
-    let status: OfflineDownloadTargetStatus
-    let displayName: String
-    let artistName: String?
-    let albumName: String?
-    let songPath: String?
-    let song: Song?
-    let resolvedSongCount: Int
-    let createdUtc: String?
-}
-
-struct OfflineDownloadSongDto: Codable, Identifiable {
-    let song: Song
-    let songPath: String
-    let fileName: String
-    let fileSizeBytes: Int64
-    let lastModifiedUtc: String?
-    let eTag: String
-    let downloadUrl: String
-    let sources: [OfflineDownloadSourceDto]
-
-    var id: String { songPath }
-}
-
-struct OfflineDownloadSourceDto: Codable, Hashable {
-    let targetId: Int
-    let targetType: OfflineDownloadTargetType
-    let displayName: String
 }
 
 // MARK: - AI Playlists Models
@@ -340,7 +286,7 @@ struct AiPlaylistSummaryDto: Codable, Identifiable {
     var songCount: Int { trackCount }
     
     enum CodingKeys: String, CodingKey {
-        case genreKey, displayName, description, trackCount = "TrackCount", sortOrder
+        case genreKey, displayName, description, trackCount, legacyTrackCount = "TrackCount", sortOrder
     }
     
     init(from decoder: Decoder) throws {
@@ -348,7 +294,19 @@ struct AiPlaylistSummaryDto: Codable, Identifiable {
         genreKey = try container.decode(String.self, forKey: .genreKey)
         displayName = try container.decode(String.self, forKey: .displayName)
         description = try container.decode(String.self, forKey: .description)
-        trackCount = try container.decode(Int.self, forKey: .trackCount)
+        if let trackCountValue = (try? container.decodeIfPresent(Int.self, forKey: .trackCount))
+            ?? (try? container.decodeIfPresent(Int.self, forKey: .legacyTrackCount))
+        {
+            trackCount = trackCountValue
+        } else {
+            throw DecodingError.keyNotFound(
+                CodingKeys.trackCount,
+                .init(
+                    codingPath: container.codingPath,
+                    debugDescription: "Missing both 'trackCount' and legacy 'TrackCount' in AI playlist summary payload."
+                )
+            )
+        }
         sortOrder = (try? container.decode(Int.self, forKey: .sortOrder)) ?? 0
     }
     

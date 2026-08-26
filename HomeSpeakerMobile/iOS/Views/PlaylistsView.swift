@@ -3,6 +3,7 @@ import SwiftUI
 struct PlaylistsView: View {
     @Environment(ConnectionStore.self) private var store
     @Environment(LocalPlayer.self) private var localPlayer
+    @Environment(OfflineDownloadsStore.self) private var offlineDownloads
     @State private var playlists: [Playlist] = []
     @State private var isLoading = false
     @State private var renamingPlaylist: Playlist?
@@ -12,14 +13,21 @@ struct PlaylistsView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if isLoading && playlists.isEmpty {
+                if isLoading && displayedPlaylists.isEmpty {
                     ProgressView("Loading playlists…")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if playlists.isEmpty {
+                } else if displayedPlaylists.isEmpty {
                     ContentUnavailableView {
-                        Label("No Playlists", systemImage: "music.quarternote.3")
+                        Label(
+                            localPlayer.destination == .device ? "No Downloaded Playlists" : "No Playlists",
+                            systemImage: "music.quarternote.3"
+                        )
                     } description: {
-                        Text("Create playlists by saving the current queue.")
+                        Text(
+                            localPlayer.destination == .device
+                                ? "Only playlists with downloaded songs are shown for This iPhone."
+                                : "Create playlists by saving the current queue."
+                        )
                     }
                 } else {
                     playlistList
@@ -73,7 +81,7 @@ struct PlaylistsView: View {
 
     private var playlistList: some View {
         List {
-            ForEach(playlists) { playlist in
+            ForEach(displayedPlaylists) { playlist in
                 NavigationLink {
                     PlaylistDetailView(playlist: playlist) {
                         Task { await load() }
@@ -114,8 +122,48 @@ struct PlaylistsView: View {
                     }
                     .tint(.orange)
                 }
+                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                    if localPlayer.destination == .speaker {
+                        Button {
+                            Task { await download(playlist: playlist) }
+                        } label: {
+                            Label("Download", systemImage: "arrow.down.circle")
+                        }
+                        .tint(.blue)
+                    }
+                }
+                .contextMenu {
+                    if localPlayer.destination == .speaker {
+                        Button {
+                            Task { await download(playlist: playlist) }
+                        } label: {
+                            Label("Download Playlist", systemImage: "arrow.down.circle")
+                        }
+                    }
+                }
             }
         }
+    }
+
+    private var displayedPlaylists: [Playlist] {
+        guard localPlayer.destination == .device else { return playlists }
+        let downloadedPaths = downloadedSongPathsForCurrentConnection
+        guard !downloadedPaths.isEmpty else { return [] }
+        return playlists.filter { playlist in
+            playlist.songs.contains { song in
+                guard let path = song.path, !path.isEmpty else { return false }
+                return downloadedPaths.contains(path)
+            }
+        }
+    }
+
+    private var downloadedSongPathsForCurrentConnection: Set<String> {
+        guard let connection = store.selectedConnection else { return [] }
+        return Set(
+            offlineDownloads.currentDownloadRecords
+                .filter { $0.key.connectionId == connection.id }
+                .map(\.key.songPath)
+        )
     }
 
     private func load() async {
@@ -148,6 +196,14 @@ struct PlaylistsView: View {
         try? await api.renamePlaylist(from: playlist.name, to: newName)
         renamingPlaylist = nil
         await load()
+    }
+
+    private func download(playlist: Playlist) async {
+        guard localPlayer.destination == .speaker, let connection = store.selectedConnection else { return }
+        await offlineDownloads.refreshLibrary(force: false)
+
+        let added = offlineDownloads.keepTracksOffline(playlist.songs, connection: connection)
+        showMessage(added > 0 ? "Downloading \(playlist.name)" : "\(playlist.name) is already downloaded")
     }
 
     private func showMessage(_ msg: String) {

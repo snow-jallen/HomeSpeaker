@@ -3,17 +3,31 @@ import SwiftUI
 struct OfflineDownloadsView: View {
     @Environment(ConnectionStore.self) private var store
     @Environment(OfflineDownloadsStore.self) private var offlineDownloads
+    @State private var showingClearConfirmation = false
 
     var body: some View {
         List {
             summarySection
             selectionsSection
             downloadsSection
+            clearSection
         }
         .navigationTitle("Offline")
         .refreshable { await offlineDownloads.refreshLibrary(force: true) }
         .task {
             offlineDownloads.updateConnection(store.selectedConnection)
+        }
+        .confirmationDialog(
+            "Remove all offline music from this device?",
+            isPresented: $showingClearConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Remove All Downloads", role: .destructive) {
+                offlineDownloads.clearAllOfflineFiles()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This deletes every downloaded file and clears your offline selections. Nothing is removed from the server.")
         }
         .toolbar {
             if offlineDownloads.managedSongs.contains(where: { $0.status == .failed }) {
@@ -68,7 +82,7 @@ struct OfflineDownloadsView: View {
                         HStack {
                             Label(selection.artist, systemImage: "music.mic")
                             Spacer()
-                            Text("\(offlineDownloads.songCount(for: selection)) songs")
+                            Text(songCountText(offlineDownloads.songCount(for: selection)))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -86,14 +100,15 @@ struct OfflineDownloadsView: View {
             if !offlineDownloads.currentAlbumSelections.isEmpty {
                 Section("Albums") {
                     ForEach(offlineDownloads.currentAlbumSelections) { selection in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(selection.album)
-                            Text(selection.artist)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .overlay(alignment: .trailing) {
-                            Text("\(offlineDownloads.songCount(for: selection)) songs")
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(selection.album)
+                                Text(selection.artist)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text(songCountText(offlineDownloads.songCount(for: selection)))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -159,6 +174,22 @@ struct OfflineDownloadsView: View {
                 }
             }
         }
+    }
+
+    private var clearSection: some View {
+        Section {
+            Button(role: .destructive) {
+                showingClearConfirmation = true
+            } label: {
+                Label("Remove All Downloads", systemImage: "trash")
+            }
+        } footer: {
+            Text("Deletes every offline file stored on this device.")
+        }
+    }
+
+    private func songCountText(_ count: Int) -> String {
+        count == 1 ? "1 song" : "\(count) songs"
     }
 
     @ViewBuilder

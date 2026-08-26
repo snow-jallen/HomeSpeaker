@@ -1,48 +1,65 @@
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Shared;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace HomeSpeaker.Server2.Services;
 
 public sealed class AiPlaybackService
 {
     private const int DefaultQueueSize = 40;
+    // The current context is read on every player-status poll (by every connected
+    // client). Cache it briefly so multi-client polling collapses to ~one DB query
+    // per window instead of hammering SQLite. Invalidated when a session starts.
+    private const string ContextCacheKey = "ai-playback-current-context";
+    private static readonly TimeSpan contextCacheTtl = TimeSpan.FromSeconds(5);
+
     private readonly MusicContext dbContext;
     private readonly Mp3Library library;
     private readonly IMusicPlayer musicPlayer;
     private readonly TimeProvider timeProvider;
+    private readonly IMemoryCache cache;
 
-    public AiPlaybackService(MusicContext dbContext, Mp3Library library, IMusicPlayer musicPlayer, TimeProvider timeProvider)
+    public AiPlaybackService(MusicContext dbContext, Mp3Library library, IMusicPlayer musicPlayer, TimeProvider timeProvider, IMemoryCache cache)
     {
         this.dbContext = dbContext;
         this.library = library;
         this.musicPlayer = musicPlayer;
         this.timeProvider = timeProvider;
+        this.cache = cache;
     }
 
     public async Task<AiPlayerContextDto?> GetCurrentContextAsync(CancellationToken cancellationToken)
     {
+        if (cache.TryGetValue(ContextCacheKey, out AiPlayerContextDto? cachedContext))
+        {
+            return cachedContext;
+        }
+
         var session = await dbContext.AiPlaybackSessions.AsNoTracking()
             .OrderByDescending(s => s.StartedUtc)
             .FirstOrDefaultAsync(s => s.IsActive, cancellationToken);
 
-        if (session == null)
+        AiPlayerContextDto? context = null;
+        if (session != null)
         {
-            return null;
+            var seedSongId = session.SeedSongPath != null
+                ? library.Songs.FirstOrDefault(s => s.Path == session.SeedSongPath)?.SongId
+                : null;
+
+            context = new AiPlayerContextDto
+            {
+                Mode = session.Mode.ToString(),
+                SessionId = session.SessionId.ToString(),
+                GenreKey = session.GenreKey,
+                SeedSongId = seedSongId,
+                AllowFeedback = true
+            };
         }
 
-        var seedSongId = session.SeedSongPath != null
-            ? library.Songs.FirstOrDefault(s => s.Path == session.SeedSongPath)?.SongId
-            : null;
-
-        return new AiPlayerContextDto
-        {
-            Mode = session.Mode.ToString(),
-            SessionId = session.SessionId.ToString(),
-            GenreKey = session.GenreKey,
-            SeedSongId = seedSongId,
-            AllowFeedback = true
-        };
+        // Cache even the null result so "no active session" doesn't query on every poll.
+        cache.Set(ContextCacheKey, context, contextCacheTtl);
+        return context;
     }
 
     public Task<AiPlayerContextDto?> StartGenreSessionAsync(string genreKey, CancellationToken cancellationToken)
@@ -292,6 +309,9 @@ public sealed class AiPlaybackService
 
         dbContext.AiPlaybackSessions.Add(session);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Active session changed — drop the cached context so the next poll reflects it.
+        cache.Remove(ContextCacheKey);
         return session;
     }
 }

@@ -5,6 +5,8 @@ struct WatchContentView: View {
     @State private var crownVolume: Double = 50
     @State private var showVolumeHUD = false
     @State private var volumeTask: Task<Void, Never>?
+    @State private var syncingFromServer = false
+    @State private var lastCrownActivity: Date = .distantPast
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -29,6 +31,14 @@ struct WatchContentView: View {
                     isContinuous: false
                 )
                 .onChange(of: crownVolume) { _, newValue in
+                    // Distinguish real crown input from the server-sync loop below
+                    // writing into the same binding - only the former should send
+                    // a set-volume request back to the server.
+                    if syncingFromServer {
+                        syncingFromServer = false
+                        return
+                    }
+                    lastCrownActivity = Date()
                     scheduleVolumeUpdate(Int(newValue))
                 }
             }
@@ -40,9 +50,21 @@ struct WatchContentView: View {
             }
         }
         .task {
-            guard let api = store.api,
-                  let status = try? await api.getPlayerStatus() else { return }
-            crownVolume = Double(status.volume)
+            // Keep the crown's notion of volume in sync with the server so a level
+            // changed from another client (or the physical knob) isn't yanked back
+            // to a stale value by the next crown detent. Skip syncing while the
+            // user is actively using the crown or a set request is settling.
+            while !Task.isCancelled {
+                if let api = store.api,
+                   Date().timeIntervalSince(lastCrownActivity) > 3,
+                   let status = try? await api.getPlayerStatus(),
+                   Date().timeIntervalSince(lastCrownActivity) > 3,
+                   Int(crownVolume) != status.volume {
+                    syncingFromServer = true
+                    crownVolume = Double(status.volume)
+                }
+                try? await Task.sleep(for: .seconds(3))
+            }
         }
     }
 
@@ -74,6 +96,7 @@ struct WatchContentView: View {
             try? await Task.sleep(for: .milliseconds(350))
             guard !Task.isCancelled else { return }
             try? await store.api?.setVolume(volume)
+            lastCrownActivity = Date()
             try? await Task.sleep(for: .seconds(1.5))
             guard !Task.isCancelled else { return }
             withAnimation { showVolumeHUD = false }

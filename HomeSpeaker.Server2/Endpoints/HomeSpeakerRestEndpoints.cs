@@ -630,6 +630,7 @@ public static class HomeSpeakerRestEndpoints
     private static async Task<IResult> playerControl(
         [FromBody] PlayerControlRequest request,
         [FromServices] IMusicPlayer musicPlayer,
+        [FromServices] PlayerStateService playerStateService,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("PlayerControl");
@@ -666,6 +667,7 @@ public static class HomeSpeakerRestEndpoints
             if (request.SetVolume)
             {
                 musicPlayer.SetVolume(request.VolumeLevel);
+                playerStateService.UpdateVolume(request.VolumeLevel);
                 activity?.SetTag("volume_level", request.VolumeLevel);
                 activity?.AddEvent(new ActivityEvent($"Volume set to {request.VolumeLevel}"));
             }
@@ -1185,7 +1187,7 @@ public static class HomeSpeakerRestEndpoints
                     {
                         logger.LogDebug("Caching progress for {Title}: {Percent:P}", request.Video.Title, percent);
                     });
-                    await youtubeService.CacheVideoAsync(request.Video.Id, request.Video.Title, progress);
+                    await youtubeService.CacheVideoAsync(request.Video.Id, request.Video.Title, request.Video.Author, progress);
                     library.IsDirty = true;
                     logger.LogInformation("Successfully cached video: {Title}", request.Video.Title);
                 }
@@ -1236,25 +1238,12 @@ public static class HomeSpeakerRestEndpoints
 
     private static void mapOfflineDownloadEndpoints(RouteGroupBuilder group)
     {
-        group.MapGet("/offline", getOfflineDownloadManifest)
-            .WithName("GetOfflineDownloadManifest")
-            .WithSummary("Get offline download manifest")
-            .WithDescription("Returns saved offline targets plus the resolved songs and download metadata needed by mobile clients.");
-
-        group.MapPost("/offline/targets", addOfflineDownloadTarget)
-            .WithName("AddOfflineDownloadTarget")
-            .WithSummary("Mark content for offline use")
-            .WithDescription("Marks an artist, album, or song for offline mobile sync.");
-
-        group.MapDelete("/offline/targets/{targetId:int}", removeOfflineDownloadTarget)
-            .WithName("RemoveOfflineDownloadTarget")
-            .WithSummary("Remove offline target")
-            .WithDescription("Removes a saved offline artist, album, or song target.");
-
+        // Which songs a device keeps offline is tracked on the device itself;
+        // the server only serves the media files.
         group.MapGet("/offline/media", getOfflineSongMedia)
             .WithName("GetOfflineSongMedia")
             .WithSummary("Download song media")
-            .WithDescription("Streams playable MP3 media for an offline-marked song.");
+            .WithDescription("Streams playable MP3 media for a song a mobile client wants to keep offline.");
     }
 
     private static async Task<IResult> getRadioStreams(
@@ -1278,77 +1267,6 @@ public static class HomeSpeakerRestEndpoints
         {
             logger.LogError(ex, "Failed to get radio streams");
             return Results.Problem($"Failed to get radio streams: {ex.Message}");
-        }
-    }
-
-    private static async Task<IResult> getOfflineDownloadManifest(
-        [FromServices] OfflineDownloadService offlineDownloadService,
-        [FromServices] ILogger<HomeSpeakerApiLogger> logger,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var manifest = await offlineDownloadService.GetManifestAsync(cancellationToken);
-            logger.LogInformation("Retrieved offline download manifest with {TargetCount} targets and {SongCount} songs", manifest.Targets.Count, manifest.Songs.Count);
-            return Results.Ok(manifest);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to get offline download manifest");
-            return Results.Problem($"Failed to get offline download manifest: {ex.Message}");
-        }
-    }
-
-    private static async Task<IResult> addOfflineDownloadTarget(
-        [FromBody] OfflineDownloadTargetRequest request,
-        [FromServices] OfflineDownloadService offlineDownloadService,
-        [FromServices] ILogger<HomeSpeakerApiLogger> logger,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var target = await offlineDownloadService.AddTargetAsync(request, cancellationToken);
-            logger.LogInformation("Added offline download target {TargetId} ({TargetType})", target.Id, target.TargetType);
-            return Results.Created($"/api/homespeaker/offline/targets/{target.Id}", target);
-        }
-        catch (ArgumentException ex)
-        {
-            logger.LogWarning(ex, "Invalid offline target request");
-            return Results.BadRequest(ex.Message);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            logger.LogWarning(ex, "Offline target request could not be resolved");
-            return Results.NotFound(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to add offline download target");
-            return Results.Problem($"Failed to add offline download target: {ex.Message}");
-        }
-    }
-
-    private static async Task<IResult> removeOfflineDownloadTarget(
-        [FromRoute] int targetId,
-        [FromServices] OfflineDownloadService offlineDownloadService,
-        [FromServices] ILogger<HomeSpeakerApiLogger> logger,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var removed = await offlineDownloadService.RemoveTargetAsync(targetId, cancellationToken);
-            if (!removed)
-            {
-                return Results.NotFound($"Offline target {targetId} was not found.");
-            }
-
-            logger.LogInformation("Removed offline download target {TargetId}", targetId);
-            return Results.NoContent();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to remove offline download target {TargetId}", targetId);
-            return Results.Problem($"Failed to remove offline download target: {ex.Message}");
         }
     }
 

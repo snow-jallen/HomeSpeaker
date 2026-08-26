@@ -60,6 +60,7 @@ builder.Services.AddHostedService<DailyAnchorWorker>();
 builder.Services.AddHostedService<AirPlayReceiverService>();
 builder.Services.AddScoped<HomeSpeakerService>(); // Scoped for Blazor components
 builder.Services.AddScoped<PlaylistService>();
+builder.Services.AddScoped<AutoPlayService>();
 builder.Services.AddScoped<AnchorService>();
 builder.Services.AddScoped<OfflineDownloadService>();
 builder.Services.AddScoped<IAnchorNotificationService, AnchorNotificationService>();
@@ -89,6 +90,7 @@ builder.Services.AddSingleton<IMusicPlayer>(services =>
 });
 builder.Services.AddSingleton<Mp3Library>();
 builder.Services.AddHostedService<LifecycleEvents>();
+builder.Services.AddHostedService<AutoPlayMonitorService>();
 
 // Add memory cache for caching services
 builder.Services.AddMemoryCache();
@@ -110,6 +112,7 @@ builder.Services.AddHttpClient("ApnsClient", client =>
 builder.Services.AddSingleton<IPushNotificationSender, ApplePushNotificationSender>();
 builder.Services.AddHostedService<HealthAlertWorker>();
 builder.Services.AddHostedService<AiMusicAnalysisWorker>();
+builder.Services.AddHostedService<HomeSpeaker.Server2.Services.VolumeMonitorService>();
 builder.Services.AddChatClient(sp =>
 {
     var aiOptions = sp.GetRequiredService<IOptions<AiMusicOptions>>().Value;
@@ -180,7 +183,7 @@ builder.Services.AddHttpClient<TemperatureService>();
 builder.Services.AddScoped<ITemperatureService>(sp => sp.GetRequiredService<TemperatureService>());
 builder.Services.AddHttpClient<BloodSugarService>();
 builder.Services.AddScoped<IBloodSugarService>(sp => sp.GetRequiredService<BloodSugarService>());
-builder.Services.AddHttpClient<ForecastService>();
+builder.Services.AddHttpClient<ForecastService>(client => client.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddScoped<IForecastService>(sp => sp.GetRequiredService<ForecastService>());
 
 // Add HttpClient for RadioStreamService (favicon downloads)
@@ -209,11 +212,15 @@ builder.Services.AddHttpClient("BacklightClient", client =>
     ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
 });
 
+// A "self" check tagged "live" is already registered by AddServiceDefaults()
+// (Extensions.cs AddDefaultHealthChecks) — the Docker HEALTHCHECK hits /alive, which
+// runs only "live"-tagged checks (no DB). Here we add just the DB-backed readiness
+// check, tagged "ready" so it is excluded from the liveness probe.
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<MusicContext>("database");
+    .AddDbContextCheck<MusicContext>("database", tags: ["ready"]);
 
 // Add browser-specific services for Blazor components
-builder.Services.AddScoped<HomeSpeaker.Server2.Services.PlayerStateService>();
+builder.Services.AddSingleton<HomeSpeaker.Server2.Services.PlayerStateService>();
 builder.Services.AddScoped<HomeSpeaker.Server2.Services.IBrowserAudioService, HomeSpeaker.Server2.Services.BrowserAudioService>();
 builder.Services.AddScoped<HomeSpeaker.Server2.Services.ILocalQueueService, HomeSpeaker.Server2.Services.LocalQueueService>();
 builder.Services.AddScoped<HomeSpeaker.Server2.Services.IPlaybackModeService, HomeSpeaker.Server2.Services.PlaybackModeService>();
@@ -291,6 +298,13 @@ app.MapHealthChecks("/health", new HealthCheckOptions
         };
         await context.Response.WriteAsJsonAsync(response, context.RequestAborted);
     }
+});
+
+// Liveness probe: only "live"-tagged checks run (no DB), so the Docker HEALTHCHECK
+// can never be wedged by a slow/contended SQLite database.
+app.MapHealthChecks("/alive", new HealthCheckOptions
+{
+    Predicate = r => r.Tags.Contains("live")
 });
 app.UseRouting();
 app.UseCors(LocalCorsPolicy);
