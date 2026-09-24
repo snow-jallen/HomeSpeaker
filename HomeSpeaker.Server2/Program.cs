@@ -1,5 +1,6 @@
 using System.ClientModel;
 using System.ClientModel.Primitives;
+using System.Net;
 using System.Runtime.InteropServices;
 using Azure.AI.OpenAI;
 using HomeSpeaker.Server2;
@@ -7,11 +8,12 @@ using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Endpoints;
 using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Shared;
+using HomeSpeaker.Shared.WindowMonitoring;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Fast.Components.FluentUI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
+using Microsoft.Fast.Components.FluentUI;
 using MudBlazor.Services;
 using OpenAI;
 using OpenAI.Chat;
@@ -95,10 +97,20 @@ builder.Services.AddMemoryCache();
 builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.Configure<AiMusicOptions>(builder.Configuration.GetSection("AI"));
+builder.Services.Configure<PushNotificationOptions>(builder.Configuration.GetSection("PushNotifications"));
 builder.Services.AddSingleton<AiProcessingSignal>();
 builder.Services.AddSingleton<AiMusicAnalyzer>();
 builder.Services.AddScoped<AiMusicCatalogService>();
 builder.Services.AddScoped<AiPlaybackService>();
+builder.Services.AddScoped<PushNotificationService>();
+builder.Services.AddHttpClient("ApnsClient", client =>
+{
+    client.DefaultRequestVersion = HttpVersion.Version20;
+    client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrHigher;
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
+builder.Services.AddSingleton<IPushNotificationSender, ApplePushNotificationSender>();
+builder.Services.AddHostedService<HealthAlertWorker>();
 builder.Services.AddHostedService<AiMusicAnalysisWorker>();
 builder.Services.AddHostedService<HomeSpeaker.Server2.Services.VolumeMonitorService>();
 builder.Services.AddChatClient(sp =>
@@ -303,6 +315,63 @@ app.MapGet("/api/features", (IConfiguration config) => new
 {
     TemperatureEnabled = !string.IsNullOrEmpty(config["Temperature:ApiBaseUrl"]),
     BloodSugarEnabled = !string.IsNullOrEmpty(config["NIGHTSCOUT_URL"])
+});
+
+app.MapPost("/api/push/devices/register", async (PushNotificationService pushNotificationService, PushDeviceRegistrationRequest request, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var device = await pushNotificationService.RegisterDeviceAsync(request, cancellationToken);
+        return Results.Ok(device);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["request"] = [ex.Message]
+        });
+    }
+});
+
+app.MapDelete("/api/push/devices/{installationId}", async (PushNotificationService pushNotificationService, string installationId, CancellationToken cancellationToken) =>
+{
+    var removed = await pushNotificationService.UnregisterDeviceAsync(installationId, cancellationToken);
+    return removed
+        ? Results.NoContent()
+        : Results.NotFound();
+});
+
+app.MapGet("/api/homespeaker/push/installations/{installationId}", async (PushNotificationService pushNotificationService, string installationId, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var status = await pushNotificationService.GetRegistrationStatusAsync(installationId, cancellationToken);
+        return Results.Ok(status);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["installationId"] = [ex.Message]
+        });
+    }
+});
+
+app.MapPut("/api/homespeaker/push/installations/{installationId}", async (PushNotificationService pushNotificationService, string installationId, UpsertPushInstallationRequest request, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        request.InstallationId = installationId;
+        var status = await pushNotificationService.UpsertInstallationAsync(request, cancellationToken);
+        return Results.Ok(status);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["request"] = [ex.Message]
+        });
+    }
 });
 
 // Temperature API endpoint
@@ -773,3 +842,7 @@ app.MapRazorComponents<HomeSpeaker.Server2.Components.App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+public partial class Program
+{
+}

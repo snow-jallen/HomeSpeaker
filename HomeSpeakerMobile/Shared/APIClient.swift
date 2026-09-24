@@ -315,6 +315,21 @@ class APIClient {
         try await request("api/temperature")
     }
 
+    // MARK: - Push Notifications
+
+    func getPushRegistrationStatus(installationId: String) async throws -> PushRegistrationStatusDto {
+        let encodedInstallationId = installationId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? installationId
+        return try await request("api/homespeaker/push/installations/\(encodedInstallationId)")
+    }
+
+    func upsertPushInstallation(
+        installationId: String,
+        request: UpsertPushInstallationRequest
+    ) async throws -> PushRegistrationStatusDto {
+        let encodedInstallationId = installationId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? installationId
+        return try await self.request("api/homespeaker/push/installations/\(encodedInstallationId)", method: "PUT", body: request)
+    }
+
     func getForecast() async throws -> ForecastStatus {
         try await request("api/forecast")
     }

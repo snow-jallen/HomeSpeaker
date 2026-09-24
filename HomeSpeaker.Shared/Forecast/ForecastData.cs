@@ -1,5 +1,3 @@
-using System;
-
 namespace HomeSpeaker.Shared.Forecast;
 
 #nullable enable

@@ -384,6 +384,7 @@ DerivedData/
 .build/
 /Packages/
 Package.resolved
+HomeSpeaker.Server2/HomeSpeaker.Server2.csproj.lscache
 
 # Vendored YoutubeExplode PR-965 build (see local-packages/README.md)
 !local-packages/*.nupkg

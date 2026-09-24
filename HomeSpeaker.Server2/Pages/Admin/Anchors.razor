@@ -139,12 +139,13 @@ else
     private bool isLoading = false;
     private Dictionary<string, List<DailyAnchor>> allUserAnchors = new();
     private int maxVisibleDays = 14;
-
     protected override async Task OnInitializedAsync()
     {
         await RefreshData();
         await CalculateMaxVisibleDays();
-    }    protected override async Task OnAfterRenderAsync(bool firstRender)
+    }    
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
@@ -159,7 +160,9 @@ else
                 window.addEventListener('resize', window.resizeHandler);
             ");
         }
-    }    [JSInvokable]
+    }    
+    
+    [JSInvokable]
     public static async Task OnWindowResize()
     {
         // This would need to be handled differently in a real implementation

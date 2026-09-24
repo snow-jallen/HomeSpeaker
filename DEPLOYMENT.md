@@ -41,3 +41,44 @@ The self-hosted runner will automatically use the environment variables from Git
 - ✅ Production secrets use GitHub repository secrets
 - ✅ Environment variables are injected at runtime
 - ✅ Local `.env` file for easy development setup
+
+## Push Notifications
+
+HomeSpeaker now supports APNs-backed push notifications for registered iOS devices.
+
+### APNs configuration
+Set these values in your secrets file or environment:
+
+- `PushNotifications__Apns__Topic`
+- `PushNotifications__Apns__TeamId`
+- `PushNotifications__Apns__KeyId`
+- `PushNotifications__Apns__PrivateKeyBase64` (base64-encoded contents of the `.p8` auth key)
+- `PushNotifications__Apns__UseSandbox` (`true` for development/TestFlight-style sandbox, `false` for production APNs)
+
+### Device registration API
+The canonical mobile flow is:
+
+1. `PUT /api/homespeaker/push/installations/{installationId}` to register/update the APNs token
+2. `GET /api/homespeaker/push/installations/{installationId}` to read current status
+
+The iOS app keeps this flow registration-only. Alert categories and delivery rules stay server-side so the device UI can remain a simple push status surface.
+
+Example registration payload:
+
+```json
+PUT /api/homespeaker/push/installations/ios-main-phone
+{
+  "installationId": "ios-main-phone",
+  "platform": "ios",
+  "deviceToken": "<hex-token>",
+  "deviceName": "Jonathan's iPhone",
+  "bundleId": "com.example.HomeSpeaker"
+}
+```
+
+A simplified compatibility route also exists for direct registration/unregistration:
+
+```text
+POST /api/push/devices/register
+DELETE /api/push/devices/{installationId}
+```

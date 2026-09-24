@@ -1,5 +1,3 @@
-using System;
-
 namespace HomeSpeaker.Shared.Temperature;
 
 #nullable enable
