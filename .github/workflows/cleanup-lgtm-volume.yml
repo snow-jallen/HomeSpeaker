@@ -1,0 +1,22 @@
+name: Clean up removed lgtm telemetry volume
+
+# One-off: the lgtm telemetry container was dropped from docker-compose.yml,
+# but `docker-compose down --remove-orphans` doesn't delete named volumes, so
+# the lgtm-data volume (Grafana/Loki/Tempo/Prometheus data) is left behind
+# taking up SD card space. Run manually once per Pi, then delete this
+# workflow file.
+on:
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: [self-hosted, "${{ matrix.runner }}"]
+    strategy:
+      matrix:
+        runner: [kitchen, upstairs]
+
+    steps:
+    - name: Remove leftover lgtm container and volume
+      run: |
+        docker rm -f lgtm 2>/dev/null || true
+        docker volume rm lgtm-data 2>/dev/null || echo "lgtm-data volume already gone"
