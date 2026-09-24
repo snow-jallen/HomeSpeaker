@@ -19,4 +19,8 @@ jobs:
     - name: Remove leftover lgtm container and volume
       run: |
         docker rm -f lgtm 2>/dev/null || true
-        docker volume rm lgtm-data 2>/dev/null || echo "lgtm-data volume already gone"
+        echo "Volumes matching 'lgtm' before cleanup:"
+        docker volume ls --filter name=lgtm
+        docker volume ls -q --filter name=lgtm | xargs -r docker volume rm
+        echo "Volumes matching 'lgtm' after cleanup:"
+        docker volume ls --filter name=lgtm
