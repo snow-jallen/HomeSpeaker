@@ -99,6 +99,17 @@ public sealed class AutoPlayService
         {
             logger.LogInformation("Autoplay starting shuffled playlist {PlaylistName} at volume {VolumeLevel}", candidate.PlaylistName, volumeLevel);
             await playlistService.PlayPlaylistAsync(candidate.PlaylistName, shuffleOverride: true);
+
+            // PlayPlaylistAsync is fire-and-forget about failure: a missing playlist, or
+            // one whose song paths aren't in the library yet (startup scan still running),
+            // enqueues nothing and returns quietly. Report that as "didn't start" so the
+            // monitor re-arms instead of latching off.
+            if (!musicPlayer.StillPlaying && !musicPlayer.SongQueue.Any())
+            {
+                logger.LogWarning("Autoplay playlist {PlaylistName} produced no playable songs.", candidate.PlaylistName);
+                return false;
+            }
+
             return true;
         }
 
