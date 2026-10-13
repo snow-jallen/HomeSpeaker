@@ -65,7 +65,7 @@ Blazor components live under `HomeSpeaker.Server2/Components` (layout, music, he
 
 ### Ambient shell and photos
 
-`MainLayout` is a glass-styled shell (`wwwroot/css/glass.css`, components in `Components/Glass`). On kiosk browsers (`body[data-kiosk=true]`: localhost, or `?kiosk=1` cookie — see `Kiosk.cs`) `wwwroot/js/idleController.js` switches to an ambient photo slideshow after `Ambient:IdleSeconds` idle, or a dim night clock during `QuietHours`. `PhotoSyncWorker` mirrors one Immich album (`Immich:*` config) into `{MediaFolder}/.photo-cache`; `PhotoLibrary` serves it via `/api/photos/*` and `wwwroot/js/ambientSlideshow.js` crossfades it. Overlays and the Home page read live data from the scoped `DashboardState`. Home automation plugs in through `IHomeControl` (default `NullHomeControl`, which hides the Home row).
+`MainLayout` is a glass-styled shell (`wwwroot/css/glass.css`, components in `Components/Glass`). On kiosk browsers (`body[data-kiosk=true]`: localhost, or `?kiosk=1` cookie — see `Kiosk.cs`) `wwwroot/js/idleController.js` switches to an ambient photo slideshow after `Ambient:IdleSeconds` idle, or a dim night clock during `QuietHours`. `PhotoSyncWorker` indexes one Immich album (`Immich:*` config) in `{MediaFolder}/.photo-cache/manifest.json` but keeps only `Immich:CacheSize` (default 40) photos on disk, rotating `Immich:RotatePercent` (default 25) of them for fresh ones each sync (videos are streamed, never cached); `PhotoLibrary` serves it via `/api/photos/*` and `wwwroot/js/ambientSlideshow.js` crossfades it. Overlays and the Home page read live data from the scoped `DashboardState`. Home automation plugs in through `IHomeControl` (default `NullHomeControl`, which hides the Home row).
 
 ### REST API
 

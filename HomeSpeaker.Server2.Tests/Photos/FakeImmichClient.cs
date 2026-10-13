@@ -10,6 +10,7 @@ internal sealed class FakeImmichClient : IImmichClient
     public HashSet<string> TimedOutDownloads { get; } = new(StringComparer.Ordinal);
     public Dictionary<string, List<ImmichFace>> Faces { get; } = new(StringComparer.Ordinal);
     public List<string> Downloaded { get; } = [];
+    public List<string> DownloadAttempts { get; } = [];
     public List<string> FacesRequested { get; } = [];
     public Exception? DownloadError { get; set; }
 
@@ -20,6 +21,7 @@ internal sealed class FakeImmichClient : IImmichClient
 
     public async Task DownloadPreviewAsync(string assetId, Stream destination, CancellationToken cancellationToken)
     {
+        DownloadAttempts.Add(assetId);
         if (FailingDownloads.Contains(assetId))
         {
             throw DownloadError ?? new HttpRequestException("download failed");

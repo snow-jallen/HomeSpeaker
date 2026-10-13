@@ -120,7 +120,13 @@ builder.Services.AddSingleton(sp => new PhotoCacheStore(
     sp.GetRequiredService<ILogger<PhotoCacheStore>>()));
 builder.Services.AddSingleton(sp => new PhotoLibrary(sp.GetRequiredService<PhotoCacheStore>(), sp.GetRequiredService<TimeProvider>()));
 builder.Services.AddSingleton<PhotoSyncTrigger>();
-builder.Services.AddScoped<PhotoSyncer>();
+builder.Services.AddScoped(sp => new PhotoSyncer(
+    sp.GetRequiredService<IImmichClient>(),
+    sp.GetRequiredService<PhotoCacheStore>(),
+    sp.GetRequiredService<PhotoLibrary>(),
+    sp.GetRequiredService<IOptions<ImmichOptions>>(),
+    sp.GetRequiredService<ILogger<PhotoSyncer>>(),
+    Random.Shared));
 builder.Services.AddHostedService<PhotoSyncWorker>();
 builder.Services.AddSingleton<AiProcessingSignal>();
 builder.Services.AddSingleton<AiMusicAnalyzer>();

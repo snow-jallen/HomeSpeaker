@@ -3,13 +3,30 @@ using Microsoft.Extensions.Options;
 namespace HomeSpeaker.Server2.Services.Photos;
 
 /// <summary>One pass of mirroring the configured Immich album into the local photo cache.</summary>
-public sealed class PhotoSyncer(
-    IImmichClient immich,
-    PhotoCacheStore store,
-    PhotoLibrary library,
-    IOptions<ImmichOptions> options,
-    ILogger<PhotoSyncer> logger)
+public sealed class PhotoSyncer
 {
+    private readonly IImmichClient immich;
+    private readonly PhotoCacheStore store;
+    private readonly PhotoLibrary library;
+    private readonly IOptions<ImmichOptions> options;
+    private readonly ILogger<PhotoSyncer> logger;
+    private readonly Random random;
+
+    public PhotoSyncer(IImmichClient immich, PhotoCacheStore store, PhotoLibrary library, IOptions<ImmichOptions> options, ILogger<PhotoSyncer> logger)
+        : this(immich, store, library, options, logger, Random.Shared)
+    {
+    }
+
+    public PhotoSyncer(IImmichClient immich, PhotoCacheStore store, PhotoLibrary library, IOptions<ImmichOptions> options, ILogger<PhotoSyncer> logger, Random random)
+    {
+        this.immich = immich;
+        this.store = store;
+        this.library = library;
+        this.options = options;
+        this.logger = logger;
+        this.random = random;
+    }
+
     private const int AssetTimeoutSeconds = 60;
 
     public async Task<bool> SyncAsync(CancellationToken cancellationToken)
@@ -36,17 +53,25 @@ public sealed class PhotoSyncer(
         var existing = store.LoadManifest()
             .GroupBy(p => p.AssetId, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
-        var entries = new List<PhotoEntry>(assets.Count);
-        var added = 0;
 
+        // The manifest is a full album index. Images that are not cached stay hidden until a rotation brings them in.
+        var entries = new Dictionary<string, PhotoEntry>(assets.Count, StringComparer.Ordinal);
+        var images = new List<ImmichAsset>();
+        var videos = 0;
         foreach (var asset in assets)
         {
+            if (entries.ContainsKey(asset.Id))
+            {
+                continue;
+            }
+
+            existing.TryGetValue(asset.Id, out var previous);
             if (asset.IsVideo)
             {
                 // Videos are streamed from Immich on demand: no download, no face lookup, only a manifest entry.
-                entries.Add(existing.TryGetValue(asset.Id, out var cachedVideo)
-                    ? cachedVideo with { TakenAt = asset.TakenAt, City = asset.City, State = asset.State, Country = asset.Country, IsVideo = true, DurationMs = asset.DurationMs }
-                    : new PhotoEntry
+                videos++;
+                entries[asset.Id] = previous is null
+                    ? new PhotoEntry
                     {
                         AssetId = asset.Id,
                         TakenAt = asset.TakenAt,
@@ -55,14 +80,55 @@ public sealed class PhotoSyncer(
                         Country = asset.Country,
                         IsVideo = true,
                         DurationMs = asset.DurationMs,
-                    });
+                    }
+                    : previous with { TakenAt = asset.TakenAt, City = asset.City, State = asset.State, Country = asset.Country, IsVideo = true, DurationMs = asset.DurationMs };
                 continue;
             }
 
-            if (existing.TryGetValue(asset.Id, out var cached) && store.HasImage(asset.Id))
+            images.Add(asset);
+            entries[asset.Id] = previous is null
+                ? new PhotoEntry { AssetId = asset.Id, TakenAt = asset.TakenAt, City = asset.City, State = asset.State, Country = asset.Country }
+                : previous with { TakenAt = asset.TakenAt, City = asset.City, State = asset.State, Country = asset.Country };
+        }
+
+        var albumIds = assets.Select(a => a.Id).ToHashSet(StringComparer.Ordinal);
+        var removed = 0;
+        foreach (var id in existing.Keys.Where(id => !albumIds.Contains(id)))
+        {
+            store.DeleteImage(id);
+            removed++;
+        }
+
+        var cacheSize = Math.Max(1, options.Value.CacheSize);
+        var rotatePercent = Math.Clamp(options.Value.RotatePercent, 0, 100);
+
+        var cached = images.Where(a => store.HasImage(a.Id)).ToList();
+        var uncached = images.Where(a => !store.HasImage(a.Id)).ToList();
+        var evicted = new HashSet<string>(StringComparer.Ordinal);
+
+        if (cached.Count > cacheSize)
+        {
+            evictRandom(cached, cached.Count - cacheSize, evicted);
+        }
+        else if (cached.Count == cacheSize && rotatePercent > 0)
+        {
+            var rotateCount = Math.Max(1, cacheSize * rotatePercent / 100);
+            if (uncached.Count >= rotateCount)
             {
-                entries.Add(cached with { TakenAt = asset.TakenAt, City = asset.City, State = asset.State, Country = asset.Country });
-                continue;
+                evictRandom(cached, rotateCount, evicted);
+            }
+        }
+
+        var added = 0;
+        var failed = 0;
+        var maxFailures = cacheSize * 2;
+        var candidates = uncached.ToArray();
+        random.Shuffle(candidates);
+        foreach (var asset in candidates)
+        {
+            if (cached.Count >= cacheSize || failed >= maxFailures)
+            {
+                break;
             }
 
             // Per-asset deadline: HttpClient.Timeout does not cover the body copy (ResponseHeadersRead),
@@ -72,12 +138,14 @@ public sealed class PhotoSyncer(
             try
             {
                 await store.SaveImageAsync(asset.Id, stream => immich.DownloadPreviewAsync(asset.Id, stream, assetCts.Token));
-                entries.Add(await buildEntryAsync(asset, cancellationToken, assetCts.Token));
+                entries[asset.Id] = await buildEntryAsync(asset, cancellationToken, assetCts.Token);
+                cached.Add(asset);
                 added++;
             }
             // A timeout surfaces as OperationCanceledException; only real shutdown (the outer token) should abort the pass.
             catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
+                failed++;
                 if (ex is HttpRequestException { StatusCode: { } status })
                 {
                     logger.LogWarning(ex, "Skipping Immich asset {AssetId}: HTTP {StatusCode}", asset.Id, status);
@@ -89,18 +157,28 @@ public sealed class PhotoSyncer(
             }
         }
 
-        var albumIds = assets.Select(a => a.Id).ToHashSet(StringComparer.Ordinal);
-        var removed = 0;
-        foreach (var id in existing.Keys.Where(id => !albumIds.Contains(id)))
-        {
-            store.DeleteImage(id);
-            removed++;
-        }
-
-        store.SaveManifest(entries);
+        store.SaveManifest(entries.Values.ToList());
         library.Reload();
-        logger.LogInformation("Photo sync complete: {Total} photos, {Added} added, {Removed} removed", entries.Count, added, removed);
+        logger.LogInformation(
+            "Photo sync complete: {Indexed} album items, {Cached} photos cached ({Added} added, {Evicted} evicted), {Videos} videos",
+            entries.Count,
+            cached.Count,
+            added,
+            evicted.Count,
+            videos);
         return true;
+    }
+
+    private void evictRandom(List<ImmichAsset> cached, int count, HashSet<string> evicted)
+    {
+        var pool = cached.ToArray();
+        random.Shuffle(pool);
+        foreach (var asset in pool.Take(count))
+        {
+            store.DeleteImage(asset.Id);
+            evicted.Add(asset.Id);
+            cached.Remove(asset);
+        }
     }
 
     private async Task<PhotoEntry> buildEntryAsync(ImmichAsset asset, CancellationToken cancellationToken, CancellationToken assetToken)

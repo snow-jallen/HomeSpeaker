@@ -23,12 +23,25 @@ public sealed class PhotoSyncerTests : IDisposable
 
     public void Dispose() => temp.Dispose();
 
-    private PhotoSyncer createSyncer(ILogger<PhotoSyncer>? logger = null) => new(
+    private PhotoSyncer createSyncer(ILogger<PhotoSyncer>? logger = null, int cacheSize = 40, int rotatePercent = 25) => new(
         immich,
         store,
         library,
-        Options.Create(new ImmichOptions { BaseUrl = "https://immich.test", ApiKey = "key", AlbumId = "album" }),
-        logger ?? NullLogger<PhotoSyncer>.Instance);
+        Options.Create(new ImmichOptions { BaseUrl = "https://immich.test", ApiKey = "key", AlbumId = "album", CacheSize = cacheSize, RotatePercent = rotatePercent }),
+        logger ?? NullLogger<PhotoSyncer>.Instance,
+        new Random(42));
+
+    private static string idFor(int n) => new Guid(n, 0, 0, new byte[8]).ToString();
+
+    private void addImages(int count)
+    {
+        for (var i = 1; i <= count; i++)
+        {
+            immich.Assets.Add(asset(idFor(i)));
+        }
+    }
+
+    private int cachedFileCount() => Directory.GetFiles(temp.Path, "*.jpg").Length;
 
     private static ImmichAsset asset(string id, string? city = "Bear Lake") => new(id, new DateTime(2021, 8, 14), city, "Utah", null);
 
@@ -147,8 +160,10 @@ public sealed class PhotoSyncerTests : IDisposable
 
         Assert.True(await createSyncer().SyncAsync(CancellationToken.None));
 
-        Assert.Equal([IdA], store.LoadManifest().Select(p => p.AssetId));
+        Assert.Equal([IdA, IdB], store.LoadManifest().Select(p => p.AssetId).Order(StringComparer.Ordinal));
+        Assert.True(store.HasImage(IdA));
         Assert.False(store.HasImage(IdB));
+        Assert.Equal(1, library.Count);
         Assert.Empty(Directory.GetFiles(temp.Path, "*.tmp"));
     }
 
@@ -160,8 +175,10 @@ public sealed class PhotoSyncerTests : IDisposable
 
         Assert.True(await createSyncer().SyncAsync(CancellationToken.None));
 
-        Assert.Equal([IdB], store.LoadManifest().Select(p => p.AssetId));
+        Assert.Equal([IdA, IdB], store.LoadManifest().Select(p => p.AssetId).Order(StringComparer.Ordinal));
         Assert.False(store.HasImage(IdA));
+        Assert.True(store.HasImage(IdB));
+        Assert.Equal(1, library.Count);
         Assert.Empty(Directory.GetFiles(temp.Path, "*.tmp"));
     }
 
@@ -218,5 +235,195 @@ public sealed class PhotoSyncerTests : IDisposable
 
         var warning = Assert.Single(logger.Entries, e => e.Level == LogLevel.Warning);
         Assert.Contains("HTTP Unauthorized", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Sync_FillsOnlyUpToCacheSize_ButIndexesWholeAlbum()
+    {
+        addImages(100);
+
+        Assert.True(await createSyncer(cacheSize: 10).SyncAsync(CancellationToken.None));
+
+        Assert.Equal(10, cachedFileCount());
+        Assert.Equal(10, immich.Downloaded.Count);
+        Assert.Equal(100, store.LoadManifest().Count);
+        Assert.Equal(10, library.Count);
+    }
+
+    [Fact]
+    public async Task Sync_TrimsOversizedCacheDownToCacheSize()
+    {
+        for (var i = 1; i <= 30; i++)
+        {
+            await store.SaveImageAsync(idFor(i), s => s.WriteAsync(new byte[] { 0xFF, 0xD8 }).AsTask());
+        }
+
+        addImages(100);
+
+        Assert.True(await createSyncer(cacheSize: 10).SyncAsync(CancellationToken.None));
+
+        Assert.Equal(10, cachedFileCount());
+        Assert.Empty(immich.Downloaded);
+        Assert.Equal(10, library.Count);
+    }
+
+    [Fact]
+    public async Task Sync_RotatesConfiguredPercentOfFullCache()
+    {
+        addImages(100);
+        await createSyncer(cacheSize: 10, rotatePercent: 30).SyncAsync(CancellationToken.None);
+        var before = immich.Downloaded.ToHashSet(StringComparer.Ordinal);
+        immich.Downloaded.Clear();
+
+        await createSyncer(cacheSize: 10, rotatePercent: 30).SyncAsync(CancellationToken.None);
+
+        Assert.Equal(3, immich.Downloaded.Count);
+        Assert.DoesNotContain(immich.Downloaded, before.Contains);
+        Assert.Equal(10, cachedFileCount());
+        Assert.Equal(7, Directory.GetFiles(temp.Path, "*.jpg").Count(f => before.Contains(Path.GetFileNameWithoutExtension(f))));
+        Assert.Equal(10, library.Count);
+    }
+
+    [Fact]
+    public async Task Sync_RotatesAtLeastOnePhoto_WhenPercentRoundsToZero()
+    {
+        addImages(100);
+        await createSyncer(cacheSize: 10, rotatePercent: 5).SyncAsync(CancellationToken.None);
+        immich.Downloaded.Clear();
+
+        await createSyncer(cacheSize: 10, rotatePercent: 5).SyncAsync(CancellationToken.None);
+
+        Assert.Single(immich.Downloaded);
+        Assert.Equal(10, cachedFileCount());
+    }
+
+    [Fact]
+    public async Task Sync_DoesNotRotate_WhenRotatePercentIsZero()
+    {
+        addImages(100);
+        await createSyncer(cacheSize: 10, rotatePercent: 0).SyncAsync(CancellationToken.None);
+        immich.Downloaded.Clear();
+
+        await createSyncer(cacheSize: 10, rotatePercent: 0).SyncAsync(CancellationToken.None);
+
+        Assert.Empty(immich.Downloaded);
+        Assert.Equal(10, cachedFileCount());
+    }
+
+    [Fact]
+    public async Task Sync_SmallAlbum_CachesEverythingAndNeverRotates()
+    {
+        addImages(5);
+        await createSyncer(cacheSize: 10).SyncAsync(CancellationToken.None);
+        Assert.Equal(5, cachedFileCount());
+        immich.Downloaded.Clear();
+
+        await createSyncer(cacheSize: 10).SyncAsync(CancellationToken.None);
+
+        Assert.Empty(immich.Downloaded);
+        Assert.Equal(5, cachedFileCount());
+        Assert.Equal(5, library.Count);
+    }
+
+    [Fact]
+    public async Task Sync_AlbumBarelyLargerThanCache_DoesNotRotateMoreThanItCanReplace()
+    {
+        addImages(11);
+        await createSyncer(cacheSize: 10, rotatePercent: 50).SyncAsync(CancellationToken.None);
+        immich.Downloaded.Clear();
+
+        // Needs 5 evictions but only 1 album image is uncached, so rotation is skipped.
+        await createSyncer(cacheSize: 10, rotatePercent: 50).SyncAsync(CancellationToken.None);
+
+        Assert.Empty(immich.Downloaded);
+        Assert.Equal(10, cachedFileCount());
+    }
+
+    [Fact]
+    public async Task Sync_StopsAfterTwiceCacheSizeFailedDownloads()
+    {
+        addImages(100);
+        foreach (var a in immich.Assets)
+        {
+            immich.FailingDownloads.Add(a.Id);
+        }
+
+        Assert.True(await createSyncer(cacheSize: 10).SyncAsync(CancellationToken.None));
+
+        Assert.Equal(20, immich.DownloadAttempts.Count);
+        Assert.Equal(20, immich.DownloadAttempts.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(0, cachedFileCount());
+        Assert.Equal(100, store.LoadManifest().Count);
+    }
+
+    [Fact]
+    public async Task Sync_FailedDownloadIsReplacedByAnotherAsset()
+    {
+        addImages(20);
+        immich.FailingDownloads.Add(idFor(1));
+        immich.FailingDownloads.Add(idFor(2));
+
+        await createSyncer(cacheSize: 10).SyncAsync(CancellationToken.None);
+
+        Assert.Equal(10, cachedFileCount());
+    }
+
+    [Fact]
+    public async Task Sync_WhenAlbumFetchFails_EvictsNothingEvenIfOverfull()
+    {
+        addImages(30);
+        await createSyncer(cacheSize: 30).SyncAsync(CancellationToken.None);
+
+        immich.AlbumError = new HttpRequestException("boom");
+        Assert.False(await createSyncer(cacheSize: 10).SyncAsync(CancellationToken.None));
+
+        Assert.Equal(30, cachedFileCount());
+        Assert.Equal(30, store.LoadManifest().Count);
+    }
+
+    [Fact]
+    public async Task Sync_VideosAreIndexedButDoNotCountTowardCacheSize()
+    {
+        addImages(20);
+        immich.Assets.AddRange(Enumerable.Range(101, 5).Select(i => videoAsset(idFor(i), 1000)));
+
+        await createSyncer(cacheSize: 10).SyncAsync(CancellationToken.None);
+
+        Assert.Equal(10, cachedFileCount());
+        Assert.Equal(10, immich.Downloaded.Count);
+        Assert.Equal(25, store.LoadManifest().Count);
+        Assert.Equal(5, store.LoadManifest().Count(p => p.IsVideo));
+        Assert.Equal(15, library.Count);
+    }
+
+    [Fact]
+    public async Task Sync_KeepsFaceDataOfUncachedPhoto_AndRefreshesItsMetadata()
+    {
+        immich.Assets.Add(asset(IdA));
+        immich.Faces[IdA] = [new ImmichFace(100, 50, 300, 250, 1000, 500)];
+        await createSyncer().SyncAsync(CancellationToken.None);
+        store.DeleteImage(IdA);
+
+        immich.Assets[0] = asset(IdA, city: "Garden City");
+        immich.Assets.Add(asset(IdB));
+        await createSyncer(cacheSize: 1, rotatePercent: 0).SyncAsync(CancellationToken.None);
+
+        var entry = Assert.Single(store.LoadManifest(), p => string.Equals(p.AssetId, IdA, StringComparison.Ordinal));
+        Assert.Equal("Garden City", entry.City);
+        Assert.Equal(1000, entry.ImageWidth);
+        Assert.Single(entry.Faces);
+    }
+
+    [Fact]
+    public async Task Sync_LogsSummaryOnce()
+    {
+        addImages(20);
+        immich.Assets.Add(videoAsset(idFor(500), 1000));
+        var logger = new CapturingLogger<PhotoSyncer>();
+
+        await createSyncer(logger, cacheSize: 10).SyncAsync(CancellationToken.None);
+
+        var info = Assert.Single(logger.Entries, e => e.Level == LogLevel.Information);
+        Assert.Equal("Photo sync complete: 21 album items, 10 photos cached (10 added, 0 evicted), 1 videos", info.Message);
     }
 }
