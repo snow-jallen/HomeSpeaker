@@ -393,12 +393,15 @@ public class HomeSpeakerService
     {
         using var scope = serviceProvider.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<MusicContext>();
-        var streams = await db.RadioStreams
-            .OrderBy(s => s.DisplayOrder)
-            .ThenBy(s => s.Name)
-            .ToListAsync();
+        var streams = await db.RadioStreams.ToListAsync();
 
-        return streams.Select(s => new RadioStreamViewModel
+        var orderedStreams = RadioStreamOrdering.ByPopularity(
+            streams,
+            s => s.PlayCount,
+            s => s.Name
+        );
+
+        return orderedStreams.Select(s => new RadioStreamViewModel
         {
             Id = s.Id,
             Name = s.Name,

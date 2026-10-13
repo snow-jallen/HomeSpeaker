@@ -43,11 +43,15 @@ public class RadioStreamService
             entry.AbsoluteExpirationRelativeToNow = cacheDuration;
             logger.LogDebug("Cache miss - loading radio streams from database");
 
-            return await dbContext.RadioStreams
-                .OrderByDescending(s => s.PlayCount)
-                .ThenBy(s => s.Name)
+            var streams = await dbContext.RadioStreams
                 .AsNoTracking()  // Performance: Read-only query
                 .ToListAsync();
+
+            return RadioStreamOrdering.ByPopularity(
+                streams,
+                s => s.PlayCount,
+                s => s.Name
+            ).ToList();
         }) ?? Enumerable.Empty<RadioStream>();
     }
 
