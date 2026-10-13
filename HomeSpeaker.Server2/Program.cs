@@ -100,6 +100,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.Configure<AiMusicOptions>(builder.Configuration.GetSection("AI"));
 builder.Services.Configure<PushNotificationOptions>(builder.Configuration.GetSection("PushNotifications"));
 builder.Services.Configure<ImmichOptions>(builder.Configuration.GetSection("Immich"));
+builder.Services.PostConfigure<ImmichOptions>(options => ImmichOptionsFallback.Apply(options, builder.Configuration));
 builder.Services.AddHttpClient<IImmichClient, ImmichClient>((sp, client) =>
 {
     var immich = sp.GetRequiredService<IOptions<ImmichOptions>>().Value;
