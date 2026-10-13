@@ -29,8 +29,11 @@ else
                 <button @onclick:stopPropagation="true" @onclick=toggleDetailsView class="hs-icon-btn hs-icon-btn--filled" title="@(showDetails ? "Hide details" : "Show details")" aria-label="@(showDetails ? "Hide details" : "Show details")" aria-expanded="@showDetails">
                     <i class="fas @(showDetails ? "fa-chevron-up" : "fa-chevron-down")" aria-hidden="true"></i>
                 </button>
-                <PlayButtonWithDropdown Song="SongViewModel" />
-                <PlusButtonWithMenu Song="SongViewModel" />
+                @* The menus sit inside the row, so their clicks must not reach the row's toggle. *@
+                <span class="glass-contents" @onclick:stopPropagation="true">
+                    <PlayButtonWithDropdown Song="SongViewModel" />
+                    <PlusButtonWithMenu Song="SongViewModel" />
+                </span>
             </div>
         </div>
 

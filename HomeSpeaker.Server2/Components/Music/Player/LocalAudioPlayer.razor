@@ -7,49 +7,37 @@
 
 @if (LocalQueueService.CurrentSong != null)
 {
-    <div class="local-audio-player">
-        <div class="d-flex align-items-center mb-2">
-            <div class="btn-group me-3" role="group">
-                <button class="btn btn-outline-primary btn-sm" @onclick="PreviousTrack">
-                    <i class="fas fa-step-backward"></i>
-                </button>
-                
-                @if (isPlaying)
-                {
-                    <button class="btn btn-outline-primary btn-sm" @onclick="Pause">
-                        <i class="fas fa-pause"></i>
-                    </button>
-                }
-                else
-                {
-                    <button class="btn btn-outline-primary btn-sm" @onclick="Play">
-                        <i class="fas fa-play"></i>
-                    </button>
-                }
-                
-                <button class="btn btn-outline-primary btn-sm" @onclick="Stop">
-                    <i class="fas fa-stop"></i>
-                </button>
-                
-                <button class="btn btn-outline-primary btn-sm" @onclick="NextTrack">
-                    <i class="fas fa-step-forward"></i>
-                </button>
-            </div>
+    <section class="glass local-audio-player" aria-label="Local player">
+        <div class="glass-row-title">@LocalQueueService.CurrentSong.Name</div>
+        <div class="local-audio-progress">
+            <span class="glass-row-sub">@currentTimeDisplay</span>
+            <div class="hs-progress"><div style="width: @(progressPercent)%"></div></div>
+            <span class="glass-row-sub">@durationDisplay</span>
         </div>
-        
-        <div class="current-song-info mb-2">
-            <div class="fw-bold text-truncate">@LocalQueueService.CurrentSong.Name</div>
-            <div class="d-flex align-items-center">
-                <small class="text-muted me-2">@currentTimeDisplay</small>
-                <div class="progress flex-grow-1 me-2" style="height: 4px;">
-                    <div class="progress-bar" 
-                         style="width: @(progressPercent)%"
-                         role="progressbar"></div>
-                </div>
-                <small class="text-muted">@durationDisplay</small>
-            </div>
+        <div class="local-audio-controls">
+            <button type="button" class="hs-icon-btn hs-icon-btn--filled" title="Previous track" aria-label="Previous track" @onclick="PreviousTrack">
+                <i class="fas fa-step-backward" aria-hidden="true"></i>
+            </button>
+            @if (isPlaying)
+            {
+                <button type="button" class="hs-icon-btn hs-icon-btn--filled" title="Pause" aria-label="Pause" @onclick="Pause">
+                    <i class="fas fa-pause" aria-hidden="true"></i>
+                </button>
+            }
+            else
+            {
+                <button type="button" class="hs-icon-btn hs-icon-btn--filled" title="Play" aria-label="Play" @onclick="Play">
+                    <i class="fas fa-play" aria-hidden="true"></i>
+                </button>
+            }
+            <button type="button" class="hs-icon-btn hs-icon-btn--filled" title="Stop" aria-label="Stop" @onclick="Stop">
+                <i class="fas fa-stop" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="hs-icon-btn hs-icon-btn--filled" title="Next track" aria-label="Next track" @onclick="NextTrack">
+                <i class="fas fa-step-forward" aria-hidden="true"></i>
+            </button>
         </div>
-    </div>
+    </section>
 }
 
 @code {

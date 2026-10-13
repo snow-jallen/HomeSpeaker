@@ -6,227 +6,238 @@
 @inject IJSRuntime JsRuntime
 @inject NavigationManager Nav
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>Internet Radio Streams</h3>
-    <div>
-        @if (!isEditMode)
-        {
-            <button @onclick="ToggleEditMode" class="btn btn-outline-secondary me-2">
-                <span class="oi oi-pencil"></span> Edit
-            </button>
-        }
-        else
-        {
-            <button @onclick="ShowAddStreamModal" class="btn btn-primary me-2">
-                <span class="oi oi-plus"></span> Add Stream
-            </button>
-            <button @onclick="ToggleEditMode" class="btn btn-success">
-                <span class="oi oi-check"></span> Done
-            </button>
-        }
-    </div>
-</div>
+<PageTitle>Radio Streams</PageTitle>
 
-@if (streams == null)
-{
-    <div class="d-flex justify-content-center p-4">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
+<div class="glass-page glass-page--streams">
+    <div class="glass-page-header">
+        <h1 class="glass-title">Internet Radio Streams</h1>
+        <div class="glass-page-actions">
+            @if (!isEditMode)
+            {
+                <button type="button" @onclick="ToggleEditMode" class="glass-btn glass-btn--ghost">
+                    <i class="fas fa-pencil" aria-hidden="true"></i>Edit
+                </button>
+            }
+            else
+            {
+                <button type="button" @onclick="ShowAddStreamModal" class="glass-btn">
+                    <i class="fas fa-plus" aria-hidden="true"></i>Add Stream
+                </button>
+                <button type="button" @onclick="ToggleEditMode" class="glass-btn glass-btn--ghost">
+                    <i class="fas fa-check" aria-hidden="true"></i>Done
+                </button>
+            }
         </div>
     </div>
-}
-else if (!streams.Any())
-{
-    <div class="text-center text-muted p-4">
-        <h5>No radio streams found</h5>
-        <p>Click "Edit" then "Add Stream" to create your first stream!</p>
-    </div>
-}
-else
-{
-    @foreach (var stream in streams)
+
+    @if (streams == null)
     {
-        <div class="card mb-2">
-            <div class="card-body p-3">
-                <div class="row align-items-center">
-                    <div class="col-auto">
-                        <img src="@stream.FaviconUrl"
-                             alt="@stream.Name"
-                             class="favicon-img"
-                             onerror="this.src='/icon-192.png'" />
+        <div class="glass-empty" role="status">
+            <div class="glass-spinner" aria-hidden="true"></div>
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    }
+    else if (!streams.Any())
+    {
+        <div class="glass-empty">
+            <i class="fas fa-tower-broadcast" aria-hidden="true"></i>
+            <div class="glass-row-title">No radio streams found</div>
+            <p class="mb-0">Click "Edit" then "Add Stream" to create your first stream!</p>
+        </div>
+    }
+    else
+    {
+        <div class="glass-list">
+            @foreach (var stream in streams)
+            {
+                <div class="glass-row">
+                    <img src="@stream.FaviconUrl"
+                         alt=""
+                         class="glass-row-art glass-row-art--logo"
+                         onerror="this.src='/icon-192.png'" />
+                    <div class="glass-row-text">
+                        <div class="glass-row-title">@stream.Name</div>
+                        <div class="glass-row-sub">Played @stream.PlayCount times</div>
                     </div>
-                    <div class="col">
-                        <h6 class="mb-0">@stream.Name</h6>
-                        <small class="text-muted">Played @stream.PlayCount times</small>
-                    </div>
-                    <div class="col-auto">
+                    <div class="glass-row-actions">
                         @if (isEditMode)
                         {
-                            <button @onclick="() => ShowEditStreamModal(stream)"
-                                    class="btn btn-sm btn-outline-secondary me-1">
-                                <span class="oi oi-pencil"></span>
+                            <button type="button" @onclick="() => ShowEditStreamModal(stream)"
+                                    class="hs-icon-btn hs-icon-btn--filled"
+                                    title="Edit @stream.Name"
+                                    aria-label="Edit @stream.Name">
+                                <i class="fas fa-pencil" aria-hidden="true"></i>
                             </button>
-                            <button @onclick="() => ConfirmDelete(stream)"
-                                    class="btn btn-sm btn-outline-danger">
-                                <span class="oi oi-trash"></span>
+                            <button type="button" @onclick="() => ConfirmDelete(stream)"
+                                    class="hs-icon-btn hs-icon-btn--filled"
+                                    title="Delete @stream.Name"
+                                    aria-label="Delete @stream.Name">
+                                <i class="fas fa-trash" aria-hidden="true"></i>
                             </button>
                         }
                         else
                         {
-                            <button @onclick="() => PlayStream(stream.Id)"
-                                    class="btn btn-primary">
-                                <span class="oi oi-media-play"></span> Play
+                            <button type="button" @onclick="() => PlayStream(stream.Id)"
+                                    class="hs-play-btn hs-play-btn--sm"
+                                    title="Play @stream.Name"
+                                    aria-label="Play @stream.Name">
+                                <i class="fas fa-play" aria-hidden="true"></i>
                             </button>
                         }
                     </div>
                 </div>
-            </div>
+            }
         </div>
     }
-}
+</div>
 
 @if (showStreamModal)
 {
-    <div class="modal show d-block" style="background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(editingStream == null ? "Add New Stream" : "Edit Stream")</h5>
-                    <button type="button" class="btn-close" @onclick="CloseStreamModal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Stream Name *</label>
-                        <input @bind="streamName" class="form-control" placeholder="e.g., KBAQ Classical" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Stream URL *</label>
-                        <input @bind="streamUrl" class="form-control" placeholder="https://..." />
-                    </div>
+    @* Native <dialog> renders in the browser top layer, so it sits above the glass panel's stacking context. *@
+    <dialog id="streamDialog" class="glass-dialog glass-dialog--picker" aria-labelledby="streamDialogTitle"
+            @oncancel="CloseStreamModal" @oncancel:preventDefault="true">
+        <h2 class="glass-dialog-title" id="streamDialogTitle">
+            <span>@(editingStream == null ? "Add New Stream" : "Edit Stream")</span>
+            <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="CloseStreamModal" title="Close" aria-label="Close">
+                <i class="fas fa-xmark" aria-hidden="true"></i>
+            </button>
+        </h2>
+        <div class="glass-dialog-body">
+            <label class="glass-field">
+                <span>Stream Name *</span>
+                <input @bind="streamName" class="glass-input" placeholder="e.g., KBAQ Classical" />
+            </label>
+            <label class="glass-field">
+                <span>Stream URL *</span>
+                <input @bind="streamUrl" class="glass-input" placeholder="https://..." />
+            </label>
 
-                    @* Image picker section *@
-                    <div class="mb-3">
-                        <label class="form-label">Stream Image (optional)</label>
+            @* Image picker section *@
+            <div class="glass-field">
+                <span>Stream Image (optional)</span>
 
-                        @* Current image preview *@
-                        <div class="mb-2">
-                            <img src="@GetPreviewUrl()"
-                                 class="stream-image-preview"
-                                 onerror="this.src='/icon-192.png'"
-                                 alt="Stream image preview" />
-                        </div>
+                @* Current image preview *@
+                <img src="@GetPreviewUrl()"
+                     class="glass-image-preview"
+                     onerror="this.src='/icon-192.png'"
+                     alt="Stream image preview" />
 
-                        @* Tab buttons *@
-                        <div class="btn-group btn-group-sm mb-2" role="group">
-                            <button type="button"
-                                    class="btn @(activePickerTab == "search" ? "btn-primary" : "btn-outline-secondary")"
-                                    @onclick='() => activePickerTab = "search"'>
-                                Search
-                            </button>
-                            <button type="button"
-                                    class="btn @(activePickerTab == "upload" ? "btn-primary" : "btn-outline-secondary")"
-                                    @onclick='() => activePickerTab = "upload"'>
-                                Upload
-                            </button>
-                            <button type="button"
-                                    class="btn @(activePickerTab == "url" ? "btn-primary" : "btn-outline-secondary")"
-                                    @onclick='() => activePickerTab = "url"'>
-                                URL
-                            </button>
-                        </div>
-
-                        @* Search tab *@
-                        @if (activePickerTab == "search")
-                        {
-                            <div class="input-group mb-2">
-                                <input @bind="imageSearchQuery"
-                                       @onkeydown="OnSearchKeyDown"
-                                       class="form-control form-control-sm"
-                                       placeholder="Search for station logo..." />
-                                <button class="btn btn-outline-secondary btn-sm"
-                                        @onclick="DoImageSearch"
-                                        disabled="@(isSearching || string.IsNullOrWhiteSpace(imageSearchQuery))">
-                                    @if (isSearching)
-                                    {
-                                        <span class="spinner-border spinner-border-sm"></span>
-                                    }
-                                    else
-                                    {
-                                        <span>Search</span>
-                                    }
-                                </button>
-                            </div>
-                            @if (searchError != null)
-                            {
-                                <div class="alert alert-warning py-1 px-2 mb-2 small">@searchError</div>
-                            }
-                            @if (searchResults.Any())
-                            {
-                                <div class="row g-1 search-results-grid">
-                                    @foreach (var result in searchResults)
-                                    {
-                                        var isSelected = selectedImage?.Source == ImageSourceType.Url && selectedImage.DownloadUrl == result.Url;
-                                        <div class="col-3">
-                                            <div class="search-thumb @(isSelected ? "selected" : "")"
-                                                 @onclick="() => SelectSearchResult(result)"
-                                                 title="@result.Title (@result.Source)">
-                                                <img src="@result.ThumbnailUrl"
-                                                     alt="@result.Title"
-                                                     onerror="this.parentElement.style.display='none'" />
-                                                @if (isSelected)
-                                                {
-                                                    <div class="thumb-check">✓</div>
-                                                }
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        }
-
-                        @* Upload tab *@
-                        @if (activePickerTab == "upload")
-                        {
-                            <InputFile OnChange="OnFileSelected" accept="image/*" class="form-control form-control-sm" />
-                            @if (uploadError != null)
-                            {
-                                <div class="alert alert-danger py-1 px-2 mt-1 small">@uploadError</div>
-                            }
-                        }
-
-                        @* URL tab *@
-                        @if (activePickerTab == "url")
-                        {
-                            <input value="@urlTabInput"
-                                   @oninput="OnUrlTabInput"
-                                   class="form-control form-control-sm"
-                                   placeholder="https://example.com/logo.png" />
-                            <small class="text-muted">Paste a direct link to an image</small>
-                        }
-
-                        @if (saveError != null)
-                        {
-                            <div class="alert alert-danger py-1 px-2 mt-2 small">@saveError</div>
-                        }
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseStreamModal">Cancel</button>
-                    <button type="button" class="btn btn-primary"
-                            @onclick="SaveStream"
-                            disabled="@(string.IsNullOrWhiteSpace(streamName) || string.IsNullOrWhiteSpace(streamUrl))">
-                        @(editingStream == null ? "Add" : "Update")
+                @* Tab buttons *@
+                <div class="glass-chip-row" role="group" aria-label="Image source">
+                    <button type="button"
+                            class="glass-chip @(activePickerTab == "search" ? "is-on" : "")"
+                            aria-pressed="@(activePickerTab == "search" ? "true" : "false")"
+                            @onclick='() => activePickerTab = "search"'>
+                        Search
+                    </button>
+                    <button type="button"
+                            class="glass-chip @(activePickerTab == "upload" ? "is-on" : "")"
+                            aria-pressed="@(activePickerTab == "upload" ? "true" : "false")"
+                            @onclick='() => activePickerTab = "upload"'>
+                        Upload
+                    </button>
+                    <button type="button"
+                            class="glass-chip @(activePickerTab == "url" ? "is-on" : "")"
+                            aria-pressed="@(activePickerTab == "url" ? "true" : "false")"
+                            @onclick='() => activePickerTab = "url"'>
+                        URL
                     </button>
                 </div>
+
+                @* Search tab *@
+                @if (activePickerTab == "search")
+                {
+                    <div class="glass-search-row">
+                        <input @bind="imageSearchQuery"
+                               @onkeydown="OnSearchKeyDown"
+                               class="glass-input"
+                               aria-label="Search for station logo"
+                               placeholder="Search for station logo..." />
+                        <button type="button"
+                                class="glass-btn glass-btn--ghost"
+                                @onclick="DoImageSearch"
+                                disabled="@(isSearching || string.IsNullOrWhiteSpace(imageSearchQuery))">
+                            @if (isSearching)
+                            {
+                                <span class="glass-spinner glass-spinner--inline" role="status" aria-label="Searching"></span>
+                            }
+                            else
+                            {
+                                <span>Search</span>
+                            }
+                        </button>
+                    </div>
+                    @if (searchError != null)
+                    {
+                        <div class="glass-alert glass-alert--warning" role="alert">@searchError</div>
+                    }
+                    @if (searchResults.Any())
+                    {
+                        <div class="glass-thumb-grid">
+                            @foreach (var result in searchResults)
+                            {
+                                var isSelected = selectedImage?.Source == ImageSourceType.Url && selectedImage.DownloadUrl == result.Url;
+                                <button type="button"
+                                        class="glass-thumb @(isSelected ? "is-selected" : "")"
+                                        aria-pressed="@(isSelected ? "true" : "false")"
+                                        @onclick="() => SelectSearchResult(result)"
+                                        title="@result.Title (@result.Source)">
+                                    <img src="@result.ThumbnailUrl"
+                                         alt="@result.Title"
+                                         onerror="this.parentElement.style.display='none'" />
+                                    @if (isSelected)
+                                    {
+                                        <span class="glass-thumb-check" aria-hidden="true">✓</span>
+                                    }
+                                </button>
+                            }
+                        </div>
+                    }
+                }
+
+                @* Upload tab *@
+                @if (activePickerTab == "upload")
+                {
+                    <InputFile OnChange="OnFileSelected" accept="image/*" class="glass-input" aria-label="Upload an image" />
+                    @if (uploadError != null)
+                    {
+                        <div class="glass-alert glass-alert--danger" role="alert">@uploadError</div>
+                    }
+                }
+
+                @* URL tab *@
+                @if (activePickerTab == "url")
+                {
+                    <input value="@urlTabInput"
+                           @oninput="OnUrlTabInput"
+                           class="glass-input"
+                           aria-label="Image URL"
+                           placeholder="https://example.com/logo.png" />
+                    <div class="glass-hint">Paste a direct link to an image</div>
+                }
+
+                @if (saveError != null)
+                {
+                    <div class="glass-alert glass-alert--danger" role="alert">@saveError</div>
+                }
             </div>
         </div>
-    </div>
+        <div class="glass-dialog-actions">
+            <button type="button" class="glass-btn glass-btn--ghost" @onclick="CloseStreamModal">Cancel</button>
+            <button type="button" class="glass-btn"
+                    @onclick="SaveStream"
+                    disabled="@(string.IsNullOrWhiteSpace(streamName) || string.IsNullOrWhiteSpace(streamUrl))">
+                @(editingStream == null ? "Add" : "Update")
+            </button>
+        </div>
+    </dialog>
 }
 
 @code {
     private List<RadioStreamViewModel>? streams;
     private bool isEditMode = false;
     private bool showStreamModal = false;
+    private bool streamDialogNeedsOpen = false;
 
     private RadioStreamViewModel? editingStream = null;
     private string streamName = string.Empty;
@@ -250,6 +261,15 @@ else
     protected override async Task OnInitializedAsync()
     {
         await RefreshStreams();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (streamDialogNeedsOpen)
+        {
+            streamDialogNeedsOpen = false;
+            await JsRuntime.InvokeVoidAsync("eval", "document.getElementById('streamDialog')?.showModal()");
+        }
     }
 
     async Task RefreshStreams()
@@ -292,6 +312,7 @@ else
         ResetPickerState();
         currentStreamFaviconUrl = null;
         showStreamModal = true;
+        streamDialogNeedsOpen = true;
     }
 
     void ShowEditStreamModal(RadioStreamViewModel stream)
@@ -302,6 +323,7 @@ else
         ResetPickerState();
         currentStreamFaviconUrl = stream.FaviconUrl; // show existing favicon in preview
         showStreamModal = true;
+        streamDialogNeedsOpen = true;
     }
 
     void ResetPickerState()

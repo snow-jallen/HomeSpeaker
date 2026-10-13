@@ -3,32 +3,40 @@
 @inject ILogger<LocalQueueDisplay> Logger
 @implements IDisposable
 
-<div class="local-queue-display">    <div class="d-flex align-items-start mb-3">        <div class="flex-grow-1">
-            <h4 class="mb-0">Local Queue</h4>
-            <div class="fs-6 mt-0 text-muted">(@LocalQueueService.Queue.Count songs • drag to reorder)</div>
+<div class="glass-page local-queue-display">
+    <div class="glass-queue-head">
+        <div class="glass-queue-head-text">
+            <h2 class="glass-section-title">Local Queue</h2>
+            <div class="glass-hint">(@LocalQueueService.Queue.Count songs • drag to reorder)</div>
         </div>
-        <div>
-            <button @onclick="ShuffleQueue" 
-                    class="btn btn-outline-secondary btn-sm me-2" 
+        <div class="glass-page-actions">
+            <button @onclick="ShuffleQueue"
+                    type="button"
+                    class="glass-btn glass-btn--ghost"
                     disabled="@(LocalQueueService.Queue.Count <= 1)"
-                    title="Shuffle queue">
-                <i class="fas fa-random me-1"></i>Shuffle
+                    title="Shuffle queue"
+                    aria-label="Shuffle queue">
+                <i class="fas fa-random" aria-hidden="true"></i><span class="glass-btn-label">Shuffle</span>
             </button>
-            <button @onclick="ClearQueue" 
-                    class="btn btn-outline-danger btn-sm" 
-                    disabled="@(LocalQueueService.Queue.Count == 0)">
-                <i class="fas fa-trash me-1"></i>Clear Queue
+            <button @onclick="ClearQueue"
+                    type="button"
+                    class="glass-btn glass-btn--danger"
+                    disabled="@(LocalQueueService.Queue.Count == 0)"
+                    title="Clear queue"
+                    aria-label="Clear queue">
+                <i class="fas fa-trash" aria-hidden="true"></i><span class="glass-btn-label">Clear Queue</span>
             </button>
         </div>
-    </div>@if (LocalQueueService.Queue.Any())
+    </div>
+    @if (LocalQueueService.Queue.Any())
     {
-        <div class="unified-queue-list">
+        <div class="glass-list">
             @for (int i = 0; i < LocalQueueService.Queue.Count; i++)
             {
                 var song = LocalQueueService.Queue[i];
                 var index = i;
                 var isCurrentSong = index == LocalQueueService.CurrentIndex;
-                  <div class="queue-item-wrapper @(draggedIndex == index ? "dragging" : "") @(dropTargetIndex == index ? "drop-target" : "")" 
+                <div class="glass-queue-item @(draggedIndex == index ? "dragging" : "") @(dropTargetIndex == index ? "drop-target" : "")"
                      data-index="@index"
                      draggable="true"
                      @ondragstart="@(() => StartDrag(index))"
@@ -38,7 +46,7 @@
                      @ondragenter="@(() => HandleDragEnter(index))"
                      @ondragleave="@(() => HandleDragLeave(index))"
                      @ondragend="@(() => HandleDragEnd())">
-                    <QueueItem SongViewModel="song" 
+                    <QueueItem SongViewModel="song"
                              Removed="@(async (s) => await RemoveSong(index))"
                              Played="@(async (s) => await PlaySongAtIndex(index))"
                              QueuePosition="@(index + 1)"
@@ -50,11 +58,9 @@
     }
     else
     {
-        <div class="text-center text-muted p-4">
-            <div class="empty-queue-icon mb-3">
-                <i class="fas fa-headphones fa-3x opacity-25"></i>
-            </div>
-            <h5 class="text-muted">No songs in local queue</h5>
+        <div class="glass-empty">
+            <i class="fas fa-headphones" aria-hidden="true"></i>
+            <div class="glass-row-title">No songs in local queue</div>
             <p class="mb-0">Use "Stream to Device" from any play button to add songs here</p>
         </div>
     }

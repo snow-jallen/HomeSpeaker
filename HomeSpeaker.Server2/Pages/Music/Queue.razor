@@ -1,4 +1,5 @@
 @page "/Queue"
+@using System.Globalization
 @inject HomeSpeakerService svc
 @inject IJSRuntime JSRuntime
 @inject ILogger<Queue> logger
@@ -6,132 +7,174 @@
 @inject PlayerStateService PlayerState
 @implements IDisposable
 
-<button @onclick=refresh title="Refresh queue" class="btn btn-secondary position-absolute top-10 end-0 mx-3"><span class="oi oi-reload"></span></button>
-
-<div class="row">
-    <div class="col-12">
-        <h2>Playback Queues</h2>
-    </div>
-</div>
-
-<!-- Bootstrap Tabs -->
-<ul class="nav nav-tabs" id="queueTabs" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="server-tab" data-bs-toggle="tab" data-bs-target="#server-queue" type="button" role="tab" aria-controls="server-queue" aria-selected="true">
-            Server Queue (@(queue?.Count.ToString("n0") ?? "0"))
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="local-tab" data-bs-toggle="tab" data-bs-target="#local-queue" type="button" role="tab" aria-controls="local-queue" aria-selected="false">
-            Local Queue (@(localQueueService.Queue.Count.ToString("n0")))
-        </button>
-    </li>
-</ul>
-
-<div class="tab-content" id="queueTabContent">
-    <!-- Server Queue Tab -->
-    <div class="tab-pane fade show active" id="server-queue" role="tabpanel" aria-labelledby="server-tab">
-        <div class="p-3">
-            <!-- Now Playing Card -->
-            @if (PlayerState.Status?.CurrentSong != null)
-            {
-            <div class="now-playing-card mb-4">
-                <div class="now-playing-header">
-                    <i class="fas fa-play-circle me-2"></i>
-                    Now Playing
-                </div>
-                <div class="now-playing-title">
-                    @PlayerState.Status.CurrentSong.Name
-                </div>
-                <div class="now-playing-controls mt-3">
-                    <PlayControls />
-                </div>
-            </div>
-            }
-
-            <!-- Volume Control Card -->
-            <div class="hs-card mb-4">
-                <div class="d-flex align-items-center mb-3">
-                    <i class="fas fa-volume-up me-2 text-muted"></i>
-                    <span class="fw-semibold">Volume</span>
-                    <span class="ms-auto text-muted">@volumeLevel%</span>
-                </div>
-                <input type="range" class="w-100" min="0" max="100"
-                       value="@volumeLevel"
-                       @oninput="@(e => { if (int.TryParse(e.Value?.ToString(), out var v)) { volumeLevel = v; isDraggingVolume = true; } })"
-                       @onchange="OnVolumeChanged" />
-            </div>
-
-            <div class="d-flex align-items-start mb-3">
-                <div class="flex-grow-1">
-                    <h4 class="mb-0">Server Queue</h4>
-                    <div class="fs-6 mt-0 text-muted">(@queue?.Count().ToString("n0") songs • drag to reorder)</div>
-                </div>
-                <div class="d-flex gap-2">
-                    <button @onclick=ShuffleQueue
-                            class="btn btn-outline-secondary btn-sm"
-                            disabled="@(queue?.Count <= 1)"
-                            title="Shuffle queue">
-                        <i class="fas fa-random me-1" aria-hidden="true"></i>Shuffle
-                    </button>
-                    <button @onclick=ClearQueue
-                            class="btn btn-outline-danger btn-sm"
-                            disabled="@(queue?.Count == 0)"
-                            title="Clear queue">
-                        <i class="fas fa-trash me-1" aria-hidden="true"></i>Clear Queue
-                    </button>
-                    <button @onclick=saveQueueAsPlaylist
-                            title="Save server queue as playlist"
-                            class="btn btn-outline-primary btn-sm"
-                            disabled="@(queue?.Count == 0)">
-                        <i class="fas fa-save me-1"></i>Save as Playlist
-                    </button>
-                </div>
-            </div>            @if (queue?.Any() == true)
-            {
-                <div class="unified-queue-list">
-                    @for (int i = 0; i < queue.Count; i++)
-                    {
-                        var song = queue[i];
-                        var index = i;
-                        var isCurrentSong = PlayerState.Status?.CurrentSong?.Name != null && song.Name == PlayerState.Status.CurrentSong.Name;
-
-                        <div class="queue-item-wrapper @(serverDraggedIndex == index ? "dragging" : "") @(serverDropTargetIndex == index ? "drop-target" : "")"
-                             data-index="@index"
-                             draggable="true"
-                             @ondragstart="@(() => StartServerDrag(index))"
-                             @ondragover="@((e) => HandleServerDragOver(e, index))"
-                             @ondragover:preventDefault="true"
-                             @ondrop="@(() => DropServer(index))"
-                             @ondragenter="@(() => HandleServerDragEnter(index))"
-                             @ondragleave="@(() => HandleServerDragLeave(index))"
-                             @ondragend="@(() => HandleServerDragEnd())">
-                            <QueueItem SongViewModel="song"
-                                     Removed="removeFromQueue"
-                                     QueuePosition="@(index + 1)"
-                                     IsCurrentSong="@isCurrentSong" />
-                        </div>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="text-center text-muted p-4">
-                    <div class="empty-queue-icon mb-3">
-                        <i class="fas fa-music fa-3x opacity-25"></i>
-                    </div>
-                    <h5 class="text-muted">No songs in server queue</h5>
-                    <p class="mb-0">Use "Play on Server" from any play button to add songs here</p>
-                </div>
-            }
+<div class="glass-page glass-page--queue">
+    <div class="glass-page-header">
+        <h1 class="glass-title">Playback Queues</h1>
+        <div class="glass-page-actions">
+            <button @onclick=refresh type="button" title="Refresh queue" aria-label="Refresh queue" class="hs-icon-btn hs-icon-btn--filled">
+                <i class="fas fa-rotate-right" aria-hidden="true"></i>
+            </button>
         </div>
     </div>
 
-    <!-- Local Queue Tab -->
-    <div class="tab-pane fade" id="local-queue" role="tabpanel" aria-labelledby="local-tab">
-        <div class="p-3">
-            <LocalAudioPlayer />
-            <LocalQueueDisplay />
+    <!-- Bootstrap Tabs -->
+    <ul class="nav glass-tabs" id="queueTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="server-tab" data-bs-toggle="tab" data-bs-target="#server-queue" type="button" role="tab" aria-controls="server-queue" aria-selected="true">
+                Server Queue (@(queue?.Count.ToString("n0") ?? "0"))
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="local-tab" data-bs-toggle="tab" data-bs-target="#local-queue" type="button" role="tab" aria-controls="local-queue" aria-selected="false">
+                Local Queue (@(localQueueService.Queue.Count.ToString("n0")))
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="queueTabContent">
+        <!-- Server Queue Tab -->
+        <div class="tab-pane fade show active" id="server-queue" role="tabpanel" aria-labelledby="server-tab">
+            <div class="glass-page">
+                <!-- Now Playing Card -->
+                @if (PlayerState.Status?.CurrentSong is { } current)
+                {
+                    var np = NowPlayingInfo.From(PlayerState.Status);
+                    var artSongId = np is null ? current.SongId : np.SongId;
+                    <section class="glass hs-np-card hs-np-card--wide" aria-label="Now playing">
+                        <div class="hs-np-head">
+                            @if (np?.IsStream == true)
+                            {
+                                <div class="hs-art hs-art--lg hs-art--radio">
+                                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2"></circle><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5"></path></svg>
+                                </div>
+                            }
+                            else if (artSongId is { } songId)
+                            {
+                                <div class="hs-art hs-art--lg" style="background-image:url('/api/homespeaker/songs/@songId/art')"></div>
+                            }
+                            else
+                            {
+                                <div class="hs-art hs-art--lg hs-art--radio" aria-hidden="true"></div>
+                            }
+                            <div class="hs-np-text">
+                                <div class="hs-np-title">@(np?.Title ?? current.Name)</div>
+                                @if (np?.Subtitle is { } subtitle)
+                                {
+                                    <div class="hs-np-sub">@subtitle</div>
+                                }
+                            </div>
+                            <div class="hs-np-actions">
+                                <PlayControls />
+                            </div>
+                        </div>
+                        @if (np is { IsStream: false })
+                        {
+                            <div>
+                                <div class="hs-progress hs-progress--lg"><div style="width:@((np.Percent * 100).ToString("F1", CultureInfo.InvariantCulture))%"></div></div>
+                                <div class="hs-np-times"><span>@formatTime(np.Elapsed)</span><span>-@formatTime(np.Remaining)</span></div>
+                            </div>
+                        }
+                        <label class="hs-volume">
+                            <span class="visually-hidden">Volume</span>
+                            <i class="fas fa-volume-up" aria-hidden="true"></i>
+                            <input type="range" min="0" max="100"
+                                   value="@volumeLevel"
+                                   @oninput="@(e => { if (int.TryParse(e.Value?.ToString(), out var v)) { volumeLevel = v; isDraggingVolume = true; } })"
+                                   @onchange="OnVolumeChanged" />
+                            <span class="glass-volume-value">@volumeLevel%</span>
+                        </label>
+                    </section>
+                }
+                else
+                {
+                    <label class="glass glass-volume-card hs-volume">
+                        <span class="visually-hidden">Volume</span>
+                        <i class="fas fa-volume-up" aria-hidden="true"></i>
+                        <input type="range" min="0" max="100"
+                               value="@volumeLevel"
+                               @oninput="@(e => { if (int.TryParse(e.Value?.ToString(), out var v)) { volumeLevel = v; isDraggingVolume = true; } })"
+                               @onchange="OnVolumeChanged" />
+                        <span class="glass-volume-value">@volumeLevel%</span>
+                    </label>
+                }
+
+                <div class="glass-queue-head">
+                    <div class="glass-queue-head-text">
+                        <h2 class="glass-section-title">Server Queue</h2>
+                        <div class="glass-hint">(@queue?.Count().ToString("n0") songs • drag to reorder)</div>
+                    </div>
+                    <div class="glass-page-actions">
+                        <button @onclick=ShuffleQueue
+                                type="button"
+                                class="glass-btn glass-btn--ghost"
+                                disabled="@(queue?.Count <= 1)"
+                                title="Shuffle queue"
+                                aria-label="Shuffle queue">
+                            <i class="fas fa-random" aria-hidden="true"></i><span class="glass-btn-label">Shuffle</span>
+                        </button>
+                        <button @onclick=ClearQueue
+                                type="button"
+                                class="glass-btn glass-btn--danger"
+                                disabled="@(queue?.Count == 0)"
+                                title="Clear queue"
+                                aria-label="Clear queue">
+                            <i class="fas fa-trash" aria-hidden="true"></i><span class="glass-btn-label">Clear Queue</span>
+                        </button>
+                        <button @onclick=saveQueueAsPlaylist
+                                type="button"
+                                title="Save server queue as playlist"
+                                aria-label="Save server queue as playlist"
+                                class="glass-btn glass-btn--ghost"
+                                disabled="@(queue?.Count == 0)">
+                            <i class="fas fa-save" aria-hidden="true"></i><span class="glass-btn-label">Save as Playlist</span>
+                        </button>
+                    </div>
+                </div>
+
+                @if (queue?.Any() == true)
+                {
+                    <div class="glass-list">
+                        @for (int i = 0; i < queue.Count; i++)
+                        {
+                            var song = queue[i];
+                            var index = i;
+                            var isCurrentSong = PlayerState.Status?.CurrentSong?.Name != null && song.Name == PlayerState.Status.CurrentSong.Name;
+
+                            <div class="glass-queue-item @(serverDraggedIndex == index ? "dragging" : "") @(serverDropTargetIndex == index ? "drop-target" : "")"
+                                 data-index="@index"
+                                 draggable="true"
+                                 @ondragstart="@(() => StartServerDrag(index))"
+                                 @ondragover="@((e) => HandleServerDragOver(e, index))"
+                                 @ondragover:preventDefault="true"
+                                 @ondrop="@(() => DropServer(index))"
+                                 @ondragenter="@(() => HandleServerDragEnter(index))"
+                                 @ondragleave="@(() => HandleServerDragLeave(index))"
+                                 @ondragend="@(() => HandleServerDragEnd())">
+                                <QueueItem SongViewModel="song"
+                                         Removed="removeFromQueue"
+                                         QueuePosition="@(index + 1)"
+                                         IsCurrentSong="@isCurrentSong" />
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="glass-empty">
+                        <i class="fas fa-music" aria-hidden="true"></i>
+                        <div class="glass-row-title">No songs in server queue</div>
+                        <p class="mb-0">Use "Play on Server" from any play button to add songs here</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Local Queue Tab -->
+        <div class="tab-pane fade" id="local-queue" role="tabpanel" aria-labelledby="local-tab">
+            <div class="glass-page">
+                <LocalAudioPlayer />
+                <LocalQueueDisplay />
+            </div>
         </div>
     </div>
 </div>
@@ -259,6 +302,9 @@
         PlayerState.UpdateStatus(status);
         StateHasChanged();
     }
+
+    private static string formatTime(TimeSpan time) =>
+        time.ToString(time.TotalHours >= 1 ? @"h\:mm\:ss" : @"m\:ss", CultureInfo.InvariantCulture);
 
     // Server queue drag and drop methods
     private void StartServerDrag(int index)

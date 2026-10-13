@@ -112,7 +112,6 @@ button:active,
 .song-item:active,
 .artist-card:active,
 .album-card:active,
-.queue-item-wrapper:active,
 .nav-item:active {
   transform: scale(0.97);
   opacity: 0.85;
@@ -133,8 +132,7 @@ small,
 .scrollable,
 .list-container,
 .content-area,
-.nav-menu,
-.unified-queue-list {
+.nav-menu {
   -webkit-overflow-scrolling: touch;
   overflow-y: auto;
   overscroll-behavior: contain;

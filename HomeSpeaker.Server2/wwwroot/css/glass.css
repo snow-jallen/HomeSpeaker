@@ -1537,3 +1537,362 @@ fluent-dialog.glass-fluent-dialog .glass-dialog {
     width: 64px;
   }
 }
+
+/* ---------- Page: queue ---------- */
+
+.glass-contents {
+  display: contents;
+}
+
+.glass-hint {
+  font-size: 13px;
+  line-height: 1.3;
+  opacity: 0.75;
+}
+
+/* Bootstrap tab buttons (the tab JS still drives .active), restyled as pills. */
+.glass-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  list-style: none;
+}
+
+.glass-tabs .nav-item {
+  min-width: 0;
+}
+
+.glass-tabs .nav-link {
+  box-sizing: border-box;
+  height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--glass-radius-pill);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--glass-text);
+  font: 700 15px var(--glass-font);
+  text-shadow: none;
+  cursor: pointer;
+}
+
+.glass-tabs .nav-link:hover,
+.glass-tabs .nav-link:focus {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--glass-text);
+}
+
+.glass-tabs .nav-link.active,
+.glass-tabs .nav-link.active:hover,
+.glass-tabs .nav-link.active:focus {
+  background: #fff;
+  color: #111;
+}
+
+.glass-tabs .nav-link:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 2px;
+}
+
+/* Now-playing card on the queue page: the Home card, stretched to the page width. */
+.hs-np-card--wide {
+  width: auto;
+  padding: 18px;
+  gap: 12px;
+}
+
+.hs-np-card--wide .hs-art--lg {
+  width: 96px;
+  height: 96px;
+}
+
+.hs-np-card--wide .hs-np-head {
+  flex-wrap: wrap;
+}
+
+.hs-np-card--wide .hs-np-text {
+  flex: 1;
+}
+
+.hs-np-actions {
+  flex: none;
+  margin-left: auto;
+}
+
+.hs-np-card--wide .hs-volume,
+.glass-volume-card {
+  margin-top: 0;
+}
+
+.glass-volume-card {
+  border-radius: var(--glass-radius-tile);
+  padding: 4px 18px;
+}
+
+.hs-volume i {
+  flex: none;
+  width: 20px;
+  text-align: center;
+  font-size: 18px;
+}
+
+.glass-volume-value {
+  flex: none;
+  min-width: 44px;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.glass-queue-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.glass-queue-head-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.glass-queue-head .glass-page-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Draggable wrapper around a QueueItem row. No transform or :active styling here: a drag
+   never sends mouseup, so any :active/transform rule on the wrapper stays stuck afterwards. */
+.glass-queue-item {
+  position: relative;
+  border-radius: 16px;
+  cursor: grab;
+}
+
+.glass-queue-item:active {
+  cursor: grabbing;
+}
+
+.glass-queue-item.dragging {
+  opacity: 0.5;
+}
+
+.glass-queue-item.drop-target::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -5px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.9);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.local-audio-player {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-radius: var(--glass-radius-tile);
+  padding: 14px 16px;
+  font-family: var(--glass-font);
+}
+
+.local-audio-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.local-audio-progress .hs-progress {
+  flex: 1;
+}
+
+.local-audio-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+@media (max-width: 700px) {
+  .hs-np-card--wide .hs-np-actions {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
+  .glass-tabs .nav-link {
+    padding: 0 14px;
+    font-size: 14px;
+  }
+}
+
+/* ---------- Page: radio streams ---------- */
+
+.glass-row-art--logo {
+  box-sizing: border-box;
+  padding: 4px;
+  object-fit: contain;
+}
+
+.hs-play-btn--sm {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
+  font-size: 18px;
+}
+
+.hs-play-btn--sm:hover,
+.hs-play-btn--sm:focus {
+  color: #111;
+  background: #e6e6e6;
+}
+
+.hs-play-btn--sm:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 2px;
+}
+
+dialog.glass-dialog--picker {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+}
+
+dialog.glass-dialog--picker[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.glass-dialog--picker .glass-dialog-body {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+.glass-dialog--picker .glass-dialog-title,
+.glass-dialog--picker .glass-dialog-actions {
+  flex: none;
+}
+
+.glass-dialog--picker .glass-field {
+  gap: 8px;
+}
+
+.glass-image-preview {
+  align-self: flex-start;
+  box-sizing: border-box;
+  width: 64px;
+  height: 64px;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  object-fit: contain;
+}
+
+.glass-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.glass-chip-row .glass-chip {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 22px;
+  font-size: 14px;
+}
+
+.glass-thumb-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.glass-thumb {
+  position: relative;
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+}
+
+.glass-thumb:hover,
+.glass-thumb:focus-visible {
+  border-color: rgba(255, 255, 255, 0.6);
+  outline: none;
+}
+
+.glass-thumb.is-selected {
+  border-color: #fff;
+}
+
+.glass-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.glass-thumb-check {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  color: #111;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.glass-alert--warning {
+  background: var(--glass-tone-caution);
+}
+
+.glass-btn .glass-spinner--inline {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border-width: 2px;
+}
+
+input.glass-input[type="file"] {
+  height: auto;
+  min-height: 44px;
+  padding: 6px 10px;
+  line-height: 30px;
+}
+
+input.glass-input[type="file"]::file-selector-button {
+  height: 32px;
+  margin-right: 12px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--glass-text);
+  font: 700 13px var(--glass-font);
+  cursor: pointer;
+}
