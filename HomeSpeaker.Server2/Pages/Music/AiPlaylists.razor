@@ -6,56 +6,55 @@
 
 <PageTitle>AI Playlists</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3><i class="fas fa-brain me-2"></i>AI Playlists</h3>
-    <div class="ai-playlists-actions">
-        <a href="/ai-status" class="btn btn-outline-secondary btn-touch" title="View AI status">
-            <i class="fas fa-robot me-1"></i>Status
-        </a>
-        <button @onclick="RefreshPlaylists" class="btn btn-outline-secondary btn-touch" title="Refresh AI playlists" disabled="@isLoading">
-            @if (isLoading)
-            {
-                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                <span>Refreshing...</span>
-            }
-            else
-            {
-                <i class="fas fa-sync-alt me-1"></i><span>Refresh</span>
-            }
-        </button>
-    </div>
-</div>
-
-@if (!hasLoaded && isLoading)
-{
-    <div class="d-flex justify-content-center p-5">
-        <div class="spinner-border text-primary ai-playlists-spinner" role="status">
-            <span class="visually-hidden">Loading AI playlists...</span>
+<div class="glass-page glass-page--ai">
+    <div class="glass-page-header">
+        <h1 class="glass-title">AI Playlists</h1>
+        <div class="glass-page-actions">
+            <a href="/ai-status" class="glass-btn glass-btn--ghost" title="View AI status">
+                <i class="fas fa-robot" aria-hidden="true"></i>Status
+            </a>
+            <button type="button" @onclick="RefreshPlaylists" class="glass-btn glass-btn--ghost" title="Refresh AI playlists" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="glass-spinner glass-spinner--inline" role="status" aria-hidden="true"></span>
+                    <span>Refreshing...</span>
+                }
+                else
+                {
+                    <i class="fas fa-sync-alt" aria-hidden="true"></i><span>Refresh</span>
+                }
+            </button>
         </div>
     </div>
-}
-else
-{
-    <div class="ai-playlists-page">
+
+    @if (!hasLoaded && isLoading)
+    {
+        <div class="glass-empty" role="status">
+            <div class="glass-spinner" aria-hidden="true"></div>
+            <span class="visually-hidden">Loading AI playlists...</span>
+        </div>
+    }
+    else
+    {
         @if (isLoading)
         {
-            <div class="ai-playlists-refreshing" aria-live="polite">
-                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            <div class="glass-hint glass-ai-refreshing" aria-live="polite">
+                <span class="glass-spinner glass-spinner--inline" aria-hidden="true"></span>
                 <span>Updating playlist counts…</span>
             </div>
         }
 
         @if (HasAnalysisInProgress)
         {
-            <section class="ai-playlists-status-card" aria-live="polite">
-                <div class="ai-playlists-status-card__icon">
+            <section class="glass-ai-banner" aria-live="polite">
+                <div class="glass-ai-banner-icon">
                     <i class="fas fa-wave-square" aria-hidden="true"></i>
                 </div>
-                <div class="ai-playlists-status-card__content">
-                    <div class="ai-playlists-status-card__title">AI analysis is still filling these playlists in</div>
-                    <p class="ai-playlists-status-card__text">
+                <div class="glass-ai-banner-text">
+                    <div class="glass-row-title">AI analysis is still filling these playlists in</div>
+                    <p class="glass-ai-banner-copy">
                         You can open any playlist now to see the tracks scored so far. @GetAnalysisProgressSummary()
-                        <a href="/ai-status" class="link-primary">View live status</a>.
+                        <a href="/ai-status" class="glass-link">View live status</a>.
                     </p>
                 </div>
             </section>
@@ -63,43 +62,42 @@ else
 
         @if (!playlists.Any())
         {
-            <section class="ai-playlists-empty-state">
-                <i class="fas fa-brain fa-3x" aria-hidden="true"></i>
-                <h5>AI playlists aren’t available right now</h5>
-                <p>Try refreshing this page, or check <a href="/ai-status" class="link-primary">AI Status</a> for the current processing state.</p>
+            <section class="glass-empty">
+                <i class="fas fa-brain" aria-hidden="true"></i>
+                <div class="glass-row-title">AI playlists aren’t available right now</div>
+                <p class="mb-0">Try refreshing this page, or check <a href="/ai-status" class="glass-link">AI Status</a> for the current processing state.</p>
             </section>
         }
         else
         {
-            <div class="ai-playlists-grid">
+            <div class="glass-ai-grid">
                 @foreach (var playlist in playlists)
                 {
-                    <article class="ai-playlist-card" @key="playlist.GenreKey">
-                        <a class="ai-playlist-card-link"
+                    <article class="glass-ai-card" @key="playlist.GenreKey">
+                        <a class="glass-ai-card-link"
                            href="@GetPlaylistDetailsUrl(playlist.GenreKey)"
                            aria-label="Open details for @playlist.DisplayName">
                             <span class="visually-hidden">Open details for @playlist.DisplayName</span>
                         </a>
-                        <div class="ai-playlist-header">
-                            <h5 class="ai-playlist-title">@playlist.DisplayName</h5>
-                            <span class="badge rounded-pill ai-playlist-count">@GetTrackCountLabel(playlist)</span>
+                        <div class="glass-ai-card-head">
+                            <h2 class="glass-ai-card-title">@playlist.DisplayName</h2>
+                            <span class="glass-ai-count">@GetTrackCountLabel(playlist)</span>
                         </div>
-                        <p class="ai-playlist-desc">@playlist.Description</p>
-                        <div class="ai-playlist-footer">
-                            <div class="ai-playlist-actions-row">
-                                <button @onclick="() => PlayPlaylist(playlist.GenreKey)"
-                                        class="btn btn-primary btn-touch"
-                                        title="Play @playlist.DisplayName">
-                                    <i class="fas fa-play me-2"></i>Play
-                                </button>
-                            </div>
+                        <p class="glass-ai-card-desc">@playlist.Description</p>
+                        <div class="glass-ai-card-actions">
+                            <button type="button" @onclick="() => PlayPlaylist(playlist.GenreKey)"
+                                    class="glass-btn"
+                                    title="Play @playlist.DisplayName"
+                                    aria-label="Play @playlist.DisplayName">
+                                <i class="fas fa-play" aria-hidden="true"></i>Play
+                            </button>
                         </div>
                     </article>
                 }
             </div>
         }
-    </div>
-}
+    }
+</div>
 
 @code {
     private List<AiPlaylistSummary> playlists = new();

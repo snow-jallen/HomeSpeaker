@@ -5,156 +5,137 @@
 
 <PageTitle>@(playlist?.DisplayName is { Length: > 0 } name ? $"{name} · AI Playlist" : "AI Playlist Details")</PageTitle>
 
-<div class="ai-playlist-details-page">
-    <div class="ai-playlist-details-toolbar">
-        <a href="/ai-playlists" class="btn btn-outline-secondary btn-touch">
-            <i class="fas fa-arrow-left me-2"></i>Back to playlists
+<div class="glass-page glass-page--ai">
+    <div class="glass-page-header">
+        <a href="/ai-playlists" class="glass-btn glass-btn--ghost">
+            <i class="fas fa-arrow-left" aria-hidden="true"></i>Back to playlists
         </a>
     </div>
 
     @if (!hasLoaded && isLoading)
     {
-        <div class="d-flex justify-content-center p-5">
-            <div class="spinner-border text-primary ai-playlist-details-spinner" role="status">
-                <span class="visually-hidden">Loading AI playlist details...</span>
-            </div>
+        <div class="glass-empty" role="status">
+            <div class="glass-spinner" aria-hidden="true"></div>
+            <span class="visually-hidden">Loading AI playlist details...</span>
         </div>
     }
     else if (playlist is null)
     {
-        <section class="ai-playlist-empty-state">
-            <i class="fas fa-brain fa-3x" aria-hidden="true"></i>
-            <h3>Playlist not found</h3>
-            <p>That AI playlist is unavailable right now. Try going back to the playlist gallery and refreshing.</p>
+        <section class="glass-empty">
+            <i class="fas fa-brain" aria-hidden="true"></i>
+            <div class="glass-row-title">Playlist not found</div>
+            <p class="mb-0">That AI playlist is unavailable right now. Try going back to the playlist gallery and refreshing.</p>
         </section>
     }
     else
     {
         var currentPlaylist = playlist;
-        <section class="ai-playlist-hero">
-            <div class="ai-playlist-hero__eyebrow">AI playlist preview</div>
-            <h1 class="ai-playlist-hero__title">@currentPlaylist!.DisplayName</h1>
-            <p class="ai-playlist-hero__description">@currentPlaylist.Description</p>
+        <section class="glass-ai-panel">
+            <div class="glass-section-title">AI playlist preview</div>
+            <h1 class="glass-title">@currentPlaylist!.DisplayName</h1>
+            <p class="glass-ai-lede">@currentPlaylist.Description</p>
 
-            <div class="ai-playlist-meta">
-                <div class="ai-playlist-meta__item">
-                    <span class="ai-playlist-meta__label">Included tracks</span>
-                    <span class="ai-playlist-meta__value">@currentPlaylist.Tracks.Count</span>
+            <div class="glass-ai-stats glass-ai-stats--compact">
+                <div class="glass-ai-stat">
+                    <span class="glass-ai-stat-label">Included tracks</span>
+                    <span class="glass-ai-stat-value">@currentPlaylist.Tracks.Count</span>
                 </div>
-                <div class="ai-playlist-meta__item">
-                    <span class="ai-playlist-meta__label">Genre key</span>
-                    <span class="ai-playlist-meta__value">@currentPlaylist.GenreKey</span>
+                <div class="glass-ai-stat">
+                    <span class="glass-ai-stat-label">Genre key</span>
+                    <span class="glass-ai-stat-value glass-ai-stat-value--text">@currentPlaylist.GenreKey</span>
                 </div>
-                <div class="ai-playlist-meta__item">
-                    <span class="ai-playlist-meta__label">Scoring columns</span>
-                    <span class="ai-playlist-meta__value">@VisibleScoreColumnCount</span>
+                <div class="glass-ai-stat">
+                    <span class="glass-ai-stat-label">Scoring columns</span>
+                    <span class="glass-ai-stat-value">@VisibleScoreColumnCount</span>
                 </div>
             </div>
 
-            <div class="ai-playlist-hero__actions">
-                <button @onclick="PlayPlaylist"
-                        class="btn btn-primary btn-touch ai-playlist-hero__play-button"
+            <div class="glass-ai-play-row">
+                <button type="button" @onclick="PlayPlaylist"
+                        class="glass-btn"
                         disabled="@(playlist is null || IsPlaybackStarting)">
                     @if (isStartingPlaylist)
                     {
-                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span class="glass-spinner glass-spinner--inline" role="status" aria-hidden="true"></span>
                         <span>Starting full playlist…</span>
                     }
                     else
                     {
-                        <i class="fas fa-play me-2"></i>
+                        <i class="fas fa-play" aria-hidden="true"></i>
                         <span>Play all tracks</span>
                     }
                 </button>
-                <p class="ai-playlist-hero__hint">Start the full AI playlist, or jump into any individual track from the ranked list below.</p>
+                <p class="glass-hint">Start the full AI playlist, or jump into any individual track from the ranked list below.</p>
             </div>
         </section>
 
-        <section class="ai-playlist-table-card">
-            <div class="ai-playlist-table-card__header">
-                <div class="ai-playlist-table-card__eyebrow">Why these tracks made it in</div>
-                <h2 class="ai-playlist-table-card__title">Included tracks and AI scores</h2>
-                <p class="ai-playlist-table-card__description">Review the real playlist scoring data before pressing play. Marker columns only appear when the AI model exposed them for this playlist.</p>
+        <section class="glass-page glass-ai-tracks">
+            <div>
+                <div class="glass-section-title">Why these tracks made it in</div>
+                <h2 class="glass-ai-h2">Included tracks and AI scores</h2>
+                <p class="glass-hint">Review the real playlist scoring data before pressing play. Marker columns only appear when the AI model exposed them for this playlist.</p>
             </div>
 
             @if (currentPlaylist!.Tracks.Count == 0)
             {
-                <div class="ai-playlist-empty-table">
+                <div class="glass-empty">
                     <i class="fas fa-table-list" aria-hidden="true"></i>
-                    <p>No ranked tracks are available for this playlist yet.</p>
+                    <p class="mb-0">No ranked tracks are available for this playlist yet.</p>
                 </div>
             }
             else
             {
-                <div class="ai-playlist-table-wrap">
-                    <table class="table ai-playlist-table">
-                        <thead>
-                            <tr>
-                                <th scope="col">Play</th>
-                                <th scope="col">Rank</th>
-                                <th scope="col">Track</th>
-                                <th scope="col">Artist</th>
-                                <th scope="col">Album</th>
-                                <th scope="col">Genre score</th>
-                                @foreach (var markerKey in MarkerKeys)
+                <div class="glass-list">
+                    @foreach (var track in currentPlaylist.Tracks)
+                    {
+                        <div class="glass-row glass-ai-track">
+                            <button type="button" @onclick="() => PlayTrack(track)"
+                                    class="hs-icon-btn hs-icon-btn--filled"
+                                    title="Play @track.Song.Name"
+                                    aria-label="Play @track.Song.Name by @track.Song.Artist"
+                                    disabled="@IsPlaybackStarting">
+                                @if (playingTrackSongId == track.Song.SongId)
                                 {
-                                    <th scope="col">@FormatMarkerLabel(markerKey)</th>
+                                    <span class="glass-spinner glass-spinner--inline" role="status" aria-hidden="true"></span>
+                                    <span class="visually-hidden">Starting @track.Song.Name</span>
                                 }
-                                @if (HasWhyColumn)
+                                else
                                 {
-                                    <th scope="col">Why</th>
+                                    <i class="fas fa-play" aria-hidden="true"></i>
                                 }
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var track in currentPlaylist.Tracks)
-                            {
-                                <tr>
-                                    <td class="ai-playlist-table__actions">
-                                        <button @onclick="() => PlayTrack(track)"
-                                                class="btn btn-outline-primary btn-touch ai-playlist-table__play-button"
-                                                title="Play @track.Song.Name"
-                                                aria-label="Play @track.Song.Name by @track.Song.Artist"
-                                                disabled="@IsPlaybackStarting">
-                                            @if (playingTrackSongId == track.Song.SongId)
+                            </button>
+                            <span class="glass-row-index">#@track.GenreRank</span>
+                            <div class="glass-row-text">
+                                <div class="glass-row-title">@track.Song.Name</div>
+                                <div class="glass-row-sub">@track.Song.Artist@(string.IsNullOrWhiteSpace(track.Song.Album) ? "" : " · " + track.Song.Album)</div>
+                                @if (MarkerKeys.Count > 0)
+                                {
+                                    <div class="glass-ai-markers">
+                                        @foreach (var markerKey in MarkerKeys)
+                                        {
+                                            var marker = track.Markers.FirstOrDefault(item => string.Equals(item.Key, markerKey, StringComparison.OrdinalIgnoreCase));
+                                            if (marker is not null)
                                             {
-                                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                                <span class="visually-hidden">Starting @track.Song.Name</span>
+                                                <span class="glass-ai-marker">
+                                                    <span class="glass-ai-marker-key">@FormatMarkerLabel(markerKey)</span>
+                                                    <strong>@marker.Value.ToString("0.###")</strong>
+                                                    <span class="glass-ai-marker-conf">Conf. @marker.Confidence.ToString("0.##")</span>
+                                                </span>
                                             }
-                                            else
-                                            {
-                                                <i class="fas fa-play" aria-hidden="true"></i>
-                                            }
-                                        </button>
-                                    </td>
-                                    <td class="ai-playlist-table__rank">#@track.GenreRank</td>
-                                    <td class="ai-playlist-table__track">@track.Song.Name</td>
-                                    <td>@track.Song.Artist</td>
-                                    <td>@track.Song.Album</td>
-                                    <td class="ai-playlist-table__score">@track.GenreScore.ToString("0.###")</td>
-                                    @foreach (var markerKey in MarkerKeys)
-                                    {
-                                        var marker = track.Markers.FirstOrDefault(item => string.Equals(item.Key, markerKey, StringComparison.OrdinalIgnoreCase));
-                                        <td class="ai-playlist-table__marker">
-                                            @if (marker is null)
-                                            {
-                                                <span>—</span>
-                                            }
-                                            else
-                                            {
-                                                <div class="ai-playlist-table__marker-value">@marker.Value.ToString("0.###")</div>
-                                                <div class="ai-playlist-table__marker-confidence">Conf. @marker.Confidence.ToString("0.##")</div>
-                                            }
-                                        </td>
-                                    }
-                                    @if (HasWhyColumn)
-                                    {
-                                        <td class="ai-playlist-table__why">@(string.IsNullOrWhiteSpace(track.Why) ? "—" : track.Why)</td>
-                                    }
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                                        }
+                                    </div>
+                                }
+                                @if (HasWhyColumn && !string.IsNullOrWhiteSpace(track.Why))
+                                {
+                                    <div class="glass-ai-why"><span class="glass-ai-marker-key">Why</span> @track.Why</div>
+                                }
+                            </div>
+                            <div class="glass-ai-score">
+                                <span class="glass-ai-score-value">@track.GenreScore.ToString("0.###")</span>
+                                <span class="glass-ai-score-label">Genre score</span>
+                            </div>
+                        </div>
+                    }
                 </div>
             }
         </section>
