@@ -508,7 +508,7 @@ public class HomeSpeakerService
             Name = name,
             Url = url,
             FaviconFileName = faviconFileName,
-            DisplayOrder = await db.RadioStreams.MaxAsync(s => (int?)s.DisplayOrder) ?? 0 + 1
+            DisplayOrder = (await db.RadioStreams.MaxAsync(s => (int?)s.DisplayOrder) ?? 0) + 1
         };
 
         db.RadioStreams.Add(stream);
