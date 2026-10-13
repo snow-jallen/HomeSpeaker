@@ -1,4 +1,6 @@
 using HomeSpeaker.Server2.Services.Photos;
+using System.Net;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -21,12 +23,12 @@ public sealed class PhotoSyncerTests : IDisposable
 
     public void Dispose() => temp.Dispose();
 
-    private PhotoSyncer createSyncer() => new(
+    private PhotoSyncer createSyncer(ILogger<PhotoSyncer>? logger = null) => new(
         immich,
         store,
         library,
         Options.Create(new ImmichOptions { BaseUrl = "https://immich.test", ApiKey = "key", AlbumId = "album" }),
-        NullLogger<PhotoSyncer>.Instance);
+        logger ?? NullLogger<PhotoSyncer>.Instance);
 
     private static ImmichAsset asset(string id, string? city = "Bear Lake") => new(id, new DateTime(2021, 8, 14), city, "Utah", null);
 
@@ -174,5 +176,47 @@ public sealed class PhotoSyncerTests : IDisposable
 
         Assert.Empty(store.LoadManifest());
         Assert.Null(library.Next());
+    }
+
+    [Fact]
+    public async Task Sync_LogsHttpStatusWhenAssetDownloadFails()
+    {
+        immich.Assets.Add(asset(IdA));
+        immich.FailingDownloads.Add(IdA);
+        immich.DownloadError = new HttpRequestException("x", null, HttpStatusCode.Forbidden);
+        var logger = new CapturingLogger<PhotoSyncer>();
+
+        Assert.True(await createSyncer(logger).SyncAsync(CancellationToken.None));
+
+        var warning = Assert.Single(logger.Entries, e => e.Level == LogLevel.Warning);
+        Assert.Contains(IdA, warning.Message, StringComparison.Ordinal);
+        Assert.Contains("HTTP Forbidden", warning.Message, StringComparison.Ordinal);
+        Assert.Same(immich.DownloadError, warning.Exception);
+    }
+
+    [Fact]
+    public async Task Sync_LogsAssetWithoutStatusWhenFailureIsNotHttp()
+    {
+        immich.Assets.Add(asset(IdA));
+        immich.FailingDownloads.Add(IdA);
+        var logger = new CapturingLogger<PhotoSyncer>();
+
+        await createSyncer(logger).SyncAsync(CancellationToken.None);
+
+        var warning = Assert.Single(logger.Entries, e => e.Level == LogLevel.Warning);
+        Assert.Contains(IdA, warning.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("HTTP", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Sync_LogsHttpStatusWhenAlbumFetchFails()
+    {
+        immich.AlbumError = new HttpRequestException("x", null, HttpStatusCode.Unauthorized);
+        var logger = new CapturingLogger<PhotoSyncer>();
+
+        Assert.False(await createSyncer(logger).SyncAsync(CancellationToken.None));
+
+        var warning = Assert.Single(logger.Entries, e => e.Level == LogLevel.Warning);
+        Assert.Contains("HTTP Unauthorized", warning.Message, StringComparison.Ordinal);
     }
 }

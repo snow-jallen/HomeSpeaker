@@ -21,7 +21,15 @@ public sealed class PhotoSyncer(
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "Immich album fetch failed; keeping the existing photo cache");
+            if (ex is HttpRequestException { StatusCode: { } status })
+            {
+                logger.LogWarning(ex, "Immich album fetch failed (HTTP {StatusCode}); keeping the existing photo cache", status);
+            }
+            else
+            {
+                logger.LogWarning(ex, "Immich album fetch failed; keeping the existing photo cache");
+            }
+
             return false;
         }
 
@@ -70,7 +78,14 @@ public sealed class PhotoSyncer(
             // A timeout surfaces as OperationCanceledException; only real shutdown (the outer token) should abort the pass.
             catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
-                logger.LogWarning(ex, "Skipping Immich asset {AssetId}", asset.Id);
+                if (ex is HttpRequestException { StatusCode: { } status })
+                {
+                    logger.LogWarning(ex, "Skipping Immich asset {AssetId}: HTTP {StatusCode}", asset.Id, status);
+                }
+                else
+                {
+                    logger.LogWarning(ex, "Skipping Immich asset {AssetId}", asset.Id);
+                }
             }
         }
 

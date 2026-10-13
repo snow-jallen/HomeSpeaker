@@ -11,6 +11,7 @@ internal sealed class FakeImmichClient : IImmichClient
     public Dictionary<string, List<ImmichFace>> Faces { get; } = new(StringComparer.Ordinal);
     public List<string> Downloaded { get; } = [];
     public List<string> FacesRequested { get; } = [];
+    public Exception? DownloadError { get; set; }
 
     public Task<IReadOnlyList<ImmichAsset>> GetAlbumAssetsAsync(string albumId, CancellationToken cancellationToken) =>
         AlbumError is not null
@@ -21,7 +22,7 @@ internal sealed class FakeImmichClient : IImmichClient
     {
         if (FailingDownloads.Contains(assetId))
         {
-            throw new HttpRequestException("download failed");
+            throw DownloadError ?? new HttpRequestException("download failed");
         }
 
         if (TimedOutDownloads.Contains(assetId))
