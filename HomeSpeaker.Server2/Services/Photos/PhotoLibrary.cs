@@ -25,7 +25,7 @@ public sealed class PhotoLibrary
         this.store = store;
         this.timeProvider = timeProvider;
         this.random = random;
-        this.cacheSize = cacheSize;
+        this.cacheSize = Math.Max(0, cacheSize);
         cycle = new PhotoCycle(random);
         Reload();
     }

@@ -72,6 +72,19 @@ public sealed class PhotoLibraryTests : IDisposable
     private int visibleVideoCount(PhotoLibrary library) =>
         store.LoadManifest().Count(p => p.IsVideo && library.IsVideo(p.AssetId));
 
+    [Theory]
+    [InlineData(-5)]
+    [InlineData(0)]
+    public async Task Reload_ClampsANonPositiveCacheSizeInsteadOfThrowing(int cacheSize)
+    {
+        // Nothing cached, so the sample size falls back to the cache size: a negative one used to reach GetRange.
+        await seedAlbumAsync(images: 5, videos: 3, cached: 0);
+
+        var library = new PhotoLibrary(store, today, new Random(1), cacheSize);
+
+        Assert.Equal(0, library.Count);
+    }
+
     [Fact]
     public async Task Reload_SamplesVideosInProportionToPhotos()
     {
