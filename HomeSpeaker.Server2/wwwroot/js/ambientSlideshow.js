@@ -23,7 +23,7 @@ window.ambientSlideshow = (function () {
         if (busy) return;
         busy = true;
         try {
-            const resp = await fetch('/api/photos/next', { cache: 'no-store' });
+            const resp = await fetch('/api/photos/next', { cache: 'no-store', signal: AbortSignal.timeout(15000) });
             if (resp.status === 204) { clearPhotos(); return; }
             if (!resp.ok) return; // keep the current photo; try again next tick
             const photo = await resp.json();

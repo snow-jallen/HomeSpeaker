@@ -8,7 +8,7 @@ HomeSpeaker is a self-hosted music player that runs on Raspberry Pis around a ho
 
 ## Solution layout
 
-Two projects (`HomeSpeaker.sln`), both `net10.0`:
+Three projects (`HomeSpeaker.sln`), all `net10.0`:
 
 - **HomeSpeaker.Server2** — the ASP.NET Core app. Blazor Server (interactive + SSR) UI, minimal-API REST endpoints, SignalR hubs, EF Core/SQLite persistence, and all the hosted background services.
 - **HomeSpeaker.Shared** — DTOs and domain records (`Song`, `PlayerStatus`, anchor/offline/AI DTOs) shared between server and (historically) clients. No logic, just contracts.
@@ -69,11 +69,11 @@ Blazor components live under `HomeSpeaker.Server2/Components` (layout, music, he
 
 ### REST API
 
-Minimal APIs. The bulk are mapped in `Endpoints/HomeSpeakerRestEndpoints.cs` via `MapHomeSpeakerApi()` (route group `/api/homespeaker`, split into song/player/playlist/queue/youtube/radio/offline-download groups) and `Endpoints/AiRestEndpoints.cs` via `MapAiApi()`. A number of standalone endpoints (temperature, blood sugar, forecast, anchors, recently-played, the `/api/music/{songId}` range-aware streaming endpoint, image search/upload) are defined inline in `Program.cs`.
+Minimal APIs. The bulk are mapped in `Endpoints/HomeSpeakerRestEndpoints.cs` via `MapHomeSpeakerApi()` (route group `/api/homespeaker`, split into song/player/playlist/queue/youtube/radio/offline-download groups) `Endpoints/AiRestEndpoints.cs` via `MapAiApi()`, and the ambient-photo endpoints (`/api/photos/*`) in `Endpoints/PhotoEndpoints.cs` via `MapPhotoApi()`. A number of standalone endpoints (temperature, blood sugar, forecast, anchors, recently-played, the `/api/music/{songId}` range-aware streaming endpoint, image search/upload) are defined inline in `Program.cs`.
 
 ### Background hosted services
 
-Registered in `Program.cs` and run for the process lifetime: `MigrationApplier`, `DailyAnchorWorker`, `AirPlayReceiverService`, `LifecycleEvents`, `AiMusicAnalysisWorker`, and `VolumeMonitorService`. AI playlist analysis is gated by config and signalled through `AiProcessingSignal`.
+Registered in `Program.cs` and run for the process lifetime: `MigrationApplier`, `DailyAnchorWorker`, `AirPlayReceiverService`, `LifecycleEvents`, `AutoPlayMonitorService`, `PhotoSyncWorker`, `HealthAlertWorker`, `AiMusicAnalysisWorker`, and `VolumeMonitorService`. AI playlist analysis is gated by config and signalled through `AiProcessingSignal`.
 
 ### AI integration
 

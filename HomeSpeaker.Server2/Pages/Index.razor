@@ -112,8 +112,8 @@
                     @if (Dashboard.BloodSugar?.CurrentReading is { } reading)
                     {
                         <span class="hs-tile-value-row">
-                            <span class="hs-tile-value">@reading.Sgv.ToString("0", CultureInfo.InvariantCulture)</span>
-                            <span class="hs-tile-meta">mg/dL @reading.DirectionIcon · @Dashboard.BloodSugar.StatusText</span>
+                            <span class="hs-tile-value @(Dashboard.BloodSugar.IsStale ? "is-stale" : "")">@reading.Sgv.ToString("0", CultureInfo.InvariantCulture)</span>
+                            <span class="hs-tile-meta">mg/dL @reading.DirectionIcon · @(Dashboard.BloodSugar.IsStale ? "Stale" : Dashboard.BloodSugar.StatusText) · @age(Dashboard.BloodSugar.TimeSinceLastReading)</span>
                         </span>
                     }
                     else
@@ -158,6 +158,9 @@
         Dashboard.Forecast is { Error: null, TodayHigh.Temperature: { } high, TonightLow.Temperature: { } low }
             ? string.Create(CultureInfo.InvariantCulture, $"H {high:0}° · L {low:0}°")
             : null;
+
+    private static string age(TimeSpan sinceReading) =>
+        sinceReading.TotalMinutes < 1 ? "just now" : string.Create(CultureInfo.InvariantCulture, $"{(int)sinceReading.TotalMinutes} min ago");
 
     private string? conditions => Dashboard.Forecast is { Error: null } ? Dashboard.Forecast.TodayHigh?.Conditions : null;
 

@@ -10,6 +10,8 @@ public sealed class PhotoSyncer(
     IOptions<ImmichOptions> options,
     ILogger<PhotoSyncer> logger)
 {
+    private const int AssetTimeoutSeconds = 60;
+
     public async Task<bool> SyncAsync(CancellationToken cancellationToken)
     {
         IReadOnlyList<ImmichAsset> assets;
@@ -17,7 +19,7 @@ public sealed class PhotoSyncer(
         {
             assets = await immich.GetAlbumImagesAsync(options.Value.AlbumId!, cancellationToken);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Immich album fetch failed; keeping the existing photo cache");
             return false;
@@ -37,13 +39,18 @@ public sealed class PhotoSyncer(
                 continue;
             }
 
+            // Per-asset deadline: HttpClient.Timeout does not cover the body copy (ResponseHeadersRead),
+            // so a silent mid-body stall would otherwise hang the worker forever.
+            using var assetCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            assetCts.CancelAfter(TimeSpan.FromSeconds(AssetTimeoutSeconds));
             try
             {
-                await store.SaveImageAsync(asset.Id, stream => immich.DownloadPreviewAsync(asset.Id, stream, cancellationToken));
-                entries.Add(await buildEntryAsync(asset, cancellationToken));
+                await store.SaveImageAsync(asset.Id, stream => immich.DownloadPreviewAsync(asset.Id, stream, assetCts.Token));
+                entries.Add(await buildEntryAsync(asset, cancellationToken, assetCts.Token));
                 added++;
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            // A timeout surfaces as OperationCanceledException; only real shutdown (the outer token) should abort the pass.
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
                 logger.LogWarning(ex, "Skipping Immich asset {AssetId}", asset.Id);
             }
@@ -63,14 +70,14 @@ public sealed class PhotoSyncer(
         return true;
     }
 
-    private async Task<PhotoEntry> buildEntryAsync(ImmichAsset asset, CancellationToken cancellationToken)
+    private async Task<PhotoEntry> buildEntryAsync(ImmichAsset asset, CancellationToken cancellationToken, CancellationToken assetToken)
     {
         IReadOnlyList<ImmichFace> faces;
         try
         {
-            faces = await immich.GetFacesAsync(asset.Id, cancellationToken);
+            faces = await immich.GetFacesAsync(asset.Id, assetToken);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             logger.LogDebug(ex, "No face data for {AssetId}", asset.Id);
             faces = [];

@@ -37,12 +37,19 @@ window.idleController = (function () {
         clearTimeout(timer);
         if (!isKiosk()) return;
         timer = setTimeout(function () {
+            // NoTopLayout pages (/nightscout, /aspire) have no ambient or night layers: go home so the kiosk can dim.
+            if (!document.querySelector('.hs-ambient')) {
+                location.href = '/';
+                return;
+            }
             setMode(quiet ? 'night' : 'ambient');
         }, quiet ? nightIdleMs : idleMs);
     }
 
     // The tap that wakes the screen must not also press whatever control is underneath.
     function onActivity(e) {
+        // A swipe-wake never produces a click, so clear its stale swallow flag on the next touch.
+        if (mode === 'active') clearSwallow();
         if (mode !== 'active') {
             e.preventDefault();
             e.stopPropagation();

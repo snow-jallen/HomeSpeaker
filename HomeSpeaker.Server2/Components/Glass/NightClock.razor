@@ -6,8 +6,9 @@
     <Clock Format="h:mm" Class="hs-night-time" />
     @if (Dashboard.BloodSugarEnabled && Dashboard.BloodSugar?.CurrentReading is { } reading)
     {
-        <div class="hs-night-glucose hs-night-tone-@toneClass">
+        <div class="hs-night-glucose hs-night-tone-@toneClass @(Dashboard.BloodSugar.IsStale ? "is-stale" : "")">
             @reading.Sgv.ToString("0", CultureInfo.InvariantCulture) <span>@reading.DirectionIcon</span>
+            <span class="hs-night-age">@age(Dashboard.BloodSugar.TimeSinceLastReading)</span>
         </div>
     }
 </div>
@@ -23,6 +24,9 @@
     protected override void OnInitialized() => Dashboard.Changed += onChanged;
 
     private void onChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private static string age(TimeSpan sinceReading) =>
+        sinceReading.TotalMinutes < 1 ? "just now" : string.Create(CultureInfo.InvariantCulture, $"{(int)sinceReading.TotalMinutes} min ago");
 
     public void Dispose() => Dashboard.Changed -= onChanged;
 }

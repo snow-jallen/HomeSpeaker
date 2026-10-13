@@ -423,6 +423,16 @@ html.hs-mode-night .hs-backdrop {
   color: #4a1c0e;
 }
 
+.hs-night-glucose.is-stale {
+  opacity: 0.45;
+}
+
+.hs-night-age {
+  font-size: 20px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
 .hs-night-tone-caution {
   color: #8a4a0a;
 }
@@ -566,6 +576,55 @@ html.hs-mode-night .hs-backdrop {
   accent-color: #fff;
 }
 
+/* app.css restyles every range input with appearance:none (so accent-color is inert); override it here. */
+.hs-volume input[type="range"],
+.hs-volume input[type="range"]:hover {
+  height: 48px;
+  min-height: 48px;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.hs-volume input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.hs-volume input[type="range"]::-webkit-slider-thumb {
+  width: 28px;
+  height: 28px;
+  margin-top: -11px;
+  border-radius: 50%;
+  background: #fff;
+  border: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.hs-volume input[type="range"]::-webkit-slider-thumb:active {
+  transform: none;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.hs-volume input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.hs-volume input[type="range"]::-moz-range-thumb,
+.hs-volume input[type="range"]::-moz-range-thumb:active {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  border: 0;
+  transform: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
 .hs-home-side {
   flex: 1;
   min-width: 0;
@@ -634,6 +693,10 @@ html.hs-mode-night .hs-backdrop {
   font-size: 38px;
   font-weight: 800;
   letter-spacing: -1px;
+}
+
+.hs-tile-value.is-stale {
+  opacity: 0.5;
 }
 
 .hs-tile-meta {

@@ -7,6 +7,7 @@ internal sealed class FakeImmichClient : IImmichClient
     public List<ImmichAsset> Assets { get; } = [];
     public Exception? AlbumError { get; set; }
     public HashSet<string> FailingDownloads { get; } = new(StringComparer.Ordinal);
+    public HashSet<string> TimedOutDownloads { get; } = new(StringComparer.Ordinal);
     public Dictionary<string, List<ImmichFace>> Faces { get; } = new(StringComparer.Ordinal);
     public List<string> Downloaded { get; } = [];
 
@@ -20,6 +21,12 @@ internal sealed class FakeImmichClient : IImmichClient
         if (FailingDownloads.Contains(assetId))
         {
             throw new HttpRequestException("download failed");
+        }
+
+        if (TimedOutDownloads.Contains(assetId))
+        {
+            // Mirrors HttpClient.Timeout: a TaskCanceledException while the caller's token is NOT cancelled.
+            throw new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout elapsing.");
         }
 
         Downloaded.Add(assetId);

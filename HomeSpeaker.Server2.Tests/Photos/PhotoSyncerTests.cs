@@ -101,6 +101,19 @@ public sealed class PhotoSyncerTests : IDisposable
     }
 
     [Fact]
+    public async Task Sync_SkipsAssetWhoseDownloadTimesOut_AndStillSavesTheRest()
+    {
+        immich.Assets.AddRange([asset(IdA), asset(IdB)]);
+        immich.TimedOutDownloads.Add(IdA);
+
+        Assert.True(await createSyncer().SyncAsync(CancellationToken.None));
+
+        Assert.Equal([IdB], store.LoadManifest().Select(p => p.AssetId));
+        Assert.False(store.HasImage(IdA));
+        Assert.Empty(Directory.GetFiles(temp.Path, "*.tmp"));
+    }
+
+    [Fact]
     public async Task Sync_WhenAlbumEmptied_RemovesEverything()
     {
         immich.Assets.Add(asset(IdA));
