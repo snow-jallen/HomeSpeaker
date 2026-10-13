@@ -40,6 +40,8 @@ internal sealed class FakeImmichClient : IImmichClient
         return Task.FromResult<IReadOnlyList<ImmichFace>>(Faces.TryGetValue(assetId, out var faces) ? faces : []);
     }
 
+    public Func<string?, CancellationToken, Task<HttpResponseMessage>>? OpenVideo { get; set; }
+
     public Task<HttpResponseMessage> OpenVideoAsync(string assetId, string? rangeHeader, CancellationToken cancellationToken) =>
-        throw new NotSupportedException();
+        OpenVideo?.Invoke(rangeHeader, cancellationToken) ?? throw new NotSupportedException();
 }
