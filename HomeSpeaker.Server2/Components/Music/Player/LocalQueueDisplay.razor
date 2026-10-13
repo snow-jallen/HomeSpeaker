@@ -7,7 +7,7 @@
     <div class="glass-queue-head">
         <div class="glass-queue-head-text">
             <h2 class="glass-section-title">Local Queue</h2>
-            <div class="glass-hint">(@LocalQueueService.Queue.Count songs • drag to reorder)</div>
+            <div class="glass-hint">(@CountText.Songs(LocalQueueService.Queue.Count) • drag to reorder)</div>
         </div>
         <div class="glass-page-actions">
             <button @onclick="ShuffleQueue"

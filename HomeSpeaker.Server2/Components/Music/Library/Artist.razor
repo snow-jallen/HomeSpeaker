@@ -4,7 +4,7 @@
             <i class="fas @(isExpanded ? "fa-chevron-down" : "fa-chevron-right") glass-row-chevron" aria-hidden="true"></i>
             <span class="glass-row-text">
                 <span class="glass-row-title">@(String.IsNullOrWhiteSpace(Content?.Key) ? "[ No Artist ]" : Content.Key)</span>
-                <span class="glass-row-sub">@Content?.Count() songs</span>
+                <span class="glass-row-sub">@CountText.Songs(Content?.Count() ?? 0)</span>
             </span>
         </button>
         <div class="glass-row-actions">
@@ -28,7 +28,7 @@
                             <i class="fas @(albumExpanded ? "fa-chevron-down" : "fa-chevron-right") glass-row-chevron" aria-hidden="true"></i>
                             <span class="glass-row-text">
                                 <span class="glass-row-title">@(String.IsNullOrWhiteSpace(album.Key) ? "[ No Album ]" : album.Key)</span>
-                                <span class="glass-row-sub">@album.Count() songs</span>
+                                <span class="glass-row-sub">@CountText.Songs(album.Count())</span>
                             </span>
                         </button>
                         <div class="glass-row-actions">

@@ -101,7 +101,7 @@
                 <div class="glass-queue-head">
                     <div class="glass-queue-head-text">
                         <h2 class="glass-section-title">Server Queue</h2>
-                        <div class="glass-hint">(@queue?.Count().ToString("n0") songs • drag to reorder)</div>
+                        <div class="glass-hint">(@CountText.Songs(queue?.Count() ?? 0) • drag to reorder)</div>
                     </div>
                     <div class="glass-page-actions">
                         <button @onclick=ShuffleQueue

@@ -18,7 +18,7 @@
                 <i class="fas @(showDetails ? "fa-chevron-down" : "fa-chevron-right") glass-row-chevron" aria-hidden="true"></i>
                 <span class="glass-row-text">
                     <span class="glass-row-title">@Playlist.Name</span>
-                    <span class="glass-row-sub">@Playlist.Songs.Count() songs</span>
+                    <span class="glass-row-sub">@CountText.Songs(Playlist.Songs.Count())</span>
                 </span>
             </button>
             <div class="glass-row-actions">
