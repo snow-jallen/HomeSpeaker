@@ -240,6 +240,7 @@ builder.Services.AddHealthChecks()
 
 // Add browser-specific services for Blazor components
 builder.Services.AddSingleton<HomeSpeaker.Server2.Services.PlayerStateService>();
+builder.Services.AddScoped<HomeSpeaker.Server2.Services.Dashboard.DashboardState>();
 builder.Services.AddScoped<HomeSpeaker.Server2.Services.IBrowserAudioService, HomeSpeaker.Server2.Services.BrowserAudioService>();
 builder.Services.AddScoped<HomeSpeaker.Server2.Services.ILocalQueueService, HomeSpeaker.Server2.Services.LocalQueueService>();
 builder.Services.AddScoped<HomeSpeaker.Server2.Services.IPlaybackModeService, HomeSpeaker.Server2.Services.PlaybackModeService>();

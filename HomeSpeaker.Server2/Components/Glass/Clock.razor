@@ -1,0 +1,17 @@
+@using System.Globalization
+@inject TimeProvider TimeProvider
+@implements IDisposable
+
+<span class="@Class">@TimeProvider.GetLocalNow().ToString(Format, CultureInfo.InvariantCulture)</span>
+
+@code {
+    [Parameter] public string Format { get; set; } = "h:mm";
+    [Parameter] public string? Class { get; set; }
+
+    private Timer? timer;
+
+    protected override void OnInitialized() =>
+        timer = new Timer(state => _ = InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+
+    public void Dispose() => timer?.Dispose();
+}
