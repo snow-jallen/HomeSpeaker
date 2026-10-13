@@ -1332,10 +1332,11 @@ public static class HomeSpeakerRestEndpoints
         [FromServices] RadioStreamService radioStreamService,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
-        var faviconError = validateFavicon(request.FaviconFileName, request.FaviconUrl, radioStreamService);
-        if (faviconError is not null)
+        var requestError = RadioStreamRequestValidator.Validate(request.Name, request.Url)
+            ?? validateFavicon(request.FaviconFileName, request.FaviconUrl, radioStreamService);
+        if (requestError is not null)
         {
-            return Results.BadRequest(faviconError);
+            return Results.BadRequest(requestError);
         }
 
         try
@@ -1364,10 +1365,11 @@ public static class HomeSpeakerRestEndpoints
         [FromServices] RadioStreamService radioStreamService,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
-        var faviconError = validateFavicon(request.FaviconFileName, request.FaviconUrl, radioStreamService);
-        if (faviconError is not null)
+        var requestError = RadioStreamRequestValidator.Validate(request.Name, request.Url)
+            ?? validateFavicon(request.FaviconFileName, request.FaviconUrl, radioStreamService);
+        if (requestError is not null)
         {
-            return Results.BadRequest(faviconError);
+            return Results.BadRequest(requestError);
         }
 
         try

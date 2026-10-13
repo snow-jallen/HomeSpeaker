@@ -189,6 +189,38 @@ public sealed class RadioStreamServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task FailedSaveWithANewFileNameKeepsTheOldFile()
+    {
+        var service = await createServiceAsync();
+        writeFavicon("old.png");
+        writeFavicon("new.png");
+        var stream = await service.CreateStreamAsync("KBAQ", "http://example.com/kbaq", faviconFileName: "old.png");
+
+        // A null name violates the NOT NULL constraint, so the save throws
+        await Assert.ThrowsAnyAsync<DbUpdateException>(() =>
+            service.UpdateStreamAsync(stream.Id, null!, "http://example.com/kbaq", faviconFileName: "new.png"));
+
+        dbContext!.ChangeTracker.Clear();
+        Assert.True(File.Exists(Path.Combine(faviconsDirectory, "old.png")));
+        Assert.Equal("old.png", (await service.GetStreamByIdAsync(stream.Id))!.FaviconFileName);
+    }
+
+    [Fact]
+    public async Task FailedSaveWithADownloadedImageKeepsTheOldFileAndDropsTheDownload()
+    {
+        var service = await createServiceAsync(respondWith([1, 2, 3], "image/png"));
+        writeFavicon("old.png");
+        var stream = await service.CreateStreamAsync("KBAQ", "http://example.com/kbaq", faviconFileName: "old.png");
+
+        await Assert.ThrowsAnyAsync<DbUpdateException>(() =>
+            service.UpdateStreamAsync(stream.Id, null!, "http://example.com/kbaq", faviconUrl: "http://images.example/kbaq.png"));
+
+        dbContext!.ChangeTracker.Clear();
+        Assert.Equal(["old.png"], faviconFiles());
+        Assert.Equal("old.png", (await service.GetStreamByIdAsync(stream.Id))!.FaviconFileName);
+    }
+
+    [Fact]
     public async Task CreateGivesEachNewStreamTheNextDisplayOrder()
     {
         var service = await createServiceAsync();

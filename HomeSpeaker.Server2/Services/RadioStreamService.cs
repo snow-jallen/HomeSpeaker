@@ -132,36 +132,49 @@ public class RadioStreamService
         stream.Name = name;
         stream.Url = url;
 
+        // The old art is deleted only once the save succeeds, so a failed save never leaves the row pointing at a deleted file
+        var oldFileName = stream.FaviconFileName;
+        string? newFileName = null;
+        string? downloadedFileName = null;
+
         if (!string.IsNullOrWhiteSpace(faviconFileName))
         {
-            // Pre-uploaded file — delete old favicon (unless it is the same file or still in use) and store new filename directly
-            if (!string.IsNullOrWhiteSpace(stream.FaviconFileName) && !string.Equals(stream.FaviconFileName, faviconFileName, StringComparison.Ordinal))
-            {
-                await deleteFaviconIfUnusedAsync(stream.FaviconFileName, stream.Id);
-            }
-
-            stream.FaviconFileName = faviconFileName;
+            // Pre-uploaded file — store filename directly
+            newFileName = faviconFileName;
         }
         else if (!string.IsNullOrWhiteSpace(faviconUrl))
         {
-            // Download new favicon first
-            var newFileName = await downloadFaviconAsync(name, faviconUrl);
-
-            // Delete old favicon if new one was successfully downloaded (and it's a different file)
-            if (newFileName != null && !string.IsNullOrWhiteSpace(stream.FaviconFileName) && !string.Equals(stream.FaviconFileName, newFileName, StringComparison.Ordinal))
-            {
-                await deleteFaviconIfUnusedAsync(stream.FaviconFileName, stream.Id);
-            }
-
             // A failed download keeps the current favicon rather than clearing it
-            if (newFileName != null)
-            {
-                stream.FaviconFileName = newFileName;
-            }
+            downloadedFileName = await downloadFaviconAsync(name, faviconUrl);
+            newFileName = downloadedFileName;
         }
         // else: both empty — no change to favicon
 
-        await dbContext.SaveChangesAsync();
+        if (newFileName != null)
+        {
+            stream.FaviconFileName = newFileName;
+        }
+
+        try
+        {
+            await dbContext.SaveChangesAsync();
+        }
+        catch
+        {
+            // Nothing references the freshly downloaded file, so do not leave it behind
+            if (downloadedFileName != null)
+            {
+                deleteFavicon(downloadedFileName);
+            }
+
+            throw;
+        }
+
+        // Delete the replaced file (unless it is the same file or another stream still uses it)
+        if (newFileName != null && !string.IsNullOrWhiteSpace(oldFileName) && !string.Equals(oldFileName, newFileName, StringComparison.Ordinal))
+        {
+            await deleteFaviconIfUnusedAsync(oldFileName, stream.Id);
+        }
 
         // Invalidate cache
         cache.Remove(CACHE_KEY);
