@@ -49,8 +49,9 @@ window.idleController = (function () {
         root.classList.toggle('hs-mode-night', mode === 'night');
         // A modal <dialog> sits in the top layer above the ambient and night layers, so close any that are open.
         // Each dialog's close event lets its Blazor component reset its own state.
+        // Blazor's reconnect modal is also a <dialog>; leave it open so a dropped connection still shows.
         if (mode !== 'active') {
-            document.querySelectorAll('dialog[open]').forEach(function (dialog) {
+            document.querySelectorAll('dialog[open]:not(#components-reconnect-modal)').forEach(function (dialog) {
                 try { dialog.close(); } catch (e) { console.error('idleController could not close dialog', e); }
             });
         }
