@@ -1,15 +1,17 @@
-﻿@inject HomeSpeakerService svc
+@inject HomeSpeakerService svc
 
 @if(Songs == null)
 {
-    <div>No songs in the folder...?</div>
+    <div class="glass-empty">No songs in the folder...?</div>
 }
 else
 {
-    @foreach(var song in Songs)
-    {
-        <Song SongViewModel=@song ShowBackground=@toggleBackground() OnDeleted="songDeleted"/>
-    }
+    <div class="glass-list">
+        @foreach(var song in Songs)
+        {
+            <Song SongViewModel=@song ShowBackground=@toggleBackground() OnDeleted="songDeleted"/>
+        }
+    </div>
 }
 
 @code {

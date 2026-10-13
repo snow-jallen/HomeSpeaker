@@ -7,17 +7,17 @@
 @inject ILocalQueueService localQueueService
 @inject IJSRuntime JsRuntime
 
-<div class="position-relative d-inline-block" @ref="containerRef">
-    <button @onclick="ToggleMenu" class="btn btn-adaptive-contrast" title="Play">
-        <span class="oi oi-media-play" />
+<div class="position-relative d-inline-block" id="@menuAnchorId">
+    <button @onclick="ToggleMenu" class="hs-icon-btn hs-icon-btn--filled" title="Play" aria-label="Play" aria-haspopup="menu" aria-expanded="@showMenu">
+        <i class="fas fa-play" aria-hidden="true"></i>
     </button>@if (showMenu)
     {
-        <div class="dropdown-menu show position-absolute" style="top: 100%; @dropdownPositionStyle z-index: 10000; min-width: 220px;">
-            <button class="dropdown-item" @onclick="PlayOnServer">
-                <i class="fas fa-server me-2"></i>Play on Server
+        <div class="glass-menu position-absolute" role="menu" style="@dropdownPositionStyle z-index: 10000;">
+            <button class="glass-menu-item" role="menuitem" @onclick="PlayOnServer">
+                <i class="fas fa-server" aria-hidden="true"></i>Play on Server
             </button>
-            <button class="dropdown-item" @onclick="PlayLocally">
-                <i class="fas fa-headphones me-2"></i>Stream to Device
+            <button class="glass-menu-item" role="menuitem" @onclick="PlayLocally">
+                <i class="fas fa-headphones" aria-hidden="true"></i>Stream to Device
             </button>
         </div>
     }
@@ -26,7 +26,7 @@
 @* Click outside to close *@
 @if (showMenu)
 {
-    <div class="position-fixed" style="top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999;" @onclick="CloseMenu"></div>
+    <div class="position-fixed" style="top: 0; left: 0; width: 100%; height: 100vh; z-index: 9999;" @onclick="CloseMenu"></div>
 }
 
 @code {
@@ -35,8 +35,8 @@
     [Parameter] public string? FolderName { get; set; }
     [Parameter] public IEnumerable<SongViewModel>? Songs { get; set; }
     [Parameter] public EventCallback OnPlayStarted { get; set; }    private bool showMenu = false;
-    private ElementReference containerRef;
-    private string dropdownPositionStyle = "right: 0;";
+    private readonly string menuAnchorId = $"mb{Guid.NewGuid():N}";
+    private string dropdownPositionStyle = "top: 100%; right: 0;";
 
     private async void ToggleMenu()
     {
@@ -59,23 +59,25 @@
         try
         {
             // Use JavaScript to check positioning and return the appropriate style
-            var positionStyle = await JsRuntime.InvokeAsync<string>("eval", $@"                (function(element) {{
+            var positionStyle = await JsRuntime.InvokeAsync<string>("eval", $@"
+                (function(element) {{
                     var rect = element.getBoundingClientRect();
                     var viewportWidth = window.innerWidth;
                     var dropdownWidth = 220; // Approximate width of dropdown
-                    
-                    if (rect.right + dropdownWidth > viewportWidth) {{
-                        return 'right: 0;';
-                    }} else {{
-                        return 'left: 0;';
-                    }}
-                }})(arguments[0])", containerRef);
+                    var dropdownHeight = 260; // Approximate height of dropdown
+                    var main = element.closest('.hs-main');
+                    var bottomLimit = main ? main.getBoundingClientRect().bottom : window.innerHeight;
+                    var topLimit = main ? main.getBoundingClientRect().top : 0;
+                    var horizontal = (rect.right + dropdownWidth > viewportWidth) ? 'right: 0;' : 'left: 0;';
+                    var openUp = (rect.bottom + dropdownHeight > bottomLimit) && (rect.top - topLimit > bottomLimit - rect.bottom);
+                    return (openUp ? 'bottom: 100%; ' : 'top: 100%; ') + horizontal;
+                }})(document.getElementById('{menuAnchorId}'))");
             
             dropdownPositionStyle = positionStyle;
         }        catch
         {
             // Fallback to default positioning if JS call fails
-            dropdownPositionStyle = "right: 0;";
+            dropdownPositionStyle = "top: 100%; right: 0;";
         }
     }
 

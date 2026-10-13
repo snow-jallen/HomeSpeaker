@@ -1,85 +1,79 @@
-﻿@inject HomeSpeakerService svc
+@inject HomeSpeakerService svc
 @inject IJSRuntime JsRuntime
 @using HomeSpeaker.Shared
 
-<div class="card mb-3">
-    <div class="card-body">
-        <div class="row align-items-center">
-            <div class="col">
-                @if (isEditing)
-                {                    <div class="input-group">
-                        <input @bind="editName" @onkeypress="OnKeyPress" class="form-control" placeholder="Playlist name" />
-                        <button class="btn btn-outline-success" @onclick="SaveEdit" title="Save"><span class="oi oi-check"></span></button>
-                        <button class="btn btn-outline-secondary" @onclick="CancelEdit" title="Cancel"><span class="oi oi-x"></span></button>
-                    </div>
-                }
-                else
-                {
-                    <div @onclick="ToggleShowDetails" style="cursor: pointer;">
-                        <h5 class="card-title mb-1">@Playlist.Name</h5>
-                        <small class="text-muted">@Playlist.Songs.Count() songs</small>
-                    </div>
-                }
-            </div>
-            <div class="col-auto">
-                @if (!isEditing)
-                {                    <div class="btn-group" role="group">
-                        <PlayButtonWithDropdown PlaylistName="@Playlist.Name" />
-                        <button class="btn btn-outline-secondary" @onclick="StartEdit" title="Rename playlist">
-                            <span class="oi oi-pencil"></span>
-                        </button>
-                        <button class="btn btn-outline-danger" @onclick="ConfirmDelete" title="Delete playlist">
-                            <span class="oi oi-trash"></span>
-                        </button>
-                    </div>
-                }
-            </div>
-        </div>
-
-        @if (showDetails && !isEditing)
+<div class="glass-group">
+    <div class="glass-row @(showDetails && !isEditing ? "is-active" : "")">
+        @if (isEditing)
         {
-            <div class="mt-3">
-                <hr />
-                <h6 class="text-muted">Songs in this playlist:</h6>                @if (Playlist.Songs.Any())
-                {
-                    <div class="list-group list-group-flush">
-                        @foreach (var song in Playlist.Songs.Select((s, index) => new { Song = s, Index = index }))
-                        {
-                            <div class="list-group-item d-flex justify-content-between align-items-center p-2 @(draggedIndex == song.Index ? "dragging" : "") @(dropTargetIndex == song.Index ? "drop-target" : "")"
-                                 draggable="true"
-                                 @ondragstart="@(e => HandleDragStart(e, song.Index))"
-                                 @ondragenter="@(e => HandleDragEnter(e, song.Index))"
-                                 @ondragenter:preventDefault="true"
-                                 @ondragover="@(e => HandleDragOver(e, song.Index))"
-                                 @ondragover:preventDefault="true"
-                                 @ondrop="@(e => HandleDrop(e, song.Index))"
-                                 @ondrop:preventDefault="true"
-                                 @ondragleave="HandleDragLeave"
-                                 @ondragend="HandleDragEnd"
-                                 style="cursor: move;">
-                                <div class="d-flex align-items-center">
-                                    <div class="me-2" style="cursor: grab;">
-                                        <span class="oi oi-menu"></span>
-                                    </div>
-                                    <div>
-                                        <div class="fw-bold">@song.Song.Name</div>
-                                        <small class="text-muted">@song.Song.Artist - @song.Song.Album</small>
-                                    </div>
-                                </div>
-                                <button class="btn btn-outline-danger btn-sm" @onclick="@(async () => await TryRemoveSong(song.Song.Path))" title="Remove from playlist">
-                                    <span class="oi oi-minus"></span>
-                                </button>
-                            </div>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <p class="text-muted">This playlist is empty.</p>
-                }
+            <input @bind="editName" @onkeypress="OnKeyPress" class="glass-input" placeholder="Playlist name" aria-label="Playlist name" />
+            <div class="glass-row-actions">
+                <button class="hs-icon-btn hs-icon-btn--filled" @onclick="SaveEdit" title="Save" aria-label="Save"><i class="fas fa-check" aria-hidden="true"></i></button>
+                <button class="hs-icon-btn hs-icon-btn--filled" @onclick="CancelEdit" title="Cancel" aria-label="Cancel"><i class="fas fa-xmark" aria-hidden="true"></i></button>
+            </div>
+        }
+        else
+        {
+            <button type="button" class="glass-row-toggle" @onclick="ToggleShowDetails" aria-expanded="@showDetails">
+                <i class="fas @(showDetails ? "fa-chevron-down" : "fa-chevron-right") glass-row-chevron" aria-hidden="true"></i>
+                <span class="glass-row-text">
+                    <span class="glass-row-title">@Playlist.Name</span>
+                    <span class="glass-row-sub">@Playlist.Songs.Count() songs</span>
+                </span>
+            </button>
+            <div class="glass-row-actions">
+                <PlayButtonWithDropdown PlaylistName="@Playlist.Name" />
+                <button class="hs-icon-btn hs-icon-btn--filled" @onclick="StartEdit" title="Rename playlist" aria-label="Rename playlist">
+                    <i class="fas fa-pencil" aria-hidden="true"></i>
+                </button>
+                <button class="hs-icon-btn hs-icon-btn--filled" @onclick="ConfirmDelete" title="Delete playlist" aria-label="Delete playlist">
+                    <i class="fas fa-trash" aria-hidden="true"></i>
+                </button>
             </div>
         }
     </div>
+
+    @if (showDetails && !isEditing)
+    {
+        <div class="glass-group-body">
+            <h3 class="glass-section-title">Songs in this playlist</h3>
+            @if (Playlist.Songs.Any())
+            {
+                <div class="glass-list">
+                    @foreach (var song in Playlist.Songs.Select((s, index) => new { Song = s, Index = index }))
+                    {
+                        <div class="glass-row glass-row--sub @(draggedIndex == song.Index ? "dragging" : "") @(dropTargetIndex == song.Index ? "drop-target" : "")"
+                             draggable="true"
+                             @ondragstart="@(e => HandleDragStart(e, song.Index))"
+                             @ondragenter="@(e => HandleDragEnter(e, song.Index))"
+                             @ondragenter:preventDefault="true"
+                             @ondragover="@(e => HandleDragOver(e, song.Index))"
+                             @ondragover:preventDefault="true"
+                             @ondrop="@(e => HandleDrop(e, song.Index))"
+                             @ondrop:preventDefault="true"
+                             @ondragleave="HandleDragLeave"
+                             @ondragend="HandleDragEnd"
+                             style="cursor: move;">
+                            <i class="fas fa-grip-vertical glass-row-handle" aria-hidden="true"></i>
+                            <div class="glass-row-text">
+                                <div class="glass-row-title">@song.Song.Name</div>
+                                <div class="glass-row-sub">@song.Song.Artist - @song.Song.Album</div>
+                            </div>
+                            <div class="glass-row-actions">
+                                <button class="hs-icon-btn hs-icon-btn--filled" @onclick="@(async () => await TryRemoveSong(song.Song.Path))" title="Remove from playlist" aria-label="Remove from playlist">
+                                    <i class="fas fa-minus" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="glass-empty">This playlist is empty.</div>
+            }
+        </div>
+    }
 </div>
 
 @code {

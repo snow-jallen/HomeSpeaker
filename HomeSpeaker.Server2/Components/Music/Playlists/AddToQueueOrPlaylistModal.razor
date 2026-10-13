@@ -1,66 +1,55 @@
 @inject HomeSpeakerService svc
 @inject IJSRuntime JsRuntime
 
-<div class="dropdown-menu show" style="position: static; z-index: 10001; max-height: 350px; overflow-y: auto; min-width: 220px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); border: 1px solid #dee2e6;">
-    <h6 class="dropdown-header">Add to...</h6>
-    <button class="dropdown-item" @onclick="AddToQueue">
-        <span class="oi oi-list-rich me-2"></span>Queue
+<div class="glass-menu" role="menu">
+    <h6 class="glass-menu-header">Add to...</h6>
+    <button class="glass-menu-item" role="menuitem" @onclick="AddToQueue">
+        <i class="fas fa-list" aria-hidden="true"></i>Queue
     </button>
-    <div class="dropdown-divider"></div>
+    <div class="glass-menu-divider"></div>
 
     @if (allPlaylists == null)
     {
-        <div class="dropdown-item-text">Loading playlists...</div>
+        <div class="glass-menu-text">Loading playlists...</div>
     }
     else if (!allPlaylists.Any())
     {
-        <div class="dropdown-item-text text-muted">No playlists available</div>
-        <div class="dropdown-divider"></div>
-        <button class="dropdown-item" @onclick="CreateNewPlaylist">
-            <span class="oi oi-plus me-2"></span>Create new playlist...
+        <div class="glass-menu-text">No playlists available</div>
+        <div class="glass-menu-divider"></div>
+        <button class="glass-menu-item" role="menuitem" @onclick="CreateNewPlaylist">
+            <i class="fas fa-plus" aria-hidden="true"></i>Create new playlist...
         </button>
     }
     else
     {
-        <h6 class="dropdown-header">Playlists:</h6>
+        <h6 class="glass-menu-header">Playlists:</h6>
         @foreach (var playlist in allPlaylists)
         {
-            <button class="dropdown-item" @onclick="@(() => AddToPlaylist(playlist.Name))">
-                <span class="oi oi-list me-2"></span>@playlist.Name
+            <button class="glass-menu-item" role="menuitem" @onclick="@(() => AddToPlaylist(playlist.Name))">
+                <i class="fas fa-music" aria-hidden="true"></i>@playlist.Name
             </button>
         }
-        <div class="dropdown-divider"></div>
-        <button class="dropdown-item" @onclick="CreateNewPlaylist">
-            <span class="oi oi-plus me-2"></span>Create new playlist...
+        <div class="glass-menu-divider"></div>
+        <button class="glass-menu-item" role="menuitem" @onclick="CreateNewPlaylist">
+            <i class="fas fa-plus" aria-hidden="true"></i>Create new playlist...
         </button>
     }
 </div>
 
 <!-- Native <dialog> renders in the browser top layer — above all z-index and stacking contexts -->
-<dialog id="@_dialogId"
-        style="border: none; border-radius: 0.5rem; padding: 1.25rem; min-width: 280px; max-width: 90vw;
-               background: white; box-shadow: 0 8px 32px rgba(0,0,0,0.35);">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-        <strong style="color: #333; font-size: 1rem;">New Playlist</strong>
-        <button type="button" @onclick="CancelCreatePlaylist"
-                style="background: none; border: none; cursor: pointer; font-size: 1.3rem; line-height: 1; color: #666; padding: 0;">&times;</button>
+<dialog id="@_dialogId" class="glass-dialog">
+    <div class="glass-dialog-title">
+        <span>New Playlist</span>
+        <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="CancelCreatePlaylist" aria-label="Close" title="Close">
+            <i class="fas fa-xmark" aria-hidden="true"></i>
+        </button>
     </div>
-    <input type="text" id="@_inputId"
+    <input type="text" id="@_inputId" class="glass-input"
            @bind="newPlaylistName" @bind:event="oninput" @onkeydown="OnKeyPress"
-           placeholder="Playlist name..."
-           style="display: block; width: 100%; box-sizing: border-box; padding: 0.4rem 0.6rem; margin-bottom: 0.75rem;
-                  background: #fff; color: #333; border: 1px solid #adb5bd; border-radius: 0.25rem; font-size: 0.9rem;" />
-    <div style="display: flex; gap: 0.5rem;">
-        <button type="button" @onclick="CancelCreatePlaylist"
-                style="flex: 1; padding: 0.45rem 0; background: #6c757d; color: white;
-                       border: none; border-radius: 0.25rem; font-size: 0.875rem; cursor: pointer;">
-            Cancel
-        </button>
-        <button type="button" @onclick="SaveNewPlaylist"
-                style="flex: 1; padding: 0.45rem 0; background: #0d6efd; color: white;
-                       border: none; border-radius: 0.25rem; font-size: 0.875rem; cursor: pointer;">
-            Create
-        </button>
+           placeholder="Playlist name..." aria-label="Playlist name" />
+    <div class="glass-dialog-actions">
+        <button type="button" class="glass-btn glass-btn--ghost" @onclick="CancelCreatePlaylist">Cancel</button>
+        <button type="button" class="glass-btn" @onclick="SaveNewPlaylist">Create</button>
     </div>
 </dialog>
 

@@ -5,11 +5,12 @@
 <div class="play-controls">
     <button @onclick="PlayOrStop"
             title="@(IsPlaying ? "Stop playing" : "Resume playing")"
-            class="btn btn-icon-lg btn-primary play-button">
-        <i class="fas @(IsPlaying ? "fa-stop" : "fa-play")"></i>
+            aria-label="@(IsPlaying ? "Stop playing" : "Resume playing")"
+            class="hs-play-btn play-button">
+        <i class="fas @(IsPlaying ? "fa-stop" : "fa-play")" aria-hidden="true"></i>
     </button>
-    <button @onclick=Skip title="Skip to next song" class="btn btn-icon btn-outline-primary">
-        <i class="fas fa-forward"></i>
+    <button @onclick=Skip title="Skip to next song" aria-label="Skip to next song" class="hs-icon-btn hs-icon-btn--filled skip-button">
+        <i class="fas fa-forward" aria-hidden="true"></i>
     </button>
 </div>
 

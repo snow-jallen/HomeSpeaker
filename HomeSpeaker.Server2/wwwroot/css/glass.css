@@ -771,3 +771,675 @@ html.hs-mode-night .hs-backdrop {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Page primitives ---------- */
+/* Shared building blocks for every music page. Sizes are px (see top of file). */
+
+.glass-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-family: var(--glass-font);
+  color: var(--glass-text);
+}
+
+.glass-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.glass-page-header .glass-page-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.glass-title {
+  margin: 0;
+  font-family: var(--glass-font);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--glass-text);
+}
+
+.glass-section-title {
+  margin: 0;
+  font-family: var(--glass-font);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.75;
+  color: var(--glass-text);
+}
+
+.glass-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.glass-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--glass-text);
+  font-family: var(--glass-font);
+  transition: background 0.15s ease;
+}
+
+.glass-row:hover,
+.glass-row.is-active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.glass-row-art {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.glass-row-art--wide {
+  width: 85px;
+}
+
+.glass-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.glass-row-title,
+.glass-row-sub {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.glass-row-title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.glass-row-sub {
+  font-size: 13px;
+  line-height: 1.3;
+  opacity: 0.75;
+}
+
+a.glass-row-title,
+a.glass-row-title:hover,
+a.glass-row-title:focus {
+  color: var(--glass-text);
+  text-decoration: none;
+}
+
+.glass-row-actions {
+  flex: none;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* A row (or row part) that is one big real button, e.g. a collapsible header. */
+.glass-row-toggle {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.glass-row-toggle:focus-visible,
+.hs-icon-btn:focus-visible,
+.glass-btn:focus-visible,
+.glass-menu-item:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 2px;
+}
+
+.glass-row-chevron {
+  flex: none;
+  width: 16px;
+  text-align: center;
+  font-size: 14px;
+  opacity: 0.75;
+}
+
+.glass-row-handle {
+  flex: none;
+  width: 20px;
+  text-align: center;
+  font-size: 15px;
+  opacity: 0.6;
+  cursor: grab;
+}
+
+.glass-row-handle:active {
+  cursor: grabbing;
+}
+
+.glass-row-index {
+  flex: none;
+  min-width: 28px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+.glass-row--sub {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.glass-row.dragging {
+  opacity: 0.5;
+}
+
+.glass-row.drop-target {
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.85);
+}
+
+/* Collapsible group (artist, album, folder, playlist): header row + indented body. */
+.glass-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.glass-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: 16px;
+  padding-left: 12px;
+  border-left: 2px solid rgba(255, 255, 255, 0.18);
+}
+
+.glass-row-details {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 0 2px;
+}
+
+/* Icon button with a visible disc, for actions inside rows and headers. */
+.hs-icon-btn--filled {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.12);
+  opacity: 1;
+}
+
+.hs-icon-btn--filled:hover,
+.hs-icon-btn--filled:focus {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.hs-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.glass-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  height: 44px;
+  min-width: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--glass-radius-pill);
+  background: #fff;
+  color: #111;
+  font: 700 15px var(--glass-font);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.glass-btn:hover,
+.glass-btn:focus {
+  background: #e6e6e6;
+  color: #111;
+  text-decoration: none;
+}
+
+.glass-btn:disabled,
+.glass-btn.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.glass-btn--ghost {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--glass-text);
+}
+
+.glass-btn--ghost:hover,
+.glass-btn--ghost:focus {
+  background: rgba(255, 255, 255, 0.22);
+  color: var(--glass-text);
+}
+
+.glass-btn--danger {
+  background: rgba(150, 24, 36, 0.9);
+  color: var(--glass-text);
+}
+
+.glass-btn--danger:hover,
+.glass-btn--danger:focus {
+  background: rgba(176, 32, 46, 0.95);
+  color: var(--glass-text);
+}
+
+input.glass-input,
+textarea.glass-input,
+select.glass-input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--glass-text) !important;
+  font: 500 15px var(--glass-font);
+  color-scheme: dark;
+}
+
+input.glass-input::placeholder,
+textarea.glass-input::placeholder {
+  color: var(--glass-text) !important;
+  opacity: 0.6;
+}
+
+input.glass-input:focus,
+textarea.glass-input:focus,
+select.glass-input:focus {
+  outline: none;
+  box-shadow: none;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--glass-text) !important;
+}
+
+select.glass-input option {
+  background: #1e1e24;
+  color: #fff;
+}
+
+.glass-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--glass-text);
+  font: 600 13px var(--glass-font);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.glass-chip:hover,
+.glass-chip:focus {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--glass-text);
+}
+
+.glass-chip.is-on,
+.glass-chip.is-on:hover,
+.glass-chip.is-on:focus {
+  background: #fff;
+  color: #111;
+}
+
+.glass-empty {
+  padding: 32px 16px;
+  text-align: center;
+  font-family: var(--glass-font);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--glass-text);
+  opacity: 0.75;
+}
+
+.glass-empty i {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 40px;
+  opacity: 0.6;
+}
+
+/* Dropdown menu (play / add-to menus). Mostly opaque: it can sit inside a blurred glass panel. */
+.glass-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-sizing: border-box;
+  min-width: 240px;
+  max-width: calc(100vw - 32px);
+  max-height: 350px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  background: rgba(30, 30, 36, 0.97);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  color: var(--glass-text);
+  font-family: var(--glass-font);
+  text-align: left;
+}
+
+.glass-menu-header {
+  margin: 0;
+  padding: 8px 12px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.75;
+}
+
+.glass-menu-text {
+  padding: 8px 12px;
+  font-size: 14px;
+  opacity: 0.75;
+}
+
+.glass-menu-divider {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--glass-border);
+}
+
+.glass-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--glass-text);
+  font: 600 15px var(--glass-font);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.glass-menu-item i {
+  width: 18px;
+  text-align: center;
+  opacity: 0.85;
+}
+
+.glass-menu-item:hover,
+.glass-menu-item:focus {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--glass-text);
+}
+
+/* Dialog content (our own markup, native dialog or FluentDialog). */
+.glass-dialog {
+  box-sizing: border-box;
+  width: min(420px, calc(100vw - 32px));
+  padding: 20px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-card);
+  background: rgba(28, 28, 34, 0.96);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.55);
+  color: var(--glass-text);
+  font-family: var(--glass-font);
+}
+
+dialog.glass-dialog {
+  margin: auto;
+}
+
+dialog.glass-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.glass-dialog-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px;
+  font-family: var(--glass-font);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--glass-text);
+}
+
+.glass-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.glass-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.glass-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.glass-field > span {
+  opacity: 0.75;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.glass-check {
+  cursor: pointer;
+}
+
+.glass-check input[type="checkbox"] {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: #fff;
+}
+
+/* MudBlazor dialogs, popovers and overlay: glass theme. Keep MudBlazor's own z-index. */
+.mud-overlay .mud-overlay-scrim {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.mud-dialog,
+.mud-popover {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-card);
+  background: rgba(28, 28, 34, 0.9);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  color: var(--glass-text);
+  font-family: var(--glass-font);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.55);
+}
+
+.mud-popover {
+  border-radius: 20px;
+}
+
+.mud-dialog .mud-dialog-title {
+  padding: 20px 24px 8px;
+  font-family: var(--glass-font);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--glass-text);
+}
+
+.mud-dialog .mud-dialog-content {
+  padding: 8px 24px;
+  font-family: var(--glass-font);
+  font-size: 15px;
+  color: var(--glass-text);
+}
+
+.mud-dialog .mud-dialog-actions {
+  gap: 8px;
+  padding: 12px 24px 20px;
+}
+
+.mud-dialog .mud-typography,
+.mud-popover .mud-typography,
+.mud-popover .mud-list-item,
+.mud-popover .mud-menu-item {
+  font-family: var(--glass-font);
+  color: var(--glass-text);
+}
+
+.mud-popover .mud-list-item {
+  min-height: 44px;
+}
+
+.mud-popover .mud-list-item:hover,
+.mud-popover .mud-list-item.mud-selected-item {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.mud-dialog .mud-button-root {
+  min-height: 44px;
+  border-radius: var(--glass-radius-pill);
+  font-family: var(--glass-font);
+  font-weight: 700;
+  text-transform: none;
+}
+
+.glass-progress {
+  width: 80px;
+  height: 6px;
+  border: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.glass-progress::-webkit-progress-bar {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.glass-progress::-webkit-progress-value {
+  background: #fff;
+}
+
+.glass-progress::-moz-progress-bar {
+  background: #fff;
+}
+
+.glass-row-done {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  opacity: 0.85;
+}
+
+textarea.glass-input {
+  height: auto;
+  min-height: 88px;
+  padding: 10px 14px;
+}
+
+/* FluentDialog hosting a .glass-dialog: make the dialog chrome transparent so only the glass card shows. */
+fluent-dialog.glass-fluent-dialog {
+  --dialog-width: min(420px, calc(100vw - 32px)) !important;
+}
+
+fluent-dialog.glass-fluent-dialog::part(control) {
+  background: transparent;
+  border: 0;
+  border-radius: var(--glass-radius-card);
+  box-shadow: none;
+  overflow: visible;
+}
+
+fluent-dialog.glass-fluent-dialog::part(overlay) {
+  background: rgba(0, 0, 0, 0.55);
+  opacity: 1;
+}
+
+fluent-dialog.glass-fluent-dialog .glass-dialog {
+  width: 100%;
+}
+
+@media (max-width: 700px) {
+  .glass-group-body {
+    margin-left: 4px;
+    padding-left: 8px;
+  }
+
+  .glass-row {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .glass-row-actions {
+    gap: 4px;
+  }
+
+  .glass-title {
+    font-size: 24px;
+  }
+}

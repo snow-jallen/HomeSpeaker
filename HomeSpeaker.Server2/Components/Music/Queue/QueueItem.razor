@@ -1,57 +1,58 @@
-﻿@inject HomeSpeakerService svc
+@inject HomeSpeakerService svc
 
-<div class="unified-queue-item @(IsCurrentSong ? "current-song" : "")" @onclick="HandleClick">
-    <div class="d-flex align-items-center">
-        <div class="queue-position me-3">
-            @if (IsCurrentSong)
-            {
-                <i class="fas fa-play text-primary"></i>
-            }
-            else if (QueuePosition.HasValue)
-            {
-                <span class="queue-number">@QueuePosition</span>
-            }
-            else
-            {
-                <i class="fas fa-grip-vertical text-muted drag-handle"></i>
-            }
-        </div>
+<div class="glass-row queue-item @(IsCurrentSong ? "is-active" : "")" @onclick="HandleClick">
+    <i class="fas fa-grip-vertical glass-row-handle drag-handle" aria-hidden="true"></i>
 
-        <div class="song-info flex-grow-1">
-            <div class="song-name">@SongViewModel?.Name</div>
-            <div class="song-details">
+    <div class="glass-row-index">
+        @if (IsCurrentSong)
+        {
+            <i class="fas fa-play" aria-label="Now playing"></i>
+        }
+        else if (QueuePosition.HasValue)
+        {
+            <span>@QueuePosition</span>
+        }
+    </div>
+
+    <div class="glass-row-text">
+        <div class="glass-row-title">@SongViewModel?.Name</div>
+        @if (!string.IsNullOrEmpty(SongViewModel?.Artist) || !string.IsNullOrEmpty(SongViewModel?.Album))
+        {
+            <div class="glass-row-sub">
                 @if (!string.IsNullOrEmpty(SongViewModel?.Artist))
                 {
-                    <span class="artist">@SongViewModel?.Artist</span>
+                    <span>@SongViewModel?.Artist</span>
                 }
                 @if (!string.IsNullOrEmpty(SongViewModel?.Artist) && !string.IsNullOrEmpty(SongViewModel?.Album))
                 {
-                    <span class="separator">•</span>
+                    <span aria-hidden="true"> • </span>
                 }
                 @if (!string.IsNullOrEmpty(SongViewModel?.Album))
                 {
-                    <span class="album">@SongViewModel?.Album</span>
+                    <span>@SongViewModel?.Album</span>
                 }
             </div>
-        </div>
+        }
+    </div>
 
-        <div class="queue-controls">
-            @if (ShowPlayButton && !IsCurrentSong)
-            {
-                <button @onclick:stopPropagation="true"
-                        @onclick="HandlePlay"
-                        class="btn btn-outline-primary btn-sm me-1"
-                        title="Play this song">
-                    <i class="fas fa-play"></i>
-                </button>
-            }
+    <div class="glass-row-actions">
+        @if (ShowPlayButton && !IsCurrentSong)
+        {
             <button @onclick:stopPropagation="true"
-                    @onclick="remove"
-                    class="btn btn-outline-danger btn-sm"
-                    title="Remove from queue">
-                <i class="fas fa-times"></i>
+                    @onclick="HandlePlay"
+                    class="hs-icon-btn hs-icon-btn--filled"
+                    title="Play this song"
+                    aria-label="Play this song">
+                <i class="fas fa-play" aria-hidden="true"></i>
             </button>
-        </div>
+        }
+        <button @onclick:stopPropagation="true"
+                @onclick="remove"
+                class="hs-icon-btn hs-icon-btn--filled"
+                title="Remove from queue"
+                aria-label="Remove from queue">
+            <i class="fas fa-xmark" aria-hidden="true"></i>
+        </button>
     </div>
 </div>
 

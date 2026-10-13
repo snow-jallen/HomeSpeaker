@@ -1,46 +1,43 @@
-﻿@inject ILogger<YouTubeSearchResult> logger
+@inject ILogger<YouTubeSearchResult> logger
 @inject HomeSpeakerService svc
 
 @if (SearchResult == null)
 {
-    <div>Nothing to see here</div>
+    <div class="glass-empty">Nothing to see here</div>
 }
 else
 {
-    <div class="row border m-1">
-        <div class="col-auto">
-            <img src="@SearchResult.Thumbnail" height="64">
+    <div class="glass-row">
+        <img class="glass-row-art glass-row-art--wide" src="@SearchResult.Thumbnail" alt="" loading="lazy">
+        <div class="glass-row-text">
+            <a class="glass-row-title" href="@SearchResult.Url">@SearchResult.Title</a>
+            <div class="glass-row-sub">by @SearchResult.Author (@SearchResult.Duration)</div>
         </div>
-        <div class="col">
-            <a class="h6" href="@SearchResult.Url">@SearchResult.Title</a>
-            <br>
-            by @SearchResult.Author (@SearchResult.Duration)
-        </div>
-        <div class="col-auto d-flex align-items-center gap-2">
+        <div class="glass-row-actions">
             @if (isStreaming)
             {
-                <button class="btn btn-warning btn-sm" @onclick=stopStreamAsync title="Stop">
-                    <span class="oi oi-media-stop"></span>
+                <button class="hs-icon-btn hs-icon-btn--filled" @onclick=stopStreamAsync title="Stop" aria-label="Stop">
+                    <i class="fas fa-stop" aria-hidden="true"></i>
                 </button>
             }
             else
             {
-                <button class="btn btn-success btn-sm" @onclick=playStreamAsync title="Preview">
-                    <span class="oi oi-media-play"></span>
+                <button class="hs-icon-btn hs-icon-btn--filled" @onclick=playStreamAsync title="Preview" aria-label="Preview">
+                    <i class="fas fa-play" aria-hidden="true"></i>
                 </button>
             }
             @if (isDownloading)
             {
-                <progress value="@progressValue" />
+                <progress class="glass-progress" value="@progressValue" />
             }
             else if (isComplete)
             {
-                <span class="oi oi-check m-2"></span>
+                <span class="glass-row-done" title="Downloaded" role="img" aria-label="Downloaded"><i class="fas fa-check" aria-hidden="true"></i></span>
             }
             else
             {
-                <button class="btn btn-secondary btn-sm" @onclick=cacheVideoAsync disabled="@(!FfmpegAvailable)" title="@(FfmpegAvailable ? "Download" : "ffmpeg not available")">
-                    <span class="oi oi-cloud-download"></span>
+                <button class="hs-icon-btn hs-icon-btn--filled" @onclick=cacheVideoAsync disabled="@(!FfmpegAvailable)" title="@(FfmpegAvailable ? "Download" : "ffmpeg not available")" aria-label="@(FfmpegAvailable ? "Download" : "ffmpeg not available")">
+                    <i class="fas fa-cloud-arrow-down" aria-hidden="true"></i>
                 </button>
             }
         </div>

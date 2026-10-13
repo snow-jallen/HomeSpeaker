@@ -6,44 +6,39 @@
 
 @if (SongViewModel == null)
 {
-    <div class="text-muted">Nothing to see here...</div>
+    <div class="glass-empty">Nothing to see here...</div>
 }
 else
 {
-    <div class="song-item @(ShowBackground ? "with-bg" : "")" @onclick=toggleDetailsView>
-        <div class="row g-0 align-items-center w-100">
-            <div class="col">
-                <div class="song-item-title">@SongViewModel.Name</div>
+    <div class="glass-song">
+        <div class="glass-row @(showDetails ? "is-active" : "")" @onclick=toggleDetailsView>
+            <div class="glass-row-text">
+                <div class="glass-row-title">@SongViewModel.Name</div>
                 @if (ShowFolder && !string.IsNullOrWhiteSpace(SongViewModel.Folder))
                 {
-                    <div class="song-item-meta">
-                        <i class="fas fa-folder me-1" style="font-size: 0.75rem;"></i>
-                        @SongViewModel.Folder
+                    <div class="glass-row-sub">
+                        <i class="fas fa-folder me-1" aria-hidden="true"></i>@SongViewModel.Folder
                     </div>
                 }
             </div>
-            <div class="col-auto">
-                <div class="d-flex gap-1 align-items-center">
-                    <button @onclick:stopPropagation="true" @onclick=toggleDetailsView class="btn btn-sm btn-icon" title="@(showDetails ? "Hide details" : "Show details")">
-                        <i class="fas @(showDetails ? "fa-chevron-up" : "fa-chevron-down")"></i>
-                    </button>
-                    <PlayButtonWithDropdown Song="SongViewModel" />
-                    <PlusButtonWithMenu Song="SongViewModel" />
-                </div>
+            <div class="glass-row-actions">
+                <button @onclick:stopPropagation="true" @onclick=toggleDetailsView class="hs-icon-btn hs-icon-btn--filled" title="@(showDetails ? "Hide details" : "Show details")" aria-label="@(showDetails ? "Hide details" : "Show details")" aria-expanded="@showDetails">
+                    <i class="fas @(showDetails ? "fa-chevron-up" : "fa-chevron-down")" aria-hidden="true"></i>
+                </button>
+                <PlayButtonWithDropdown Song="SongViewModel" />
+                <PlusButtonWithMenu Song="SongViewModel" />
             </div>
         </div>
 
         @if (showDetails)
         {
-            <div class="song-details-panel mt-2 pt-2" style="border-top: 1px solid rgba(255,255,255,0.1);">
-                <div class="d-flex justify-content-center gap-2">
-                    <button class="btn btn-sm btn-outline-info" @onclick:stopPropagation="true" @onclick=toggleEditModalVisibility>
-                        <i class="fas fa-pencil me-1"></i>Edit
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" @onclick:stopPropagation="true" @onclick=delete>
-                        <i class="fas fa-trash me-1"></i>Delete
-                    </button>
-                </div>
+            <div class="glass-row-details">
+                <button class="glass-btn glass-btn--ghost" @onclick:stopPropagation="true" @onclick=toggleEditModalVisibility>
+                    <i class="fas fa-pencil" aria-hidden="true"></i>Edit
+                </button>
+                <button class="glass-btn glass-btn--danger" @onclick:stopPropagation="true" @onclick=delete>
+                    <i class="fas fa-trash" aria-hidden="true"></i>Delete
+                </button>
             </div>
         }
     </div>
@@ -51,30 +46,26 @@ else
 
 @if (!isEditModalHidden)
 {
-    <FluentDialog Hidden=@isEditModalHidden>
-        <div class="modal-dialog">
-            <div class="modal-content" style="background-color: var(--hs-bg-card); color: var(--hs-text-primary);">
-                <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
-                    <h5 class="modal-title">Edit Song</h5>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="songName" class="form-label">Title</label>
-                        <input type="text" class="form-control" id="songName" @bind="editedName" />
-                    </div>
-                    <div class="mb-3">
-                        <label for="songArtist" class="form-label">Artist</label>
-                        <input type="text" class="form-control" id="songArtist" @bind="editedArtist" />
-                    </div>
-                    <div class="mb-3">
-                        <label for="songAlbum" class="form-label">Album</label>
-                        <input type="text" class="form-control" id="songAlbum" @bind="editedAlbum" />
-                    </div>
-                </div>
-                <div class="modal-footer" style="border-top: 1px solid rgba(255,255,255,0.1);">
-                    <button type="button" class="btn btn-secondary" @onclick=cancelEdit>Cancel</button>
-                    <button type="button" class="btn btn-primary" @onclick=saveEdit>Save</button>
-                </div>
+    <FluentDialog Hidden=@isEditModalHidden class="glass-fluent-dialog">
+        <div class="glass-dialog">
+            <h2 class="glass-dialog-title">Edit Song</h2>
+            <div class="glass-dialog-body">
+                <label class="glass-field">
+                    <span>Title</span>
+                    <input type="text" class="glass-input" id="songName" @bind="editedName" />
+                </label>
+                <label class="glass-field">
+                    <span>Artist</span>
+                    <input type="text" class="glass-input" id="songArtist" @bind="editedArtist" />
+                </label>
+                <label class="glass-field">
+                    <span>Album</span>
+                    <input type="text" class="glass-input" id="songAlbum" @bind="editedAlbum" />
+                </label>
+            </div>
+            <div class="glass-dialog-actions">
+                <button type="button" class="glass-btn glass-btn--ghost" @onclick=cancelEdit>Cancel</button>
+                <button type="button" class="glass-btn" @onclick=saveEdit>Save</button>
             </div>
         </div>
     </FluentDialog>
