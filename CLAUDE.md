@@ -12,6 +12,7 @@ Two projects (`HomeSpeaker.sln`), both `net10.0`:
 
 - **HomeSpeaker.Server2** — the ASP.NET Core app. Blazor Server (interactive + SSR) UI, minimal-API REST endpoints, SignalR hubs, EF Core/SQLite persistence, and all the hosted background services.
 - **HomeSpeaker.Shared** — DTOs and domain records (`Song`, `PlayerStatus`, anchor/offline/AI DTOs) shared between server and (historically) clients. No logic, just contracts.
+- **HomeSpeaker.Server2.Tests** — xUnit tests for Server2.
 
 `HomeSpeaker.Server2/HomeSpeaker.Server2.sln` is a stale single-project solution; use the top-level `HomeSpeaker.sln`.
 
@@ -23,7 +24,7 @@ dotnet run --project HomeSpeaker.Server2 --launch-profile https   # https://loca
 dotnet run --project HomeSpeaker.Server2 --launch-profile http    # http://0.0.0.0:5280
 ```
 
-There is **no test project** in this repo — do not assume `dotnet test` exists. Verify changes by building and running.
+Unit tests live in `HomeSpeaker.Server2.Tests` (xUnit): `dotnet test HomeSpeaker.Server2.Tests`. They cover pure logic (push notifications, the Immich photo pipeline, kiosk detection, dashboard models); UI is verified by building and running.
 
 Local prerequisites (see `README.md`): install ffmpeg (`winget install gyan.ffmpeg.shared`) and optionally run the Aspire Dashboard container for telemetry. On Windows the app uses `WindowsMusicPlayer`; on Linux/Pi it uses `LinuxSoxMusicPlayer` (needs `sox`/ffmpeg, present in the Docker base image).
 
@@ -62,6 +63,10 @@ Blazor components live under `HomeSpeaker.Server2/Components` (layout, music, he
 
 **`HomeSpeakerService`** (scoped) is the facade Blazor components call into — it composes `Mp3Library`, `IMusicPlayer`, YouTube, playlist, radio, and AI services and raises `QueueChanged` / `StatusChanged` / `LibraryChanged` events for the UI to subscribe to. New UI-facing functionality usually belongs here rather than in a component.
 
+### Ambient shell and photos
+
+`MainLayout` is a glass-styled shell (`wwwroot/css/glass.css`, components in `Components/Glass`). On kiosk browsers (`body[data-kiosk=true]`: localhost, or `?kiosk=1` cookie — see `Kiosk.cs`) `wwwroot/js/idleController.js` switches to an ambient photo slideshow after `Ambient:IdleSeconds` idle, or a dim night clock during `QuietHours`. `PhotoSyncWorker` mirrors one Immich album (`Immich:*` config) into `{MediaFolder}/.photo-cache`; `PhotoLibrary` serves it via `/api/photos/*` and `wwwroot/js/ambientSlideshow.js` crossfades it. Overlays and the Home page read live data from the scoped `DashboardState`. Home automation plugs in through `IHomeControl` (default `NullHomeControl`, which hides the Home row).
+
 ### REST API
 
 Minimal APIs. The bulk are mapped in `Endpoints/HomeSpeakerRestEndpoints.cs` via `MapHomeSpeakerApi()` (route group `/api/homespeaker`, split into song/player/playlist/queue/youtube/radio/offline-download groups) and `Endpoints/AiRestEndpoints.cs` via `MapAiApi()`. A number of standalone endpoints (temperature, blood sugar, forecast, anchors, recently-played, the `/api/music/{songId}` range-aware streaming endpoint, image search/upload) are defined inline in `Program.cs`.
@@ -80,7 +85,7 @@ Temperature, blood sugar (Nightscout via `NIGHTSCOUT_URL`), and weather forecast
 
 ### Configuration keys
 
-Use the constants in `ConfigKeys.cs` (`MediaFolder`, `FFMpegLocation`). Required config: `MediaFolder`, `SqliteConnectionString`. Optional: `AI:*`, `NIGHTSCOUT_URL`, `Temperature:ApiBaseUrl`, `ALSA_CARD`, OTEL exporter vars. Secrets on the Pi come from `/home/piuser/homespeaker-secrets.env` (never committed; template in `homespeaker-secrets.env.example`).
+Use the constants in `ConfigKeys.cs` (`MediaFolder`, `FFMpegLocation`). Required config: `MediaFolder`, `SqliteConnectionString`. Optional: `AI:*`, `NIGHTSCOUT_URL`, `Temperature:ApiBaseUrl`, `ALSA_CARD`, `Immich:BaseUrl`, `Immich:AlbumId`, `Immich:ApiKey` (also readable as `IMMICH_API_KEY`), `Immich:SyncIntervalMinutes`, `Immich:SlideSeconds`, `Ambient:IdleSeconds`, OTEL exporter vars. Secrets on the Pi come from `/home/piuser/homespeaker-secrets.env` (never committed; template in `homespeaker-secrets.env.example`).
 
 ## Deployment
 
@@ -93,5 +98,6 @@ The README also documents tag-based release (`git tag -a yyyy.m.d`) — the curr
 ## Conventions
 
 - **Naming** (enforced via `.editorconfig` + Workleap/Meziantou analyzers): private fields are `camelCase` **without** an underscore prefix; private methods are often `camelCase`. Match the surrounding file.
+- One top-level type per file, named after the type (Meziantou MA0048 is an error in Debug); `private const` names are PascalCase.
 - `ImplicitUsings` and `Nullable` are enabled in both projects.
 - The `.squad/`, `.copilot/`, and `.github/agents/` directories are remnants of an experimental multi-agent ("squad") workflow that was removed from CI (`5a5ec72`); they are not part of the build and generally should be ignored.
