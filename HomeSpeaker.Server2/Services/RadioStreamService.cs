@@ -15,6 +15,17 @@ public class RadioStreamService
 
     private const string CACHE_KEY = "radio_streams_all";
     private static readonly TimeSpan cacheDuration = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan downloadTimeout = TimeSpan.FromSeconds(15);
+
+    /// <summary>The largest station image accepted, uploaded or downloaded.</summary>
+    public const long MaxFaviconBytes = 2 * 1024 * 1024;
+
+    /// <summary>The image content types accepted for station art, uploaded or downloaded.</summary>
+    public static readonly IReadOnlySet<string> AllowedImageTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/png", "image/jpeg", "image/gif",
+        "image/x-icon", "image/vnd.microsoft.icon", "image/webp"
+    };
 
     public RadioStreamService(
         MusicContext dbContext,
@@ -28,7 +39,7 @@ public class RadioStreamService
         this.logger = logger;
         this.cache = cache;
         this.httpClient = httpClient;
-        this.httpClient.Timeout = TimeSpan.FromSeconds(10);
+        this.httpClient.Timeout = downloadTimeout;
         this.timeProvider = timeProvider;
 
         // Store favicons in the media folder (volume-mounted, writable) rather than wwwroot (read-only in container)
@@ -158,18 +169,12 @@ public class RadioStreamService
 
     public async Task<string?> UploadFaviconAsync(IFormFile file)
     {
-        var allowedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "image/png", "image/jpeg", "image/gif",
-            "image/x-icon", "image/vnd.microsoft.icon", "image/webp"
-        };
-
-        if (!allowedTypes.Contains(file.ContentType))
+        if (!AllowedImageTypes.Contains(file.ContentType))
         {
             return null;
         }
 
-        if (file.Length > 2 * 1024 * 1024)
+        if (file.Length > MaxFaviconBytes)
         {
             return null;
         }
@@ -225,28 +230,48 @@ public class RadioStreamService
         cache.Remove(CACHE_KEY);
     }
 
+    // FaviconUrl reaches here from the unauthenticated REST API, so only a small image is saved:
+    // an allowed image content type, at most MaxFaviconBytes (enforced while streaming, not just from
+    // Content-Length), within downloadTimeout. Anything else returns null and the caller keeps the current art.
     private async Task<string?> downloadFaviconAsync(string streamName, string faviconUrl)
     {
         try
         {
-            var response = await httpClient.GetAsync(faviconUrl);
+            using var timeout = new CancellationTokenSource(downloadTimeout, timeProvider);
+            using var response = await httpClient.GetAsync(faviconUrl, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
             if (!response.IsSuccessStatusCode)
             {
                 return null;
             }
 
             var contentType = response.Content.Headers.ContentType?.MediaType;
-            var extension = getExtensionFromContentType(contentType) ?? ".png";
+            if (contentType is null || !AllowedImageTypes.Contains(contentType))
+            {
+                logger.LogWarning("Not saving favicon from {Url} for {StreamName}: content type {ContentType} is not an allowed image type", faviconUrl, streamName, contentType);
+                return null;
+            }
 
-            // Generate safe filename from stream name
-            var safeFileName = getSafeFileName(streamName) + extension;
+            if (response.Content.Headers.ContentLength > MaxFaviconBytes)
+            {
+                logger.LogWarning("Not saving favicon from {Url} for {StreamName}: {Length} bytes is over the limit", faviconUrl, streamName, response.Content.Headers.ContentLength);
+                return null;
+            }
+
+            var bytes = await readAtMostAsync(response.Content, MaxFaviconBytes, timeout.Token);
+            if (bytes is null)
+            {
+                logger.LogWarning("Not saving favicon from {Url} for {StreamName}: the body is over {Limit} bytes", faviconUrl, streamName, MaxFaviconBytes);
+                return null;
+            }
+
+            // A unique name, like uploads, so two streams whose names sanitize alike never overwrite each other's art
+            var extension = getExtensionFromContentType(contentType.ToLowerInvariant()) ?? ".png";
+            var safeFileName = getSafeFileName(streamName) + Guid.NewGuid().ToString("N")[..8] + extension;
             var faviconPath = Path.Combine(faviconsDirectory, safeFileName);
 
             // Ensure favicons directory exists
             Directory.CreateDirectory(faviconsDirectory);
-
-            var bytes = await response.Content.ReadAsByteArrayAsync();
-            await File.WriteAllBytesAsync(faviconPath, bytes);
+            await File.WriteAllBytesAsync(faviconPath, bytes, timeout.Token);
 
             logger.LogInformation("Downloaded favicon for {StreamName} to {Path}", streamName, safeFileName);
             return safeFileName;
@@ -256,6 +281,26 @@ public class RadioStreamService
             logger.LogWarning(ex, "Failed to download favicon from {Url} for {StreamName}", faviconUrl, streamName);
             return null;
         }
+    }
+
+    // Reads the body into memory, giving up (null) as soon as it passes maxBytes.
+    private static async Task<byte[]?> readAtMostAsync(HttpContent content, long maxBytes, CancellationToken cancellationToken)
+    {
+        await using var source = await content.ReadAsStreamAsync(cancellationToken);
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        int read;
+        while ((read = await source.ReadAsync(chunk, cancellationToken)) > 0)
+        {
+            if (buffer.Length + read > maxBytes)
+            {
+                return null;
+            }
+
+            await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken);
+        }
+
+        return buffer.ToArray();
     }
 
     // The REST API can point several streams at one file, so a stream only owns its file once no other stream uses it.

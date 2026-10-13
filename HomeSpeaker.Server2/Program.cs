@@ -851,18 +851,12 @@ app.MapGet("/api/streams/image-search", async (string q, ImageSearchService imag
 // Stream image upload endpoint
 app.MapPost("/api/streams/upload-image", async (IFormFile file, RadioStreamService radioStreamService) =>
 {
-    var allowedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    {
-        "image/png", "image/jpeg", "image/gif",
-        "image/x-icon", "image/vnd.microsoft.icon", "image/webp"
-    };
-
-    if (!allowedTypes.Contains(file.ContentType))
+    if (!RadioStreamService.AllowedImageTypes.Contains(file.ContentType))
     {
         return Results.BadRequest(new { Error = "File must be an image (PNG, JPG, GIF, ICO, WebP)" });
     }
 
-    if (file.Length > 2 * 1024 * 1024)
+    if (file.Length > RadioStreamService.MaxFaviconBytes)
     {
         return Results.BadRequest(new { Error = "File must be under 2MB" });
     }

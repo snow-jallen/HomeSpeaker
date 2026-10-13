@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Http.Headers;
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Services;
 using Microsoft.Data.Sqlite;
@@ -13,7 +15,7 @@ public sealed class RadioStreamServiceTests : IAsyncDisposable
     private readonly string mediaFolder = Path.Combine(Path.GetTempPath(), "hs-radio-tests-" + Guid.NewGuid().ToString("N"));
     private readonly SqliteConnection connection = new("Data Source=:memory:");
     private readonly MemoryCache cache = new(new MemoryCacheOptions());
-    private readonly HttpClient httpClient = new();
+    private HttpClient httpClient = new();
     private MusicContext? dbContext;
 
     private string faviconsDirectory => Path.Combine(mediaFolder, "favicons");
@@ -103,6 +105,90 @@ public sealed class RadioStreamServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task DownloadedImageIsSavedUnderAUniqueName()
+    {
+        byte[] png = [0x89, 0x50, 0x4E, 0x47, 1, 2, 3];
+        var service = await createServiceAsync(respondWith(png, "image/png"));
+
+        var first = await service.CreateStreamAsync("KBAQ", "http://example.com/kbaq", faviconUrl: "http://images.example/kbaq.png");
+        var second = await service.CreateStreamAsync("kbaq", "http://example.com/kbaq2", faviconUrl: "http://images.example/kbaq.png");
+
+        Assert.NotNull(first.FaviconFileName);
+        Assert.StartsWith("kbaq", first.FaviconFileName, StringComparison.Ordinal);
+        Assert.EndsWith(".png", first.FaviconFileName, StringComparison.Ordinal);
+        Assert.NotEqual(first.FaviconFileName, second.FaviconFileName);
+        Assert.Equal(png, await File.ReadAllBytesAsync(Path.Combine(faviconsDirectory, first.FaviconFileName)));
+    }
+
+    [Theory]
+    [InlineData("text/html")]
+    [InlineData("application/json")]
+    [InlineData("image/svg+xml")]
+    [InlineData(null)]
+    public async Task NonImageDownloadIsNotSaved(string? contentType)
+    {
+        var service = await createServiceAsync(respondWith("<html>router admin</html>"u8.ToArray(), contentType));
+
+        var stream = await service.CreateStreamAsync("KBAQ", "http://example.com/kbaq", faviconUrl: "http://192.168.1.1/");
+
+        Assert.Null(stream.FaviconFileName);
+        Assert.Empty(faviconFiles());
+    }
+
+    [Fact]
+    public async Task DownloadDeclaredOverTheLimitIsNotSaved()
+    {
+        var service = await createServiceAsync(respondWith(new byte[RadioStreamService.MaxFaviconBytes + 1], "image/png"));
+
+        var stream = await service.CreateStreamAsync("KBAQ", "http://example.com/kbaq", faviconUrl: "http://images.example/huge.png");
+
+        Assert.Null(stream.FaviconFileName);
+        Assert.Empty(faviconFiles());
+    }
+
+    [Fact]
+    public async Task DownloadOverTheLimitWithoutContentLengthIsNotSaved()
+    {
+        var content = new UnknownLengthContent(new byte[(RadioStreamService.MaxFaviconBytes * 3) / 2]);
+        content.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        Assert.Null(content.Headers.ContentLength); // the size limit has to be enforced while reading
+        var service = await createServiceAsync(new FakeHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = content }));
+
+        var stream = await service.CreateStreamAsync("KBAQ", "http://example.com/kbaq", faviconUrl: "http://images.example/endless.png");
+
+        Assert.Null(stream.FaviconFileName);
+        Assert.Empty(faviconFiles());
+    }
+
+    [Fact]
+    public async Task UpdateWithANonImageUrlKeepsTheCurrentArt()
+    {
+        var service = await createServiceAsync(respondWith("not an image"u8.ToArray(), "text/plain"));
+        writeFavicon("kbaq.png");
+        var stream = await service.CreateStreamAsync("KBAQ", "http://example.com/kbaq", faviconFileName: "kbaq.png");
+
+        await service.UpdateStreamAsync(stream.Id, "KBAQ", "http://example.com/kbaq", faviconUrl: "http://localhost:18888/secret");
+
+        Assert.Equal("kbaq.png", (await service.GetStreamByIdAsync(stream.Id))!.FaviconFileName);
+        Assert.Equal(["kbaq.png"], faviconFiles());
+    }
+
+    [Fact]
+    public async Task UpdateWithADownloadedImageReplacesTheOldFile()
+    {
+        var service = await createServiceAsync(respondWith([1, 2, 3], "image/webp"));
+        writeFavicon("old.png");
+        var stream = await service.CreateStreamAsync("KBAQ", "http://example.com/kbaq", faviconFileName: "old.png");
+
+        await service.UpdateStreamAsync(stream.Id, "KBAQ", "http://example.com/kbaq", faviconUrl: "http://images.example/kbaq.webp");
+
+        var saved = (await service.GetStreamByIdAsync(stream.Id))!.FaviconFileName;
+        Assert.NotNull(saved);
+        Assert.EndsWith(".webp", saved, StringComparison.Ordinal);
+        Assert.Equal([saved], faviconFiles());
+    }
+
+    [Fact]
     public async Task CreateGivesEachNewStreamTheNextDisplayOrder()
     {
         var service = await createServiceAsync();
@@ -157,8 +243,29 @@ public sealed class RadioStreamServiceTests : IAsyncDisposable
         }
     }
 
-    private async Task<RadioStreamService> createServiceAsync()
+    private static FakeHandler respondWith(byte[] body, string? contentType) => new(_ =>
     {
+        var content = new ByteArrayContent(body);
+        if (contentType is not null)
+        {
+            content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        }
+
+        return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
+    });
+
+    private string[] faviconFiles() => Directory.Exists(faviconsDirectory)
+        ? Directory.GetFiles(faviconsDirectory).Select(f => Path.GetFileName(f)!).ToArray()
+        : [];
+
+    private async Task<RadioStreamService> createServiceAsync(HttpMessageHandler? handler = null)
+    {
+        if (handler is not null)
+        {
+            httpClient.Dispose();
+            httpClient = new HttpClient(handler);
+        }
+
         await connection.OpenAsync();
         dbContext = new MusicContext(new DbContextOptionsBuilder<MusicContext>().UseSqlite(connection).Options);
         await dbContext.Database.EnsureCreatedAsync();
@@ -172,5 +279,23 @@ public sealed class RadioStreamServiceTests : IAsyncDisposable
     {
         Directory.CreateDirectory(faviconsDirectory);
         File.WriteAllBytes(Path.Combine(faviconsDirectory, fileName), [1, 2, 3]);
+    }
+
+    private sealed class FakeHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(respond(request));
+    }
+
+    // A body whose length is unknown up front, like a chunked response.
+    private sealed class UnknownLengthContent(byte[] body) : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) => stream.WriteAsync(body, 0, body.Length);
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
     }
 }
