@@ -7,6 +7,7 @@ using HomeSpeaker.Server2;
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Endpoints;
 using HomeSpeaker.Server2.Services;
+using HomeSpeaker.Server2.Services.Photos;
 using HomeSpeaker.Shared;
 using HomeSpeaker.Shared.WindowMonitoring;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -98,6 +99,24 @@ builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.Configure<AiMusicOptions>(builder.Configuration.GetSection("AI"));
 builder.Services.Configure<PushNotificationOptions>(builder.Configuration.GetSection("PushNotifications"));
+builder.Services.Configure<ImmichOptions>(builder.Configuration.GetSection("Immich"));
+builder.Services.AddHttpClient<IImmichClient, ImmichClient>((sp, client) =>
+{
+    var immich = sp.GetRequiredService<IOptions<ImmichOptions>>().Value;
+    client.Timeout = TimeSpan.FromSeconds(30);
+    if (immich.IsConfigured)
+    {
+        client.BaseAddress = new Uri(immich.BaseUrl!.TrimEnd('/') + "/");
+        client.DefaultRequestHeaders.Add("x-api-key", immich.ApiKey);
+    }
+});
+builder.Services.AddSingleton(sp => new PhotoCacheStore(
+    Path.Combine(builder.Configuration[ConfigKeys.MediaFolder] ?? throw new MissingConfigException(ConfigKeys.MediaFolder), ".photo-cache"),
+    sp.GetRequiredService<ILogger<PhotoCacheStore>>()));
+builder.Services.AddSingleton(sp => new PhotoLibrary(sp.GetRequiredService<PhotoCacheStore>(), sp.GetRequiredService<TimeProvider>()));
+builder.Services.AddSingleton<PhotoSyncTrigger>();
+builder.Services.AddScoped<PhotoSyncer>();
+builder.Services.AddHostedService<PhotoSyncWorker>();
 builder.Services.AddSingleton<AiProcessingSignal>();
 builder.Services.AddSingleton<AiMusicAnalyzer>();
 builder.Services.AddScoped<AiMusicCatalogService>();
@@ -311,10 +330,11 @@ app.UseCors(LocalCorsPolicy);
 app.UseAntiforgery();
 app.MapHub<HomeSpeaker.Server2.Hubs.AnchorHub>("/anchorHub");
 app.MapGet("/ns", (IConfiguration config) => config["NIGHTSCOUT_URL"] ?? string.Empty);
-app.MapGet("/api/features", (IConfiguration config) => new
+app.MapGet("/api/features", (IConfiguration config, PhotoLibrary photos) => new
 {
-    TemperatureEnabled = !string.IsNullOrEmpty(config["Temperature:ApiBaseUrl"]),
-    BloodSugarEnabled = !string.IsNullOrEmpty(config["NIGHTSCOUT_URL"])
+    TemperatureEnabled = FeatureFlags.TemperatureEnabled(config),
+    BloodSugarEnabled = FeatureFlags.BloodSugarEnabled(config),
+    PhotosEnabled = photos.Count > 0
 });
 
 app.MapPost("/api/push/devices/register", async (PushNotificationService pushNotificationService, PushDeviceRegistrationRequest request, CancellationToken cancellationToken) =>
@@ -795,6 +815,7 @@ app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, Htt
 
 // Map HomeSpeaker REST API endpoints
 app.MapHomeSpeakerApi();
+app.MapPhotoApi();
 app.MapAiApi();
 
 // Stream image search endpoint
