@@ -6,6 +6,7 @@
 @inject IConfiguration Configuration
 @inject ILogger<MainLayout> Logger
 @inject TimeProvider TimeProvider
+@inject IOptions<ImmichOptions> ImmichOptions
 @implements IAsyncDisposable
 
 <div class="hs-backdrop" aria-hidden="true"></div>
@@ -40,8 +41,15 @@
 
 <AppMenu Open="menuOpen" OnClose="CloseMenu" />
 
-<div class="hs-ambient" aria-hidden="true"></div>
-<div class="hs-night" aria-hidden="true"></div>
+<div class="hs-ambient" aria-hidden="true">
+    <img class="hs-slide" alt="" />
+    <img class="hs-slide" alt="" />
+    <div class="hs-ambient-scrim"></div>
+    <AmbientOverlay />
+</div>
+<div class="hs-night" aria-hidden="true">
+    <NightClock />
+</div>
 
 <MudThemeProvider />
 <MudDialogProvider />
@@ -111,6 +119,7 @@
         try
         {
             await JSRuntime.InvokeVoidAsync("idleController.init", new { idleSeconds = Configuration.GetValue("Ambient:IdleSeconds", 120) });
+            await JSRuntime.InvokeVoidAsync("ambientSlideshow.init", new { slideSeconds = ImmichOptions.Value.SlideSeconds });
         }
         catch (Exception ex)
         {

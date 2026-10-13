@@ -188,3 +188,245 @@ html.hs-mode-night .hs-backdrop {
     padding: 8px 12px 12px;
   }
 }
+
+/* ---------- Ambient slideshow + overlays ---------- */
+
+.hs-slide {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1.5s ease;
+}
+
+.hs-slide.is-visible {
+  opacity: 1;
+}
+
+.hs-ambient-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0, rgba(0, 0, 0, 0) 34%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.55) 0, rgba(0, 0, 0, 0) 38%);
+}
+
+.hs-ambient-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.hs-ov-clock {
+  position: absolute;
+  left: 40px;
+  top: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+.hs-ov-time {
+  font-size: 104px;
+  font-weight: 700;
+  letter-spacing: -4px;
+  line-height: 1;
+}
+
+.hs-ov-date {
+  font-size: 22px;
+  font-weight: 600;
+  opacity: 0.92;
+}
+
+.hs-ov-chips {
+  position: absolute;
+  right: 32px;
+  top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.hs-chip {
+  border-radius: 22px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hs-chip-value {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.hs-chip-value.is-stale {
+  opacity: 0.55;
+}
+
+.hs-chip-arrow {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.hs-chip-meta {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  opacity: 0.85;
+}
+
+.hs-tone-caution {
+  background: var(--glass-tone-caution) !important;
+}
+
+.hs-tone-urgent {
+  background: var(--glass-tone-urgent) !important;
+}
+
+.hs-ov-playing {
+  position: absolute;
+  left: 32px;
+  bottom: 32px;
+  width: 520px;
+  max-width: calc(100% - 64px);
+  box-sizing: border-box;
+  border-radius: 24px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.hs-art {
+  width: 72px;
+  height: 72px;
+  flex: none;
+  border-radius: 14px;
+  background-color: #2b3d6b;
+  background-size: cover;
+  background-position: center;
+}
+
+.hs-art--radio {
+  display: grid;
+  place-items: center;
+  background-image: linear-gradient(135deg, #2b3d6b, #a75f8a);
+}
+
+.hs-ov-playing-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hs-ov-title,
+.hs-ov-sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hs-ov-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.hs-ov-sub {
+  font-size: 15px;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.hs-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+}
+
+.hs-progress > div {
+  height: 100%;
+  border-radius: 2px;
+  background: #fff;
+}
+
+.hs-ov-caption {
+  position: absolute;
+  right: 32px;
+  bottom: 36px;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+
+.hs-caption-when {
+  opacity: 0.85;
+}
+
+/* Mirrored layout: chosen per photo so the overlays don't cover faces. */
+.hs-ambient-overlay[data-layout="mirrored"] .hs-ov-clock {
+  left: auto;
+  right: 40px;
+  align-items: flex-end;
+}
+
+.hs-ambient-overlay[data-layout="mirrored"] .hs-ov-chips {
+  right: auto;
+  left: 32px;
+  align-items: flex-start;
+}
+
+.hs-ambient-overlay[data-layout="mirrored"] .hs-ov-playing {
+  left: auto;
+  right: 32px;
+}
+
+.hs-ambient-overlay[data-layout="mirrored"] .hs-ov-caption {
+  right: auto;
+  left: 32px;
+  text-align: left;
+}
+
+/* ---------- Night clock: dim, warm, red/orange only ---------- */
+
+.hs-night-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.hs-night-time {
+  font-size: 180px;
+  font-weight: 700;
+  letter-spacing: -6px;
+  line-height: 1;
+  color: #5a1a10;
+}
+
+.hs-night-glucose {
+  font-size: 56px;
+  font-weight: 800;
+  color: #4a1c0e;
+}
+
+.hs-night-tone-caution {
+  color: #8a4a0a;
+}
+
+.hs-night-tone-urgent {
+  color: #c0392b;
+}

@@ -1,0 +1,28 @@
+@using System.Globalization
+@inject DashboardState Dashboard
+@implements IDisposable
+
+<div class="hs-night-inner">
+    <Clock Format="h:mm" Class="hs-night-time" />
+    @if (Dashboard.BloodSugarEnabled && Dashboard.BloodSugar?.CurrentReading is { } reading)
+    {
+        <div class="hs-night-glucose hs-night-tone-@toneClass">
+            @reading.Sgv.ToString("0", CultureInfo.InvariantCulture) <span>@reading.DirectionIcon</span>
+        </div>
+    }
+</div>
+
+@code {
+    private string toneClass => Dashboard.GlucoseTone switch
+    {
+        GlucoseTone.Caution => "caution",
+        GlucoseTone.Urgent => "urgent",
+        _ => "normal",
+    };
+
+    protected override void OnInitialized() => Dashboard.Changed += onChanged;
+
+    private void onChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Dashboard.Changed -= onChanged;
+}
