@@ -4,123 +4,121 @@
 @inject HomeSpeakerService svc
 @inject IJSRuntime JsRuntime
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>Autoplay</h3>
-    <button @onclick="SaveSettings" class="btn btn-success" disabled="@isSaving">
-        @if (isSaving)
-        {
-            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-        }
-        else
-        {
-            <span class="oi oi-check me-1"></span>
-        }
-        Save
-    </button>
-</div>
+<PageTitle>Autoplay</PageTitle>
 
-@if (isLoading)
-{
-    <div class="d-flex justify-content-center p-4">
-        <div class="spinner-border text-primary" role="status">
+<div class="glass-page glass-page--autoplay">
+    <div class="glass-page-header">
+        <h1 class="glass-title">Autoplay</h1>
+        <div class="glass-page-actions">
+            <button type="button" @onclick="SaveSettings" class="glass-btn" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="glass-spinner glass-spinner--inline" role="status" aria-label="Saving"></span>
+                }
+                else
+                {
+                    <i class="fas fa-check" aria-hidden="true"></i>
+                }
+                Save
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="glass-empty" role="status">
+            <div class="glass-spinner" aria-hidden="true"></div>
             <span class="visually-hidden">Loading...</span>
         </div>
-    </div>
-}
-else
-{
-    <div class="card mb-3">
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">Silence timeout (minutes)</label>
-                    <input type="number" min="1" max="1440" class="form-control" @bind="settings.SilenceTimeoutMinutes" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Autoplay volume</label>
-                    <input type="number" min="0" max="100" class="form-control" @bind="settings.VolumeLevel" />
-                </div>
+    }
+    else
+    {
+        <section class="glass-card" aria-label="Autoplay settings">
+            <div class="glass-form-grid">
+                <label class="glass-field">
+                    <span>Silence timeout (minutes)</span>
+                    <input type="number" min="1" max="1440" class="glass-input" @bind="settings.SilenceTimeoutMinutes" />
+                </label>
+                <label class="glass-field">
+                    <span>Autoplay volume</span>
+                    <input type="number" min="0" max="100" class="glass-input" @bind="settings.VolumeLevel" />
+                </label>
             </div>
-            <div class="form-text mt-2">
+            <div class="glass-hint">
                 When autoplay chooses a playlist, it shuffles that playlist before starting playback.
             </div>
-        </div>
-    </div>
+        </section>
 
-    <div class="row g-3">
-        <div class="col-lg-6">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="mb-0">Configured sources</h5>
-                </div>
-                <div class="card-body">
-                    @if (settings.Sources.Count == 0)
-                    {
-                        <p class="text-muted mb-0">No autoplay sources selected.</p>
-                    }
-                    else
-                    {
-                        <div class="list-group list-group-flush">
-                            @foreach (var source in settings.Sources)
-                            {
-                                <div class="list-group-item d-flex justify-content-between align-items-center px-0">
-                                    <div>
-                                        <span class="badge bg-secondary me-2">@GetSourceTypeLabel(source.SourceType)</span>
-                                        <span>@source.DisplayName</span>
-                                    </div>
-                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveSource(source)">
-                                        <span class="oi oi-trash"></span>
+        <div class="glass-split">
+            <section class="glass-card" aria-labelledby="autoplaySourcesTitle">
+                <header class="glass-card-header">
+                    <h2 class="glass-card-title" id="autoplaySourcesTitle">Configured sources</h2>
+                </header>
+                @if (settings.Sources.Count == 0)
+                {
+                    <div class="glass-empty">No autoplay sources selected.</div>
+                }
+                else
+                {
+                    <div class="glass-list">
+                        @foreach (var source in settings.Sources)
+                        {
+                            <div class="glass-row">
+                                <span class="glass-badge">@GetSourceTypeLabel(source.SourceType)</span>
+                                <div class="glass-row-text">
+                                    <div class="glass-row-title" title="@source.DisplayName">@source.DisplayName</div>
+                                </div>
+                                <div class="glass-row-actions">
+                                    <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="() => RemoveSource(source)"
+                                            title="Remove @source.DisplayName" aria-label="Remove @source.DisplayName">
+                                        <i class="fas fa-trash" aria-hidden="true"></i>
                                     </button>
                                 </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </section>
+
+            <section class="glass-card" aria-labelledby="autoplayAddTitle">
+                <header class="glass-card-header">
+                    <h2 class="glass-card-title" id="autoplayAddTitle">Add source</h2>
+                </header>
+                <div class="glass-field">
+                    <span id="autoplayPlaylistLabel">Playlist</span>
+                    <div class="glass-input-group">
+                        <select class="glass-input" aria-labelledby="autoplayPlaylistLabel" @bind="selectedPlaylistName">
+                            <option value="">Select a playlist...</option>
+                            @foreach (var playlistName in playlistNames)
+                            {
+                                <option value="@playlistName">@playlistName</option>
                             }
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-6">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="mb-0">Add source</h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label">Playlist</label>
-                        <div class="input-group">
-                            <select class="form-select" @bind="selectedPlaylistName">
-                                <option value="">Select a playlist...</option>
-                                @foreach (var playlistName in playlistNames)
-                                {
-                                    <option value="@playlistName">@playlistName</option>
-                                }
-                            </select>
-                            <button class="btn btn-outline-primary" @onclick="AddPlaylistSource" disabled="@string.IsNullOrWhiteSpace(selectedPlaylistName)">
-                                Add
-                            </button>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="form-label">Stream</label>
-                        <div class="input-group">
-                            <select class="form-select" @bind="selectedStreamIdText">
-                                <option value="">Select a stream...</option>
-                                @foreach (var stream in streams)
-                                {
-                                    <option value="@stream.Id">@stream.Name</option>
-                                }
-                            </select>
-                            <button class="btn btn-outline-primary" @onclick="AddStreamSource" disabled="@string.IsNullOrWhiteSpace(selectedStreamIdText)">
-                                Add
-                            </button>
-                        </div>
+                        </select>
+                        <button type="button" class="glass-btn" @onclick="AddPlaylistSource" disabled="@string.IsNullOrWhiteSpace(selectedPlaylistName)">
+                            Add
+                        </button>
                     </div>
                 </div>
-            </div>
+
+                <div class="glass-field">
+                    <span id="autoplayStreamLabel">Stream</span>
+                    <div class="glass-input-group">
+                        <select class="glass-input" aria-labelledby="autoplayStreamLabel" @bind="selectedStreamIdText">
+                            <option value="">Select a stream...</option>
+                            @foreach (var stream in streams)
+                            {
+                                <option value="@stream.Id">@stream.Name</option>
+                            }
+                        </select>
+                        <button type="button" class="glass-btn" @onclick="AddStreamSource" disabled="@string.IsNullOrWhiteSpace(selectedStreamIdText)">
+                            Add
+                        </button>
+                    </div>
+                </div>
+            </section>
         </div>
-    </div>
-}
+    }
+</div>
 
 @code {
     private AutoPlaySettingsViewModel settings = new();
