@@ -19,7 +19,7 @@
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 
-<body data-kiosk="@(isKiosk ? "true" : "false")">
+<body data-kiosk="@kioskAttribute">
     <Routes @rendermode="InteractiveServer" />
 
     <div id="blazor-error-ui" role="alert" aria-live="assertive">
@@ -223,5 +223,10 @@
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
 
-    private bool isKiosk => HttpContext is not null && Kiosk.IsKiosk(HttpContext.Request);
+    private string kioskAttribute => (HttpContext is null ? KioskMode.Off : Kiosk.Detect(HttpContext.Request)) switch
+    {
+        KioskMode.On => "true",
+        KioskMode.Auto => "auto",
+        _ => "false",
+    };
 }

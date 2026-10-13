@@ -52,7 +52,12 @@ jobs:
         XAUTH=$(find /home/piuser -name '.Xauthority' 2>/dev/null | head -1)
         [ -n "$XAUTH" ] && export XAUTHORITY=$XAUTH
         mkdir -p /tmp/pi-diag
-        if command -v scrot >/dev/null 2>&1; then
+        # Wayland desktops (labwc/wayfire): X screenshots come out black, so try grim first.
+        export XDG_RUNTIME_DIR=/run/user/$(id -u)
+        WL=$(ls "$XDG_RUNTIME_DIR" 2>/dev/null | grep -E '^wayland-[0-9]+$' | head -1)
+        if [ -n "$WL" ] && command -v grim >/dev/null 2>&1 && WAYLAND_DISPLAY=$WL grim /tmp/pi-diag/screen-$(hostname).png; then
+          echo "screenshot captured via grim ($WL)"
+        elif command -v scrot >/dev/null 2>&1; then
           scrot /tmp/pi-diag/screen-$(hostname).png && echo "screenshot captured via scrot"
         elif command -v import >/dev/null 2>&1; then
           import -window root /tmp/pi-diag/screen-$(hostname).png && echo "screenshot captured via import"
