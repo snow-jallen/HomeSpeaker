@@ -1,0 +1,71 @@
+name: Enable Kiosk Mode
+
+# One-shot: points each Pi's open kiosk Chromium at https://<host>/?kiosk=1.
+# The app then sets a long-lived "hs-kiosk=1" cookie, so the touchscreen gets
+# the ambient photo slideshow and night clock even though it loads the
+# Tailscale hostname (not localhost). The cookie lives in Chromium's profile and
+# survives reboots; re-run this only if that profile is reset.
+on:
+  workflow_dispatch:
+
+jobs:
+  enable:
+    runs-on: [self-hosted, "${{ matrix.runner }}"]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: kitchen
+            host: kitchen.boston-cloud.ts.net
+          - runner: upstairs
+            host: rpi42.boston-cloud.ts.net
+
+    steps:
+    - name: Navigate kiosk to ?kiosk=1
+      run: |
+        export DISPLAY=:0
+        XAUTH=$(find /home/piuser -name '.Xauthority' 2>/dev/null | head -1)
+        [ -n "$XAUTH" ] && export XAUTHORITY=$XAUTH
+
+        WID=$(xdotool search --onlyvisible --class chromium 2>/dev/null | head -1)
+        [ -z "$WID" ] && WID=$(xdotool search --onlyvisible --class chrome 2>/dev/null | head -1)
+        if [ -z "$WID" ]; then
+          echo "::error::No Chromium window found"
+          exit 1
+        fi
+
+        echo "Activating Chromium window $WID ($(xdotool getwindowname "$WID" 2>/dev/null))"
+        xdotool windowactivate --sync "$WID"
+        sleep 1
+        # Ctrl+L focuses the (hidden) omnibox even in --kiosk mode.
+        xdotool key --clearmodifiers ctrl+l
+        sleep 0.5
+        xdotool type --delay 20 "https://${{ matrix.host }}/?kiosk=1"
+        xdotool key Return
+        echo "Navigated to https://${{ matrix.host }}/?kiosk=1"
+
+    - name: Wait for the idle slideshow (75s)
+      run: sleep 75
+
+    - name: Screenshot touchscreen
+      continue-on-error: true
+      run: |
+        export DISPLAY=:0
+        XAUTH=$(find /home/piuser -name '.Xauthority' 2>/dev/null | head -1)
+        [ -n "$XAUTH" ] && export XAUTHORITY=$XAUTH
+        mkdir -p /tmp/pi-kiosk
+        if command -v scrot >/dev/null 2>&1; then
+          scrot /tmp/pi-kiosk/screen-$(hostname).png && echo "screenshot captured via scrot"
+        elif command -v import >/dev/null 2>&1; then
+          import -window root /tmp/pi-kiosk/screen-$(hostname).png && echo "screenshot captured via import"
+        else
+          xwd -root -out /tmp/pi-kiosk/screen-$(hostname).xwd && echo "screenshot captured via xwd (raw)"
+        fi
+
+    - name: Upload screenshot
+      uses: actions/upload-artifact@v4
+      continue-on-error: true
+      with:
+        name: kiosk-${{ matrix.runner }}
+        path: /tmp/pi-kiosk/
+        if-no-files-found: ignore
