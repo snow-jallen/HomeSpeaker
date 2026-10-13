@@ -71,6 +71,18 @@ public sealed class PhotoCacheStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task ListCachedImageIds_ReturnsOnlyValidJpgs()
+    {
+        var store = createStore();
+        await store.SaveImageAsync(idA, s => s.WriteAsync(new byte[] { 1 }).AsTask());
+        await File.WriteAllBytesAsync(Path.Combine(temp.Path, "not-a-guid.jpg"), [1]);
+        await File.WriteAllBytesAsync(Path.Combine(temp.Path, "22222222-2222-4222-8222-222222222222.jpg.tmp"), [1]);
+        await File.WriteAllTextAsync(Path.Combine(temp.Path, "manifest.json"), "[]");
+
+        Assert.Equal([idA], store.ListCachedImageIds());
+    }
+
+    [Fact]
     public async Task SaveImageAsync_WritesFile_AndTryGetImagePathFindsIt()
     {
         var store = createStore();

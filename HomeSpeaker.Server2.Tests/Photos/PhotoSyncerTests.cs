@@ -426,4 +426,94 @@ public sealed class PhotoSyncerTests : IDisposable
         var info = Assert.Single(logger.Entries, e => e.Level == LogLevel.Information);
         Assert.Equal("Photo sync complete: 21 album items, 10 photos cached (10 added, 0 evicted), 1 videos", info.Message);
     }
+
+    private async Task writeOrphanAsync(int n) =>
+        await store.SaveImageAsync(idFor(n), s => s.WriteAsync(new byte[] { 0xFF, 0xD8 }).AsTask());
+
+    [Fact]
+    public async Task Sync_DeletesOrphanFilesNotInManifestAndNotInAlbum()
+    {
+        for (var i = 1; i <= 5; i++)
+        {
+            await writeOrphanAsync(900 + i);
+        }
+
+        addImages(3);
+
+        Assert.True(await createSyncer(cacheSize: 10).SyncAsync(CancellationToken.None));
+
+        Assert.Equal(3, cachedFileCount());
+        Assert.False(store.HasImage(idFor(901)));
+    }
+
+    [Fact]
+    public async Task Sync_OrphanFilesInAlbumCountTowardCacheSizeAndAreTrimmed()
+    {
+        for (var i = 1; i <= 50; i++)
+        {
+            await writeOrphanAsync(i);
+        }
+
+        addImages(100);
+        Assert.Empty(store.LoadManifest());
+
+        Assert.True(await createSyncer(cacheSize: 10).SyncAsync(CancellationToken.None));
+
+        Assert.Equal(10, cachedFileCount());
+        Assert.Empty(immich.Downloaded);
+    }
+
+    [Fact]
+    public async Task Sync_WhenAlbumFetchFails_DeletesNoOrphans()
+    {
+        for (var i = 1; i <= 5; i++)
+        {
+            await writeOrphanAsync(900 + i);
+        }
+
+        immich.AlbumError = new HttpRequestException("boom");
+        Assert.False(await createSyncer(cacheSize: 1).SyncAsync(CancellationToken.None));
+
+        Assert.Equal(5, cachedFileCount());
+    }
+
+    [Fact]
+    public async Task Sync_DeletesStaleTempFilesButKeepsFreshOnes()
+    {
+        var stale = Path.Combine(temp.Path, idFor(1) + ".jpg.tmp");
+        var fresh = Path.Combine(temp.Path, idFor(2) + ".jpg.tmp");
+        await File.WriteAllBytesAsync(stale, [1]);
+        await File.WriteAllBytesAsync(fresh, [1]);
+        File.SetLastWriteTimeUtc(stale, DateTime.UtcNow.AddHours(-2));
+
+        await createSyncer().SyncAsync(CancellationToken.None);
+
+        Assert.False(File.Exists(stale));
+        Assert.True(File.Exists(fresh));
+    }
+
+    [Fact]
+    public async Task Sync_EvictsHiddenCachedPhotosAndNeverRefillsWithThem()
+    {
+        addImages(30);
+        await createSyncer(cacheSize: 10, rotatePercent: 0).SyncAsync(CancellationToken.None);
+        var hiddenIds = Directory.GetFiles(temp.Path, "*.jpg").Take(4).Select(f => Path.GetFileNameWithoutExtension(f)).ToList();
+        foreach (var id in hiddenIds)
+        {
+            store.AddHidden(id);
+        }
+
+        immich.Downloaded.Clear();
+        await createSyncer(cacheSize: 10, rotatePercent: 0).SyncAsync(CancellationToken.None);
+
+        Assert.Equal(10, cachedFileCount());
+        Assert.Equal(4, immich.Downloaded.Count);
+        foreach (var id in hiddenIds)
+        {
+            Assert.False(store.HasImage(id));
+            Assert.DoesNotContain(id, immich.Downloaded);
+        }
+
+        Assert.Equal(10, library.Count);
+    }
 }

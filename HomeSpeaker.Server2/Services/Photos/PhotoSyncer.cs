@@ -28,6 +28,7 @@ public sealed class PhotoSyncer
     }
 
     private const int AssetTimeoutSeconds = 60;
+    private static readonly TimeSpan staleTempAge = TimeSpan.FromHours(1);
 
     public async Task<bool> SyncAsync(CancellationToken cancellationToken)
     {
@@ -91,20 +92,38 @@ public sealed class PhotoSyncer
                 : previous with { TakenAt = asset.TakenAt, City = asset.City, State = asset.State, Country = asset.Country };
         }
 
-        var albumIds = assets.Select(a => a.Id).ToHashSet(StringComparer.Ordinal);
-        var removed = 0;
-        foreach (var id in existing.Keys.Where(id => !albumIds.Contains(id)))
+        // Reclaim disk first: files for assets that left the album, plus orphans no manifest knows about
+        // (a restart mid-sync leaves downloaded files without a manifest). Only reached after a successful album fetch.
+        store.DeleteStaleTempImages(staleTempAge);
+        var imageIds = images.Select(a => a.Id).ToHashSet(StringComparer.Ordinal);
+        var cachedIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var id in store.ListCachedImageIds())
         {
-            store.DeleteImage(id);
-            removed++;
+            if (imageIds.Contains(id))
+            {
+                cachedIds.Add(id);
+            }
+            else
+            {
+                store.DeleteImage(id);
+            }
         }
 
         var cacheSize = Math.Max(1, options.Value.CacheSize);
         var rotatePercent = Math.Clamp(options.Value.RotatePercent, 0, 100);
 
-        var cached = images.Where(a => store.HasImage(a.Id)).ToList();
-        var uncached = images.Where(a => !store.HasImage(a.Id)).ToList();
+        // Hidden photos are never shown, so they must not use cache slots: evict them first and never refill with them.
+        var hidden = store.LoadHidden();
         var evicted = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var id in cachedIds.Where(hidden.Contains).ToList())
+        {
+            store.DeleteImage(id);
+            cachedIds.Remove(id);
+            evicted.Add(id);
+        }
+
+        var cached = images.Where(a => cachedIds.Contains(a.Id)).ToList();
+        var uncached = images.Where(a => !cachedIds.Contains(a.Id) && !hidden.Contains(a.Id) && !evicted.Contains(a.Id)).ToList();
 
         if (cached.Count > cacheSize)
         {

@@ -77,6 +77,25 @@ public sealed class PhotoCacheStore
         }
     }
 
+    /// <summary>Asset ids of every {assetId}.jpg on disk, whether or not the manifest knows about it. Ignores .tmp files.</summary>
+    public IReadOnlyList<string> ListCachedImageIds() => Directory.EnumerateFiles(RootPath, "*.jpg")
+        .Select(f => Path.GetFileNameWithoutExtension(f))
+        .Where(IsValidAssetId)
+        .ToList();
+
+    /// <summary>Deletes leftover {assetId}.jpg.tmp files from interrupted downloads that are older than <paramref name="olderThan"/>.</summary>
+    public void DeleteStaleTempImages(TimeSpan olderThan)
+    {
+        var cutoff = DateTimeOffset.UtcNow - olderThan;
+        foreach (var file in Directory.EnumerateFiles(RootPath, "*.jpg.tmp"))
+        {
+            if (File.GetLastWriteTimeUtc(file) < cutoff)
+            {
+                tryDelete(file);
+            }
+        }
+    }
+
     public IReadOnlySet<string> LoadHidden()
     {
         lock (hiddenGate)
