@@ -44,6 +44,7 @@
 <div class="hs-ambient" aria-hidden="true">
     <img class="hs-slide" alt="" />
     <img class="hs-slide" alt="" />
+    <video class="hs-slide hs-slide-video" muted playsinline preload="auto"></video>
     <div class="hs-ambient-scrim"></div>
     <AmbientOverlay />
 </div>
@@ -119,7 +120,7 @@
         try
         {
             await JSRuntime.InvokeVoidAsync("idleController.init", new { idleSeconds = Configuration.GetValue("Ambient:IdleSeconds", 120) });
-            await JSRuntime.InvokeVoidAsync("ambientSlideshow.init", new { slideSeconds = ImmichOptions.Value.SlideSeconds });
+            await JSRuntime.InvokeVoidAsync("ambientSlideshow.init", new { slideSeconds = ImmichOptions.Value.SlideSeconds, maxVideoSeconds = ImmichOptions.Value.MaxVideoSeconds });
         }
         catch (Exception ex)
         {

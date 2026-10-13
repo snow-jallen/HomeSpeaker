@@ -9,8 +9,11 @@ window.idleController = (function () {
     let timer = null;
     let swallowClick = false;
     const listeners = [];
+    const swipeListeners = [];
+    const swipeMinPx = 60;
 
     let swallowTimer = null;
+    let gesture = null; // ambient-mode touch in progress: { id, x, y }
 
     function isKiosk() {
         return !!document.body && document.body.dataset.kiosk === 'true';
@@ -46,6 +49,14 @@ window.idleController = (function () {
         }, quiet ? nightIdleMs : idleMs);
     }
 
+    // Swallow the click that ends this gesture, however long the finger stays down. The timeout
+    // is only a fallback for gestures that never produce a click.
+    function armSwallow() {
+        swallowClick = true;
+        clearTimeout(swallowTimer);
+        swallowTimer = setTimeout(clearSwallow, 1500);
+    }
+
     // The tap that wakes the screen must not also press whatever control is underneath.
     function onActivity(e) {
         // A swipe-wake never produces a click, so clear its stale swallow flag on the next touch.
@@ -53,16 +64,49 @@ window.idleController = (function () {
         if (mode !== 'active') {
             e.preventDefault();
             e.stopPropagation();
-            if (e.type === 'pointerdown') {
-                // Swallow the click that ends this wake gesture, however long the finger stays
-                // down. The timeout is only a fallback for gestures that never produce a click.
-                swallowClick = true;
-                clearTimeout(swallowTimer);
-                swallowTimer = setTimeout(clearSwallow, 1500);
-            }
+            if (e.type === 'pointerdown') armSwallow();
             setMode('active');
         }
         arm();
+    }
+
+    // Ambient mode tells a swipe (browse photos) from a tap (wake) by waiting for pointerup.
+    // Night mode and active mode keep their immediate behaviour.
+    function onPointerDown(e) {
+        if (mode !== 'ambient') {
+            onActivity(e);
+            return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        if (gesture && gesture.id !== e.pointerId) return; // ignore a second finger
+        clearSwallow();
+        gesture = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    }
+
+    function onPointerUp(e) {
+        if (!gesture || gesture.id !== e.pointerId) return;
+        const start = gesture;
+        gesture = null;
+        e.preventDefault();
+        e.stopPropagation();
+        const dx = e.clientX - start.x;
+        const dy = e.clientY - start.y;
+        armSwallow();
+        if (mode === 'ambient' && Math.abs(dx) >= swipeMinPx && Math.abs(dx) > Math.abs(dy)) {
+            const direction = dx < 0 ? 'left' : 'right';
+            swipeListeners.forEach(function (callback) {
+                try { callback(direction); } catch (err) { console.error('idleController swipe handler failed', err); }
+            });
+            return;
+        }
+        setMode('active');
+        arm();
+    }
+
+    function onPointerCancel() {
+        gesture = null;
+        clearSwallow();
     }
 
     function onClick(e) {
@@ -73,8 +117,9 @@ window.idleController = (function () {
         }
     }
 
-    document.addEventListener('pointerdown', onActivity, true);
-    document.addEventListener('pointercancel', clearSwallow, true);
+    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('pointerup', onPointerUp, true);
+    document.addEventListener('pointercancel', onPointerCancel, true);
     document.addEventListener('keydown', onActivity, true);
     document.addEventListener('click', onClick, true);
 
@@ -95,6 +140,7 @@ window.idleController = (function () {
         },
         mode: function () { return mode; },
         isKiosk: isKiosk,
-        onModeChange: function (callback) { listeners.push(callback); }
+        onModeChange: function (callback) { listeners.push(callback); },
+        onSwipe: function (callback) { swipeListeners.push(callback); }
     };
 })();

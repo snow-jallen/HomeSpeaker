@@ -161,6 +161,8 @@ body[data-kiosk="false"] .kiosk-only {
 
 .hs-ambient {
   background: #111;
+  /* Horizontal drags are swipes (handled by idleController), not scroll or back/forward gestures. */
+  touch-action: none;
 }
 
 .hs-night {
@@ -191,7 +193,8 @@ html.hs-mode-night .hs-backdrop {
 
 /* ---------- Ambient slideshow + overlays ---------- */
 
-.hs-slide {
+.hs-slide,
+.hs-slide-video {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -199,6 +202,10 @@ html.hs-mode-night .hs-backdrop {
   object-fit: cover;
   opacity: 0;
   transition: opacity 1.5s ease;
+}
+
+.hs-slide-video {
+  background: #000;
 }
 
 .hs-slide.is-visible {
