@@ -5,8 +5,8 @@ namespace HomeSpeaker.Server2.Tests.Photos;
 
 public sealed class PhotoLibraryTests : IDisposable
 {
-    private const string idA = "11111111-1111-4111-8111-111111111111";
-    private const string idB = "22222222-2222-4222-8222-222222222222";
+    private const string IdA = "11111111-1111-4111-8111-111111111111";
+    private const string IdB = "22222222-2222-4222-8222-222222222222";
     private static readonly FixedTimeProvider today = new(new DateTimeOffset(2026, 10, 13, 12, 0, 0, TimeSpan.Zero));
     private readonly TempDirectory temp = new();
     private readonly PhotoCacheStore store;
@@ -39,13 +39,13 @@ public sealed class PhotoLibraryTests : IDisposable
     [Fact]
     public async Task Next_ReturnsUrlCaptionAndLayout()
     {
-        await addAsync(idA, faces: [new FaceBox(0.75, 0.10, 0.90, 0.35)]);
+        await addAsync(IdA, faces: [new FaceBox(0.75, 0.10, 0.90, 0.35)]);
         var library = new PhotoLibrary(store, today, new Random(1));
 
         var next = library.Next()!;
 
-        Assert.Equal(idA, next.Id);
-        Assert.Equal($"/api/photos/{idA}.jpg", next.Url);
+        Assert.Equal(IdA, next.Id);
+        Assert.Equal($"/api/photos/{IdA}.jpg", next.Url);
         Assert.Equal("Bear Lake, Utah", next.Place);
         Assert.Equal("August 2021 · 5 years ago", next.When);
         Assert.Equal("mirrored", next.Layout);
@@ -54,8 +54,8 @@ public sealed class PhotoLibraryTests : IDisposable
     [Fact]
     public async Task Reload_SkipsEntriesWhoseImageIsMissing()
     {
-        await addAsync(idA);
-        await addAsync(idB, withImage: false);
+        await addAsync(IdA);
+        await addAsync(IdB, withImage: false);
 
         var library = new PhotoLibrary(store, today, new Random(1));
 
@@ -65,32 +65,47 @@ public sealed class PhotoLibraryTests : IDisposable
     [Fact]
     public async Task Hide_RemovesPhoto_AndPersists()
     {
-        await addAsync(idA);
-        await addAsync(idB);
+        await addAsync(IdA);
+        await addAsync(IdB);
         var library = new PhotoLibrary(store, today, new Random(1));
 
-        Assert.True(library.Hide(idA));
+        Assert.True(library.Hide(IdA));
 
         Assert.Equal(1, library.Count);
-        Assert.Equal(idB, new PhotoLibrary(store, today, new Random(1)).Next()!.Id);
+        Assert.Equal(IdB, new PhotoLibrary(store, today, new Random(1)).Next()!.Id);
     }
 
     [Fact]
     public void Hide_UnknownOrInvalidId_ReturnsFalse()
     {
         var library = new PhotoLibrary(store, today, new Random(1));
-        Assert.False(library.Hide(idA));
+        Assert.False(library.Hide(IdA));
         Assert.False(library.Hide("../x"));
     }
 
     [Fact]
     public async Task Next_WhenOnlyPhotoHidden_ReturnsNull()
     {
-        await addAsync(idA);
+        await addAsync(IdA);
         var library = new PhotoLibrary(store, today, new Random(1));
 
-        library.Hide(idA);
+        library.Hide(IdA);
 
         Assert.Null(library.Next());
+    }
+
+    [Fact]
+    public async Task Next_UsesLocalTimeZoneForDateCaption()
+    {
+        var utcInstant = new DateTimeOffset(2026, 8, 14, 3, 0, 0, TimeSpan.Zero);
+        var mountainTimeZone = TimeZoneInfo.CreateCustomTimeZone("UTC-7", TimeSpan.FromHours(-7), "UTC-7", "UTC-7");
+        var timeProvider = new FixedTimeProvider(utcInstant, mountainTimeZone);
+
+        await addAsync(IdA, faces: [new FaceBox(0.75, 0.10, 0.90, 0.35)]);
+        var library = new PhotoLibrary(store, timeProvider, new Random(1));
+
+        var next = library.Next()!;
+
+        Assert.Equal("August 2021 · 4 years ago", next.When);
     }
 }

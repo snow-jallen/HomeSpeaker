@@ -62,7 +62,8 @@ public sealed class PhotoLibrary
             entry = photos[id];
         }
 
-        var today = timeProvider.GetLocalNow().UtcDateTime;
+        var now = timeProvider.GetLocalNow();
+        var today = new DateTime(now.Year, now.Month, now.Day);
         var layout = OverlayLayoutChooser.Choose(entry) == OverlayLayout.Mirrored ? "mirrored" : "default";
         return new NextPhoto(entry.AssetId, $"/api/photos/{entry.AssetId}.jpg", PhotoCaption.Place(entry), PhotoCaption.When(entry.TakenAt, today), layout);
     }
