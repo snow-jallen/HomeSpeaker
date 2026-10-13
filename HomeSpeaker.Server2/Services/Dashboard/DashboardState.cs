@@ -57,6 +57,9 @@ public sealed class DashboardState : IDisposable
     public bool RepeatMode => playerState.RepeatMode;
     public int Volume => playerState.Volume;
     public SongViewModel? UpNext { get; private set; }
+
+    /// <summary>The playing station's uploaded art, or null when nothing matches (the UI then generates a tile).</summary>
+    public string? StationImageUrl { get; private set; }
     public BloodSugarStatus? BloodSugar { get; private set; }
     public TemperatureStatus? Temperature { get; private set; }
     public ForecastStatus? Forecast { get; private set; }
@@ -115,6 +118,7 @@ public sealed class DashboardState : IDisposable
             var status = await homeSpeaker.GetStatusAsync();
             var repeat = await homeSpeaker.GetRepeatModeAsync();
             UpNext = (await homeSpeaker.GetPlayQueueAsync()).FirstOrDefault();
+            StationImageUrl = status.IsStream ? await homeSpeaker.GetStationImageUrlAsync(status.StreamName) : null;
             playerState.UpdateStatus(status);
             playerState.UpdateRepeatMode(repeat);
             playerState.UpdateVolume(status.Volume);

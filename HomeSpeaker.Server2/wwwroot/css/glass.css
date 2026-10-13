@@ -1737,13 +1737,42 @@ fluent-dialog.glass-fluent-dialog .glass-dialog {
   }
 }
 
-/* ---------- Page: radio streams ---------- */
+/* ---------- Station art (StationArt.razor) ---------- */
 
-.glass-row-art--logo {
-  box-sizing: border-box;
-  padding: 4px;
-  object-fit: contain;
+/* Size and radius come from the size class it is paired with (glass-row-art, hs-art, hs-art--lg,
+   glass-image-preview); the gradient is an inline style derived from the station name. */
+.hs-station-art {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  padding: 0;
 }
+
+.hs-station-art > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hs-station-art text {
+  fill: #fff;
+  font-family: var(--glass-font);
+  font-weight: 800;
+  letter-spacing: -1px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.hs-station-art > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #16181d;
+}
+
+/* ---------- Page: radio streams ---------- */
 
 .hs-play-btn--sm {
   flex: none;

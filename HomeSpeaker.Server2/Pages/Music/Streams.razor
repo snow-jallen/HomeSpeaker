@@ -51,10 +51,7 @@
             @foreach (var stream in streams)
             {
                 <div class="glass-row">
-                    <img src="@stream.FaviconUrl"
-                         alt=""
-                         class="glass-row-art glass-row-art--logo"
-                         onerror="this.src='/icon-192.png'" />
+                    <StationArt Name="@stream.Name" ImageUrl="@stream.FaviconUrl" Class="glass-row-art" />
                     <div class="glass-row-text">
                         <div class="glass-row-title">@stream.Name</div>
                         <div class="glass-row-sub">Played @stream.PlayCount times</div>
@@ -117,10 +114,7 @@
                 <span>Stream Image (optional)</span>
 
                 @* Current image preview *@
-                <img src="@GetPreviewUrl()"
-                     class="glass-image-preview"
-                     onerror="this.src='/icon-192.png'"
-                     alt="Stream image preview" />
+                <StationArt Name="@streamName" ImageUrl="@GetPreviewUrl()" Class="glass-image-preview" Label="Stream image preview" />
 
                 @* Tab buttons *@
                 <div class="glass-chip-row" role="group" aria-label="Image source">
@@ -354,10 +348,10 @@
         editingStream = null;
     }
 
-    string GetPreviewUrl()
+    string? GetPreviewUrl()
     {
         if (selectedImage != null) return selectedImage.PreviewDataUri;
-        return currentStreamFaviconUrl ?? "/icon-192.png";
+        return currentStreamFaviconUrl;
     }
 
     async Task DoImageSearch()

@@ -51,6 +51,7 @@ public sealed class NowPlayingInfoTests
         Assert.Equal("Classical KUSC", info.Subtitle);
         Assert.Null(info.SongId);
         Assert.True(info.IsStream);
+        Assert.Equal("Classical KUSC", info.Station);
     }
 
     [Fact]
@@ -60,5 +61,9 @@ public sealed class NowPlayingInfoTests
 
         Assert.Equal("Classical KUSC", info.Title);
         Assert.Equal("Live radio", info.Subtitle);
+        Assert.Equal("Classical KUSC", info.Station);
     }
+
+    [Fact]
+    public void From_Song_HasNoStation() => Assert.Null(NowPlayingInfo.From(song("Debussy", null))!.Station);
 }

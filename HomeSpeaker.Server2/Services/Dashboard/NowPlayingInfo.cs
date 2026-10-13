@@ -2,8 +2,11 @@ using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server2.Services.Dashboard;
 
-/// <summary>What the overlay and Home page show for the current track or stream.</summary>
-public sealed record NowPlayingInfo(string Title, string? Subtitle, int? SongId, bool IsStream, double Percent, TimeSpan Elapsed, TimeSpan Remaining)
+/// <summary>
+/// What the overlay and Home page show for the current track or stream. For a stream, Station is the
+/// station name (the art is looked up and generated from it); it is null for songs.
+/// </summary>
+public sealed record NowPlayingInfo(string Title, string? Subtitle, int? SongId, bool IsStream, double Percent, TimeSpan Elapsed, TimeSpan Remaining, string? Station = null)
 {
     public static NowPlayingInfo? From(PlayerStatus? status)
     {
@@ -17,7 +20,7 @@ public sealed record NowPlayingInfo(string Title, string? Subtitle, int? SongId,
         {
             var station = string.IsNullOrWhiteSpace(status.StreamName) ? "Radio" : status.StreamName;
             var hasIcyTitle = songName.Length > 0 && !string.Equals(songName, station, StringComparison.Ordinal);
-            return new NowPlayingInfo(hasIcyTitle ? songName : station, hasIcyTitle ? station : "Live radio", null, true, 0, status.Elapsed, TimeSpan.Zero);
+            return new NowPlayingInfo(hasIcyTitle ? songName : station, hasIcyTitle ? station : "Live radio", null, true, 0, status.Elapsed, TimeSpan.Zero, station);
         }
 
         if (status.CurrentSong is null)

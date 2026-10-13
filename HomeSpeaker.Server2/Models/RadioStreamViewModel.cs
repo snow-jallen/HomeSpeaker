@@ -9,7 +9,11 @@ public class RadioStreamViewModel
     public int PlayCount { get; set; }
     public int DisplayOrder { get; set; }
 
-    public string FaviconUrl => string.IsNullOrWhiteSpace(FaviconFileName)
-        ? "/icon-192.png"  // Default fallback icon
-        : $"/favicons/{FaviconFileName}";
+    /// <summary>The uploaded station image, or null so StationArt shows a generated tile.</summary>
+    public string? FaviconUrl => FaviconPath(FaviconFileName);
+
+    /// <summary>The /favicons URL for a stored station-art file name, or null when there is none.</summary>
+    public static string? FaviconPath(string? faviconFileName) => string.IsNullOrWhiteSpace(faviconFileName)
+        ? null
+        : "/favicons/" + Uri.EscapeDataString(faviconFileName);
 }

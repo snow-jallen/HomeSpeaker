@@ -412,6 +412,24 @@ public class HomeSpeakerService
         });
     }
 
+    /// <summary>
+    /// The uploaded art for the saved station with this name (ordinal, ignoring case), or null to use a generated tile.
+    /// Served from RadioStreamService's cached list. It runs in its own scope so the dashboard's timer never shares
+    /// a DbContext with whatever the page is doing.
+    /// </summary>
+    public async Task<string?> GetStationImageUrlAsync(string? streamName)
+    {
+        if (string.IsNullOrWhiteSpace(streamName))
+        {
+            return null;
+        }
+
+        using var scope = serviceProvider.CreateScope();
+        var streams = scope.ServiceProvider.GetRequiredService<RadioStreamService>();
+        var stream = await streams.FindStreamByNameAsync(streamName);
+        return RadioStreamViewModel.FaviconPath(stream?.FaviconFileName);
+    }
+
     public async Task PlayRadioStreamAsync(int streamId)
     {
         var stream = await radioStreamService.GetStreamByIdAsync(streamId);
@@ -495,6 +513,7 @@ public class HomeSpeakerService
 
         db.RadioStreams.Add(stream);
         await db.SaveChangesAsync();
+        radioStreamService.InvalidateCache();
 
         return new RadioStreamViewModel
         {
@@ -526,6 +545,7 @@ public class HomeSpeakerService
         }
 
         await db.SaveChangesAsync();
+        radioStreamService.InvalidateCache();
 
         return new RadioStreamViewModel
         {
