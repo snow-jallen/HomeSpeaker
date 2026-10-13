@@ -1,3 +1,4 @@
+@using System.Globalization
 @using HomeSpeaker.Server2.Services
 @using HomeSpeaker.Server2.Models
 @inject IBrowserAudioService BrowserAudioService
@@ -11,7 +12,7 @@
         <div class="glass-row-title">@LocalQueueService.CurrentSong.Name</div>
         <div class="local-audio-progress">
             <span class="glass-row-sub">@currentTimeDisplay</span>
-            <div class="hs-progress"><div style="width: @(progressPercent)%"></div></div>
+            <div class="hs-progress"><div style="width: @(progressPercent.ToString("F1", CultureInfo.InvariantCulture))%"></div></div>
             <span class="glass-row-sub">@durationDisplay</span>
         </div>
         <div class="local-audio-controls">

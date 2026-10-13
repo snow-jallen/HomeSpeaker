@@ -139,10 +139,19 @@
     {
         newPlaylistName = "";
         StateHasChanged();
-        await JsRuntime.InvokeVoidAsync("eval", $@"
-            document.getElementById('{_dialogId}').showModal();
-            setTimeout(function() {{ document.getElementById('{_inputId}')?.focus(); }}, 0);
-        ");
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("eval", $@"
+                document.getElementById('{_dialogId}').showModal();
+                setTimeout(function() {{ document.getElementById('{_inputId}')?.focus(); }}, 0);
+            ");
+        }
+        catch (Exception ex) when (ex is JSDisconnectedException or JSException or TaskCanceledException)
+        {
+            // Dialog could not be opened: reset state and let the parent close the menu so the UI stays consistent.
+            newPlaylistName = "";
+            await OnClosed.InvokeAsync();
+        }
     }
 
     private async Task CancelCreatePlaylist()

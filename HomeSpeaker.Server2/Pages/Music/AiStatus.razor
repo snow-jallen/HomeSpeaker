@@ -1,3 +1,4 @@
+@using System.Globalization
 @page "/ai-status"
 @inject HomeSpeakerService svc
 @inject ILogger<AiStatus> Logger
@@ -72,14 +73,14 @@
             <div class="glass-ai-status-card">
                 <div class="glass-ai-card-body">
                     <div class="glass-section-title">Progress</div>
-                    <div class="glass-ai-big">@status.PercentComplete.ToString("F1")%</div>
+                    <div class="glass-ai-big">@status.PercentComplete.ToString("F1", CultureInfo.InvariantCulture)%</div>
                     <div class="hs-progress hs-progress--lg glass-ai-progress"
                          role="progressbar"
                          aria-label="AI analysis progress"
-                         aria-valuenow="@status.PercentComplete"
+                         aria-valuenow="@status.PercentComplete.ToString("F1", CultureInfo.InvariantCulture)"
                          aria-valuemin="0"
                          aria-valuemax="100">
-                        <div style="width: @(status.PercentComplete)%"></div>
+                        <div style="width: @(status.PercentComplete.ToString("F1", CultureInfo.InvariantCulture))%"></div>
                     </div>
                 </div>
             </div>

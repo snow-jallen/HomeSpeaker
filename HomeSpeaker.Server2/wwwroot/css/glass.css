@@ -42,7 +42,7 @@
   color: var(--glass-text);
 }
 
-body[data-kiosk="false"] .kiosk-only {
+body:not([data-kiosk="true"]) .kiosk-only {
   display: none !important;
 }
 
@@ -1526,10 +1526,10 @@ fluent-dialog.glass-fluent-dialog .glass-dialog {
 /* YouTube results: let long video titles wrap to two lines instead of truncating. */
 .glass-page--youtube .glass-row-title {
   white-space: normal;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  display: block;
+  line-height: 1.3;
+  max-height: calc(2 * 1.3em);
+  overflow: hidden;
 }
 
 @media (max-width: 700px) {
@@ -2035,6 +2035,13 @@ input.glass-input[type="file"]::file-selector-button {
   display: flex;
   margin-top: auto;
   padding-top: 4px;
+  /* Let taps beside the buttons fall through to the stretched card link. */
+  pointer-events: none;
+}
+
+.glass-ai-card-actions a,
+.glass-ai-card-actions button {
+  pointer-events: auto;
 }
 
 .glass-ai-panel {
@@ -2445,5 +2452,18 @@ input.glass-input[type="file"]::file-selector-button {
 
   .glass-ai-banner {
     align-items: flex-start;
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-spinner {
+    animation: none;
+  }
+
+  .hs-slide,
+  .hs-slide-video {
+    transition-duration: 0s;
   }
 }

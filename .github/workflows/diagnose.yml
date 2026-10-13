@@ -51,7 +51,7 @@ jobs:
         export DISPLAY=:0
         XAUTH=$(find /home/piuser -name '.Xauthority' 2>/dev/null | head -1)
         [ -n "$XAUTH" ] && export XAUTHORITY=$XAUTH
-        mkdir -p /tmp/pi-diag
+        rm -rf /tmp/pi-diag && mkdir -p /tmp/pi-diag
         # Wayland desktops (labwc/wayfire): X screenshots come out black, so try grim first.
         export XDG_RUNTIME_DIR=/run/user/$(id -u)
         WL=$(ls "$XDG_RUNTIME_DIR" 2>/dev/null | grep -E '^wayland-[0-9]+$' | head -1)

@@ -53,7 +53,7 @@ jobs:
         export DISPLAY=:0
         XAUTH=$(find /home/piuser -name '.Xauthority' 2>/dev/null | head -1)
         [ -n "$XAUTH" ] && export XAUTHORITY=$XAUTH
-        mkdir -p /tmp/pi-kiosk
+        rm -rf /tmp/pi-kiosk && mkdir -p /tmp/pi-kiosk
         if command -v scrot >/dev/null 2>&1; then
           scrot /tmp/pi-kiosk/screen-$(hostname).png && echo "screenshot captured via scrot"
         elif command -v import >/dev/null 2>&1; then

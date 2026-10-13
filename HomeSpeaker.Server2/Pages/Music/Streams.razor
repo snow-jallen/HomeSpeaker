@@ -268,7 +268,17 @@
         if (streamDialogNeedsOpen)
         {
             streamDialogNeedsOpen = false;
-            await JsRuntime.InvokeVoidAsync("eval", "document.getElementById('streamDialog')?.showModal()");
+            try
+            {
+                await JsRuntime.InvokeVoidAsync("eval", "document.getElementById('streamDialog')?.showModal()");
+            }
+            catch (Exception ex) when (ex is JSDisconnectedException or JSException or TaskCanceledException)
+            {
+                // Dialog could not be opened (circuit gone or script error): keep the UI consistent.
+                showStreamModal = false;
+                editingStream = null;
+                StateHasChanged();
+            }
         }
     }
 

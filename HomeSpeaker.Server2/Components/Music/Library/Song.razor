@@ -26,7 +26,7 @@ else
                 }
             </div>
             <div class="glass-row-actions">
-                <button @onclick:stopPropagation="true" @onclick=toggleDetailsView class="hs-icon-btn hs-icon-btn--filled" title="@(showDetails ? "Hide details" : "Show details")" aria-label="@(showDetails ? "Hide details" : "Show details")" aria-expanded="@showDetails">
+                <button @onclick:stopPropagation="true" @onclick=toggleDetailsView class="hs-icon-btn hs-icon-btn--filled" title="@(showDetails ? "Hide details" : "Show details")" aria-label="@(showDetails ? "Hide details" : "Show details")" aria-expanded="@(showDetails ? "true" : "false")">
                     <i class="fas @(showDetails ? "fa-chevron-up" : "fa-chevron-down")" aria-hidden="true"></i>
                 </button>
                 @* The menus sit inside the row, so their clicks must not reach the row's toggle. *@

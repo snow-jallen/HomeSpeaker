@@ -107,7 +107,7 @@
                             <span class="glass-row-index">#@track.GenreRank</span>
                             <div class="glass-row-text">
                                 <div class="glass-row-title">@track.Song.Name</div>
-                                <div class="glass-row-sub">@track.Song.Artist@(string.IsNullOrWhiteSpace(track.Song.Album) ? "" : " · " + track.Song.Album)</div>
+                                <div class="glass-row-sub">@string.Join(" · ", new[] { track.Song.Artist, track.Song.Album }.Where(part => !string.IsNullOrWhiteSpace(part)))</div>
                                 @if (MarkerKeys.Count > 0)
                                 {
                                     <div class="glass-ai-markers">

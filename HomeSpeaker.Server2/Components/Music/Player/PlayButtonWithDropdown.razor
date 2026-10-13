@@ -8,7 +8,7 @@
 @inject IJSRuntime JsRuntime
 
 <div class="position-relative d-inline-block" id="@menuAnchorId">
-    <button @onclick="ToggleMenu" class="hs-icon-btn hs-icon-btn--filled" title="Play" aria-label="Play" aria-haspopup="menu" aria-expanded="@showMenu">
+    <button @onclick="ToggleMenu" class="hs-icon-btn hs-icon-btn--filled" title="Play" aria-label="Play" aria-haspopup="menu" aria-expanded="@(showMenu ? "true" : "false")">
         <i class="fas fa-play" aria-hidden="true"></i>
     </button>@if (showMenu)
     {
