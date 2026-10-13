@@ -36,6 +36,9 @@ public class RadioStreamService
         faviconsDirectory = Path.Combine(mediaFolder, "favicons");
     }
 
+    /// <summary>The folder uploaded and downloaded station art lives in (served at /favicons).</summary>
+    public string FaviconsDirectory => faviconsDirectory;
+
     public async Task<IEnumerable<RadioStream>> GetAllStreamsAsync()
     {
         return await cache.GetOrCreateAsync(CACHE_KEY, async entry =>
@@ -54,6 +57,24 @@ public class RadioStreamService
             ).ToList();
         }) ?? Enumerable.Empty<RadioStream>();
     }
+
+    /// <summary>
+    /// Finds a saved stream by its display name (ordinal, ignoring case) from the cached list,
+    /// so now-playing views that only know the stream name can show its art cheaply.
+    /// </summary>
+    public async Task<RadioStream?> FindStreamByNameAsync(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        var streams = await GetAllStreamsAsync();
+        return streams.FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>Drops the cached stream list; call after changing streams outside this service.</summary>
+    public void InvalidateCache() => cache.Remove(CACHE_KEY);
 
     public async Task<RadioStream?> GetStreamByIdAsync(int id)
     {
@@ -102,8 +123,8 @@ public class RadioStreamService
 
         if (!string.IsNullOrWhiteSpace(faviconFileName))
         {
-            // Pre-uploaded file — delete old favicon and store new filename directly
-            if (!string.IsNullOrWhiteSpace(stream.FaviconFileName))
+            // Pre-uploaded file — delete old favicon (unless it is the same file) and store new filename directly
+            if (!string.IsNullOrWhiteSpace(stream.FaviconFileName) && !string.Equals(stream.FaviconFileName, faviconFileName, StringComparison.Ordinal))
             {
                 deleteFavicon(stream.FaviconFileName);
             }

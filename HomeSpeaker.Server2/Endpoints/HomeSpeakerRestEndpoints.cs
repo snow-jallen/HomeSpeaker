@@ -1228,7 +1228,7 @@ public static class HomeSpeakerRestEndpoints
         group.MapPut("/radio/{streamId:int}", updateRadioStream)
             .WithName("UpdateRadioStream")
             .WithSummary("Update a radio stream")
-            .WithDescription("Updates the name and URL of an existing radio stream");
+            .WithDescription("Updates the name and URL of an existing radio stream, and optionally its art (FaviconFileName of an uploaded file, or FaviconUrl to download)");
 
         group.MapDelete("/radio/{streamId:int}", deleteRadioStream)
             .WithName("DeleteRadioStream")
@@ -1332,9 +1332,15 @@ public static class HomeSpeakerRestEndpoints
         [FromServices] RadioStreamService radioStreamService,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
+        var faviconError = validateFavicon(request.FaviconFileName, request.FaviconUrl, radioStreamService);
+        if (faviconError is not null)
+        {
+            return Results.BadRequest(faviconError);
+        }
+
         try
         {
-            var stream = await radioStreamService.CreateStreamAsync(request.Name, request.Url, null, null);
+            var stream = await radioStreamService.CreateStreamAsync(request.Name, request.Url, request.FaviconUrl, request.FaviconFileName);
             return Results.Created($"/api/homespeaker/radio/{stream.Id}", new
             {
                 Id = stream.Id,
@@ -1358,9 +1364,15 @@ public static class HomeSpeakerRestEndpoints
         [FromServices] RadioStreamService radioStreamService,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
+        var faviconError = validateFavicon(request.FaviconFileName, request.FaviconUrl, radioStreamService);
+        if (faviconError is not null)
+        {
+            return Results.BadRequest(faviconError);
+        }
+
         try
         {
-            await radioStreamService.UpdateStreamAsync(streamId, request.Name, request.Url, null, null);
+            await radioStreamService.UpdateStreamAsync(streamId, request.Name, request.Url, request.FaviconUrl, request.FaviconFileName);
             var stream = await radioStreamService.GetStreamByIdAsync(streamId);
             if (stream == null)
             {
@@ -1383,6 +1395,10 @@ public static class HomeSpeakerRestEndpoints
             return Results.Problem($"Failed to update radio stream: {ex.Message}");
         }
     }
+
+    private static string? validateFavicon(string? faviconFileName, string? faviconUrl, RadioStreamService radioStreamService) =>
+        FaviconFileNameValidator.Validate(faviconFileName, radioStreamService.FaviconsDirectory)
+            ?? FaviconFileNameValidator.ValidateDownloadUrl(faviconUrl);
 
     private static async Task<IResult> deleteRadioStream(
         [FromRoute] int streamId,
@@ -1548,8 +1564,10 @@ public static class HomeSpeakerRestEndpoints
     public record ReorderPlaylistSongsRequest(IEnumerable<string> SongPaths);
     public record UpdateQueueRequest(IEnumerable<string> Songs);
     public record CacheVideoRequest(VideoDto Video);
-    public record CreateRadioStreamRequest(string Name, string Url);
-    public record UpdateRadioStreamRequest(string Name, string Url);
+    // Station art: FaviconFileName names a file already in the favicons folder (see POST /api/streams/upload-image)
+    // and wins over FaviconUrl, an http(s) image to download. Omit both to leave the art unchanged.
+    public record CreateRadioStreamRequest(string Name, string Url, string? FaviconFileName = null, string? FaviconUrl = null);
+    public record UpdateRadioStreamRequest(string Name, string Url, string? FaviconFileName = null, string? FaviconUrl = null);
     public record SetSleepTimerRequest(int Minutes);
     public record SetRepeatModeRequest(bool Enabled);
 
