@@ -1443,3 +1443,97 @@ fluent-dialog.glass-fluent-dialog .glass-dialog {
     font-size: 24px;
   }
 }
+
+/* ---------- Page: library (Music, Playlists, Recently Played, YouTube) ---------- */
+
+.glass-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.glass-search-row .glass-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.glass-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.glass-pager--center {
+  justify-content: center;
+}
+
+.glass-pager-info {
+  font-size: 14px;
+  opacity: 0.85;
+  text-align: center;
+}
+
+.glass-spinner {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  box-sizing: border-box;
+  margin: 0 auto 12px;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: glass-spin 0.8s linear infinite;
+}
+
+.glass-search-row .glass-spinner {
+  margin: 0 8px;
+}
+
+@keyframes glass-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.glass-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--glass-text);
+}
+
+.glass-alert--danger {
+  background: var(--glass-tone-urgent);
+}
+
+.glass-alert i {
+  margin-top: 2px;
+}
+
+@media (max-width: 700px) {
+  .glass-btn-label,
+  .glass-pager-extra {
+    display: none;
+  }
+}
+
+/* YouTube results: let long video titles wrap to two lines instead of truncating. */
+.glass-page--youtube .glass-row-title {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+@media (max-width: 700px) {
+  .glass-page--youtube .glass-row-art--wide {
+    width: 64px;
+  }
+}

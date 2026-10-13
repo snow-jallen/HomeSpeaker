@@ -3,40 +3,53 @@
 @inject HomeSpeakerService svc
 @inject YouTubeStateService state
 
-<h3>YouTube Cache</h3>
+<PageTitle>Home Speaker | YouTube</PageTitle>
 
-@if (ffmpegAvailable == false)
-{
-    <div class="alert alert-danger" role="alert">
-        <strong>ffmpeg not found.</strong> Downloading videos is disabled. Please install ffmpeg and ensure it is accessible at the configured path.
+<div class="glass-page glass-page--youtube">
+    <div class="glass-page-header">
+        <h1 class="glass-title">YouTube Cache</h1>
     </div>
-}
 
-<form method="dialog">
-    <input type="text" @bind=state.SearchTerm />
-    @if (isSearching)
+    @if (ffmpegAvailable == false)
     {
-        <div class="spinner-border mx-3" role="status">
-            <span class="visually-hidden">Searching...</span>
+        <div class="glass-alert glass-alert--danger" role="alert">
+            <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+            <div><strong>ffmpeg not found.</strong> Downloading videos is disabled. Please install ffmpeg and ensure it is accessible at the configured path.</div>
+        </div>
+    }
+
+    <form method="dialog" class="glass-search-row">
+        <input type="text" class="glass-input" placeholder="Search YouTube..." aria-label="Search YouTube" @bind=state.SearchTerm />
+        @if (isSearching)
+        {
+            <div class="glass-spinner" role="status" aria-label="Searching"></div>
+        }
+        else
+        {
+            <button class="glass-btn" type="submit" @onclick=searchAsync aria-label="Search">
+                <i class="fas fa-search" aria-hidden="true"></i>
+                <span class="glass-btn-label">Search</span>
+            </button>
+        }
+    </form>
+
+    @if (state.Videos == null)
+    {
+        <div class="glass-empty">
+            <i class="fab fa-youtube" aria-hidden="true"></i>
+            Search for something to create a temporary fair-use local cache.
         </div>
     }
     else
     {
-        <button class="btn btn-primary mx-2" type="submit" @onclick=searchAsync>Search</button>
+        <div class="glass-list">
+            @foreach (var searchResult in state.Videos)
+            {
+                <YouTubeSearchResult SearchResult="searchResult" FfmpegAvailable="ffmpegAvailable ?? true" />
+            }
+        </div>
     }
-</form>
-
-@if (state.Videos == null)
-{
-    <p>Search for something to create a temporary fair-use local cache.</p>
-}
-else
-{
-    @foreach (var searchResult in state.Videos)
-    {
-        <YouTubeSearchResult SearchResult="searchResult" FfmpegAvailable="ffmpegAvailable ?? true" />
-    }
-}
+</div>
 
 @code {
     bool isSearching = false;

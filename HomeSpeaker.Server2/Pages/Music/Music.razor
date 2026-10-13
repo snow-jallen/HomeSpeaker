@@ -1,92 +1,81 @@
 @page "/music"
 @inject HomeSpeakerService svc
 @inject ILogger<Music> logger
-@using Microsoft.Fast.Components.FluentUI
 @implements IDisposable
 
 <PageTitle>Home Speaker | Music</PageTitle>
 
-<div class="search-header mb-4">
-    <h2 class="mb-3">
-        <i class="fas fa-music me-2" style="color: var(--hs-primary);"></i>
-        Music Library
-    </h2>
-    
-    <div class="row g-2">
-        <div class="col">
-            <FluentSearch class="w-100" Placeholder="Search artists, albums, or songs..." DisplayName="Search & Filter" ValueChanged="(s)=>FilterValue = s" ValueExpression="() => FilterValue" />
-        </div>
-        <div class="col-auto">
-            <button @onclick=refresh class="btn btn-primary">
-                <i class="fas fa-search me-2"></i>
-                <span class="d-none d-md-inline">Search</span>
-            </button>
-        </div>
-        <div class="col-auto">
-            <button @onclick=reloadSongsAsync class="btn btn-secondary">
-                <i class="fas fa-sync-alt me-2"></i>
-                <span class="d-none d-md-inline">Refresh</span>
+<div class="glass-page">
+    <div class="glass-page-header">
+        <h1 class="glass-title">Music Library</h1>
+        <div class="glass-page-actions">
+            <button @onclick=reloadSongsAsync class="glass-btn glass-btn--ghost" title="Refresh library">
+                <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                <span>Refresh</span>
             </button>
         </div>
     </div>
-</div>
 
-@if (songs == null)
-{
-    <div class="loading-message">
-        <div class="loading-spinner mx-auto"></div>
-        <p class="mt-3">Loading your music library...</p>
-    </div>
-}
-else if (numPages == 0)
-{
-    <div class="empty-state">
-        <div class="empty-state-icon">
-            <i class="fas fa-search"></i>
-        </div>
-        <h3 class="empty-state-title">No results found</h3>
-        <p class="empty-state-description">
-            No artists, albums, or songs contain '@FilterValue'
-        </p>
-        <button class="btn btn-outline-primary mt-3" @onclick="() => FilterValue = null">
-            Clear search
+    <div class="glass-search-row">
+        <input type="search" class="glass-input" placeholder="Search artists, albums, or songs..." aria-label="Search artists, albums, or songs" @bind="FilterValue" @bind:event="onchange" />
+        <button @onclick=refresh class="glass-btn" title="Search" aria-label="Search">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <span class="glass-btn-label">Search</span>
         </button>
     </div>
-}
-else
-{
-    @if (numPages > 1)
+
+    @if (songs == null)
     {
-        <div class="d-flex justify-content-between align-items-center mb-3 pagination-header">
-            <FluentButton @onclick=@(()=>pageNum--) Disabled=@(pageNum == 0) Appearance="Appearance.Outline">
-                <i class="fas fa-chevron-left me-2"></i>Prev
-            </FluentButton>
-            <div class="text-muted">
-                Page <strong>@(pageNum + 1)</strong> of <strong>@numPages</strong> 
-                <span class="d-none d-md-inline">(@artistCount artists)</span>
-            </div>
-            <FluentButton @onclick=@(()=>pageNum++) Disabled=@(pageNum+1 >= numPages) Appearance="Appearance.Outline">
-                Next<i class="fas fa-chevron-right ms-2"></i>
-            </FluentButton>
+        <div class="glass-empty" role="status">
+            <div class="glass-spinner" aria-hidden="true"></div>
+            Loading your music library...
         </div>
     }
-
-    <div class="artists-list">
-        @foreach (var artist in (artists?.Skip(pageSize * pageNum).Take(pageSize)) ?? Enumerable.Empty<IGrouping<string, SongViewModel>>())
-        {
-            <Artist Content="@artist" />
-        }
-    </div>
-    
-    @if (numPages > 1)
+    else if (numPages == 0)
     {
-        <div class="d-flex justify-content-center mt-4">
-            <button class="btn btn-outline-secondary" @onclick=@(()=>pageNum=0) disabled=@(pageNum == 0)>
-                <i class="fas fa-angle-double-up me-2"></i>Back to top
+        <div class="glass-empty">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <div>No artists, albums, or songs contain '@FilterValue'</div>
+            <button class="glass-btn glass-btn--ghost mt-3" @onclick="() => FilterValue = null">
+                Clear search
             </button>
         </div>
     }
-}
+    else
+    {
+        @if (numPages > 1)
+        {
+            <div class="glass-pager">
+                <button class="glass-btn glass-btn--ghost" @onclick=@(()=>pageNum--) disabled=@(pageNum == 0)>
+                    <i class="fas fa-chevron-left" aria-hidden="true"></i>Prev
+                </button>
+                <div class="glass-pager-info">
+                    Page <strong>@(pageNum + 1)</strong> of <strong>@numPages</strong>
+                    <span class="glass-pager-extra">(@artistCount artists)</span>
+                </div>
+                <button class="glass-btn glass-btn--ghost" @onclick=@(()=>pageNum++) disabled=@(pageNum+1 >= numPages)>
+                    Next<i class="fas fa-chevron-right" aria-hidden="true"></i>
+                </button>
+            </div>
+        }
+
+        <div class="glass-list">
+            @foreach (var artist in (artists?.Skip(pageSize * pageNum).Take(pageSize)) ?? Enumerable.Empty<IGrouping<string, SongViewModel>>())
+            {
+                <Artist Content="@artist" />
+            }
+        </div>
+
+        @if (numPages > 1)
+        {
+            <div class="glass-pager glass-pager--center">
+                <button class="glass-btn glass-btn--ghost" @onclick=@(()=>pageNum=0) disabled=@(pageNum == 0)>
+                    <i class="fas fa-angle-double-up" aria-hidden="true"></i>Back to top
+                </button>
+            </div>
+        }
+    }
+</div>
 
 @code {
     private int pageNum = 0;
