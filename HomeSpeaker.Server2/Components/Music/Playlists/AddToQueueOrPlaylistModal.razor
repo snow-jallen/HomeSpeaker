@@ -37,7 +37,7 @@
 </div>
 
 <!-- Native <dialog> renders in the browser top layer — above all z-index and stacking contexts -->
-<dialog id="@_dialogId" class="glass-dialog">
+<dialog id="@_dialogId" class="glass-dialog" @onclose="OnDialogClosed">
     <div class="glass-dialog-title">
         <span>New Playlist</span>
         <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="CancelCreatePlaylist" aria-label="Close" title="Close">
@@ -153,6 +153,9 @@
             await OnClosed.InvokeAsync();
         }
     }
+
+    // Fires for every close, including the one idleController triggers when the screen goes ambient or night.
+    private void OnDialogClosed() => newPlaylistName = "";
 
     private async Task CancelCreatePlaylist()
     {

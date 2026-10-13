@@ -95,7 +95,7 @@
 {
     @* Native <dialog> renders in the browser top layer, so it sits above the glass panel's stacking context. *@
     <dialog id="streamDialog" class="glass-dialog glass-dialog--picker" aria-labelledby="streamDialogTitle"
-            @oncancel="CloseStreamModal" @oncancel:preventDefault="true">
+            @oncancel="CloseStreamModal" @oncancel:preventDefault="true" @onclose="CloseStreamModal">
         <h2 class="glass-dialog-title" id="streamDialogTitle">
             <span>@(editingStream == null ? "Add New Stream" : "Edit Stream")</span>
             <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="CloseStreamModal" title="Close" aria-label="Close">

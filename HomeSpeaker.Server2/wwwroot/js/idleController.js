@@ -47,6 +47,13 @@ window.idleController = (function () {
         const root = document.documentElement;
         root.classList.toggle('hs-mode-ambient', mode === 'ambient');
         root.classList.toggle('hs-mode-night', mode === 'night');
+        // A modal <dialog> sits in the top layer above the ambient and night layers, so close any that are open.
+        // Each dialog's close event lets its Blazor component reset its own state.
+        if (mode !== 'active') {
+            document.querySelectorAll('dialog[open]').forEach(function (dialog) {
+                try { dialog.close(); } catch (e) { console.error('idleController could not close dialog', e); }
+            });
+        }
         listeners.forEach(function (callback) {
             try { callback(mode); } catch (e) { console.error('idleController listener failed', e); }
         });
