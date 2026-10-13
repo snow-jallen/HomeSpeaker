@@ -2,14 +2,16 @@
 // Items come from /api/photos/next ({ id, url, place, when, layout, kind, durationMs }).
 // Photos crossfade between two <img class="hs-slide"> layers; videos play muted in a third
 // <video class="hs-slide hs-slide-video"> layer. A short history lets the user swipe back and
-// forward. Advances only while idleController is in 'ambient' mode; on the first init it fetches
-// one item so the shell's blurred backdrop has something to show on every device.
+// forward. Advances only while idleController is in 'ambient' mode: outside it no timer runs and the
+// blurred backdrop stays on the last photo. On the first init it seeds that backdrop on every device
+// (phones and laptops never enter ambient mode), skipping past videos until a photo arrives.
 window.ambientSlideshow = (function () {
     const maxHistory = 20;
     const videoLoadTimeoutMs = 10000;
     const maxConsecutiveSkips = 3;
     const videoStallGraceMs = 5000;
     const fadeMs = 1600; // a little longer than the 1.5s CSS opacity transition
+    const maxSeedAttempts = 5;
 
     let slideMs = 30000;
     let maxVideoMs = 60000;
@@ -156,7 +158,7 @@ window.ambientSlideshow = (function () {
         // If decode() never settles the timer would stay cleared and the slideshow would freeze.
         schedule(next, slideMs);
         await incoming.decode();
-        if (token !== showToken) return;
+        if (token !== showToken) return false;
 
         document.documentElement.style.setProperty('--hs-photo', 'url("' + item.url + '")');
         applyMeta(item);
@@ -170,6 +172,7 @@ window.ambientSlideshow = (function () {
         releaseVideoSoon();
 
         schedule(next, slideMs);
+        return true;
     }
 
     async function showVideo(item, token) {
@@ -177,7 +180,7 @@ window.ambientSlideshow = (function () {
         if (!video) return;
 
         // Outside ambient mode the video stays in the history but never plays.
-        if (!isAmbient()) return;
+        if (!isAmbient()) return false;
 
         cancelUnload();
         video.muted = true; // Blazor's static `muted` attribute does not set the property
@@ -217,19 +220,22 @@ window.ambientSlideshow = (function () {
         });
 
         schedule(next, videoLimitMs(item));
+        return true;
     }
 
+    // Resolves true once the item is on screen (for a photo, once it is also the backdrop).
     async function show(item) {
         const token = ++showToken;
         clearTimer();
         disposeVideoListeners();
         try {
-            if (isVideo(item)) await showVideo(item, token);
-            else await showPhoto(item, token);
+            if (isVideo(item)) return await showVideo(item, token) === true;
+            return await showPhoto(item, token) === true;
         } catch (e) {
-            if (token !== showToken) return;
+            if (token !== showToken) return false;
             console.debug('ambientSlideshow: keeping current item', e);
             schedule(next, slideMs);
+            return false;
         }
     }
 
@@ -263,6 +269,25 @@ window.ambientSlideshow = (function () {
         }
     }
 
+    function remember(item) {
+        history.push(item);
+        while (history.length > maxHistory) history.shift();
+        pos = history.length - 1;
+    }
+
+    // Gives the blurred backdrop a photo on every device. Outside ambient mode a video never plays
+    // (so it would leave the page black): keep it in the history and fetch again, up to
+    // maxSeedAttempts items. Once ambient mode is running, the normal slideshow takes over.
+    async function seedBackdrop() {
+        for (let attempt = 0; attempt < maxSeedAttempts; attempt++) {
+            const item = await fetchNext();
+            if (!item) return;
+            remember(item);
+            const shown = await show(item);
+            if (shown || isAmbient()) return;
+        }
+    }
+
     async function next() {
         if (pos >= 0 && pos < history.length - 1) {
             // Replaying forward after the user went back.
@@ -275,9 +300,7 @@ window.ambientSlideshow = (function () {
         lastDirection = 'forward';
         const item = await fetchNext();
         if (!item) return;
-        history.push(item);
-        while (history.length > maxHistory) history.shift();
-        pos = history.length - 1;
+        remember(item);
         await show(item);
     }
 
@@ -341,7 +364,7 @@ window.ambientSlideshow = (function () {
                     else previous();
                 });
             }
-            next();
+            seedBackdrop();
         },
         next: next,
         previous: previous
