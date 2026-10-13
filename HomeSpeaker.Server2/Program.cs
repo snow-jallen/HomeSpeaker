@@ -325,6 +325,11 @@ app.MapHealthChecks("/alive", new HealthCheckOptions
 {
     Predicate = r => r.Tags.Contains("live")
 });
+app.Use(async (context, next) =>
+{
+    Kiosk.ApplyQueryOverride(context);
+    await next(context);
+});
 app.UseRouting();
 app.UseCors(LocalCorsPolicy);
 app.UseAntiforgery();

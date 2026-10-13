@@ -18,7 +18,7 @@
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 
-<body>
+<body data-kiosk="@(isKiosk ? "true" : "false")">
     <Routes @rendermode="InteractiveServer" />
 
     <div id="blazor-error-ui" role="alert" aria-live="assertive">
@@ -216,3 +216,10 @@
 </body>
 
 </html>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private bool isKiosk => HttpContext is not null && Kiosk.IsKiosk(HttpContext.Request);
+}
