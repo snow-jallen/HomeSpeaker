@@ -52,6 +52,7 @@
     private Timer? windowTimer;
     private bool menuOpen;
     private bool isHome;
+    private volatile bool disposed;
 
     protected override void OnInitialized()
     {
@@ -66,6 +67,31 @@
             return;
         }
 
+        // Every minute: heartbeat for the kiosk circuit watchdog in App.razor, and tell the
+        // idle controller whether quiet hours apply (night clock instead of slideshow).
+        // Started before any other await so the heartbeat never depends on the dashboard load.
+        windowTimer = new Timer(async state =>
+        {
+            if (disposed)
+            {
+                return;
+            }
+
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("circuitWatchdog.beat");
+                await JSRuntime.InvokeVoidAsync("idleController.setQuiet", QuietHours.IsQuietTime(TimeProvider));
+            }
+            catch (Exception ex) when (ex is JSDisconnectedException or JSException or TaskCanceledException or ObjectDisposedException)
+            {
+                // Circuit is going away; the watchdog will notice the missing beat.
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Window timer tick failed");
+            }
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1));
+
         try
         {
             dotNetHelper = DotNetObjectReference.Create(this);
@@ -74,6 +100,12 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error initializing keyboard shortcuts");
+        }
+
+        if (disposed)
+        {
+            windowTimer.Dispose();
+            return;
         }
 
         try
@@ -85,22 +117,25 @@
             Logger.LogError(ex, "Error initializing the idle controller");
         }
 
-        await Dashboard.StartAsync();
-
-        // Every minute: heartbeat for the kiosk circuit watchdog in App.razor, and tell the
-        // idle controller whether quiet hours apply (night clock instead of slideshow).
-        windowTimer = new Timer(async state =>
+        if (disposed)
         {
-            try
-            {
-                await JSRuntime.InvokeVoidAsync("circuitWatchdog.beat");
-                await JSRuntime.InvokeVoidAsync("idleController.setQuiet", QuietHours.IsQuietTime(TimeProvider));
-            }
-            catch (Exception ex) when (ex is JSDisconnectedException or JSException or TaskCanceledException or ObjectDisposedException)
-            {
-                // Circuit is going away; the watchdog will notice the missing beat.
-            }
-        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1));
+            windowTimer.Dispose();
+            return;
+        }
+
+        try
+        {
+            await Dashboard.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error starting the dashboard");
+        }
+
+        if (disposed)
+        {
+            windowTimer.Dispose();
+        }
     }
 
     private void ToggleMenu() => menuOpen = !menuOpen;
@@ -228,6 +263,7 @@
 
     public ValueTask DisposeAsync()
     {
+        disposed = true;
         Navigation.LocationChanged -= onLocationChanged;
         windowTimer?.Dispose();
         dotNetHelper?.Dispose();

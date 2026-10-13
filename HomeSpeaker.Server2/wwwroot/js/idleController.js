@@ -10,8 +10,16 @@ window.idleController = (function () {
     let swallowClick = false;
     const listeners = [];
 
+    let swallowTimer = null;
+
     function isKiosk() {
-        return document.body && document.body.dataset.kiosk === 'true';
+        return !!document.body && document.body.dataset.kiosk === 'true';
+    }
+
+    function clearSwallow() {
+        swallowClick = false;
+        clearTimeout(swallowTimer);
+        swallowTimer = null;
     }
 
     function setMode(next) {
@@ -39,8 +47,11 @@ window.idleController = (function () {
             e.preventDefault();
             e.stopPropagation();
             if (e.type === 'pointerdown') {
+                // Swallow the click that ends this wake gesture, however long the finger stays
+                // down. The timeout is only a fallback for gestures that never produce a click.
                 swallowClick = true;
-                setTimeout(function () { swallowClick = false; }, 700);
+                clearTimeout(swallowTimer);
+                swallowTimer = setTimeout(clearSwallow, 1500);
             }
             setMode('active');
         }
@@ -49,13 +60,14 @@ window.idleController = (function () {
 
     function onClick(e) {
         if (swallowClick) {
-            swallowClick = false;
+            clearSwallow();
             e.preventDefault();
             e.stopPropagation();
         }
     }
 
     document.addEventListener('pointerdown', onActivity, true);
+    document.addEventListener('pointercancel', clearSwallow, true);
     document.addEventListener('keydown', onActivity, true);
     document.addEventListener('click', onClick, true);
 
