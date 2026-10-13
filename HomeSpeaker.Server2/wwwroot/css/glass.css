@@ -1,0 +1,190 @@
+/* Glass design system for the HomeSpeaker shell (design "A · Glass").
+   Sizes are px on purpose: app.css sets html font-size to 24px at 1024x600 for legacy pages. */
+
+:root {
+  --glass-bg: rgba(22, 22, 26, 0.5);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-blur: blur(24px) saturate(150%);
+  --glass-text: #ffffff;
+  --glass-tone-caution: rgba(150, 84, 8, 0.92);
+  --glass-tone-urgent: rgba(150, 24, 36, 0.94);
+  --glass-radius-card: 28px;
+  --glass-radius-tile: 20px;
+  --glass-radius-pill: 22px;
+  --glass-font: 'Manrope', system-ui, sans-serif;
+  --hs-photo: none;
+}
+
+.glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  color: var(--glass-text);
+}
+
+.glass-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  border-radius: var(--glass-radius-pill);
+  font: 700 15px var(--glass-font);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.glass-pill:hover,
+.glass-pill:focus {
+  color: var(--glass-text);
+}
+
+body[data-kiosk="false"] .kiosk-only {
+  display: none !important;
+}
+
+/* ---------- Shell ---------- */
+
+.hs-backdrop {
+  position: fixed;
+  inset: -60px;
+  z-index: 0;
+  background: #151515 var(--hs-photo) center / cover no-repeat;
+  filter: blur(40px) brightness(0.6);
+}
+
+.hs-shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100dvh;
+  padding: 12px 24px 16px;
+  box-sizing: border-box;
+  font-family: var(--glass-font);
+  color: var(--glass-text);
+}
+
+.hs-topbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hs-topbar-spacer {
+  flex: 1;
+}
+
+.hs-topbar-clock {
+  min-width: 72px;
+  text-align: right;
+  font: 800 20px var(--glass-font);
+}
+
+.hs-main {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.hs-main.glass-panel {
+  border-radius: var(--glass-radius-card);
+  padding: 16px;
+}
+
+/* ---------- App menu ---------- */
+
+.hs-menu-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.hs-menu {
+  width: min(360px, 100vw);
+  height: 100%;
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 28px 0 0 28px;
+  font-family: var(--glass-font);
+}
+
+.hs-menu a {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 52px;
+  padding: 0 14px;
+  border-radius: 16px;
+  color: var(--glass-text);
+  text-decoration: none;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.hs-menu a i {
+  width: 22px;
+  text-align: center;
+  opacity: 0.85;
+}
+
+.hs-menu a.active,
+.hs-menu a:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--glass-text);
+}
+
+/* ---------- Ambient / night layers (content added in Task 9) ---------- */
+
+.hs-ambient,
+.hs-night {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: none;
+  overflow: hidden;
+  font-family: var(--glass-font);
+  color: #fff;
+}
+
+.hs-ambient {
+  background: #111;
+}
+
+.hs-night {
+  background: #000;
+  align-items: center;
+  justify-content: center;
+}
+
+html.hs-mode-ambient .hs-ambient {
+  display: block;
+}
+
+html.hs-mode-night .hs-night {
+  display: flex;
+}
+
+/* Don't paint the blurred backdrop underneath a full-screen layer (saves the Pi's GPU). */
+html.hs-mode-ambient .hs-backdrop,
+html.hs-mode-night .hs-backdrop {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .hs-shell {
+    padding: 8px 12px 12px;
+  }
+}

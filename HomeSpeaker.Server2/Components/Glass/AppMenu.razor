@@ -1,0 +1,39 @@
+@if (Open)
+{
+    <div class="hs-menu-scrim" @onclick="OnClose">
+        <nav class="hs-menu glass" aria-label="All pages" @onclick:stopPropagation="true">
+            @foreach (var item in items)
+            {
+                <NavLink href="@item.Href" Match="@(item.Href.Length == 0 ? NavLinkMatch.All : NavLinkMatch.Prefix)">
+                    <i class="@item.Icon" aria-hidden="true"></i><span>@item.Label</span>
+                </NavLink>
+            }
+        </nav>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private sealed record MenuItem(string Label, string Href, string Icon);
+
+    private static readonly MenuItem[] items =
+    [
+        new("Home", "", "fas fa-home"),
+        new("Music", "music", "fas fa-music"),
+        new("Queue", "queue", "fas fa-stream"),
+        new("Playlists", "playlists", "fas fa-list-ul"),
+        new("Folders", "folders", "fas fa-folder"),
+        new("Recently played", "recently-played", "fas fa-history"),
+        new("Streams", "streams", "fas fa-podcast"),
+        new("YouTube", "youtube", "fab fa-youtube"),
+        new("AI Playlists", "ai-playlists", "fas fa-brain"),
+        new("AI Status", "ai-status", "fas fa-microchip"),
+        new("Autoplay", "autoplay", "fas fa-clock"),
+        new("Anchors", "anchors", "fas fa-anchor"),
+        new("NightScout", "nightscout", "fas fa-heartbeat"),
+        new("Climate", "climate", "fas fa-temperature-half"),
+        new("Aspire", "aspire", "fas fa-chart-line"),
+    ];
+}

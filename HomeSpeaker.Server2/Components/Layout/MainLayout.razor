@@ -1,70 +1,47 @@
 @inherits LayoutComponentBase
 @inject IJSRuntime JSRuntime
 @inject HomeSpeakerService HomeSpeaker
+@inject DashboardState Dashboard
+@inject NavigationManager Navigation
+@inject IConfiguration Configuration
 @inject ILogger<MainLayout> Logger
 @inject TimeProvider TimeProvider
 @implements IAsyncDisposable
 
-<div class="page-container">
-    <!-- Desktop: Traditional sidebar layout -->
-    <div class="sidebar hs-sidebar">
-        <NavMenu />
-    </div>
+<div class="hs-backdrop" aria-hidden="true"></div>
 
-    <!-- Main content area -->
-    <main class="main-content">
-        <article class="content px-1 px-md-2">
-            @Body
-        </article>
-    </main>
-    
-    <!-- Touch/Mobile: Bottom navigation bar -->
-    <nav class="bottom-nav hs-bottom-nav">
-        <a href="" class="bottom-nav-item" title="Home">
-            <i class="fas fa-home"></i>
-            <span>Home</span>
-        </a>
-        <a href="queue" class="bottom-nav-item" title="Now Playing">
-            <i class="fas fa-music"></i>
-            <span>Queue</span>
-        </a>
-        <a href="music" class="bottom-nav-item" title="Music">
-            <i class="fas fa-headphones"></i>
-            <span>Music</span>
-        </a>
-        <a href="streams" class="bottom-nav-item" title="Streams">
-            <i class="fas fa-podcast"></i>
-            <span>Streams</span>
-        </a>
-        <button class="bottom-nav-item" @onclick="ToggleMobileMenu" title="More">
-            <i class="fas fa-bars"></i>
-            <span>More</span>
+<div class="hs-shell">
+    <header class="hs-topbar">
+        @if (isHome)
+        {
+            <button type="button" class="glass glass-pill kiosk-only" @onclick="ShowPhotosAsync">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+                Photos
+            </button>
+        }
+        else
+        {
+            <a href="" class="glass glass-pill">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+                Home
+            </a>
+        }
+        <div class="hs-topbar-spacer"></div>
+        <button type="button" class="glass glass-pill" aria-label="All pages" @onclick="ToggleMenu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
         </button>
-    </nav>
-    
-    <!-- Mobile menu overlay -->
-    @if (showMobileMenu)
-    {
-        <div class="mobile-menu-overlay" @onclick="ToggleMobileMenu">
-            <div class="mobile-menu" @onclick:stopPropagation>
-                <div class="mobile-menu-header">
-                    <h3>Menu</h3>
-                    <button class="btn btn-icon" @onclick="ToggleMobileMenu">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="mobile-menu-content">
-                    <NavMenu />
-                </div>
-            </div>
-        </div>
-    }
+        <Clock Format="h:mm" Class="hs-topbar-clock" />
+    </header>
 
-    @if (_overlayVisible)
-    {
-        <div class="sleepy-overlay" @onclick="OnOverlayClicked"></div>
-    }
+    <main class="hs-main @(isHome ? "hs-main--home" : "glass glass-panel")">
+        @Body
+    </main>
 </div>
+
+<AppMenu Open="menuOpen" OnClose="CloseMenu" />
+
+<div class="hs-ambient" aria-hidden="true"></div>
+<div class="hs-night" aria-hidden="true"></div>
 
 <MudThemeProvider />
 <MudDialogProvider />
@@ -72,55 +49,85 @@
 
 @code {
     private DotNetObjectReference<MainLayout>? dotNetHelper;
+    private Timer? windowTimer;
+    private bool menuOpen;
+    private bool isHome;
+
+    protected override void OnInitialized()
+    {
+        isHome = computeIsHome(Navigation.Uri);
+        Navigation.LocationChanged += onLocationChanged;
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("homeSpeakerKeyboard.init", dotNetHelper);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing keyboard shortcuts");
+        }
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("idleController.init", new { idleSeconds = Configuration.GetValue("Ambient:IdleSeconds", 120) });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing the idle controller");
+        }
+
+        await Dashboard.StartAsync();
+
+        // Every minute: heartbeat for the kiosk circuit watchdog in App.razor, and tell the
+        // idle controller whether quiet hours apply (night clock instead of slideshow).
+        windowTimer = new Timer(async state =>
         {
             try
             {
-                dotNetHelper = DotNetObjectReference.Create(this);
-                await JSRuntime.InvokeVoidAsync("homeSpeakerKeyboard.init", dotNetHelper);
+                await JSRuntime.InvokeVoidAsync("circuitWatchdog.beat");
+                await JSRuntime.InvokeVoidAsync("idleController.setQuiet", QuietHours.IsQuietTime(TimeProvider));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is JSDisconnectedException or JSException or TaskCanceledException or ObjectDisposedException)
             {
-                Logger.LogError(ex, "Error initializing keyboard shortcuts");
+                // Circuit is going away; the watchdog will notice the missing beat.
             }
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1));
+    }
 
-            // Start the sleepy-time window checker (fires immediately, then every 60s)
-            _windowTimer = new Timer(async _ =>
-            {
-                // Heartbeat for the kiosk circuit watchdog in App.razor: while
-                // this arrives the page knows its circuit is alive.
-                try { await JSRuntime.InvokeVoidAsync("circuitWatchdog.beat"); }
-                catch { }
+    private void ToggleMenu() => menuOpen = !menuOpen;
 
-                if (IsInSleepWindow())
-                {
-                    if (!_watching)
-                    {
-                        _watching = true;
-                        await JSRuntime.InvokeVoidAsync("sleepyTime.startWatching", dotNetHelper);
-                        StartIdleTimer();
-                    }
-                }
-                else
-                {
-                    if (_watching)
-                    {
-                        _watching = false;
-                        _idleTimer?.Change(Timeout.Infinite, Timeout.Infinite);
-                        await JSRuntime.InvokeVoidAsync("sleepyTime.stopWatching");
-                        await InvokeAsync(() =>
-                        {
-                            _overlayVisible = false;
-                            StateHasChanged();
-                        });
-                    }
-                }
-            }, null, TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(1));
+    private void CloseMenu() => menuOpen = false;
+
+    private async Task ShowPhotosAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("idleController.enter", "ambient");
+        }
+        catch (JSException ex)
+        {
+            Logger.LogWarning(ex, "Could not enter ambient mode");
         }
     }
+
+    private void onLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        isHome = computeIsHome(e.Location);
+        menuOpen = false;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private bool computeIsHome(string uri) =>
+        Navigation.ToBaseRelativePath(uri).Split('?', '#')[0].Length == 0;
 
     [JSInvokable]
     public async Task OnPlayPause()
@@ -157,10 +164,11 @@
     }
 
     [JSInvokable]
-    public async Task OnSkipBack()
+    public Task OnSkipBack()
     {
         // Not implemented yet - could restart current song
         Logger.LogInformation("Skip back requested (not implemented)");
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
@@ -196,47 +204,11 @@
         try
         {
             var currentVolume = await HomeSpeaker.GetVolumeAsync();
-            var newVolume = Math.Min(100, currentVolume + 5);
-            await HomeSpeaker.SetVolumeAsync(newVolume);
+            await HomeSpeaker.SetVolumeAsync(Math.Min(100, currentVolume + 5));
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error increasing volume");
-        }
-    }
-
-    [JSInvokable]
-    public async Task OnUserActivity()
-    {
-        if (!_watching) return;
-
-        await InvokeAsync(() =>
-        {
-            _overlayVisible = false;
-            // Restart the idle timer: cancel existing, schedule new one-shot
-            _idleTimer?.Change(Timeout.Infinite, Timeout.Infinite);
-            _idleTimer?.Change(TimeSpan.FromMinutes(1), Timeout.InfiniteTimeSpan);
-            StateHasChanged();
-        });
-    }
-
-    private void StartIdleTimer()
-    {
-        if (_idleTimer == null)
-        {
-            _idleTimer = new Timer(async _ =>
-            {
-                await InvokeAsync(() =>
-                {
-                    _overlayVisible = true;
-                    StateHasChanged();
-                });
-            }, null, TimeSpan.FromMinutes(1), Timeout.InfiniteTimeSpan);
-        }
-        else
-        {
-            // Reset to fire again in 1 minute
-            _idleTimer.Change(TimeSpan.FromMinutes(1), Timeout.InfiniteTimeSpan);
         }
     }
 
@@ -246,50 +218,19 @@
         try
         {
             var currentVolume = await HomeSpeaker.GetVolumeAsync();
-            var newVolume = Math.Max(0, currentVolume - 5);
-            await HomeSpeaker.SetVolumeAsync(newVolume);
+            await HomeSpeaker.SetVolumeAsync(Math.Max(0, currentVolume - 5));
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error decreasing volume");
         }
     }
-    
-    private bool showMobileMenu = false;
 
-    // Sleepy-time overlay
-    private bool _overlayVisible = false;
-    private bool _watching = false;
-    private Timer? _windowTimer;
-    private Timer? _idleTimer;
-    
-    private void ToggleMobileMenu()
+    public ValueTask DisposeAsync()
     {
-        showMobileMenu = !showMobileMenu;
-    }
-
-    private bool IsInSleepWindow() => QuietHours.IsQuietTime(TimeProvider);
-
-    private void OnOverlayClicked()
-    {
-        _ = OnUserActivity();
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        _windowTimer?.Dispose();
-        _idleTimer?.Dispose();
-        if (_watching)
-        {
-            try
-            {
-                await JSRuntime.InvokeVoidAsync("sleepyTime.stopWatching");
-            }
-            catch (Exception ex) when (ex is JSDisconnectedException or TaskCanceledException or OperationCanceledException)
-            {
-                // JS interop channel is already closed; safe to ignore during teardown
-            }
-        }
+        Navigation.LocationChanged -= onLocationChanged;
+        windowTimer?.Dispose();
         dotNetHelper?.Dispose();
+        return ValueTask.CompletedTask;
     }
 }
