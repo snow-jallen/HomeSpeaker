@@ -109,7 +109,6 @@ input[type="range"] {
 button:active,
 .btn:active,
 .list-item:active,
-.song-item:active,
 .artist-card:active,
 .album-card:active,
 .nav-item:active {
@@ -863,46 +862,6 @@ dialog#components-reconnect-modal #components-seconds-to-next-attempt {
   border-left-color: var(--hs-primary);
   padding-left: calc(var(--hs-space-md) + 4px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-}
-
-/* Song list items - touch optimized */
-.song-item {
-  background-color: transparent;
-  border-radius: var(--hs-radius-sm);
-  padding: var(--hs-space-md) var(--hs-space-md);
-  margin-bottom: 2px;
-  display: flex;
-  align-items: center;
-  transition: all 0.15s ease;
-  cursor: pointer;
-  border: 1px solid transparent;
-  min-height: 56px;
-}
-
-.song-item:hover {
-  background-color: var(--hs-hover-bg);
-  border-color: rgba(255, 255, 255, 0.05);
-}
-
-.song-item:active {
-  background-color: var(--hs-active-bg);
-}
-
-.song-item.active,
-.song-item.playing {
-  background-color: rgba(201, 152, 90, 0.1);
-  border-color: rgba(201, 152, 90, 0.3);
-}
-
-.song-item-title {
-  font-weight: 500;
-  color: var(--hs-text-primary);
-  margin-bottom: 2px;
-}
-
-.song-item-meta {
-  font-size: 0.85rem;
-  color: var(--hs-text-secondary);
 }
 
 /* Loading states */
