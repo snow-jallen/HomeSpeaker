@@ -60,6 +60,30 @@ public sealed class RadioStreamServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task UpdateWithAnImageUrlThatFailsToDownloadKeepsTheCurrentArt()
+    {
+        var service = await createServiceAsync();
+        writeFavicon("kbaq.png");
+        var stream = await service.CreateStreamAsync("KBAQ", "http://example.com/kbaq", faviconFileName: "kbaq.png");
+
+        await service.UpdateStreamAsync(stream.Id, "KBAQ", "http://example.com/kbaq", faviconUrl: "http://127.0.0.1:1/logo.png");
+
+        Assert.True(File.Exists(Path.Combine(faviconsDirectory, "kbaq.png")));
+        Assert.Equal("kbaq.png", (await service.GetStreamByIdAsync(stream.Id))!.FaviconFileName);
+    }
+
+    [Fact]
+    public async Task CreateGivesEachNewStreamTheNextDisplayOrder()
+    {
+        var service = await createServiceAsync();
+
+        var first = await service.CreateStreamAsync("One", "http://example.com/1");
+        var second = await service.CreateStreamAsync("Two", "http://example.com/2");
+
+        Assert.Equal(first.DisplayOrder + 1, second.DisplayOrder);
+    }
+
+    [Fact]
     public async Task FindStreamByNameIgnoresCase()
     {
         var service = await createServiceAsync();

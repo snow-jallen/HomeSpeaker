@@ -142,7 +142,11 @@ public class RadioStreamService
                 deleteFavicon(stream.FaviconFileName);
             }
 
-            stream.FaviconFileName = newFileName;
+            // A failed download keeps the current favicon rather than clearing it
+            if (newFileName != null)
+            {
+                stream.FaviconFileName = newFileName;
+            }
         }
         // else: both empty — no change to favicon
 

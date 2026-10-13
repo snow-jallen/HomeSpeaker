@@ -500,63 +500,32 @@ public class HomeSpeakerService
 
     public async Task<RadioStreamViewModel> CreateRadioStreamAsync(string name, string url, string faviconUrl = "", string faviconFileName = "")
     {
-        using var scope = serviceProvider.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<MusicContext>();
-
-        var stream = new RadioStream
-        {
-            Name = name,
-            Url = url,
-            FaviconFileName = faviconFileName,
-            DisplayOrder = (await db.RadioStreams.MaxAsync(s => (int?)s.DisplayOrder) ?? 0) + 1
-        };
-
-        db.RadioStreams.Add(stream);
-        await db.SaveChangesAsync();
-        radioStreamService.InvalidateCache();
-
-        return new RadioStreamViewModel
-        {
-            Id = stream.Id,
-            Name = stream.Name,
-            Url = stream.Url,
-            FaviconFileName = string.IsNullOrWhiteSpace(stream.FaviconFileName) ? null : stream.FaviconFileName,
-            PlayCount = stream.PlayCount,
-            DisplayOrder = stream.DisplayOrder
-        };
+        // RadioStreamService downloads a picked image URL (an uploaded file name wins), orders the stream and clears its cache.
+        var stream = await radioStreamService.CreateStreamAsync(name, url, faviconUrl, faviconFileName);
+        return toRadioStreamViewModel(stream);
     }
 
     public async Task<RadioStreamViewModel> UpdateRadioStreamAsync(int streamId, string name, string url, string faviconUrl = "", string faviconFileName = "")
     {
-        using var scope = serviceProvider.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<MusicContext>();
-
-        var stream = await db.RadioStreams.FindAsync(streamId);
-        if (stream == null)
+        var existing = await radioStreamService.GetStreamByIdAsync(streamId);
+        if (existing == null)
         {
             throw new InvalidOperationException($"Radio stream {streamId} not found");
         }
 
-        stream.Name = name;
-        stream.Url = url;
-        if (!string.IsNullOrEmpty(faviconFileName))
-        {
-            stream.FaviconFileName = faviconFileName;
-        }
-
-        await db.SaveChangesAsync();
-        radioStreamService.InvalidateCache();
-
-        return new RadioStreamViewModel
-        {
-            Id = stream.Id,
-            Name = stream.Name,
-            Url = stream.Url,
-            FaviconFileName = string.IsNullOrWhiteSpace(stream.FaviconFileName) ? null : stream.FaviconFileName,
-            PlayCount = stream.PlayCount,
-            DisplayOrder = stream.DisplayOrder
-        };
+        await radioStreamService.UpdateStreamAsync(streamId, name, url, faviconUrl, faviconFileName);
+        return toRadioStreamViewModel(existing);
     }
+
+    private static RadioStreamViewModel toRadioStreamViewModel(RadioStream stream) => new()
+    {
+        Id = stream.Id,
+        Name = stream.Name,
+        Url = stream.Url,
+        FaviconFileName = string.IsNullOrWhiteSpace(stream.FaviconFileName) ? null : stream.FaviconFileName,
+        PlayCount = stream.PlayCount,
+        DisplayOrder = stream.DisplayOrder
+    };
 
     // Repeat mode
     public async Task SetRepeatModeAsync(bool enabled)
