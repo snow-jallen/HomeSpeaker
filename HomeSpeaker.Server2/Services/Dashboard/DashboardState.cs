@@ -24,10 +24,11 @@ public sealed class DashboardState : IDisposable
     private readonly PhotoLibrary photoLibrary;
     private readonly ILogger<DashboardState> logger;
     private readonly SemaphoreSlim statusGate = new(1, 1);
+    private readonly Lock lifecycleGate = new();
     private Timer? statusTimer;
     private Timer? healthTimer;
     private bool started;
-    private bool disposed;
+    private volatile bool disposed;
 
     public DashboardState(
         HomeSpeakerService homeSpeaker,
@@ -66,20 +67,33 @@ public sealed class DashboardState : IDisposable
 
     public async Task StartAsync()
     {
-        if (started || disposed)
+        lock (lifecycleGate)
         {
-            return;
-        }
+            if (started || disposed)
+            {
+                return;
+            }
 
-        started = true;
-        homeSpeaker.StatusChanged += onPlayerEvent;
-        homeSpeaker.QueueChanged += onQueueChanged;
-        playerState.StateChanged += onPlayerStateChanged;
+            started = true;
+            homeSpeaker.StatusChanged += onPlayerEvent;
+            homeSpeaker.QueueChanged += onQueueChanged;
+            playerState.StateChanged += onPlayerStateChanged;
+        }
 
         await Task.WhenAll(RefreshStatusAsync(), refreshHealthAsync());
 
-        statusTimer = new Timer(state => _ = RefreshStatusAsync(), null, statusInterval, statusInterval);
-        healthTimer = new Timer(state => _ = refreshHealthAsync(), null, healthInterval, healthInterval);
+        // Dispose may have run during the awaits above; it takes the same lock, so either it already
+        // ran (we skip creating timers) or it will run after the timers exist and dispose them.
+        lock (lifecycleGate)
+        {
+            if (disposed)
+            {
+                return;
+            }
+
+            statusTimer = new Timer(state => _ = RefreshStatusAsync(), null, statusInterval, statusInterval);
+            healthTimer = new Timer(state => _ = refreshHealthAsync(), null, healthInterval, healthInterval);
+        }
     }
 
     public async Task RefreshStatusAsync()
@@ -113,24 +127,39 @@ public sealed class DashboardState : IDisposable
         {
             if (!disposed)
             {
-                statusGate.Release();
+                try
+                {
+                    statusGate.Release();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Disposed between the check and the release.
+                }
             }
         }
     }
 
     public void Dispose()
     {
-        disposed = true;
-        homeSpeaker.StatusChanged -= onPlayerEvent;
-        homeSpeaker.QueueChanged -= onQueueChanged;
-        playerState.StateChanged -= onPlayerStateChanged;
-        statusTimer?.Dispose();
-        healthTimer?.Dispose();
-        statusGate.Dispose();
+        lock (lifecycleGate)
+        {
+            disposed = true;
+            homeSpeaker.StatusChanged -= onPlayerEvent;
+            homeSpeaker.QueueChanged -= onQueueChanged;
+            playerState.StateChanged -= onPlayerStateChanged;
+            statusTimer?.Dispose();
+            healthTimer?.Dispose();
+            statusGate.Dispose();
+        }
     }
 
     private async Task refreshHealthAsync()
     {
+        if (disposed)
+        {
+            return;
+        }
+
         if (BloodSugarEnabled)
         {
             BloodSugar = await tryGetAsync(() => bloodSugarService.GetBloodSugarStatusAsync(), "blood sugar") ?? BloodSugar;
@@ -145,7 +174,14 @@ public sealed class DashboardState : IDisposable
 
         if (!disposed)
         {
-            Changed?.Invoke();
+            try
+            {
+                Changed?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Dashboard Changed subscriber threw after health refresh");
+            }
         }
     }
 
