@@ -123,10 +123,10 @@ public class RadioStreamService
 
         if (!string.IsNullOrWhiteSpace(faviconFileName))
         {
-            // Pre-uploaded file — delete old favicon (unless it is the same file) and store new filename directly
+            // Pre-uploaded file — delete old favicon (unless it is the same file or still in use) and store new filename directly
             if (!string.IsNullOrWhiteSpace(stream.FaviconFileName) && !string.Equals(stream.FaviconFileName, faviconFileName, StringComparison.Ordinal))
             {
-                deleteFavicon(stream.FaviconFileName);
+                await deleteFaviconIfUnusedAsync(stream.FaviconFileName, stream.Id);
             }
 
             stream.FaviconFileName = faviconFileName;
@@ -137,9 +137,9 @@ public class RadioStreamService
             var newFileName = await downloadFaviconAsync(name, faviconUrl);
 
             // Delete old favicon if new one was successfully downloaded (and it's a different file)
-            if (newFileName != null && !string.IsNullOrWhiteSpace(stream.FaviconFileName) && stream.FaviconFileName != newFileName)
+            if (newFileName != null && !string.IsNullOrWhiteSpace(stream.FaviconFileName) && !string.Equals(stream.FaviconFileName, newFileName, StringComparison.Ordinal))
             {
-                deleteFavicon(stream.FaviconFileName);
+                await deleteFaviconIfUnusedAsync(stream.FaviconFileName, stream.Id);
             }
 
             // A failed download keeps the current favicon rather than clearing it
@@ -196,10 +196,10 @@ public class RadioStreamService
             return;
         }
 
-        // Delete favicon file if exists
+        // Delete the favicon file unless another stream still uses it
         if (!string.IsNullOrWhiteSpace(stream.FaviconFileName))
         {
-            deleteFavicon(stream.FaviconFileName);
+            await deleteFaviconIfUnusedAsync(stream.FaviconFileName, stream.Id);
         }
 
         dbContext.RadioStreams.Remove(stream);
@@ -256,6 +256,20 @@ public class RadioStreamService
             logger.LogWarning(ex, "Failed to download favicon from {Url} for {StreamName}", faviconUrl, streamName);
             return null;
         }
+    }
+
+    // The REST API can point several streams at one file, so a stream only owns its file once no other stream uses it.
+    private async Task deleteFaviconIfUnusedAsync(string fileName, int streamId)
+    {
+        var sharedWithAnotherStream = await dbContext.RadioStreams
+            .AnyAsync(s => s.Id != streamId && s.FaviconFileName == fileName);
+        if (sharedWithAnotherStream)
+        {
+            logger.LogInformation("Keeping favicon {FileName}: another stream still uses it", fileName);
+            return;
+        }
+
+        deleteFavicon(fileName);
     }
 
     private void deleteFavicon(string fileName)

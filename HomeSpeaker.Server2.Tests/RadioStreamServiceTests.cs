@@ -46,6 +46,36 @@ public sealed class RadioStreamServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task ReplacingSharedArtOnOneStreamKeepsTheFileForTheOther()
+    {
+        var service = await createServiceAsync();
+        writeFavicon("shared.png");
+        writeFavicon("hd2.png");
+        var kbaq = await service.CreateStreamAsync("KBAQ", "http://example.com/kbaq", faviconFileName: "shared.png");
+        var hd2 = await service.CreateStreamAsync("KBAQ HD2", "http://example.com/hd2", faviconFileName: "shared.png");
+
+        await service.UpdateStreamAsync(hd2.Id, "KBAQ HD2", "http://example.com/hd2", faviconFileName: "hd2.png");
+
+        Assert.True(File.Exists(Path.Combine(faviconsDirectory, "shared.png")));
+        Assert.Equal("shared.png", (await service.GetStreamByIdAsync(kbaq.Id))!.FaviconFileName);
+    }
+
+    [Fact]
+    public async Task DeletingAStreamKeepsArtAnotherStreamStillUses()
+    {
+        var service = await createServiceAsync();
+        writeFavicon("shared.png");
+        var kbaq = await service.CreateStreamAsync("KBAQ", "http://example.com/kbaq", faviconFileName: "shared.png");
+        var hd2 = await service.CreateStreamAsync("KBAQ HD2", "http://example.com/hd2", faviconFileName: "shared.png");
+
+        await service.DeleteStreamAsync(hd2.Id);
+        Assert.True(File.Exists(Path.Combine(faviconsDirectory, "shared.png")));
+
+        await service.DeleteStreamAsync(kbaq.Id);
+        Assert.False(File.Exists(Path.Combine(faviconsDirectory, "shared.png")));
+    }
+
+    [Fact]
     public async Task UpdateWithoutArtLeavesItUnchanged()
     {
         var service = await createServiceAsync();
