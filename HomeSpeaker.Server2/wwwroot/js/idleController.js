@@ -1,7 +1,17 @@
 // idleController.js - kiosk screen modes: 'active' (normal UI), 'ambient' (photo slideshow),
 // 'night' (dim clock). Pure DOM, so it keeps working even if the Blazor circuit drops.
-// Only browsers marked <body data-kiosk="true"> ever leave 'active' on their own.
+// Only browsers marked <body data-kiosk="true"> ever leave 'active' on their own
+// (data-kiosk="auto" resolves to true on a 1024x600 screen).
 window.idleController = (function () {
+    // The server answers data-kiosk="auto" when it cannot tell (a remote hostname, no cookie).
+    // The Pi touchscreens are exactly 1024x600 (either orientation), so resolve it here, before
+    // anything reads the attribute. Phones, tablets and desktops fall through to "false".
+    if (document.body && document.body.dataset.kiosk === 'auto') {
+        const isTouchscreenSize = (screen.width === 1024 && screen.height === 600) ||
+            (screen.width === 600 && screen.height === 1024);
+        document.body.dataset.kiosk = isTouchscreenSize ? 'true' : 'false';
+    }
+
     const nightIdleMs = 60000;
     let mode = 'active';
     let quiet = false;

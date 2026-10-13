@@ -60,4 +60,28 @@ public sealed class KioskTests
         Kiosk.ApplyQueryOverride(ctx);
         Assert.Equal(0, ctx.Response.Headers.SetCookie.Count);
     }
+
+    [Fact]
+    public void Detect_RemoteHostWithoutCookie_IsAuto() =>
+        Assert.Equal(KioskMode.Auto, Kiosk.Detect(context("kitchen.boston-cloud.ts.net").Request));
+
+    [Fact]
+    public void Detect_CookieZero_IsOffEvenOnLoopback() =>
+        Assert.Equal(KioskMode.Off, Kiosk.Detect(context("localhost", cookie: "hs-kiosk=0").Request));
+
+    [Fact]
+    public void Detect_CookieOne_IsOn() =>
+        Assert.Equal(KioskMode.On, Kiosk.Detect(context("phone.ts.net", cookie: "hs-kiosk=1").Request));
+
+    [Fact]
+    public void Detect_QueryOne_IsOn() =>
+        Assert.Equal(KioskMode.On, Kiosk.Detect(context("phone.ts.net", "?kiosk=1", "hs-kiosk=0").Request));
+
+    [Fact]
+    public void Detect_QueryZero_IsOff() =>
+        Assert.Equal(KioskMode.Off, Kiosk.Detect(context("localhost", "?kiosk=0").Request));
+
+    [Fact]
+    public void Detect_Loopback_IsOn() =>
+        Assert.Equal(KioskMode.On, Kiosk.Detect(context("127.0.0.1").Request));
 }
