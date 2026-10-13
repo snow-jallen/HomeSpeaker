@@ -871,6 +871,9 @@ app.MapPost("/api/streams/upload-image", async (IFormFile file, RadioStreamServi
 }).DisableAntiforgery();
 
 // Map Blazor components for SSR and Interactive Server
+// Fingerprinted URLs (via @Assets in App.razor) so a deploy never leaves a browser on stale CSS/JS
+app.MapStaticAssets();
+
 app.MapRazorComponents<HomeSpeaker.Server2.Components.App>()
     .AddInteractiveServerRenderMode();
 
