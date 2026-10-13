@@ -2,7 +2,7 @@
 @inject PlayerStateService PlayerState
 @implements IDisposable
 
-<div class="play-controls">
+<div class="play-controls@(Compact ? " play-controls--compact" : "")">
     <button @onclick="PlayOrStop"
             title="@(IsPlaying ? "Stop playing" : "Resume playing")"
             aria-label="@(IsPlaying ? "Stop playing" : "Resume playing")"
@@ -15,6 +15,9 @@
 </div>
 
 @code {
+    /// <summary>Smaller buttons for the NavMenu/NoTopLayout sidebar on small screens.</summary>
+    [Parameter] public bool Compact { get; set; }
+
     bool IsPlaying => PlayerState.Status?.StillPlaying == true;
 
     protected override void OnInitialized()

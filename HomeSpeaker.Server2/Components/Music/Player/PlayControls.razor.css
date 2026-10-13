@@ -32,6 +32,25 @@
     font-size: 18px;
 }
 
+/* Compact variant: used by NavMenu (NoTopLayout pages) */
+.play-controls--compact {
+    gap: 8px;
+}
+
+.play-controls--compact .hs-play-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 26px;
+    font-size: 20px;
+}
+
+.play-controls--compact .skip-button {
+    width: 44px;
+    height: 44px;
+    border-radius: 22px;
+    font-size: 16px;
+}
+
 .play-button .fa-play {
     width: 1em;
     text-align: center;
