@@ -17,9 +17,9 @@ public sealed class PhotoCacheStore
 
     public PhotoCacheStore(string rootPath, ILogger<PhotoCacheStore> logger)
     {
-        RootPath = rootPath;
+        RootPath = Path.GetFullPath(rootPath);
         this.logger = logger;
-        Directory.CreateDirectory(rootPath);
+        Directory.CreateDirectory(RootPath);
     }
 
     public string RootPath { get; }

@@ -13,6 +13,28 @@ public sealed class PhotoCacheStoreTests : IDisposable
     public void Dispose() => temp.Dispose();
 
     [Fact]
+    public async Task RelativeRoot_IsResolvedToAbsolutePaths()
+    {
+        var relativeRoot = "hs-rel-" + Guid.NewGuid().ToString("N");
+        try
+        {
+            var store = new PhotoCacheStore(relativeRoot, NullLogger<PhotoCacheStore>.Instance);
+            await store.SaveImageAsync(idA, s => s.WriteAsync(new byte[] { 1 }).AsTask());
+
+            Assert.True(Path.IsPathRooted(store.RootPath));
+            Assert.True(store.TryGetImagePath(idA, out var path));
+            Assert.True(Path.IsPathRooted(path));
+        }
+        finally
+        {
+            if (Directory.Exists(relativeRoot))
+            {
+                Directory.Delete(relativeRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void LoadManifest_WhenMissing_ReturnsEmpty() => Assert.Empty(createStore().LoadManifest());
 
     [Fact]
