@@ -37,7 +37,7 @@ public sealed class PhotoLibrary
     {
         var hidden = store.LoadHidden();
         var visible = store.LoadManifest()
-            .Where(p => !hidden.Contains(p.AssetId) && store.HasImage(p.AssetId))
+            .Where(p => !hidden.Contains(p.AssetId) && (p.IsVideo || store.HasImage(p.AssetId)))
             .GroupBy(p => p.AssetId, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
 
@@ -65,7 +65,20 @@ public sealed class PhotoLibrary
         var now = timeProvider.GetLocalNow();
         var today = new DateTime(now.Year, now.Month, now.Day);
         var layout = OverlayLayoutChooser.Choose(entry) == OverlayLayout.Mirrored ? "mirrored" : "default";
-        return new NextPhoto(entry.AssetId, $"/api/photos/{entry.AssetId}.jpg", PhotoCaption.Place(entry), PhotoCaption.When(entry.TakenAt, today), layout);
+        var place = PhotoCaption.Place(entry);
+        var when = PhotoCaption.When(entry.TakenAt, today);
+        return entry.IsVideo
+            ? new NextPhoto(entry.AssetId, $"/api/photos/{entry.AssetId}/video", place, when, "default", "video", entry.DurationMs)
+            : new NextPhoto(entry.AssetId, $"/api/photos/{entry.AssetId}.jpg", place, when, layout, "photo", null);
+    }
+
+    /// <summary>True only for a currently visible (not hidden) video entry.</summary>
+    public bool IsVideo(string assetId)
+    {
+        lock (gate)
+        {
+            return photos.TryGetValue(assetId, out var entry) && entry.IsVideo;
+        }
     }
 
     public bool Hide(string assetId)

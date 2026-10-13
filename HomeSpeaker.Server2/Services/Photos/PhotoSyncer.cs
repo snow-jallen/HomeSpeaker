@@ -17,7 +17,7 @@ public sealed class PhotoSyncer(
         IReadOnlyList<ImmichAsset> assets;
         try
         {
-            assets = await immich.GetAlbumImagesAsync(options.Value.AlbumId!, cancellationToken);
+            assets = await immich.GetAlbumAssetsAsync(options.Value.AlbumId!, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
@@ -33,6 +33,24 @@ public sealed class PhotoSyncer(
 
         foreach (var asset in assets)
         {
+            if (asset.IsVideo)
+            {
+                // Videos are streamed from Immich on demand: no download, no face lookup, only a manifest entry.
+                entries.Add(existing.TryGetValue(asset.Id, out var cachedVideo)
+                    ? cachedVideo with { TakenAt = asset.TakenAt, City = asset.City, State = asset.State, Country = asset.Country, IsVideo = true, DurationMs = asset.DurationMs }
+                    : new PhotoEntry
+                    {
+                        AssetId = asset.Id,
+                        TakenAt = asset.TakenAt,
+                        City = asset.City,
+                        State = asset.State,
+                        Country = asset.Country,
+                        IsVideo = true,
+                        DurationMs = asset.DurationMs,
+                    });
+                continue;
+            }
+
             if (existing.TryGetValue(asset.Id, out var cached) && store.HasImage(asset.Id))
             {
                 entries.Add(cached with { TakenAt = asset.TakenAt, City = asset.City, State = asset.State, Country = asset.Country });

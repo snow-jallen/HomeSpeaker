@@ -12,4 +12,8 @@ public sealed record PhotoEntry
     public int ImageWidth { get; init; }
     public int ImageHeight { get; init; }
     public IReadOnlyList<FaceBox> Faces { get; init; } = [];
+
+    /// <summary>Videos are listed in the manifest only; they are streamed from Immich on demand and never cached.</summary>
+    public bool IsVideo { get; init; }
+    public int? DurationMs { get; init; }
 }

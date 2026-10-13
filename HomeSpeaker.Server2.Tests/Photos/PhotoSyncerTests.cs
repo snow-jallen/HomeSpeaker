@@ -30,6 +30,56 @@ public sealed class PhotoSyncerTests : IDisposable
 
     private static ImmichAsset asset(string id, string? city = "Bear Lake") => new(id, new DateTime(2021, 8, 14), city, "Utah", null);
 
+    private static ImmichAsset videoAsset(string id, int durationMs, string? city = "Bear Lake") =>
+        new(id, new DateTime(2021, 8, 14), city, "Utah", null, IsVideo: true, DurationMs: durationMs);
+
+    [Fact]
+    public async Task Sync_VideoIsRecordedButNeverDownloadedOrFaceChecked()
+    {
+        immich.Assets.AddRange([asset(IdA), videoAsset(IdB, 12345)]);
+
+        Assert.True(await createSyncer().SyncAsync(CancellationToken.None));
+
+        Assert.Equal([IdA], immich.Downloaded);
+        Assert.Equal([IdA], immich.FacesRequested);
+        Assert.False(store.HasImage(IdB));
+        var video = Assert.Single(store.LoadManifest(), p => string.Equals(p.AssetId, IdB, StringComparison.Ordinal));
+        Assert.True(video.IsVideo);
+        Assert.Equal(12345, video.DurationMs);
+        Assert.Equal(0, video.ImageWidth);
+        Assert.Empty(video.Faces);
+        Assert.Equal(2, library.Count);
+    }
+
+    [Fact]
+    public async Task Sync_ExistingVideoIsKeptAndMetadataRefreshed()
+    {
+        immich.Assets.Add(videoAsset(IdB, 1000));
+        await createSyncer().SyncAsync(CancellationToken.None);
+
+        immich.Assets[0] = videoAsset(IdB, 2000, city: "Garden City");
+        await createSyncer().SyncAsync(CancellationToken.None);
+
+        var video = Assert.Single(store.LoadManifest());
+        Assert.Equal(2000, video.DurationMs);
+        Assert.Equal("Garden City", video.City);
+        Assert.True(video.IsVideo);
+        Assert.Empty(immich.Downloaded);
+    }
+
+    [Fact]
+    public async Task Sync_RemovesVideoThatLeftTheAlbum()
+    {
+        immich.Assets.AddRange([asset(IdA), videoAsset(IdB, 1000)]);
+        await createSyncer().SyncAsync(CancellationToken.None);
+
+        immich.Assets.RemoveAll(a => string.Equals(a.Id, IdB, StringComparison.Ordinal));
+        await createSyncer().SyncAsync(CancellationToken.None);
+
+        Assert.Equal([IdA], store.LoadManifest().Select(p => p.AssetId));
+        Assert.False(library.IsVideo(IdB));
+    }
+
     [Fact]
     public async Task Sync_DownloadsNewAssets_AndNormalizesFaces()
     {

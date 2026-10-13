@@ -7,6 +7,7 @@ public class ImmichOptions
     public string? AlbumId { get; set; }
     public int SyncIntervalMinutes { get; set; } = 15;
     public int SlideSeconds { get; set; } = 30;
+    public int MaxVideoSeconds { get; set; } = 60;
 
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(BaseUrl) &&

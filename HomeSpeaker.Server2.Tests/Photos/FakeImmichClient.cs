@@ -10,8 +10,9 @@ internal sealed class FakeImmichClient : IImmichClient
     public HashSet<string> TimedOutDownloads { get; } = new(StringComparer.Ordinal);
     public Dictionary<string, List<ImmichFace>> Faces { get; } = new(StringComparer.Ordinal);
     public List<string> Downloaded { get; } = [];
+    public List<string> FacesRequested { get; } = [];
 
-    public Task<IReadOnlyList<ImmichAsset>> GetAlbumImagesAsync(string albumId, CancellationToken cancellationToken) =>
+    public Task<IReadOnlyList<ImmichAsset>> GetAlbumAssetsAsync(string albumId, CancellationToken cancellationToken) =>
         AlbumError is not null
             ? Task.FromException<IReadOnlyList<ImmichAsset>>(AlbumError)
             : Task.FromResult<IReadOnlyList<ImmichAsset>>(Assets.ToList());
@@ -33,6 +34,12 @@ internal sealed class FakeImmichClient : IImmichClient
         await destination.WriteAsync(new byte[] { 0xFF, 0xD8 }, cancellationToken);
     }
 
-    public Task<IReadOnlyList<ImmichFace>> GetFacesAsync(string assetId, CancellationToken cancellationToken) =>
-        Task.FromResult<IReadOnlyList<ImmichFace>>(Faces.TryGetValue(assetId, out var faces) ? faces : []);
+    public Task<IReadOnlyList<ImmichFace>> GetFacesAsync(string assetId, CancellationToken cancellationToken)
+    {
+        FacesRequested.Add(assetId);
+        return Task.FromResult<IReadOnlyList<ImmichFace>>(Faces.TryGetValue(assetId, out var faces) ? faces : []);
+    }
+
+    public Task<HttpResponseMessage> OpenVideoAsync(string assetId, string? rangeHeader, CancellationToken cancellationToken) =>
+        throw new NotSupportedException();
 }

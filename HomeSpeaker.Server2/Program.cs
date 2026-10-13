@@ -101,16 +101,20 @@ builder.Services.Configure<AiMusicOptions>(builder.Configuration.GetSection("AI"
 builder.Services.Configure<PushNotificationOptions>(builder.Configuration.GetSection("PushNotifications"));
 builder.Services.Configure<ImmichOptions>(builder.Configuration.GetSection("Immich"));
 builder.Services.PostConfigure<ImmichOptions>(options => ImmichOptionsFallback.Apply(options, builder.Configuration));
-builder.Services.AddHttpClient<IImmichClient, ImmichClient>((sp, client) =>
+void configureImmichClient(IServiceProvider sp, HttpClient client, TimeSpan timeout)
 {
     var immich = sp.GetRequiredService<IOptions<ImmichOptions>>().Value;
-    client.Timeout = TimeSpan.FromSeconds(30);
+    client.Timeout = timeout;
     if (immich.IsConfigured)
     {
         client.BaseAddress = new Uri(immich.BaseUrl!.TrimEnd('/') + "/");
         client.DefaultRequestHeaders.Add("x-api-key", immich.ApiKey);
     }
-});
+}
+
+builder.Services.AddHttpClient<IImmichClient, ImmichClient>((sp, client) => configureImmichClient(sp, client, TimeSpan.FromSeconds(30)));
+// Video streams can run for minutes, so they use their own client with no overall timeout.
+builder.Services.AddHttpClient(ImmichClient.VideoClientName, (sp, client) => configureImmichClient(sp, client, Timeout.InfiniteTimeSpan));
 builder.Services.AddSingleton(sp => new PhotoCacheStore(
     Path.Combine(builder.Configuration[ConfigKeys.MediaFolder] ?? throw new MissingConfigException(ConfigKeys.MediaFolder), ".photo-cache"),
     sp.GetRequiredService<ILogger<PhotoCacheStore>>()));
