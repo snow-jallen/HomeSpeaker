@@ -119,7 +119,7 @@
 
         try
         {
-            await JSRuntime.InvokeVoidAsync("idleController.init", new { idleSeconds = Configuration.GetValue("Ambient:IdleSeconds", 120) });
+            await JSRuntime.InvokeVoidAsync("idleController.init", new { idleSeconds = Configuration.GetValue("Ambient:IdleSeconds", 60) });
             await JSRuntime.InvokeVoidAsync("ambientSlideshow.init", new { slideSeconds = ImmichOptions.Value.SlideSeconds, maxVideoSeconds = ImmichOptions.Value.MaxVideoSeconds });
         }
         catch (Exception ex)

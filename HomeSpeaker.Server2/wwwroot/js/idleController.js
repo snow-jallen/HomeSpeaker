@@ -5,12 +5,13 @@ window.idleController = (function () {
     const nightIdleMs = 60000;
     let mode = 'active';
     let quiet = false;
-    let idleMs = 120000;
+    let idleMs = 60000;
     let timer = null;
     let swallowClick = false;
     const listeners = [];
     const swipeListeners = [];
     const swipeMinPx = 60;
+    const staleGestureMs = 5000;
 
     let swallowTimer = null;
     let gesture = null; // ambient-mode touch in progress: { id, x, y }
@@ -28,6 +29,11 @@ window.idleController = (function () {
     function setMode(next) {
         if (next === mode) return;
         mode = next;
+        // A touch that started in the old mode no longer means swipe-or-tap. Its click is still swallowed.
+        if (gesture) {
+            gesture = null;
+            armSwallow();
+        }
         const root = document.documentElement;
         root.classList.toggle('hs-mode-ambient', mode === 'ambient');
         root.classList.toggle('hs-mode-night', mode === 'night');
@@ -79,9 +85,11 @@ window.idleController = (function () {
         }
         e.preventDefault();
         e.stopPropagation();
-        if (gesture && gesture.id !== e.pointerId) return; // ignore a second finger
+        // Ignore a second finger, unless the tracked gesture is stale (its pointerup and
+        // pointercancel were both lost), which would otherwise block touch-wake for good.
+        if (gesture && gesture.id !== e.pointerId && Date.now() - gesture.at < staleGestureMs) return;
         clearSwallow();
-        gesture = { id: e.pointerId, x: e.clientX, y: e.clientY };
+        gesture = { id: e.pointerId, x: e.clientX, y: e.clientY, at: Date.now() };
     }
 
     function onPointerUp(e) {
@@ -125,7 +133,7 @@ window.idleController = (function () {
 
     return {
         init: function (options) {
-            idleMs = Math.max(10, (options && options.idleSeconds) || 120) * 1000;
+            idleMs = Math.max(10, (options && options.idleSeconds) || 60) * 1000;
             arm();
         },
         setQuiet: function (isQuiet) {

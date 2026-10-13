@@ -8,6 +8,7 @@ window.ambientSlideshow = (function () {
     const maxHistory = 20;
     const videoLoadTimeoutMs = 10000;
     const maxConsecutiveSkips = 3;
+    const videoStallGraceMs = 5000;
     const fadeMs = 1600; // a little longer than the 1.5s CSS opacity transition
 
     let slideMs = 30000;
@@ -23,6 +24,7 @@ window.ambientSlideshow = (function () {
     let navGen = 0;    // bumped by navigation; a /next response that arrives late is dropped
     let videoDisposers = [];
     let consecutiveSkips = 0;
+    let lastDirection = 'forward'; // a broken video is skipped in the direction the user was heading
 
     function setText(selector, text) {
         const el = document.querySelector(selector);
@@ -142,7 +144,8 @@ window.ambientSlideshow = (function () {
             schedule(next, slideMs);
             return;
         }
-        next();
+        if (lastDirection === 'back' && pos > 0) previous();
+        else next();
     }
 
     async function showPhoto(item, token) {
@@ -150,6 +153,8 @@ window.ambientSlideshow = (function () {
         if (slides.length < 2) return;
         const incoming = slides[1 - front];
         incoming.src = item.url;
+        // If decode() never settles the timer would stay cleared and the slideshow would freeze.
+        schedule(next, slideMs);
         await incoming.decode();
         if (token !== showToken) return;
 
@@ -180,10 +185,13 @@ window.ambientSlideshow = (function () {
 
         const loaded = await waitForCanPlay(video);
         if (token !== showToken) return;
+        if (loaded.reason === 'cancelled') return; // the user left ambient mode mid-load
         if (!loaded.ok) { skipVideo(item, loaded.reason); return; }
         if (!isAmbient()) return;
 
         video.currentTime = 0;
+        // Same safety net for a play() that never settles; the normal schedule replaces it.
+        schedule(next, maxVideoMs + videoStallGraceMs);
         try {
             await video.play();
         } catch (e) {
@@ -233,6 +241,9 @@ window.ambientSlideshow = (function () {
         const gen = navGen;
         try {
             const resp = await fetch('/api/photos/next', { cache: 'no-store', signal: AbortSignal.timeout(15000) });
+            // The user navigated while this was in flight: whatever came back is stale, so it
+            // must not clear the photos, re-arm the timer or add to the history.
+            if (gen !== navGen) return null;
             if (resp.status === 204) {
                 clearPhotos();
                 schedule(next, slideMs);
@@ -240,12 +251,12 @@ window.ambientSlideshow = (function () {
             }
             if (!resp.ok) { schedule(next, slideMs); return null; } // keep the current item; retry later
             const item = await resp.json();
+            if (gen !== navGen) return null;
             if (!item || !item.url) { schedule(next, slideMs); return null; }
-            if (gen !== navGen) return null; // the user navigated while this was in flight
             return item;
         } catch (e) {
             console.debug('ambientSlideshow: keeping current item', e);
-            schedule(next, slideMs);
+            if (gen === navGen) schedule(next, slideMs);
             return null;
         } finally {
             busy = false;
@@ -256,10 +267,12 @@ window.ambientSlideshow = (function () {
         if (pos >= 0 && pos < history.length - 1) {
             // Replaying forward after the user went back.
             navGen++;
+            lastDirection = 'forward';
             pos++;
             await show(history[pos]);
             return;
         }
+        lastDirection = 'forward';
         const item = await fetchNext();
         if (!item) return;
         history.push(item);
@@ -284,6 +297,7 @@ window.ambientSlideshow = (function () {
     async function previous() {
         navGen++;
         if (pos > 0) {
+            lastDirection = 'back';
             pos--;
             await show(history[pos]);
         } else {
@@ -293,14 +307,20 @@ window.ambientSlideshow = (function () {
 
     function onModeChange(mode) {
         if (mode === 'ambient') {
+            lastDirection = 'forward';
             if (pos >= 0 && history[pos]) show(history[pos]);
             else next();
         } else {
             // Leave the current image up: it is the blurred backdrop for the normal UI.
+            showToken++; // abandon any show still loading or decoding
             clearTimer();
             disposeVideoListeners();
             const video = videoEl();
-            if (video) video.pause();
+            if (video) {
+                video.pause();
+                // A video that was still loading never became visible: drop its stream.
+                if (!video.classList.contains('is-visible')) unloadVideo();
+            }
         }
     }
 
