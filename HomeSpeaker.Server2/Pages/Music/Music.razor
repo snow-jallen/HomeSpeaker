@@ -31,6 +31,13 @@
             Loading your music library...
         </div>
     }
+    else if (libraryEmpty)
+    {
+        <div class="glass-empty">
+            <i class="fas fa-music" aria-hidden="true"></i>
+            <div>No music yet. Add MP3s to the media folder, or save songs from YouTube.</div>
+        </div>
+    }
     else if (numPages == 0)
     {
         <div class="glass-empty">
@@ -83,6 +90,7 @@
     private int numPages = 0;
     private int artistCount;
     private string? filterValue;
+    private bool libraryEmpty;
 
     public string? FilterValue
     {
@@ -129,6 +137,7 @@
         songs = null;
         StateHasChanged();
         songs = await svc.GetAllSongsAsync();
+        libraryEmpty = !songs.Any();
         FilterValue = null;
         refresh();
     }
