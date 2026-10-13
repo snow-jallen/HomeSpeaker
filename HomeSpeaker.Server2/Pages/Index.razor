@@ -1,257 +1,231 @@
 @page "/"
-@inject HomeSpeakerService svc
-@inject ILogger<Index> logger
-@inject HttpClient Http
-@inject PlayerStateService PlayerState
-@inject IJSRuntime JSRuntime
+@using System.Globalization
+@inject DashboardState Dashboard
+@inject HomeSpeakerService Svc
+@inject IHomeControl HomeControl
+@inject ILogger<Index> Logger
 @implements IDisposable
-@attribute [StreamRendering]
 
 <PageTitle>Home Speaker</PageTitle>
 
-<!-- Section A: Now Playing -->
-@{
-    var isPlaying = PlayerState.Status?.StillPlaying == true && PlayerState.Status?.CurrentSong != null;
-    var isStream = PlayerState.Status?.IsStream == true;
-    var streamName = PlayerState.Status?.StreamName ?? string.Empty;
-    var songName = PlayerState.Status?.CurrentSong?.Name ?? string.Empty;
-    var icyActive = isStream && !string.IsNullOrEmpty(songName) && songName != streamName;
-    var displayName = isStream && !icyActive ? $"{streamName} · live" : songName;
-    // For streams: show the configured stream name as "artist" once ICY gives us a track title
-    var artist = isStream
-        ? (icyActive ? streamName : null)
-        : PlayerState.Status?.CurrentSong?.Artist;
-    var album = isStream ? null : PlayerState.Status?.CurrentSong?.Album;
-    var showArtist = !string.IsNullOrEmpty(artist) && artist != "[ No Artist ]" && artist != "[Artist Unknown]";
-    var showAlbum = !string.IsNullOrEmpty(album) && album != "[ No Album ]";
-}
-<div class="home-primary-panels @(isPlaying && showBloodSugar ? "home-primary-panels--dense" : "")">
-    @if (isPlaying || isStatusLoading)
-    {
-        <div>
-            <div class="now-playing-card mb-3">
-                <div class="now-playing-label">
-                    <i class="fas fa-headphones me-2"></i>Now Playing
-                </div>
-                @if (isPlaying)
+<div class="hs-home @(HomeControl.IsAvailable ? "" : "hs-home--no-home-row")">
+    <section class="glass hs-np-card" aria-label="Now playing">
+        @if (NowPlayingInfo.From(Dashboard.Status) is { } np)
+        {
+            <div class="hs-np-head">
+                @if (np.SongId is { } songId)
                 {
-                    <div class="now-playing-status">
-                        <div class="song-info">
-                            <div id="now-playing-title" class="song-title">@displayName</div>
-                            @if (showArtist)
-                            {
-                                <div id="now-playing-artist" class="song-artist">@artist</div>
-                            }
-                            @if (showAlbum)
-                            {
-                                <div class="song-album">@album</div>
-                            }
-                            <div class="progress-row">
-                                @if (!isStream)
-                                {
-                                    <div class="progress-bar-track">
-                                        <div class="progress-bar-fill" style="width: @((PlayerState.Status!.PercentComplete * 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
-                                    </div>
-                                }
-                                <div class="volume-popup-anchor">
-                                    <button class="volume-icon-btn" @onclick="ToggleVolumePopup" title="Adjust volume" aria-label="Adjust volume">
-                                        <i class="fas fa-volume-up"></i>
-                                    </button>
-                                    @if (showVolumePopup)
-                                    {
-                                        <div class="volume-dismiss-overlay" @onclick="CloseVolumePopup"></div>
-                                        <div class="volume-popup-card">
-                                            <span class="volume-popup-label">Vol</span>
-                                            <span class="volume-popup-number">@volumeLevel</span>
-                                            <div class="volume-slider-wrap">
-                                                <input type="range"
-                                                       class="volume-slider-vertical"
-                                                       min="0" max="100"
-                                                       value="@volumeLevel"
-                                                       aria-label="Volume"
-                                                       @oninput="@(e => { if (int.TryParse(e.Value?.ToString(), out var v)) { volumeLevel = v; isDraggingVolume = true; } })"
-                                                       @onchange="OnVolumeChanged" />
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="now-playing-controls">
-                        <PlayControls />
-                    </div>
+                    <div class="hs-art hs-art--lg" style="background-image:url('/api/homespeaker/songs/@songId/art')"></div>
                 }
                 else
                 {
-                    <div class="now-playing-status now-playing-status--placeholder">
-                        <div class="song-info">
-                            <div class="song-title">Loading player status…</div>
-                            <div class="song-artist">Fetching current playback and controls.</div>
-                        </div>
-                    </div>
-                    <div class="now-playing-controls">
-                        <PlayControls />
+                    <div class="hs-art hs-art--lg hs-art--radio">
+                        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2"></circle><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5"></path></svg>
                     </div>
                 }
+                <div class="hs-np-text">
+                    <div class="hs-np-title">@np.Title</div>
+                    @if (np.Subtitle is not null)
+                    {
+                        <div class="hs-np-sub">@np.Subtitle</div>
+                    }
+                    @if (Dashboard.UpNext is { } next)
+                    {
+                        <div class="hs-np-next">Up next: @next.Name</div>
+                    }
+                </div>
             </div>
-        </div>
-    }
-    @if (!featuresLoaded)
-    {
-        <div>
-            <div class="health-card-placeholder">
-                <div class="small text-muted">Loading health widgets…</div>
+            @if (!np.IsStream)
+            {
+                <div>
+                    <div class="hs-progress hs-progress--lg"><div style="width:@((np.Percent * 100).ToString("F1", CultureInfo.InvariantCulture))%"></div></div>
+                    <div class="hs-np-times"><span>@formatTime(np.Elapsed)</span><span>-@formatTime(np.Remaining)</span></div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="hs-np-text">
+                <div class="hs-np-title">Nothing playing</div>
+                <div class="hs-np-sub">Pick a playlist, a station, or an AI mix.</div>
             </div>
+        }
+
+        <div class="hs-np-controls">
+            <button type="button" class="hs-icon-btn" aria-label="Shuffle queue" @onclick="ShuffleAsync">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"></path></svg>
+            </button>
+            <button type="button" class="hs-play-btn" aria-label="@(isPlaying ? "Stop" : "Play")" @onclick="PlayOrStopAsync">
+                @if (isPlaying)
+                {
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"></rect></svg>
+                }
+                else
+                {
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4l13 8-13 8z"></path></svg>
+                }
+            </button>
+            <button type="button" class="hs-icon-btn" aria-label="Next" @onclick="NextAsync">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"></path></svg>
+            </button>
+            <button type="button" class="hs-icon-btn @(Dashboard.RepeatMode ? "is-on" : "")" aria-label="Repeat" aria-pressed="@(Dashboard.RepeatMode ? "true" : "false")" @onclick="ToggleRepeatAsync">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"></path><path d="M3 11V9a3 3 0 0 1 3-3h15"></path><path d="M7 22l-4-4 4-4"></path><path d="M21 13v2a3 3 0 0 1-3 3H3"></path></svg>
+            </button>
+            <a class="hs-icon-btn" href="queue" aria-label="Queue">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"></path></svg>
+            </a>
         </div>
-    }
-    else if (showBloodSugar)
-    {
-        <div>
-            <BloodSugarMonitor />
+
+        <label class="hs-volume">
+            <span class="visually-hidden">Volume</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4z"></path></svg>
+            <input type="range" min="0" max="100" value="@volumeValue" @oninput="OnVolumeInput" @onchange="OnVolumeChangedAsync" />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"></path></svg>
+        </label>
+    </section>
+
+    <div class="hs-home-side">
+        <nav class="hs-source-tiles" aria-label="Music sources">
+            <a class="glass hs-tile" href="playlists">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h13M3 12h13M3 18h8M19 15V5l3 1"></path><circle cx="17" cy="16" r="2"></circle></svg>
+                <span>Playlists</span>
+            </a>
+            <a class="glass hs-tile" href="streams">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2"></circle><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5"></path></svg>
+                <span>Radio</span>
+            </a>
+            <a class="glass hs-tile" href="ai-playlists">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path></svg>
+                <span>AI Mix</span>
+            </a>
+            <a class="glass hs-tile" href="music">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 4v16M9 4v16M14 4l5 16"></path></svg>
+                <span>Library</span>
+            </a>
+        </nav>
+
+        <div class="hs-info-tiles">
+            @if (Dashboard.BloodSugarEnabled)
+            {
+                <a class="glass hs-tile hs-tile--info hs-tone-@toneClass" href="nightscout">
+                    <span class="hs-tile-label">Glucose</span>
+                    @if (Dashboard.BloodSugar?.CurrentReading is { } reading)
+                    {
+                        <span class="hs-tile-value-row">
+                            <span class="hs-tile-value">@reading.Sgv.ToString("0", CultureInfo.InvariantCulture)</span>
+                            <span class="hs-tile-meta">mg/dL @reading.DirectionIcon · @Dashboard.BloodSugar.StatusText</span>
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="hs-tile-meta">No reading yet</span>
+                    }
+                </a>
+            }
+            @if (Dashboard.TemperatureEnabled)
+            {
+                <a class="glass hs-tile hs-tile--info" href="climate">
+                    <span class="hs-tile-label">Outside@(conditions is null ? "" : " · " + conditions)</span>
+                    <span class="hs-tile-value-row">
+                        <span class="hs-tile-value">@(Dashboard.Temperature?.OutsideTemperature is { } t ? t.ToString("0", CultureInfo.InvariantCulture) + "°" : "--")</span>
+                        @if (highLow is not null)
+                        {
+                            <span class="hs-tile-meta">@highLow</span>
+                        }
+                    </span>
+                </a>
+            }
         </div>
-    }
+
+        <HomeTileRow />
+    </div>
 </div>
 
-<!-- Section B: Health Monitors (feature-flagged) -->
-@if (!featuresLoaded)
-{
-    <div class="health-card-placeholder">
-        <div class="small text-muted">Checking temperature widgets…</div>
-    </div>
-}
-else if (showTemperature)
-{
-    <TemperatureMonitor />
-}
-
 @code {
-    private bool showTemperature;
-    private bool showBloodSugar;
-    private Timer? refreshTimer;
-    private bool showVolumePopup;
-    private int volumeLevel;
-    private bool isDraggingVolume;
-    private bool featuresLoaded;
-    private bool isStatusLoading = true;
+    private int volumeValue;
+    private bool draggingVolume;
 
-    private record FeaturesResponse(bool TemperatureEnabled, bool BloodSugarEnabled);
+    private bool isPlaying => Dashboard.Status?.StillPlaying == true;
+
+    private string toneClass => Dashboard.GlucoseTone switch
+    {
+        GlucoseTone.Caution => "caution",
+        GlucoseTone.Urgent => "urgent",
+        _ => "normal",
+    };
+
+    private string? highLow =>
+        Dashboard.Forecast is { Error: null, TodayHigh.Temperature: { } high, TonightLow.Temperature: { } low }
+            ? string.Create(CultureInfo.InvariantCulture, $"H {high:0}° · L {low:0}°")
+            : null;
+
+    private string? conditions => Dashboard.Forecast is { Error: null } ? Dashboard.Forecast.TodayHigh?.Conditions : null;
 
     protected override void OnInitialized()
     {
-        PlayerState.StateChanged += OnStateChanged;
-    }
-
-    private void OnStateChanged() => InvokeAsync(async () =>
-    {
-        // Don't let a live volume push (physical knob, another client) override
-        // the slider while the user is actively dragging it.
-        if (!showVolumePopup && !isDraggingVolume)
-            volumeLevel = PlayerState.Volume;
-        StateHasChanged();
-        await FitNowPlayingAsync();
-    });
-
-    private async Task FitNowPlayingAsync()
-    {
-        try { await JSRuntime.InvokeVoidAsync("fitNowPlaying"); } catch { }
+        volumeValue = Dashboard.Volume;
+        Dashboard.Changed += onChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            await InitializeInteractiveAsync();
+            await Dashboard.StartAsync();
         }
-
-        await FitNowPlayingAsync();
     }
 
-    private async Task InitializeInteractiveAsync()
+    private void onChanged() => _ = InvokeAsync(() =>
     {
-        await Task.WhenAll(LoadFeaturesAsync(), RefreshStatusAsync());
-
-        refreshTimer = new Timer(async _ =>
+        if (!draggingVolume)
         {
-            try
-            {
-                await InvokeAsync(RefreshStatusAsync);
-            }
-            catch (ObjectDisposedException) { }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error in status refresh timer");
-            }
-        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
-    }
+            volumeValue = Dashboard.Volume;
+        }
 
-    private async Task LoadFeaturesAsync()
+        StateHasChanged();
+    });
+
+    private Task PlayOrStopAsync() => runAsync(() => isPlaying ? Svc.StopPlayingAsync() : Svc.ResumePlayAsync(), "play/stop");
+
+    private Task NextAsync() => runAsync(Svc.SkipToNextAsync, "skip");
+
+    private Task ShuffleAsync() => runAsync(Svc.ShuffleQueueAsync, "shuffle");
+
+    private Task ToggleRepeatAsync() => runAsync(() => Svc.SetRepeatModeAsync(!Dashboard.RepeatMode), "repeat");
+
+    private void OnVolumeInput(ChangeEventArgs e)
     {
-        try
+        draggingVolume = true;
+        if (int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
         {
-            var features = await Http.GetFromJsonAsync<FeaturesResponse>("/api/features");
-            showTemperature = features?.TemperatureEnabled ?? false;
-            showBloodSugar = features?.BloodSugarEnabled ?? false;
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to load feature flags");
-        }
-        finally
-        {
-            featuresLoaded = true;
-            await InvokeAsync(StateHasChanged);
+            volumeValue = value;
         }
     }
 
-    private void ToggleVolumePopup()
+    private async Task OnVolumeChangedAsync(ChangeEventArgs e)
     {
-        showVolumePopup = !showVolumePopup;
-        if (showVolumePopup)
-            volumeLevel = PlayerState.Volume;
-    }
-    private void CloseVolumePopup() => showVolumePopup = false;
-    private async Task OnVolumeChanged(ChangeEventArgs e)
-    {
-        isDraggingVolume = false;
-        if (int.TryParse(e.Value?.ToString(), out var v))
+        draggingVolume = false;
+        if (int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
         {
-            try
-            {
-                await svc.SetVolumeAsync(v);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to set volume");
-            }
+            await runAsync(() => Svc.SetVolumeAsync(value), "volume");
         }
     }
 
-    private async Task RefreshStatusAsync()
+    private async Task runAsync(Func<Task> action, string what)
     {
         try
         {
-            var status = await svc.GetStatusAsync();
-            bool repeatMode = await svc.GetRepeatModeAsync();
-
-            PlayerState.UpdateStatus(status);
-            PlayerState.UpdateRepeatMode(repeatMode);
-            PlayerState.UpdateVolume(status?.Volume ?? PlayerState.Volume);
+            await action();
+            await Dashboard.RefreshStatusAsync();
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to refresh player status");
-        }
-        finally
-        {
-            isStatusLoading = false;
-            await InvokeAsync(StateHasChanged);
+            Logger.LogWarning(ex, "Home page {Action} failed", what);
         }
     }
 
-    public void Dispose()
-    {
-        PlayerState.StateChanged -= OnStateChanged;
-        refreshTimer?.Dispose();
-    }
+    private static string formatTime(TimeSpan time) =>
+        time.ToString(time.TotalHours >= 1 ? @"h\:mm\:ss" : @"m\:ss", CultureInfo.InvariantCulture);
+
+    public void Dispose() => Dashboard.Changed -= onChanged;
 }

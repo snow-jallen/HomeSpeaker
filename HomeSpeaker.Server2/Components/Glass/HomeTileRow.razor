@@ -1,0 +1,50 @@
+@inject IHomeControl HomeControl
+@implements IDisposable
+
+@if (HomeControl.IsAvailable && tiles.Count > 0)
+{
+    <section class="glass hs-home-row" aria-label="Home">
+        <div class="hs-tile-label">Home</div>
+        <div class="hs-home-tiles">
+            @foreach (var tile in tiles)
+            {
+                <button type="button" class="hs-home-tile @(string.Equals(tile.State, "on", StringComparison.OrdinalIgnoreCase) ? "is-on" : "")" @onclick="() => activateAsync(tile)">
+                    <span>@tile.Name</span>
+                    @if (tile.State is not null)
+                    {
+                        <span class="hs-home-tile-state">@tile.State</span>
+                    }
+                </button>
+            }
+        </div>
+    </section>
+}
+
+@code {
+    private IReadOnlyList<HomeTile> tiles = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        HomeControl.TilesChanged += onTilesChanged;
+        await loadAsync();
+    }
+
+    private async Task loadAsync()
+    {
+        if (HomeControl.IsAvailable)
+        {
+            tiles = await HomeControl.GetTilesAsync();
+        }
+    }
+
+    private void onTilesChanged() => _ = InvokeAsync(async () =>
+    {
+        await loadAsync();
+        StateHasChanged();
+    });
+
+    private Task activateAsync(HomeTile tile) =>
+        HomeControl.InvokeAsync(tile.Id, tile.Kind == HomeTileKind.Scene ? HomeAction.Activate : HomeAction.Toggle);
+
+    public void Dispose() => HomeControl.TilesChanged -= onTilesChanged;
+}
