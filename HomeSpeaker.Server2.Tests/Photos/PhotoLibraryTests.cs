@@ -44,6 +44,115 @@ public sealed class PhotoLibraryTests : IDisposable
         store.SaveManifest(entries);
     }
 
+    private static string idFor(int n) => $"{n:x8}-0000-4000-8000-000000000000";
+
+    /// <summary>Writes one manifest with the given counts; the first <paramref name="cached"/> images get a file on disk.</summary>
+    private async Task seedAlbumAsync(int images, int videos, int cached)
+    {
+        var entries = new List<PhotoEntry>();
+        for (var i = 0; i < images; i++)
+        {
+            var id = idFor(i + 1);
+            if (i < cached)
+            {
+                await store.SaveImageAsync(id, s => s.WriteAsync(new byte[] { 1 }).AsTask());
+            }
+
+            entries.Add(new PhotoEntry { AssetId = id, TakenAt = new DateTime(2021, 8, 14) });
+        }
+
+        for (var i = 0; i < videos; i++)
+        {
+            entries.Add(new PhotoEntry { AssetId = idFor(10_000 + i), TakenAt = new DateTime(2021, 8, 14), IsVideo = true, DurationMs = 5000 });
+        }
+
+        store.SaveManifest(entries);
+    }
+
+    private int visibleVideoCount(PhotoLibrary library) =>
+        store.LoadManifest().Count(p => p.IsVideo && library.IsVideo(p.AssetId));
+
+    [Fact]
+    public async Task Reload_SamplesVideosInProportionToPhotos()
+    {
+        await seedAlbumAsync(images: 400, videos: 40, cached: 40);
+
+        var library = new PhotoLibrary(store, today, new Random(1), cacheSize: 40);
+
+        Assert.Equal(4, visibleVideoCount(library));
+        Assert.Equal(44, library.Count);
+    }
+
+    [Fact]
+    public async Task Reload_WithFewVideosInBigAlbum_StillShowsAtLeastOneVideo()
+    {
+        await seedAlbumAsync(images: 1000, videos: 5, cached: 40);
+
+        var library = new PhotoLibrary(store, today, new Random(1), cacheSize: 40);
+
+        Assert.Equal(1, visibleVideoCount(library));
+    }
+
+    [Fact]
+    public async Task Reload_VideosOnlyAlbum_ShowsCacheSizeVideos()
+    {
+        await seedAlbumAsync(images: 0, videos: 30, cached: 0);
+
+        var library = new PhotoLibrary(store, today, new Random(1), cacheSize: 10);
+
+        Assert.Equal(10, visibleVideoCount(library));
+    }
+
+    [Fact]
+    public async Task Reload_VideosOnlyAlbum_SmallerThanCacheSize_ShowsAllVideos()
+    {
+        await seedAlbumAsync(images: 0, videos: 3, cached: 0);
+
+        var library = new PhotoLibrary(store, today, new Random(1), cacheSize: 10);
+
+        Assert.Equal(3, visibleVideoCount(library));
+    }
+
+    [Fact]
+    public async Task Reload_NeverSamplesHiddenVideos()
+    {
+        await seedAlbumAsync(images: 0, videos: 30, cached: 0);
+        var hidden = Enumerable.Range(0, 20).Select(i => idFor(10_000 + i)).ToList();
+        foreach (var id in hidden)
+        {
+            store.AddHidden(id);
+        }
+
+        var library = new PhotoLibrary(store, today, new Random(1), cacheSize: 30);
+
+        Assert.Equal(10, visibleVideoCount(library));
+        for (var i = 0; i < 20; i++)
+        {
+            library.Reload();
+            Assert.All(hidden, id => Assert.False(library.IsVideo(id)));
+        }
+    }
+
+    [Fact]
+    public async Task Reload_DrawsAFreshVideoSampleEachTime()
+    {
+        await seedAlbumAsync(images: 400, videos: 40, cached: 40);
+        var library = new PhotoLibrary(store, today, new Random(1), cacheSize: 40);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        for (var i = 0; i < 10; i++)
+        {
+            library.Reload();
+            Assert.Equal(4, visibleVideoCount(library));
+            foreach (var video in store.LoadManifest().Where(p => p.IsVideo && library.IsVideo(p.AssetId)))
+            {
+                seen.Add(video.AssetId);
+            }
+        }
+
+        Assert.True(seen.Count > 4, $"expected more than 4 distinct videos over 10 reloads, saw {seen.Count}");
+    }
+
     [Fact]
     public async Task Next_ReturnsUrlCaptionAndLayout()
     {

@@ -118,7 +118,7 @@ builder.Services.AddHttpClient(ImmichClient.VideoClientName, (sp, client) => con
 builder.Services.AddSingleton(sp => new PhotoCacheStore(
     Path.Combine(builder.Configuration[ConfigKeys.MediaFolder] ?? throw new MissingConfigException(ConfigKeys.MediaFolder), ".photo-cache"),
     sp.GetRequiredService<ILogger<PhotoCacheStore>>()));
-builder.Services.AddSingleton(sp => new PhotoLibrary(sp.GetRequiredService<PhotoCacheStore>(), sp.GetRequiredService<TimeProvider>()));
+builder.Services.AddSingleton(sp => new PhotoLibrary(sp.GetRequiredService<PhotoCacheStore>(), sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<IOptions<ImmichOptions>>()));
 builder.Services.AddSingleton<PhotoSyncTrigger>();
 builder.Services.AddScoped(sp => new PhotoSyncer(
     sp.GetRequiredService<IImmichClient>(),

@@ -1,23 +1,31 @@
+using Microsoft.Extensions.Options;
+
 namespace HomeSpeaker.Server2.Services.Photos;
 
 /// <summary>In-memory view of the photo cache. Thread-safe; registered as a singleton.</summary>
 public sealed class PhotoLibrary
 {
+    private const int DefaultCacheSize = 40;
+
     private readonly PhotoCacheStore store;
     private readonly TimeProvider timeProvider;
     private readonly PhotoCycle cycle;
+    private readonly Random random;
+    private readonly int cacheSize;
     private readonly Lock gate = new();
     private Dictionary<string, PhotoEntry> photos = new(StringComparer.Ordinal);
 
-    public PhotoLibrary(PhotoCacheStore store, TimeProvider timeProvider)
-        : this(store, timeProvider, Random.Shared)
+    public PhotoLibrary(PhotoCacheStore store, TimeProvider timeProvider, IOptions<ImmichOptions> options)
+        : this(store, timeProvider, Random.Shared, options.Value.CacheSize)
     {
     }
 
-    public PhotoLibrary(PhotoCacheStore store, TimeProvider timeProvider, Random random)
+    public PhotoLibrary(PhotoCacheStore store, TimeProvider timeProvider, Random random, int cacheSize = DefaultCacheSize)
     {
         this.store = store;
         this.timeProvider = timeProvider;
+        this.random = random;
+        this.cacheSize = cacheSize;
         cycle = new PhotoCycle(random);
         Reload();
     }
@@ -33,19 +41,62 @@ public sealed class PhotoLibrary
         }
     }
 
+    /// <summary>
+    /// Rebuilds the visible set: every cached, non-hidden photo, plus a fresh random sample of the non-hidden
+    /// videos sized to keep the album's video-to-photo ratio. Videos are never cached, so without sampling an
+    /// album with many videos would drown out the photos.
+    /// </summary>
     public void Reload()
     {
         var hidden = store.LoadHidden();
-        var visible = store.LoadManifest()
-            .Where(p => !hidden.Contains(p.AssetId) && (p.IsVideo || store.HasImage(p.AssetId)))
+        var manifest = store.LoadManifest();
+        var albumVideoCount = manifest.Count(p => p.IsVideo);
+        var albumImageCount = manifest.Count - albumVideoCount;
+
+        var visible = manifest
+            .Where(p => !p.IsVideo && !hidden.Contains(p.AssetId) && store.HasImage(p.AssetId))
             .GroupBy(p => p.AssetId, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+        var videos = manifest
+            .Where(p => p.IsVideo && !hidden.Contains(p.AssetId))
+            .GroupBy(p => p.AssetId, StringComparer.Ordinal)
+            .Select(g => g.First())
+            .ToList();
 
         lock (gate)
         {
+            var sampleSize = Math.Min(videoSampleSize(visible.Count, albumImageCount, albumVideoCount), videos.Count);
+            foreach (var video in sampleVideos(videos, sampleSize))
+            {
+                visible[video.AssetId] = video;
+            }
+
             photos = visible;
             cycle.SetAvailable(visible.Keys);
         }
+    }
+
+    private int videoSampleSize(int visiblePhotos, int albumImageCount, int albumVideoCount)
+    {
+        if (visiblePhotos == 0 || albumImageCount == 0)
+        {
+            return Math.Min(albumVideoCount, cacheSize);
+        }
+
+        var proportional = (int)Math.Round((double)visiblePhotos * albumVideoCount / albumImageCount, MidpointRounding.AwayFromZero);
+        return albumVideoCount > 0 ? Math.Max(1, proportional) : 0;
+    }
+
+    /// <summary>Partial Fisher-Yates: draws <paramref name="count"/> distinct videos. Call under the gate (Random is not thread-safe).</summary>
+    private List<PhotoEntry> sampleVideos(List<PhotoEntry> videos, int count)
+    {
+        for (var i = 0; i < count; i++)
+        {
+            var j = i + random.Next(videos.Count - i);
+            (videos[i], videos[j]) = (videos[j], videos[i]);
+        }
+
+        return videos.GetRange(0, count);
     }
 
     public NextPhoto? Next()

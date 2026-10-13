@@ -393,7 +393,9 @@ public sealed class PhotoSyncerTests : IDisposable
         Assert.Equal(10, immich.Downloaded.Count);
         Assert.Equal(25, store.LoadManifest().Count);
         Assert.Equal(5, store.LoadManifest().Count(p => p.IsVideo));
-        Assert.Equal(15, library.Count);
+
+        // 10 cached photos + round(10 * 5 videos / 20 images) = 3 sampled videos.
+        Assert.Equal(13, library.Count);
     }
 
     [Fact]
