@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -8,7 +9,7 @@ using Microsoft.Extensions.Options;
 
 namespace HomeSpeaker.Server2.Services;
 
-public sealed class ApplePushNotificationSender : IPushNotificationSender, IDisposable
+public sealed class ApplePushNotificationSender : IPushNotificationSender, ILiveActivityPushSender, IDisposable
 {
     private static readonly JsonSerializerOptions serializerOptions = new(JsonSerializerDefaults.Web);
     private readonly IHttpClientFactory httpClientFactory;
@@ -33,7 +34,7 @@ public sealed class ApplePushNotificationSender : IPushNotificationSender, IDisp
         signingKey = loadSigningKey(this.options.Apns);
     }
 
-    public async Task<PushNotificationSendResult> SendAsync(
+    public Task<PushNotificationSendResult> SendAsync(
         PushNotificationPlatform platform,
         string deviceToken,
         string title,
@@ -43,16 +44,73 @@ public sealed class ApplePushNotificationSender : IPushNotificationSender, IDisp
     {
         if (platform != PushNotificationPlatform.Apns)
         {
-            return new PushNotificationSendResult(false, ErrorCode: "unsupported-platform", ErrorMessage: $"Unsupported push platform '{platform}'.");
+            return Task.FromResult(new PushNotificationSendResult(false, ErrorCode: "unsupported-platform", ErrorMessage: $"Unsupported push platform '{platform}'."));
         }
 
         if (!options.CanSend || signingKey is null)
         {
-            return new PushNotificationSendResult(false, ErrorCode: "push-not-configured", ErrorMessage: "APNs is not configured.");
+            return Task.FromResult(notConfigured());
         }
 
+        var payloadJson = JsonSerializer.Serialize(new
+        {
+            aps = new
+            {
+                alert = new
+                {
+                    title,
+                    body
+                },
+                sound = "default"
+            },
+            data
+        }, serializerOptions);
+
+        // Collapse on the alert key so a newer state for the same monitor (e.g. blood sugar
+        // going from "low" to "high") replaces the previous banner rather than stacking.
+        data.TryGetValue("alertKey", out var alertKey);
+        var message = new ApnsMessage(
+            payloadJson,
+            PushType: "alert",
+            Topic: options.Apns.Topic!, // CanSend implies Apns.IsConfigured, so Topic is set.
+            Priority: 10,
+            CollapseId: string.IsNullOrWhiteSpace(alertKey) ? null : alertKey);
+
+        return sendWithEnvironmentFallbackAsync(deviceToken, message, cancellationToken);
+    }
+
+    public Task<PushNotificationSendResult> SendLiveActivityAsync(
+        string pushToken,
+        string payloadJson,
+        int priority,
+        CancellationToken cancellationToken = default)
+    {
+        if (!options.CanSend || signingKey is null)
+        {
+            return Task.FromResult(notConfigured());
+        }
+
+        // ActivityKit pushes go to the app's topic with a ".push-type.liveactivity" suffix.
+        var message = new ApnsMessage(
+            payloadJson,
+            PushType: "liveactivity",
+            Topic: $"{options.Apns.Topic}.push-type.liveactivity",
+            Priority: priority,
+            CollapseId: null);
+
+        return sendWithEnvironmentFallbackAsync(pushToken, message, cancellationToken);
+    }
+
+    private static PushNotificationSendResult notConfigured()
+        => new(false, ErrorCode: "push-not-configured", ErrorMessage: "APNs is not configured.");
+
+    private async Task<PushNotificationSendResult> sendWithEnvironmentFallbackAsync(
+        string deviceToken,
+        ApnsMessage message,
+        CancellationToken cancellationToken)
+    {
         var primarySandbox = options.Apns.UseSandbox;
-        var primary = await sendToHostAsync(primarySandbox, deviceToken, title, body, data, cancellationToken);
+        var primary = await sendToHostAsync(primarySandbox, deviceToken, message, cancellationToken);
 
         // A device token doesn't reveal which APNs environment it belongs to, and a token sent
         // to the wrong environment comes back as BadDeviceToken. So if the configured environment
@@ -66,7 +124,7 @@ public sealed class ApplePushNotificationSender : IPushNotificationSender, IDisp
                 environmentName(primarySandbox),
                 environmentName(!primarySandbox));
 
-            var secondary = await sendToHostAsync(!primarySandbox, deviceToken, title, body, data, cancellationToken);
+            var secondary = await sendToHostAsync(!primarySandbox, deviceToken, message, cancellationToken);
             if (secondary.Outcome != ApnsOutcome.WrongEnvironment)
             {
                 return secondary.Result;
@@ -86,9 +144,7 @@ public sealed class ApplePushNotificationSender : IPushNotificationSender, IDisp
     private async Task<ApnsAttempt> sendToHostAsync(
         bool useSandbox,
         string deviceToken,
-        string title,
-        string body,
-        IReadOnlyDictionary<string, string> data,
+        ApnsMessage message,
         CancellationToken cancellationToken)
     {
         var environmentHost = useSandbox
@@ -99,31 +155,17 @@ public sealed class ApplePushNotificationSender : IPushNotificationSender, IDisp
         {
             Version = HttpVersion.Version20,
             VersionPolicy = HttpVersionPolicy.RequestVersionOrHigher,
-            Content = new StringContent(JsonSerializer.Serialize(new
-            {
-                aps = new
-                {
-                    alert = new
-                    {
-                        title,
-                        body
-                    },
-                    sound = "default"
-                },
-                data
-            }, serializerOptions), Encoding.UTF8, "application/json")
+            Content = new StringContent(message.PayloadJson, Encoding.UTF8, "application/json")
         };
 
         request.Headers.Authorization = new AuthenticationHeaderValue("bearer", getJwt());
-        request.Headers.TryAddWithoutValidation("apns-topic", options.Apns.Topic);
-        request.Headers.TryAddWithoutValidation("apns-push-type", "alert");
-        request.Headers.TryAddWithoutValidation("apns-priority", "10");
+        request.Headers.TryAddWithoutValidation("apns-topic", message.Topic);
+        request.Headers.TryAddWithoutValidation("apns-push-type", message.PushType);
+        request.Headers.TryAddWithoutValidation("apns-priority", message.Priority.ToString(CultureInfo.InvariantCulture));
 
-        // Collapse on the alert key so a newer state for the same monitor (e.g. blood sugar
-        // going from "low" to "high") replaces the previous banner rather than stacking.
-        if (data.TryGetValue("alertKey", out var alertKey) && !string.IsNullOrWhiteSpace(alertKey))
+        if (message.CollapseId is not null)
         {
-            request.Headers.TryAddWithoutValidation("apns-collapse-id", alertKey);
+            request.Headers.TryAddWithoutValidation("apns-collapse-id", message.CollapseId);
         }
 
         try
@@ -146,10 +188,12 @@ public sealed class ApplePushNotificationSender : IPushNotificationSender, IDisp
                     new PushNotificationSendResult(false, ErrorCode: apnsReason, ErrorMessage: "Device token is not valid for this APNs environment."));
             }
 
-            // Unregistered (app uninstalled) and DeviceTokenNotForTopic are terminal for this
-            // device regardless of environment, so deactivate it without retrying.
+            // Unregistered (app uninstalled, or the Live Activity ended), DeviceTokenNotForTopic and
+            // ExpiredToken are terminal for this token regardless of environment, so deactivate it
+            // without retrying.
             if (string.Equals(apnsReason, "Unregistered", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(apnsReason, "DeviceTokenNotForTopic", StringComparison.OrdinalIgnoreCase))
+                string.Equals(apnsReason, "DeviceTokenNotForTopic", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(apnsReason, "ExpiredToken", StringComparison.OrdinalIgnoreCase))
             {
                 logger.LogWarning("APNs rejected device token with reason {Reason}", apnsReason);
                 return new ApnsAttempt(
@@ -182,6 +226,8 @@ public sealed class ApplePushNotificationSender : IPushNotificationSender, IDisp
     }
 
     private sealed record ApnsAttempt(ApnsOutcome Outcome, PushNotificationSendResult Result);
+
+    private sealed record ApnsMessage(string PayloadJson, string PushType, string Topic, int Priority, string? CollapseId);
 
     public void Dispose() => signingKey?.Dispose();
 

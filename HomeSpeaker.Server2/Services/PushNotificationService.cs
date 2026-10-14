@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Shared;
 using HomeSpeaker.Shared.BloodSugar;
@@ -13,7 +12,6 @@ public sealed class PushNotificationService
 {
     private const string TemperatureAlertKey = "temperature-window-state";
     private const string BloodSugarAlertKey = "blood-sugar-status";
-    private static readonly Regex apnsTokenRegex = new("^[0-9a-fA-F]+$", RegexOptions.Compiled);
 
     private readonly MusicContext dbContext;
     private readonly IPushNotificationSender sender;
@@ -40,7 +38,7 @@ public sealed class PushNotificationService
         validateRequest(request);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
-        var normalizedToken = normalizeDeviceToken(request.DeviceToken);
+        var normalizedToken = ApnsToken.Normalize(request.DeviceToken);
         var normalizedInstallationId = request.InstallationId.Trim();
         var normalizedDeviceName = string.IsNullOrWhiteSpace(request.DeviceName) ? null : request.DeviceName.Trim();
 
@@ -95,7 +93,7 @@ public sealed class PushNotificationService
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var normalizedInstallationId = normalizeInstallationId(request.InstallationId);
-        var normalizedToken = normalizeDeviceToken(request.DeviceToken);
+        var normalizedToken = ApnsToken.Normalize(request.DeviceToken);
         var normalizedDeviceName = string.IsNullOrWhiteSpace(request.DeviceName) ? null : request.DeviceName.Trim();
         var normalizedBundleId = string.IsNullOrWhiteSpace(request.BundleId) ? null : request.BundleId.Trim();
 
@@ -358,12 +356,6 @@ public sealed class PushNotificationService
         return $"{Math.Max(0, age.Minutes)}m";
     }
 
-    private static string normalizeDeviceToken(string token)
-        => token.Replace(" ", string.Empty, StringComparison.Ordinal)
-            .Replace("<", string.Empty, StringComparison.Ordinal)
-            .Replace(">", string.Empty, StringComparison.Ordinal)
-            .Trim();
-
     private static string normalizeInstallationId(string installationId)
     {
         if (string.IsNullOrWhiteSpace(installationId) || installationId.Trim().Length > 200)
@@ -378,8 +370,8 @@ public sealed class PushNotificationService
     {
         _ = normalizeInstallationId(request.InstallationId);
 
-        var normalizedToken = normalizeDeviceToken(request.DeviceToken);
-        if (normalizedToken.Length < 32 || normalizedToken.Length > 512 || !apnsTokenRegex.IsMatch(normalizedToken))
+        var normalizedToken = ApnsToken.Normalize(request.DeviceToken);
+        if (!ApnsToken.IsValid(normalizedToken))
         {
             throw new ArgumentException("DeviceToken must be a valid APNs token.", nameof(request));
         }
@@ -394,8 +386,8 @@ public sealed class PushNotificationService
     {
         _ = normalizeInstallationId(request.InstallationId);
 
-        var normalizedToken = normalizeDeviceToken(request.DeviceToken);
-        if (normalizedToken.Length < 32 || normalizedToken.Length > 512 || !apnsTokenRegex.IsMatch(normalizedToken))
+        var normalizedToken = ApnsToken.Normalize(request.DeviceToken);
+        if (!ApnsToken.IsValid(normalizedToken))
         {
             throw new ArgumentException("DeviceToken must be a valid APNs token.", nameof(request));
         }

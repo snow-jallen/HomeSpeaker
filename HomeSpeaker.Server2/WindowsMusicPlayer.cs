@@ -73,6 +73,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
     {
         currentSong = song;
         isStream = false;
+        streamName = null;
         startedPlaying = true;
         stopPlaying();
         stoppedSong = null;
