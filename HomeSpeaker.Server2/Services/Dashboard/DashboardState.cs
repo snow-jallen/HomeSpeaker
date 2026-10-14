@@ -29,6 +29,9 @@ public sealed class DashboardState : IDisposable
     private Timer? healthTimer;
     private bool started;
     private volatile bool disposed;
+    private volatile StationImage? stationImage;
+
+    private sealed record StationImage(string? Key, string? Url);
 
     public DashboardState(
         HomeSpeakerService homeSpeaker,
@@ -58,8 +61,14 @@ public sealed class DashboardState : IDisposable
     public int Volume => playerState.Volume;
     public SongViewModel? UpNext { get; private set; }
 
-    /// <summary>The playing station's uploaded art, or null when nothing matches (the UI then generates a tile).</summary>
-    public string? StationImageUrl { get; private set; }
+    /// <summary>
+    /// The playing station's uploaded art, or null when nothing matches (the UI then generates a tile). It is only
+    /// returned while it was resolved for the station that <see cref="Status"/> currently describes, so a card
+    /// never pairs one station's name with another's image, even when another circuit changed the status.
+    /// </summary>
+    public string? StationImageUrl => stationImage is { } resolved && string.Equals(resolved.Key, stationKey(Status), StringComparison.Ordinal)
+        ? resolved.Url
+        : null;
     public BloodSugarStatus? BloodSugar { get; private set; }
     public TemperatureStatus? Temperature { get; private set; }
     public ForecastStatus? Forecast { get; private set; }
@@ -118,7 +127,8 @@ public sealed class DashboardState : IDisposable
             var status = await homeSpeaker.GetStatusAsync();
             var repeat = await homeSpeaker.GetRepeatModeAsync();
             UpNext = (await homeSpeaker.GetPlayQueueAsync()).FirstOrDefault();
-            StationImageUrl = status.IsStream ? await homeSpeaker.GetStationImageUrlAsync(status.StreamName) : null;
+            // Resolve the art before publishing the status, so the card gets both in the same update.
+            stationImage = await resolveStationImageAsync(status);
             playerState.UpdateStatus(status);
             playerState.UpdateRepeatMode(repeat);
             playerState.UpdateVolume(status.Volume);
@@ -209,9 +219,47 @@ public sealed class DashboardState : IDisposable
 
     private void onPlayerStateChanged()
     {
-        if (!disposed)
+        if (disposed)
         {
+            return;
+        }
+
+        // Another circuit (or the queue page) may have published a different station. Until its art is resolved,
+        // StationImageUrl is null, so the card shows the new name over its generated tile, never the old art.
+        if (!string.Equals(stationImage?.Key, stationKey(Status), StringComparison.Ordinal))
+        {
+            _ = resolveForCurrentStatusAsync();
+        }
+
+        Changed?.Invoke();
+    }
+
+    private async Task resolveForCurrentStatusAsync()
+    {
+        try
+        {
+            var status = Status;
+            var resolved = await resolveStationImageAsync(status);
+            if (disposed || !string.Equals(resolved.Key, stationKey(Status), StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            stationImage = resolved;
             Changed?.Invoke();
         }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Dashboard station image refresh failed");
+        }
     }
+
+    private async Task<StationImage> resolveStationImageAsync(SharedPlayerStatus? status) =>
+        new(stationKey(status), status is { IsStream: true }
+            ? await homeSpeaker.GetStationImageUrlAsync(status.CurrentSong?.Path, status.StreamName)
+            : null);
+
+    /// <summary>Identifies the station a status describes (its stream URL and name), or null when it is not a stream.</summary>
+    private static string? stationKey(SharedPlayerStatus? status) =>
+        status is { IsStream: true } ? string.Concat(status.CurrentSong?.Path, "|", status.StreamName) : null;
 }

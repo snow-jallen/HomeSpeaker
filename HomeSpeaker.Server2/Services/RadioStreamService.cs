@@ -84,6 +84,33 @@ public class RadioStreamService
         return streams.FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    /// Finds the saved station that is playing. The player's stream URL is the reliable key (it survives a rename
+    /// of the playing station), so it is tried first; the display name, which the player keeps from when playback
+    /// started, is the fallback. Both read the cached list.
+    /// </summary>
+    public async Task<RadioStream?> FindPlayingStreamAsync(string? streamUrl, string? streamName)
+    {
+        var normalizedUrl = normalizeUrl(streamUrl);
+        if (normalizedUrl is not null)
+        {
+            var matches = (await GetAllStreamsAsync())
+                .Where(s => string.Equals(normalizeUrl(s.Url), normalizedUrl, StringComparison.Ordinal))
+                .ToList();
+            if (matches.Count > 0)
+            {
+                // Two saved stations can share a URL; prefer the one whose name also matches.
+                return matches.FirstOrDefault(s => string.Equals(s.Name, streamName, StringComparison.OrdinalIgnoreCase)) ?? matches[0];
+            }
+        }
+
+        return await FindStreamByNameAsync(streamName);
+    }
+
+    // The players keep the URL as System.Uri normalises it, so compare in that form.
+    private static string? normalizeUrl(string? url) =>
+        Uri.TryCreate(url?.Trim(), UriKind.Absolute, out var uri) ? uri.ToString() : null;
+
     /// <summary>Drops the cached stream list; call after changing streams outside this service.</summary>
     public void InvalidateCache() => cache.Remove(CACHE_KEY);
 

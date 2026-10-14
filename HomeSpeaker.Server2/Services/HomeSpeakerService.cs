@@ -413,20 +413,21 @@ public class HomeSpeakerService
     }
 
     /// <summary>
-    /// The uploaded art for the saved station with this name (ordinal, ignoring case), or null to use a generated tile.
+    /// The uploaded art for the saved station that is playing, or null to use a generated tile. The station is found
+    /// by its stream URL first (so renaming the playing station keeps its art) and by name as a fallback.
     /// Served from RadioStreamService's cached list. It runs in its own scope so the dashboard's timer never shares
     /// a DbContext with whatever the page is doing.
     /// </summary>
-    public async Task<string?> GetStationImageUrlAsync(string? streamName)
+    public async Task<string?> GetStationImageUrlAsync(string? streamUrl, string? streamName)
     {
-        if (string.IsNullOrWhiteSpace(streamName))
+        if (string.IsNullOrWhiteSpace(streamUrl) && string.IsNullOrWhiteSpace(streamName))
         {
             return null;
         }
 
         using var scope = serviceProvider.CreateScope();
         var streams = scope.ServiceProvider.GetRequiredService<RadioStreamService>();
-        var stream = await streams.FindStreamByNameAsync(streamName);
+        var stream = await streams.FindPlayingStreamAsync(streamUrl, streamName);
         return RadioStreamViewModel.FaviconPath(stream?.FaviconFileName);
     }
 

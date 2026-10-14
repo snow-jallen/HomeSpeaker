@@ -259,6 +259,45 @@ public sealed class RadioStreamServiceTests : IAsyncDisposable
         Assert.NotNull(await service.FindStreamByNameAsync("Jazz"));
     }
 
+    [Fact]
+    public async Task FindPlayingStreamMatchesByUrlEvenAfterARename()
+    {
+        var service = await createServiceAsync();
+        var stream = await service.CreateStreamAsync("Old Name", "http://example.com/live", faviconFileName: "live.png");
+        await service.UpdateStreamAsync(stream.Id, "New Name", "http://example.com/live");
+
+        // The player still reports the name it started with, but its URL is unchanged (in System.Uri's form).
+        var found = await service.FindPlayingStreamAsync("http://example.com/live", "Old Name");
+
+        Assert.NotNull(found);
+        Assert.Equal("New Name", found.Name);
+        Assert.Equal("live.png", found.FaviconFileName);
+    }
+
+    [Fact]
+    public async Task FindPlayingStreamPrefersTheMatchingNameWhenUrlsAreShared()
+    {
+        var service = await createServiceAsync();
+        await service.CreateStreamAsync("Main", "http://example.com/shared", faviconFileName: "main.png");
+        await service.CreateStreamAsync("Backup", "http://example.com/shared", faviconFileName: "backup.png");
+
+        var found = await service.FindPlayingStreamAsync("http://example.com/shared", "Backup");
+
+        Assert.Equal("backup.png", found?.FaviconFileName);
+    }
+
+    [Fact]
+    public async Task FindPlayingStreamFallsBackToNameWhenTheUrlIsUnknown()
+    {
+        var service = await createServiceAsync();
+        await service.CreateStreamAsync("Jazz", "http://example.com/jazz", faviconFileName: "jazz.png");
+
+        Assert.Equal("jazz.png", (await service.FindPlayingStreamAsync("http://elsewhere.example/stream", "jazz"))?.FaviconFileName);
+        Assert.Equal("jazz.png", (await service.FindPlayingStreamAsync(null, "Jazz"))?.FaviconFileName);
+        Assert.Null(await service.FindPlayingStreamAsync("http://elsewhere.example/stream", "Nothing"));
+        Assert.Null(await service.FindPlayingStreamAsync(null, null));
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (dbContext is not null)
