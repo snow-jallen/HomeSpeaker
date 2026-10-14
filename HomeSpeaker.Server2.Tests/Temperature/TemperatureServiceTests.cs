@@ -28,6 +28,12 @@ public sealed class TemperatureServiceTests
 
     private static TemperatureService createService(
         Func<HttpRequestMessage, string?, HttpResponseMessage> respond,
+        bool withApiKey = true) =>
+        createService(respond, out _, withApiKey);
+
+    private static TemperatureService createService(
+        Func<HttpRequestMessage, string?, HttpResponseMessage> respond,
+        out FakeHttpMessageHandler handler,
         bool withApiKey = true)
     {
         var settings = new Dictionary<string, string?> { ["Temperature:ApiBaseUrl"] = "https://govee.test/" };
@@ -37,7 +43,8 @@ public sealed class TemperatureServiceTests
         }
 
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
-        var client = new HttpClient(new FakeHttpMessageHandler(respond));
+        handler = new FakeHttpMessageHandler(respond);
+        var client = new HttpClient(handler);
         return new TemperatureService(client, configuration, NullLogger<TemperatureService>.Instance, new MemoryCache(new MemoryCacheOptions()), new FixedTimeProvider(now));
     }
 
@@ -97,12 +104,17 @@ public sealed class TemperatureServiceTests
     }
 
     [Fact]
-    public async Task GetDeviceTemperature_ThrowingTransport_ReturnsNull()
+    public async Task ThrowingStateTransport_LeavesTheRoomNull()
     {
-        var service = createService((_, _) => throw new HttpRequestException("boom"));
-        var device = new HomeSpeaker.Shared.Temperature.Device { DeviceId = "d", DeviceName = "Boys", Sku = "H5179" };
+        var devices = devicesJson(("boys", "Boys Room"));
+        var service = createService((request, body) =>
+            request.RequestUri!.AbsolutePath.EndsWith("user/devices", StringComparison.Ordinal)
+                ? FakeHttpMessageHandler.Json(devices)
+                : throw new HttpRequestException("boom"));
 
-        Assert.Null(await service.GetDeviceTemperatureAsync(device));
+        var status = await service.GetTemperatureStatusAsync();
+
+        Assert.Null(status.BoysRoomTemperature);
     }
 
     [Fact]
@@ -157,10 +169,13 @@ public sealed class TemperatureServiceTests
     }
 
     [Theory]
-    [InlineData("battery")]
-    [InlineData("batteryLevel")]
-    [InlineData("BatteryPercent")]
-    public async Task BatteryInstance_MatchedCaseInsensitively(string instance)
+    [InlineData("battery", 42)]
+    [InlineData("batteryLevel", 42)]
+    [InlineData("BATTERY", 42)]
+    [InlineData("lowBattery", null)]
+    [InlineData("batteryWarning", null)]
+    [InlineData("BatteryPercent", null)]
+    public async Task BatteryInstance_ExactAllowList_CaseInsensitive(string instance, int? expected)
     {
         var capability = $",{{\"type\":\"devices.capabilities.property\",\"instance\":\"{instance}\",\"state\":{{\"value\":42}}}}";
         var devices = devicesJson(("boys", "Boys Room"));
@@ -169,7 +184,7 @@ public sealed class TemperatureServiceTests
 
         var status = await service.GetTemperatureStatusAsync();
 
-        Assert.Equal(42, status.Rooms.Single(r => string.Equals(r.Name, "Boy", StringComparison.Ordinal)).BatteryPercent);
+        Assert.Equal(expected, status.Rooms.Single(r => string.Equals(r.Name, "Boy", StringComparison.Ordinal)).BatteryPercent);
     }
 
     [Fact]
@@ -197,22 +212,29 @@ public sealed class TemperatureServiceTests
     }
 
     [Fact]
-    public async Task SensorDiagnostics_ListInstancesAndBattery_ForMatchedRoomsOnly()
+    public async Task SensorDiagnostics_ListInstancesAndBattery_ForMatchedRooms_AndNameTheUnmatchedDevices()
     {
         var devices = devicesJson(("boys", "Boys Room"), ("misc", "Garage"));
         var service = createService((request, body) => respondWith(request, body, devices, _ =>
             FakeHttpMessageHandler.Json(stateJson(70, BatteryCapability))));
 
-        var diagnostics = await service.GetSensorDiagnosticsAsync();
+        var report = await service.GetSensorDiagnosticsAsync();
 
-        var boys = Assert.Single(diagnostics);
+        var boys = Assert.Single(report.Sensors);
         Assert.Equal("Boy", boys.Room);
         Assert.Equal("Boys Room", boys.DeviceName);
         Assert.Equal("H5179", boys.Sku);
         Assert.True(boys.StateAvailable);
         Assert.Equal(["online", "sensorTemperature", "sensorHumidity", "battery"], boys.CapabilityInstances);
         Assert.Equal(3, boys.BatteryPercent);
-        Assert.DoesNotContain("test-key", System.Text.Json.JsonSerializer.Serialize(diagnostics), StringComparison.Ordinal);
+
+        var unmatched = Assert.Single(report.UnmatchedDevices);
+        Assert.Equal("Garage", unmatched.Name);
+        Assert.Equal("H5179", unmatched.Sku);
+
+        var json = System.Text.Json.JsonSerializer.Serialize(report);
+        Assert.DoesNotContain("test-key", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("misc", json, StringComparison.Ordinal); // device ids are never exposed
     }
 
     [Fact]
@@ -222,10 +244,24 @@ public sealed class TemperatureServiceTests
         var service = createService((request, body) => respondWith(request, body, devices, _ =>
             new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError)));
 
-        var boys = Assert.Single(await service.GetSensorDiagnosticsAsync());
+        var boys = Assert.Single((await service.GetSensorDiagnosticsAsync()).Sensors);
 
         Assert.False(boys.StateAvailable);
         Assert.Empty(boys.CapabilityInstances);
         Assert.Null(boys.BatteryPercent);
+    }
+
+    [Fact]
+    public async Task SensorDiagnostics_AreCachedSoRepeatedHitsDoNotSpendGoveeQuota()
+    {
+        var devices = devicesJson(("boys", "Boys Room"));
+        var service = createService((request, body) => respondWith(request, body, devices, _ =>
+            FakeHttpMessageHandler.Json(stateJson(70))), out var handler);
+
+        await service.GetSensorDiagnosticsAsync();
+        var requestsAfterFirst = handler.Requests.Count;
+        await service.GetSensorDiagnosticsAsync();
+
+        Assert.Equal(requestsAfterFirst, handler.Requests.Count);
     }
 }

@@ -14,6 +14,8 @@ public sealed class TemperatureService : ITemperatureService
     private readonly TimeProvider timeProvider;
 
     private const string CacheKey = "temperature-status";
+    private const string DiagnosticsCacheKey = "temperature-diagnostics";
+    private static readonly TimeSpan diagnosticsCacheExpiration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan cacheExpiration = TimeSpan.FromMinutes(2);
 
     // Order matters: each device is claimed by the first room that matches it, so more specific
@@ -83,21 +85,6 @@ public sealed class TemperatureService : ITemperatureService
             // Return empty list if API is not available
             return [];
         }
-    }
-
-    /// <summary>
-    /// The device's current temperature, or null when it can't be read (no API key, request failed, or the
-    /// response has no temperature). Callers must treat null as "unknown", never substitute a made-up value.
-    /// </summary>
-    public async Task<double?> GetDeviceTemperatureAsync(Device device, CancellationToken cancellationToken = default)
-    {
-        var state = await getDeviceStateAsync(device, cancellationToken);
-        if (state is not null && state.SensorTemperature is null)
-        {
-            logger.LogWarning("Temperature capability not found in state for device {DeviceName}", device.DeviceName);
-        }
-
-        return state?.SensorTemperature;
     }
 
     private async Task<DeviceStatePayload?> getDeviceStateAsync(Device device, CancellationToken cancellationToken)
@@ -193,13 +180,19 @@ public sealed class TemperatureService : ITemperatureService
     }
 
     /// <summary>
-    /// Live (uncached) look at what each matched sensor reports. Never includes the API key or device ids.
+    /// What each matched sensor reports, plus the devices no room claimed. Never includes the API key or device ids.
+    /// Cached briefly, because it costs one Govee call per sensor and the account has a request quota.
     /// </summary>
-    public async Task<List<SensorDiagnostic>> GetSensorDiagnosticsAsync(CancellationToken cancellationToken = default)
+    public async Task<SensorDiagnosticsReport> GetSensorDiagnosticsAsync(CancellationToken cancellationToken = default)
     {
+        if (cache.TryGetValue(DiagnosticsCacheKey, out SensorDiagnosticsReport? cached) && cached is not null)
+        {
+            return cached;
+        }
+
         var devices = await GetDevicesAsync(cancellationToken);
         var deviceMap = TemperatureDeviceMatcher.Match(devices, roomPatterns);
-        var result = new List<SensorDiagnostic>();
+        var report = new SensorDiagnosticsReport();
         foreach (var (room, _) in roomPatterns)
         {
             if (deviceMap[room] is not { } device)
@@ -208,7 +201,7 @@ public sealed class TemperatureService : ITemperatureService
             }
 
             var state = await getDeviceStateAsync(device, cancellationToken);
-            result.Add(new SensorDiagnostic
+            report.Sensors.Add(new SensorDiagnostic
             {
                 Room = room,
                 DeviceName = device.DeviceName,
@@ -219,7 +212,13 @@ public sealed class TemperatureService : ITemperatureService
             });
         }
 
-        return result;
+        var claimed = deviceMap.Values.OfType<Device>().Select(d => d.DeviceId).ToHashSet(StringComparer.Ordinal);
+        report.UnmatchedDevices.AddRange(devices
+            .Where(d => !claimed.Contains(d.DeviceId))
+            .Select(d => new UnmatchedDevice { Name = d.DeviceName, Sku = d.Sku }));
+
+        cache.Set(DiagnosticsCacheKey, report, diagnosticsCacheExpiration);
+        return report;
     }
 
     private async Task<TemperatureStatus> getTemperatureStatusInternalAsync(CancellationToken cancellationToken = default)

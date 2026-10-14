@@ -19,13 +19,17 @@ public sealed record DeviceStatePayload(
     [JsonIgnore]
     public double? SensorTemperature => this.Capabilities?.FirstOrDefault(c => c.Instance == "sensorTemperature")?.State?.ValueAsDouble;
 
+    /// <summary>The capability instances that carry a battery percentage (0-100), matched case-insensitively.</summary>
+    public static readonly IReadOnlyList<string> BatteryInstances = ["battery", "batteryLevel"];
+
     /// <summary>
-    /// Battery percent (0-100) when the state reports one, matching the capability instance case-insensitively on
-    /// "battery" (for example "battery" or "batteryLevel"). Govee's developer API does not report it for every model.
+    /// Battery percent (0-100) when the state reports one in an allow-listed instance. Other "battery"-ish
+    /// instances (a low-battery warning flag, say) are not percentages and are deliberately ignored.
+    /// Govee's developer API does not report battery for every model.
     /// </summary>
     [JsonIgnore]
     public double? Battery => this.Capabilities?
-        .FirstOrDefault(c => c.Instance?.Contains("battery", StringComparison.OrdinalIgnoreCase) == true)?
+        .FirstOrDefault(c => c.Instance is not null && BatteryInstances.Contains(c.Instance, StringComparer.OrdinalIgnoreCase))?
         .State?.ValueAsDouble;
 
     /// <summary>The capability instance names in this state, for diagnosing what a sensor reports.</summary>
