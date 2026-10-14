@@ -45,6 +45,11 @@ internal sealed class FakeImmichClient : IImmichClient
 
     public Func<string?, CancellationToken, Task<HttpResponseMessage>>? OpenVideo { get; set; }
 
-    public Task<HttpResponseMessage> OpenVideoAsync(string assetId, string? rangeHeader, CancellationToken cancellationToken) =>
-        OpenVideo?.Invoke(rangeHeader, cancellationToken) ?? throw new NotSupportedException();
+    public List<string> OpenedVideoIds { get; } = [];
+
+    public Task<HttpResponseMessage> OpenVideoAsync(string assetId, string? rangeHeader, CancellationToken cancellationToken)
+    {
+        OpenedVideoIds.Add(assetId);
+        return OpenVideo?.Invoke(rangeHeader, cancellationToken) ?? throw new NotSupportedException();
+    }
 }

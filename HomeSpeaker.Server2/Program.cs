@@ -128,6 +128,18 @@ builder.Services.AddScoped(sp => new PhotoSyncer(
     sp.GetRequiredService<ILogger<PhotoSyncer>>(),
     Random.Shared));
 builder.Services.AddHostedService<PhotoSyncWorker>();
+builder.Services.AddSingleton<VideoStreamCoordinator>();
+builder.Services.AddHostedService(sp => new VideoPrefetcher(
+    sp.GetRequiredService<PhotoLibrary>(),
+    sp.GetRequiredService<PhotoCacheStore>(),
+    sp.GetRequiredService<IImmichClient>(),
+    sp.GetRequiredService<IOptions<ImmichOptions>>(),
+    sp.GetRequiredService<TimeProvider>(),
+    sp.GetRequiredService<VideoStreamCoordinator>(),
+    sp.GetRequiredService<ILogger<VideoPrefetcher>>())
+{
+    FreeSpaceBytes = sp.GetRequiredService<PhotoCacheStore>().GetAvailableFreeSpace,
+});
 builder.Services.AddSingleton<AiProcessingSignal>();
 builder.Services.AddSingleton<AiMusicAnalyzer>();
 builder.Services.AddScoped<AiMusicCatalogService>();

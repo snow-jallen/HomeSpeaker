@@ -65,7 +65,7 @@ Blazor components live under `HomeSpeaker.Server2/Components` (layout, music, he
 
 ### Ambient shell and photos
 
-`MainLayout` is a glass-styled shell (`wwwroot/css/glass.css`, components in `Components/Glass`). On kiosk browsers (`body[data-kiosk=true]`: a browser counts as a kiosk on localhost, with the `?kiosk=1` cookie, or automatically on a 1024×600 screen (the server renders `data-kiosk="auto"` and `idleController.js` resolves it); `?kiosk=0` opts out — see `Kiosk.cs`) `wwwroot/js/idleController.js` switches to an ambient photo slideshow after `Ambient:IdleSeconds` idle, or a dim night clock during `QuietHours`. `PhotoSyncWorker` indexes one Immich album (`Immich:*` config) in `{MediaFolder}/.photo-cache/manifest.json` but keeps only `Immich:CacheSize` (default 40) photos on disk, rotating `Immich:RotatePercent` (default 25) of them for fresh ones each sync (videos are streamed, never cached); `PhotoLibrary` serves it via `/api/photos/*` and `wwwroot/js/ambientSlideshow.js` crossfades it. Overlays and the Home page read live data from the scoped `DashboardState`. Home automation plugs in through `IHomeControl` (default `NullHomeControl`, which hides the Home row).
+`MainLayout` is a glass-styled shell (`wwwroot/css/glass.css`, components in `Components/Glass`). On kiosk browsers (`body[data-kiosk=true]`: a browser counts as a kiosk on localhost, with the `?kiosk=1` cookie, or automatically on a 1024×600 screen (the server renders `data-kiosk="auto"` and `idleController.js` resolves it); `?kiosk=0` opts out — see `Kiosk.cs`) `wwwroot/js/idleController.js` switches to an ambient photo slideshow after `Ambient:IdleSeconds` idle, or a dim night clock during `QuietHours`. `PhotoSyncWorker` indexes one Immich album (`Immich:*` config) in `{MediaFolder}/.photo-cache/manifest.json` but keeps only `Immich:CacheSize` (default 40) photos on disk, rotating `Immich:RotatePercent` (default 25) of them for fresh ones each sync (videos are not part of that cache: they stream live from Immich, except that `VideoPrefetcher` pre-downloads the videos among the next `Immich:VideoPrefetchAhead` (default 5) slides, found by peeking `PhotoCycle`, to `{MediaFolder}/.photo-cache/videos/`, skipping any over `Immich:VideoPrefetchMaxMB` (default 300; 0 or less disables prefetch), any that would leave under 1 GB free, and any being streamed live, abandoning a download after 30 s with no response or no data, and cancelling it if the video is requested live meanwhile, and deletes each once 10 more slides have been served or it leaves the visible set; `/api/photos/{id}/video` serves a cached file with range support and falls back to the live proxy); `PhotoLibrary` serves it via `/api/photos/*` and `wwwroot/js/ambientSlideshow.js` crossfades it. Overlays and the Home page read live data from the scoped `DashboardState`. Home automation plugs in through `IHomeControl` (default `NullHomeControl`, which hides the Home row).
 
 ### REST API
 
@@ -73,7 +73,7 @@ Minimal APIs. The bulk are mapped in `Endpoints/HomeSpeakerRestEndpoints.cs` via
 
 ### Background hosted services
 
-Registered in `Program.cs` and run for the process lifetime: `MigrationApplier`, `DailyAnchorWorker`, `AirPlayReceiverService`, `LifecycleEvents`, `AutoPlayMonitorService`, `PhotoSyncWorker`, `HealthAlertWorker`, `AiMusicAnalysisWorker`, and `VolumeMonitorService`. AI playlist analysis is gated by config and signalled through `AiProcessingSignal`.
+Registered in `Program.cs` and run for the process lifetime: `MigrationApplier`, `DailyAnchorWorker`, `AirPlayReceiverService`, `LifecycleEvents`, `AutoPlayMonitorService`, `PhotoSyncWorker`, `VideoPrefetcher`, `HealthAlertWorker`, `AiMusicAnalysisWorker`, and `VolumeMonitorService`. AI playlist analysis is gated by config and signalled through `AiProcessingSignal`.
 
 ### AI integration
 
@@ -85,7 +85,7 @@ Temperature, blood sugar (Nightscout via `NIGHTSCOUT_URL`), and weather forecast
 
 ### Configuration keys
 
-Use the constants in `ConfigKeys.cs` (`MediaFolder`, `FFMpegLocation`). Required config: `MediaFolder`, `SqliteConnectionString`. Optional: `AI:*`, `NIGHTSCOUT_URL`, `Temperature:ApiBaseUrl`, `ALSA_CARD`, `Immich:BaseUrl`, `Immich:AlbumId`, `Immich:ApiKey` (also readable as `IMMICH_API_KEY`), `Immich:SyncIntervalMinutes`, `Immich:SlideSeconds`, `Ambient:IdleSeconds`, OTEL exporter vars. Secrets on the Pi come from `/home/piuser/homespeaker-secrets.env` (never committed; template in `homespeaker-secrets.env.example`).
+Use the constants in `ConfigKeys.cs` (`MediaFolder`, `FFMpegLocation`). Required config: `MediaFolder`, `SqliteConnectionString`. Optional: `AI:*`, `NIGHTSCOUT_URL`, `Temperature:ApiBaseUrl`, `ALSA_CARD`, `Immich:BaseUrl`, `Immich:AlbumId`, `Immich:ApiKey` (also readable as `IMMICH_API_KEY`), `Immich:SyncIntervalMinutes`, `Immich:SlideSeconds`, `Immich:VideoPrefetchAhead` (0 disables prefetch), `Immich:VideoPrefetchMaxMB`, `Ambient:IdleSeconds`, OTEL exporter vars. Secrets on the Pi come from `/home/piuser/homespeaker-secrets.env` (never committed; template in `homespeaker-secrets.env.example`).
 
 ## Deployment
 
