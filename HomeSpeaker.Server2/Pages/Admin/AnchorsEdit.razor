@@ -184,8 +184,8 @@
     @* Native dialog renders in the browser top layer, so it sits above the glass panel's stacking context. *@
     <dialog id="definitionDialog" class="glass-dialog" aria-labelledby="definitionDialogTitle"
             @oncancel="CloseDefinitionModal" @oncancel:preventDefault="true" @onclose="CloseDefinitionModal">
-        <h2 class="glass-dialog-title" id="definitionDialogTitle">
-            <span>@(editingDefinition == null ? "Create New Anchor Definition" : "Edit Anchor Definition")</span>
+        <h2 class="glass-dialog-title">
+            <span id="definitionDialogTitle">@(editingDefinition == null ? "Create New Anchor Definition" : "Edit Anchor Definition")</span>
             <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="CloseDefinitionModal" title="Close" aria-label="Close">
                 <i class="fas fa-xmark" aria-hidden="true"></i>
             </button>

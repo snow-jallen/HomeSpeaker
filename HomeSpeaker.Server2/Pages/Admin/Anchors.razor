@@ -32,10 +32,7 @@
             <i class="fas fa-plus" aria-hidden="true"></i>Create Today for All
         </button>
         <div class="glass-toolbar-end">
-            <span class="glass-hint">Showing @(GetVisibleDates().Count) of @daysToShow days</span>
-            <button type="button" @onclick="RecalculateLayout" class="hs-icon-btn hs-icon-btn--filled" title="Recalculate layout for current window size" aria-label="Recalculate layout for current window size">
-                <i class="fas fa-left-right" aria-hidden="true"></i>
-            </button>
+            <span class="glass-hint">Showing @daysToShow days</span>
         </div>
     </div>
 
@@ -139,72 +136,12 @@
 @code {    private int daysToShow = 14;
     private bool isLoading = false;
     private Dictionary<string, List<DailyAnchor>> allUserAnchors = new();
-    private int maxVisibleDays = 14;
     protected override async Task OnInitializedAsync()
     {
         await RefreshData();
-        await CalculateMaxVisibleDays();
-    }    
-    
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await CalculateMaxVisibleDays();
-            StateHasChanged();
-            
-            // Add window resize listener
-            await JsRuntime.InvokeVoidAsync("eval", @"
-                window.resizeHandler = function() {
-                    DotNet.invokeMethodAsync('HomeSpeaker.Server2', 'OnWindowResize');
-                };
-                window.addEventListener('resize', window.resizeHandler);
-            ");
-        }
-    }    
-    
-    [JSInvokable]
-    public static async Task OnWindowResize()
-    {
-        // This would need to be handled differently in a real implementation
-        // For now, we'll trigger recalculation on component refresh
-        await Task.CompletedTask;
     }
 
-    private async Task RecalculateLayout()
-    {
-        await CalculateMaxVisibleDays();
-        StateHasChanged();
-    }
-
-    private async Task CalculateMaxVisibleDays()
-    {
-        try
-        {
-            // Calculate how many day columns can fit based on viewport width
-            var viewportWidth = await JsRuntime.InvokeAsync<int>("eval", "window.innerWidth");
-            
-            // Check if we're on mobile or desktop to adjust anchor column width
-            var isMobile = viewportWidth <= 768;
-            var isSmallMobile = viewportWidth <= 576;
-            
-            int anchorNameWidth = isSmallMobile ? 150 : (isMobile ? 180 : 250);
-            int dateColumnWidth = isSmallMobile ? 50 : (isMobile ? 60 : 80);
-            int paddingMargins = 40; // Account for card padding, margins, scrollbars
-            
-            var availableWidth = viewportWidth - anchorNameWidth - paddingMargins;
-            var maxColumns = Math.Max(3, availableWidth / dateColumnWidth); // At least 3 days visible
-            
-            maxVisibleDays = Math.Min(daysToShow, (int)maxColumns);
-            
-            await JsRuntime.InvokeVoidAsync("console.log", $"Viewport: {viewportWidth}px, Anchor width: {anchorNameWidth}px, Date width: {dateColumnWidth}px, Max days: {maxVisibleDays}");
-        }
-        catch
-        {
-            // Fallback based on screen size estimates
-            maxVisibleDays = Math.Min(daysToShow, 10); // Conservative default
-        }
-    }private async Task RefreshData()
+    private async Task RefreshData()
     {
         isLoading = true;
         StateHasChanged();
@@ -232,17 +169,16 @@
         if (int.TryParse(e.Value?.ToString(), out var days))
         {
             daysToShow = days;
-            await CalculateMaxVisibleDays();
             await RefreshData();
         }
     }    private List<DateOnly> GetVisibleDates()
     {
         var dates = new List<DateOnly>();
         var today = DateOnly.FromDateTime(DateTime.Today);
-        var visibleDays = Math.Min(daysToShow, maxVisibleDays);
-        
-        // Start from today (leftmost) and go backwards in time (rightward)
-        for (int i = 0; i < visibleDays; i++)
+
+        // Start from today (leftmost) and go backwards in time (rightward).
+        // Every day is rendered; the table scrolls sideways inside its own box.
+        for (int i = 0; i < daysToShow; i++)
         {
             dates.Add(today.AddDays(-i));
         }

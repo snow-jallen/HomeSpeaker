@@ -2802,12 +2802,12 @@ textarea.glass-input {
     position: sticky;
     left: 0;
     z-index: 1;
-    background: rgba(30, 30, 36, 0.92);
+    background: rgba(30, 30, 36, 0.75);
     border-right: 1px solid var(--glass-border);
   }
 
   .glass-anchor-table tbody tr:hover > .anchor-name-col {
-    background: rgba(40, 40, 48, 0.94);
+    background: rgba(44, 44, 54, 0.82);
   }
 
   .glass-anchor-table .date-col {
