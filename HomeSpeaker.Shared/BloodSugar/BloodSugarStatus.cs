@@ -17,8 +17,14 @@ public sealed class BloodSugarStatus
     public static readonly TimeSpan DeltaMaxGap = TimeSpan.FromMinutes(15);
 
     /// <summary>
-    /// Change since the reading before <see cref="CurrentReading"/> (positive = rising), or null when there
-    /// is no earlier reading within <see cref="DeltaMaxGap"/>.
+    /// A previous reading closer than this is a duplicate (two uploaders posting the same value seconds apart),
+    /// not a real step, so it is skipped when working out the delta.
+    /// </summary>
+    public static readonly TimeSpan DeltaMinGap = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// Change since the reading before <see cref="CurrentReading"/> (positive = rising), or null when there is
+    /// no earlier reading between <see cref="DeltaMinGap"/> and <see cref="DeltaMaxGap"/> before it.
     /// </summary>
     public double? Delta
     {
@@ -30,7 +36,7 @@ public sealed class BloodSugarStatus
             }
 
             var previous = this.RecentReadings
-                .Where(r => r.Date < current.Date)
+                .Where(r => current.Date - r.Date >= DeltaMinGap)
                 .OrderByDescending(r => r.Date)
                 .FirstOrDefault();
 

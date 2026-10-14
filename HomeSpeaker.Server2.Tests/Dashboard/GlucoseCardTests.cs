@@ -36,6 +36,15 @@ public sealed class GlucoseCardTests
     }
 
     [Fact]
+    public void Delta_SkipsNearDuplicateReadingsFromASecondUploader()
+    {
+        // 126 now, a duplicate 10s earlier, and the real previous reading 7 minutes before.
+        var delta = status(reading(126, 2), new BloodSugarReading { Sgv = 126, DateString = reading(126, 2).DateString.AddSeconds(-10), Type = "sgv" }, reading(120, 9)).Delta;
+
+        Assert.Equal(6, delta);
+    }
+
+    [Fact]
     public void Delta_OmittedWithoutAPreviousReading()
     {
         Assert.Null(status(reading(126, 2)).Delta);
@@ -112,6 +121,15 @@ public sealed class GlucoseCardTests
         Assert.Equal(100, chart.Latest.X, 3);
         Assert.Equal(2, chart.Paths.Count);
         Assert.StartsWith("M50 ", chart.Paths[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Chart_ReadingStampedSlightlyInTheFuture_IsPinnedToTheRightEdge_NotDropped()
+    {
+        var chart = GlucoseChart.Build([reading(100, 10), reading(130, -1)], now)!;
+
+        Assert.Equal(100, chart.Latest.X, 3);
+        Assert.Equal((300.0 - 130) / 260 * 100, chart.Latest.Y, 3);
     }
 
     [Fact]

@@ -6,7 +6,8 @@ namespace HomeSpeaker.Server2.Services.Dashboard;
 /// <summary>
 /// Geometry for the Home glucose trend line, in percent of the chart box (0,0 = top-left, 100,100 = bottom-right)
 /// so the markup can stretch it to any size. The x axis is time (the last <see cref="Window"/> up to now), so
-/// gaps in the data stay visible; the y axis is a fixed <see cref="YMin"/>-<see cref="YMax"/> mg/dL with outliers clamped.
+/// gaps in the data stay visible (a reading stamped slightly in the future, from a fast uploader clock, is pinned to
+/// the right edge); the y axis is a fixed <see cref="YMin"/>-<see cref="YMax"/> mg/dL with outliers clamped.
 /// </summary>
 public sealed record GlucoseChart(
     IReadOnlyList<string> Paths,
@@ -32,7 +33,7 @@ public sealed record GlucoseChart(
         var start = nowUtc - Window;
         var points = readings
             .Select(r => (Time: r.Date.ToUniversalTime(), r.Sgv))
-            .Where(p => p.Time >= start && p.Time <= nowUtc)
+            .Where(p => p.Time >= start)
             .OrderBy(p => p.Time)
             .ToList();
 

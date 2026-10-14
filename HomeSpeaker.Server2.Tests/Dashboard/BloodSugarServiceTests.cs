@@ -80,7 +80,11 @@ public sealed class BloodSugarServiceTests
         await service.GetBloodSugarStatusAsync();
 
         var request = Assert.Single(handler.Requests).Request;
-        Assert.Contains("count=40", request.RequestUri!.Query, StringComparison.Ordinal);
+        var query = Uri.UnescapeDataString(request.RequestUri!.Query);
+        Assert.Contains("count=400", query, StringComparison.Ordinal);
+        Assert.Contains("find[type]=sgv", query, StringComparison.Ordinal);
+        var threeHoursAgo = now.AddHours(-3).ToUnixTimeMilliseconds();
+        Assert.Contains($"find[date][$gte]={threeHoursAgo}", query, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -103,5 +107,49 @@ public sealed class BloodSugarServiceTests
         var status = await service.GetBloodSugarStatusAsync();
 
         Assert.Null(status.CurrentReading);
+    }
+
+    [Fact]
+    public async Task OneMalformedEntry_IsSkipped_NotTheWholeCard()
+    {
+        var json = $"[{entry(0, 125)},{{\"sgv\":\"oops\",\"dateString\":\"nonsense\"}},{{\"sgv\":120,\"dateString\":\"2026-10-13T06:55:00.000-0500\"}},{entry(10, 110)}]";
+        var (service, _) = create(json);
+
+        var status = await service.GetBloodSugarStatusAsync();
+
+        Assert.Equal(125, status.CurrentReading!.Sgv);
+        Assert.Equal([125, 120, 110], status.RecentReadings.Select(r => r.Sgv));
+    }
+
+    [Fact]
+    public async Task EmptyWindow_FallsBackToTheLatestReading_AsStale()
+    {
+        var calls = 0;
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["NIGHTSCOUT_URL"] = "https://ns.test/" })
+            .Build();
+        var handler = new FakeHttpMessageHandler((request, _) =>
+            FakeHttpMessageHandler.Json(calls++ == 0 ? "[]" : $"[{entry(300, 140)}]"));
+        var service = new BloodSugarService(new HttpClient(handler), NullLogger<BloodSugarService>.Instance, configuration, new MemoryCache(new MemoryCacheOptions()), new FixedTimeProvider(now));
+
+        var status = await service.GetBloodSugarStatusAsync();
+
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.Contains("count=1", handler.Requests[1].Request.RequestUri!.Query, StringComparison.Ordinal);
+        Assert.Equal(140, status.CurrentReading!.Sgv);
+        Assert.True(status.IsStale);
+        Assert.Empty(status.RecentReadings);
+    }
+
+    [Fact]
+    public async Task EpochDate_IsPreferredOverDateString()
+    {
+        var epoch = now.AddMinutes(-3).ToUnixTimeMilliseconds();
+        var (service, _) = create($"[{{\"sgv\":118,\"date\":{epoch},\"dateString\":\"2020-01-01T00:00:00.000Z\",\"direction\":\"Flat\",\"type\":\"sgv\"}}]");
+
+        var status = await service.GetBloodSugarStatusAsync();
+
+        Assert.Equal(now.AddMinutes(-3).UtcDateTime, status.CurrentReading!.Date);
+        Assert.False(status.IsStale);
     }
 }
