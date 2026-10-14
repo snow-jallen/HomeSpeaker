@@ -10,7 +10,8 @@
 <PageTitle>Home Speaker</PageTitle>
 
 <div class="hs-home @(HomeControl.IsAvailable ? "" : "hs-home--no-home-row")">
-    <section class="glass hs-np-card" aria-label="Now playing">
+    <div class="hs-home-left">
+    <section class="glass hs-np-card hs-np-card--compact" aria-label="Now playing">
         @if (NowPlayingInfo.From(Dashboard.Status) is { } np)
         {
             <div class="hs-np-head">
@@ -83,6 +84,28 @@
         </label>
     </section>
 
+    @if (hourly.Count > 0)
+    {
+        <a class="glass hs-info-card hs-hours" href="climate" aria-label="Hourly forecast">
+            <span class="hs-card-label"><span class="hs-card-label-text">Next hours</span></span>
+            <div class="hs-hours-cols">
+                @foreach (var hour in hourly)
+                {
+                    <div class="hs-hour">
+                        <span class="hs-hour-label">@hour.Label</span>
+                        <WeatherIconSvg Icon="hour.Icon" IsDay="hour.IsDay" Label="@hour.Conditions" />
+                        <span class="hs-hour-temp">@(hour.Temperature is { } temp ? temp.ToString("0", CultureInfo.InvariantCulture) + "°" : "--")</span>
+                        <span class="hs-hour-rain" title="@(hour.RainPercent)% chance of rain">
+                            <span class="hs-hour-rain-bar"><span style="height:@(hour.RainPercent)%"></span></span>
+                            <span class="hs-hour-rain-pct">@(hour.ShowRainLabel ? hour.RainPercent + "%" : "")</span>
+                        </span>
+                    </div>
+                }
+            </div>
+        </a>
+    }
+    </div>
+
     <div class="hs-home-side">
         <nav class="hs-source-tiles" aria-label="Music sources">
             <a class="glass hs-tile" href="playlists">
@@ -110,7 +133,7 @@
                 @if (card is not null)
                 {
                     <div class="hs-glucose-reading">
-                        <span class="hs-card-label">Glucose</span>
+                        <span class="hs-card-label"><span class="hs-card-label-text">Glucose</span></span>
                         <span class="hs-glucose-now @(card.IsStale ? "is-stale" : "")">
                             <span class="hs-glucose-value">@card.Value</span>
                             @if (card.Arrow is not null)
@@ -149,7 +172,7 @@
                 else
                 {
                     <div class="hs-glucose-reading">
-                        <span class="hs-card-label">Glucose</span>
+                        <span class="hs-card-label"><span class="hs-card-label-text">Glucose</span></span>
                         <span class="hs-glucose-meta">No reading yet</span>
                     </div>
                 }
@@ -166,7 +189,7 @@
                     <a class="glass hs-info-card hs-climate" href="climate">
                         <div class="hs-card-head">
                             <span class="hs-card-label">
-                                Climate
+                                <span class="hs-card-label-text">Climate</span>
                                 @if (ClimateRoom.AnySensorLow(Dashboard.Temperature))
                                 {
                                     <LowBatteryIcon Label="A temperature sensor battery is low" />
@@ -224,8 +247,8 @@
                 }
                 @if (anchors.Count > 0)
                 {
-                    <a class="glass hs-info-card hs-anchors" href="anchors" aria-label="Anchors done today">
-                        <span class="hs-card-label">Anchors</span>
+                    <a class="glass hs-info-card hs-anchors" href="anchors">
+                        <span class="hs-card-label"><span class="hs-card-label-text">Anchors</span></span>
                         <ul class="hs-anchors-list">
                             @foreach (var person in anchors)
                             {
@@ -263,6 +286,9 @@
     private GlucoseCard? glucoseCard => GlucoseCard.From(Dashboard.BloodSugar, Time.GetUtcNow().UtcDateTime);
 
     private IReadOnlyList<AnchorProgress> anchors => Dashboard.Anchors;
+
+    // Chosen at render time from the cached hourly forecast, so the strip moves on with the clock.
+    private IReadOnlyList<HourlyColumn> hourly => HourlyColumn.Select(Dashboard.Forecast, Time.GetUtcNow().UtcDateTime);
 
     private IReadOnlyList<ClimateRoom> indoorRooms => ClimateRoom.From(Dashboard.Temperature);
 
