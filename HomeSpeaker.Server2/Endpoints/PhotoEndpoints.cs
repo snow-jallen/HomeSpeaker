@@ -28,10 +28,11 @@ public static class PhotoEndpoints
             string id,
             PhotoLibrary library,
             PhotoCacheStore store,
+            VideoStreamCoordinator coordinator,
             IImmichClient immich,
             HttpContext context,
             ILogger<PhotoLibrary> logger) =>
-            StreamVideoAsync(id, library, store, immich, context, logger, TimeSpan.FromSeconds(VideoHeaderTimeoutSeconds)));
+            StreamVideoAsync(id, library, store, coordinator, immich, context, logger, TimeSpan.FromSeconds(VideoHeaderTimeoutSeconds)));
 
         group.MapPost("/{id}/hide", (string id, PhotoLibrary library) =>
             library.Hide(id) ? Results.NoContent() : Results.NotFound());
@@ -53,6 +54,7 @@ public static class PhotoEndpoints
         string id,
         PhotoLibrary library,
         PhotoCacheStore store,
+        VideoStreamCoordinator coordinator,
         IImmichClient immich,
         HttpContext context,
         ILogger<PhotoLibrary> logger,
@@ -63,11 +65,13 @@ public static class PhotoEndpoints
             return Results.NotFound();
         }
 
-        if (store.TryGetVideo(id, out var cachedPath, out var cachedContentType))
+        if (store.TryOpenVideo(id, out var cachedFile, out var cachedContentType))
         {
-            return TypedResults.PhysicalFile(cachedPath, cachedContentType, enableRangeProcessing: true);
+            return TypedResults.File(cachedFile, cachedContentType, enableRangeProcessing: true);
         }
 
+        // Tell the prefetcher this video is being streamed live: it stops downloading it, so the live stream gets the whole link.
+        using var liveStream = coordinator.BeginLiveStream(id);
         try
         {
             // Bounds only the wait for Immich's response headers; the long body stream is bound by the browser disconnect alone.

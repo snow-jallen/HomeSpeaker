@@ -15,6 +15,7 @@ public sealed class PhotoEndpointsVideoTests : IDisposable
     private readonly TempDirectory temp = new();
     private readonly FakeImmichClient immich = new();
     private readonly PhotoCacheStore store;
+    private readonly VideoStreamCoordinator coordinator = new();
     private readonly PhotoLibrary library;
 
     public PhotoEndpointsVideoTests()
@@ -30,7 +31,7 @@ public sealed class PhotoEndpointsVideoTests : IDisposable
         Assert.Equal(expected, Assert.IsType<Microsoft.AspNetCore.Http.HttpResults.StatusCodeHttpResult>(result).StatusCode);
 
     private Task<IResult> stream(HttpContext context, TimeSpan? headerTimeout = null) =>
-        PhotoEndpoints.StreamVideoAsync(VideoId, library, store, immich, context, NullLogger<PhotoLibrary>.Instance, headerTimeout ?? longTimeout);
+        PhotoEndpoints.StreamVideoAsync(VideoId, library, store, coordinator, immich, context, NullLogger<PhotoLibrary>.Instance, headerTimeout ?? longTimeout);
 
     private async Task<byte[]> saveCachedVideoAsync(byte[] bytes)
     {
@@ -62,13 +63,63 @@ public sealed class PhotoEndpointsVideoTests : IDisposable
         var result = await stream(context);
         await result.ExecuteAsync(context);
 
-        var file = Assert.IsType<Microsoft.AspNetCore.Http.HttpResults.PhysicalFileHttpResult>(result);
+        var file = Assert.IsType<Microsoft.AspNetCore.Http.HttpResults.FileStreamHttpResult>(result);
         Assert.True(file.EnableRangeProcessing);
         Assert.Equal("video/mp4", file.ContentType);
         Assert.Equal(StatusCodes.Status206PartialContent, context.Response.StatusCode);
         Assert.Equal("bytes 0-99/200", context.Response.Headers.ContentRange.ToString());
         Assert.Equal(bytes.Take(100), body.ToArray());
         Assert.Empty(immich.OpenedVideoIds);
+    }
+
+    [Fact]
+    public async Task Stream_WhenTheCachedFileCannotBeOpened_FallsBackToTheProxyInsteadOfFailing()
+    {
+        await saveCachedVideoAsync([1, 2, 3]);
+        immich.OpenVideo = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([9, 9]) });
+        using var body = new MemoryStream();
+
+        // Only Windows can hold a file open exclusively; elsewhere the delete race is covered by the store test.
+        using var exclusive = OperatingSystem.IsWindows()
+            ? new FileStream(Path.Combine(store.VideosPath, VideoId + ".mp4"), FileMode.Open, FileAccess.Read, FileShare.None)
+            : null;
+        var result = await stream(rangeContext(null, body));
+
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Same(Results.Empty, result);
+            Assert.Equal([VideoId], immich.OpenedVideoIds);
+        }
+    }
+
+    [Fact]
+    public async Task Stream_WhenTheFileVanishedAfterTheCheck_FallsBackToTheProxy()
+    {
+        // No cached file at all: the same path the endpoint takes when an eviction wins the race.
+        immich.OpenVideo = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([9, 9]) });
+        using var body = new MemoryStream();
+
+        var result = await stream(rangeContext(null, body));
+
+        Assert.Same(Results.Empty, result);
+        Assert.Equal(new byte[] { 9, 9 }, body.ToArray());
+    }
+
+    [Fact]
+    public async Task Stream_WhileProxying_RegistersTheVideoAsLiveAndReleasesItAfterwards()
+    {
+        var wasLive = false;
+        immich.OpenVideo = (_, _) =>
+        {
+            wasLive = coordinator.IsLive(VideoId);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1]) });
+        };
+        using var body = new MemoryStream();
+
+        await stream(rangeContext(null, body));
+
+        Assert.True(wasLive);
+        Assert.False(coordinator.IsLive(VideoId));
     }
 
     [Fact]
@@ -167,8 +218,8 @@ public sealed class PhotoEndpointsVideoTests : IDisposable
         var context = new DefaultHttpContext();
 
         var unknown = await PhotoEndpoints.StreamVideoAsync(
-            "22222222-2222-4222-8222-222222222222", library, store, immich, context, NullLogger<PhotoLibrary>.Instance, longTimeout);
-        var invalid = await PhotoEndpoints.StreamVideoAsync("../x", library, store, immich, context, NullLogger<PhotoLibrary>.Instance, longTimeout);
+            "22222222-2222-4222-8222-222222222222", library, store, coordinator, immich, context, NullLogger<PhotoLibrary>.Instance, longTimeout);
+        var invalid = await PhotoEndpoints.StreamVideoAsync("../x", library, store, coordinator, immich, context, NullLogger<PhotoLibrary>.Instance, longTimeout);
 
         Assert.IsType<Microsoft.AspNetCore.Http.HttpResults.NotFound>(unknown);
         Assert.IsType<Microsoft.AspNetCore.Http.HttpResults.NotFound>(invalid);

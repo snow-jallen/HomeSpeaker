@@ -38,6 +38,12 @@ public sealed class VideoEvictionPolicy
             }
         }
 
+        // An evicted video that is downloaded again later starts a fresh age.
+        foreach (var id in evict)
+        {
+            firstSeen.Remove(id);
+        }
+
         return evict;
     }
 }

@@ -180,6 +180,60 @@ public sealed class PhotoCacheStore
         }
     }
 
+    /// <summary>
+    /// Opens a completed cached video for reading, sharing read and delete so an eviction never fails a stream that is under
+    /// way. False when there is no such file, it was evicted a moment ago, or it cannot be opened; the caller then streams live.
+    /// </summary>
+    public bool TryOpenVideo(string assetId, [NotNullWhen(true)] out FileStream? stream, [NotNullWhen(true)] out string? contentType)
+    {
+        stream = null;
+        contentType = null;
+        if (!IsValidAssetId(assetId))
+        {
+            return false;
+        }
+
+        foreach (var (type, extension) in videoFormats)
+        {
+            try
+            {
+                stream = new FileStream(
+                    Path.Combine(VideosPath, assetId + extension),
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read | FileShare.Delete,
+                    bufferSize: 4096,
+                    FileOptions.Asynchronous | FileOptions.SequentialScan);
+                contentType = type;
+                return true;
+            }
+            catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+            {
+                // Not cached under this extension.
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                logger.LogDebug(ex, "Could not open cached video {AssetId}; streaming it live instead", assetId);
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Free bytes on the drive holding the cache, or null if it cannot be determined.</summary>
+    public long? GetAvailableFreeSpace()
+    {
+        try
+        {
+            return new DriveInfo(RootPath).AvailableFreeSpace;
+        }
+        catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>Asset ids of every completed cached video.</summary>
     public IReadOnlyList<string> ListCachedVideoIds()
     {
@@ -300,7 +354,7 @@ public sealed class PhotoCacheStore
         {
             File.Delete(path);
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             logger.LogWarning(ex, "Could not delete {File}", path);
         }

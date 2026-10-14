@@ -13,6 +13,7 @@ public sealed class VideoPrefetcherTests : IDisposable
     private readonly TempDirectory temp = new();
     private readonly PhotoCacheStore store;
     private readonly FakeImmichClient immich = new();
+    private readonly VideoStreamCoordinator coordinator = new();
     private readonly CapturingLogger<VideoPrefetcher> log = new();
     private readonly ImmichOptions options = new()
     {
@@ -60,8 +61,13 @@ public sealed class VideoPrefetcherTests : IDisposable
         library = new PhotoLibrary(store, new FixedTimeProvider(new DateTimeOffset(2026, 10, 13, 12, 0, 0, TimeSpan.Zero)), new Random(3));
     }
 
-    private VideoPrefetcher createPrefetcher() =>
-        new(library!, store, immich, Options.Create(options), TimeProvider.System, log);
+    private VideoPrefetcher createPrefetcher(TimeSpan? headerTimeout = null, TimeSpan? inactivityTimeout = null, Func<long?>? freeSpace = null) =>
+        new(library!, store, immich, Options.Create(options), TimeProvider.System, coordinator, log)
+        {
+            HeaderTimeout = headerTimeout ?? TimeSpan.FromSeconds(30),
+            InactivityTimeout = inactivityTimeout ?? TimeSpan.FromSeconds(30),
+            FreeSpaceBytes = freeSpace ?? (() => null),
+        };
 
     private IReadOnlyList<string> upcoming() => library!.GetVideoPrefetchSnapshot(options.VideoPrefetchAhead).UpcomingVideos;
 
@@ -268,6 +274,214 @@ public sealed class VideoPrefetcherTests : IDisposable
         Assert.Single(immich.OpenedVideoIds);
     }
 
+    private static HttpResponseMessage stalledBody(Action? onFirstChunk = null)
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new UnknownLengthContent(MB / 2, onFirstChunk, stallAfterFirstChunk: true) };
+        response.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("video/mp4");
+        return response;
+    }
+
+    [Fact]
+    public async Task RunOnce_WhenTheBodyStopsArriving_TimesOutDiscardsTheFileAndKeepsGoing()
+    {
+        await seedAsync(videos: 10);
+        immich.OpenVideo = (_, _) => Task.FromResult(stalledBody());
+
+        await createPrefetcher(inactivityTimeout: TimeSpan.FromMilliseconds(150)).RunOnceAsync(CancellationToken.None);
+
+        // All three window videos stalled and timed out; the pass finished instead of hanging.
+        Assert.Equal(3, immich.OpenedVideoIds.Count);
+        Assert.Empty(store.ListCachedVideoIds());
+        Assert.Empty(Directory.GetFiles(store.VideosPath));
+        Assert.Equal(3, log.Entries.Count(e => e.Level == LogLevel.Warning && e.Message.Contains("timed out", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task RunOnce_WhenImmichNeverSendsHeaders_TimesOutAndMovesOn()
+    {
+        await seedAsync(videos: 10);
+        immich.OpenVideo = async (_, ct) =>
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, ct);
+            return mp4([1]);
+        };
+
+        await createPrefetcher(headerTimeout: TimeSpan.FromMilliseconds(100)).RunOnceAsync(CancellationToken.None);
+
+        Assert.Equal(3, immich.OpenedVideoIds.Count);
+        Assert.Equal(3, log.Entries.Count(e => e.Level == LogLevel.Warning));
+    }
+
+    [Fact]
+    public async Task RunOnce_WhenATimedOutVideoLeavesAndReentersTheLookAhead_ItIsTriedAgain()
+    {
+        await seedAsync(videos: 20);
+        options.VideoPrefetchAhead = 1;
+        var prefetcher = createPrefetcher(headerTimeout: TimeSpan.FromMilliseconds(50));
+        var failing = true;
+        immich.OpenVideo = async (_, ct) =>
+        {
+            if (failing)
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, ct);
+            }
+
+            return mp4([1]);
+        };
+        var first = upcoming()[0];
+        await prefetcher.RunOnceAsync(CancellationToken.None);
+        await prefetcher.RunOnceAsync(CancellationToken.None);
+        Assert.Single(immich.OpenedVideoIds);
+
+        // Serving the failed video takes it out of the look-ahead; when the shuffle brings it back it is tried again.
+        failing = false;
+        for (var slide = 0; slide < 100 && !store.HasVideo(first); slide++)
+        {
+            library!.Next();
+            await prefetcher.RunOnceAsync(CancellationToken.None);
+        }
+
+        Assert.True(store.HasVideo(first));
+    }
+
+    [Fact]
+    public async Task RunOnce_WhenTheVideoIsRequestedLiveMidDownload_CancelsThePrefetchAndDeletesTheTempFile()
+    {
+        await seedAsync(videos: 10);
+        options.VideoPrefetchAhead = 1;
+        var target = upcoming()[0];
+        IDisposable? live = null;
+        immich.OpenVideo = (_, _) => Task.FromResult(stalledBody(onFirstChunk: () => live = coordinator.BeginLiveStream(target)));
+        var prefetcher = createPrefetcher(inactivityTimeout: TimeSpan.FromSeconds(30));
+
+        await prefetcher.RunOnceAsync(CancellationToken.None);
+
+        Assert.NotNull(live);
+        Assert.False(store.HasVideo(target));
+        Assert.Empty(Directory.GetFiles(store.VideosPath));
+        Assert.Contains(log.Entries, e => e.Level == LogLevel.Information && e.Message.Contains("streamed live", StringComparison.Ordinal));
+        Assert.DoesNotContain(log.Entries, e => e.Level == LogLevel.Warning);
+        live!.Dispose();
+    }
+
+    [Fact]
+    public async Task RunOnce_DoesNotStartPrefetchingAVideoThatIsBeingStreamedLive()
+    {
+        await seedAsync(videos: 10);
+        options.VideoPrefetchAhead = 1;
+        var target = upcoming()[0];
+        using var live = coordinator.BeginLiveStream(target);
+
+        await createPrefetcher().RunOnceAsync(CancellationToken.None);
+
+        Assert.Empty(immich.OpenedVideoIds);
+        Assert.False(store.HasVideo(target));
+    }
+
+    [Fact]
+    public async Task RunOnce_WhenServedWhileDownloading_TheLiveRequestCancelsTheDownloadThroughTheCoordinator()
+    {
+        await seedAsync(videos: 10);
+        options.VideoPrefetchAhead = 1;
+        var target = upcoming()[0];
+        var started = new TaskCompletionSource();
+        immich.OpenVideo = (_, ct) =>
+        {
+            started.SetResult();
+            return Task.FromResult(stalledBody());
+        };
+        var pass = createPrefetcher().RunOnceAsync(CancellationToken.None);
+        await started.Task;
+
+        // What the endpoint does when /video arrives for a video that is still downloading.
+        using (coordinator.BeginLiveStream(target))
+        {
+            await pass.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+
+        Assert.Empty(Directory.GetFiles(store.VideosPath));
+        Assert.False(coordinator.IsLive(target));
+    }
+
+    [Fact]
+    public async Task RunOnce_WhenTheCacheDriveIsNearlyFull_SkipsThePrefetch()
+    {
+        await seedAsync(videos: 10);
+
+        await createPrefetcher(freeSpace: () => (1024 * MB) - 1).RunOnceAsync(CancellationToken.None);
+        Assert.Empty(immich.OpenedVideoIds);
+        Assert.Equal(3, log.Entries.Count(e => e.Level == LogLevel.Warning && e.Message.Contains("free", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task RunOnce_WhenTheDownloadItselfWouldLeaveTooLittleSpace_SkipsAfterTheHeaders()
+    {
+        await seedAsync(videos: 10);
+        immich.OpenVideo = (_, _) => Task.FromResult(mp4(new byte[MB / 2]));
+
+        await createPrefetcher(freeSpace: () => (1024 * MB) + (MB / 4)).RunOnceAsync(CancellationToken.None);
+
+        Assert.Equal(3, immich.OpenedVideoIds.Count);
+        Assert.Empty(store.ListCachedVideoIds());
+    }
+
+    [Fact]
+    public async Task RunOnce_WithPlentyOfFreeSpace_Downloads()
+    {
+        await seedAsync(videos: 10);
+
+        await createPrefetcher(freeSpace: () => 5L * 1024 * MB).RunOnceAsync(CancellationToken.None);
+
+        Assert.Equal(3, store.ListCachedVideoIds().Count);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public async Task ExecuteAsync_WhenTheMaxSizeIsZeroOrLess_PrefetchIsDisabled(int maxMb)
+    {
+        await seedAsync(videos: 10);
+        options.VideoPrefetchMaxMB = maxMb;
+        using var prefetcher = createPrefetcher();
+
+        await prefetcher.StartAsync(CancellationToken.None);
+        await prefetcher.StopAsync(CancellationToken.None);
+
+        Assert.Empty(immich.OpenedVideoIds);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_RemovesStrayFilesAtStartupWithoutBlockingHostStart()
+    {
+        await seedAsync(videos: 10);
+        Directory.CreateDirectory(store.VideosPath);
+        await File.WriteAllBytesAsync(Path.Combine(store.VideosPath, "stray.tmp"), [1]);
+        using var prefetcher = createPrefetcher();
+
+        // Cleanup runs after the first yield, so StartAsync itself never depends on it.
+        await prefetcher.StartAsync(CancellationToken.None);
+        await waitForAsync(() => store.ListCachedVideoIds().Count == 3);
+        await prefetcher.StopAsync(CancellationToken.None);
+
+        Assert.False(File.Exists(Path.Combine(store.VideosPath, "stray.tmp")));
+    }
+
+    [Fact]
+    public async Task Next_AfterThePrefetcherIsDisposed_StillWorks()
+    {
+        await seedAsync(videos: 5);
+        var prefetcher = createPrefetcher();
+        await prefetcher.StartAsync(CancellationToken.None);
+
+        // A /next that races shutdown invokes the handler on a disposed semaphore; it must not surface as a 500.
+        prefetcher.Dispose();
+
+        for (var i = 0; i < 3; i++)
+        {
+            Assert.NotNull(library!.Next());
+        }
+    }
+
     [Fact]
     public void SelectDownloads_KeepsPlayOrderAndSkipsCachedAndBackedOffIds()
     {
@@ -421,7 +635,7 @@ public sealed class VideoPrefetcherTests : IDisposable
     }
 
     /// <summary>A body that reports no Content-Length, streamed in chunks.</summary>
-    private sealed class UnknownLengthContent(long totalBytes, Action? onFirstChunk = null) : HttpContent
+    private sealed class UnknownLengthContent(long totalBytes, Action? onFirstChunk = null, bool stallAfterFirstChunk = false) : HttpContent
     {
         protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context)
         {
@@ -435,7 +649,7 @@ public sealed class VideoPrefetcherTests : IDisposable
         protected override async Task<Stream> CreateContentReadStreamAsync()
         {
             await Task.CompletedTask;
-            return new ChunkStream(totalBytes, onFirstChunk);
+            return new ChunkStream(totalBytes, onFirstChunk, stallAfterFirstChunk);
         }
 
         protected override bool TryComputeLength(out long length)
@@ -445,7 +659,7 @@ public sealed class VideoPrefetcherTests : IDisposable
         }
     }
 
-    private sealed class ChunkStream(long totalBytes, Action? onFirstChunk) : Stream
+    private sealed class ChunkStream(long totalBytes, Action? onFirstChunk, bool stallAfterFirstChunk = false) : Stream
     {
         private long sent;
 
@@ -455,9 +669,15 @@ public sealed class VideoPrefetcherTests : IDisposable
         public override long Length => throw new NotSupportedException();
         public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
 
-        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (sent > 0 && stallAfterFirstChunk)
+            {
+                // A peer that went silent: the read only ends when the caller's token fires.
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+
             if (sent == 0)
             {
                 onFirstChunk?.Invoke();
@@ -466,7 +686,7 @@ public sealed class VideoPrefetcherTests : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             var count = (int)Math.Min(Math.Min(buffer.Length, 64 * 1024), totalBytes - sent);
             sent += count;
-            return ValueTask.FromResult(count);
+            return count;
         }
 
         public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
