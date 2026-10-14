@@ -5,11 +5,12 @@ namespace HomeSpeaker.Server2;
 
 public class LifecycleEvents : IHostedService
 {
-    public LifecycleEvents(ILogger<LifecycleEvents> logger, IMusicPlayer player, IConfiguration config)
+    public LifecycleEvents(ILogger<LifecycleEvents> logger, IMusicPlayer player, IConfiguration config, TimeProvider timeProvider)
     {
         this.logger = logger;
         this.player = player;
         this.config = config;
+        this.timeProvider = timeProvider;
 
         if (!Path.Exists(config[ConfigKeys.MediaFolder]))
         {
@@ -23,12 +24,22 @@ public class LifecycleEvents : IHostedService
     private readonly ILogger<LifecycleEvents> logger;
     private readonly IMusicPlayer player;
     private readonly IConfiguration config;
+    private readonly TimeProvider timeProvider;
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         logger.LogInformation("Application started event raised!");
         if (File.Exists(LastStatePath))
         {
+            if (QuietHours.IsQuietTime(timeProvider))
+            {
+                // A restart overnight (e.g. a deploy) must not start music, and the
+                // saved state would be stale by morning, so drop it.
+                logger.LogInformation("Quiet hours; discarding {LastStatePath} instead of resuming playback", LastStatePath);
+                File.Delete(LastStatePath);
+                return;
+            }
+
             logger.LogInformation("Found {LastStatePath} file, re-setting current song and queue", LastStatePath);
 
             var lastState = JsonSerializer.Deserialize<LastState>(await File.ReadAllTextAsync(LastStatePath, cancellationToken));

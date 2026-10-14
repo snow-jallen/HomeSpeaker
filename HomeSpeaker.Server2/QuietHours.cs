@@ -1,8 +1,9 @@
 namespace HomeSpeaker.Server2;
 
 /// <summary>
-/// The overnight quiet window, shared by the sleepy-time screen overlay and the
-/// autoplay monitor so "screen dims" and "autoplay stops" always agree.
+/// The overnight quiet window, shared by the sleepy-time screen overlay, the
+/// autoplay monitor and the resume-on-restart in <see cref="LifecycleEvents"/>
+/// so "screen dims", "autoplay stops" and "a restart stays silent" always agree.
 /// The window wraps midnight: 22:00 through 07:00 local time.
 /// </summary>
 public static class QuietHours
