@@ -78,7 +78,10 @@ final class LocalPlayer {
     }
 
     func pause() { player.pause() }
-    func resume() { player.play() }
+    func resume() {
+        activateAudioSession()
+        player.play()
+    }
 
     func seek(to seconds: Double) {
         player.seek(to: CMTime(seconds: seconds, preferredTimescale: CMTimeScale(NSEC_PER_SEC)))
@@ -169,6 +172,7 @@ final class LocalPlayer {
         guard let url = audioURL(for: song, connection: connection) else { return }
         let item = AVPlayerItem(url: url)
         player.replaceCurrentItem(with: item)
+        activateAudioSession()
         player.play()
         updateNowPlayingInfo()
     }
@@ -194,6 +198,16 @@ final class LocalPlayer {
     private func configureAudioSession() {
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+        } catch {
+            print("LocalPlayer: audio session error: \(error)")
+        }
+    }
+
+    // Activated only when playback starts: the app also launches in the
+    // background for widget and Live Activity buttons, and an active playback
+    // session would pause whatever else the phone is playing.
+    private func activateAudioSession() {
+        do {
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
             print("LocalPlayer: audio session error: \(error)")

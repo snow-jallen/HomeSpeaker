@@ -7,59 +7,87 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0A7A4D3E1C5B6A7980010001 /* PushNotificationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A7A4D3E1C5B6A7980010101 /* PushNotificationStore.swift */; };
-		0A7A4D3E1C5B6A7980010002 /* PushNotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A7A4D3E1C5B6A7980010102 /* PushNotificationsView.swift */; };
-		0A7A4D3E1C5B6A7980010003 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A7A4D3E1C5B6A7980010104 /* UserNotifications.framework */; };
+		02C85889C82A7F6DFA0DA336 /* PushNotificationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21B3D000BF32658D2DB982D7 /* PushNotificationStore.swift */; };
+		0813CD098C05627156CFB242 /* SpeakerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D65DA15C5F8429240F336F95 /* SpeakerWidget.swift */; };
+		095C8D1E44DAD502476EBEB9 /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8192B9DE8753F971AF4FB86A /* ActivityKit.framework */; };
+		0A61DBBFEA2E9D502D1D7A3C /* PlaybackIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B23E69272D6BD2AFEE6FB70 /* PlaybackIntents.swift */; };
+		0ADF6B78F5EF3369609411A7 /* SpeakerWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288EEF6FA035F1C03A48CEFC /* SpeakerWidgetView.swift */; };
 		10258C83F88F6E77B1FEA837 /* HomeSpeakerWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79DF5D1CE59F6944F0B2B812 /* HomeSpeakerWatchApp.swift */; };
 		1AC5BD96E6D7BC208D94897F /* NowPlayingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16F2A1CA99C67EB4935F82B4 /* NowPlayingView.swift */; };
 		1B5A2C58A13005BB7A96EA14 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F27C12BCCE016B6AC25E97E5 /* WatchConnectivity.framework */; };
 		20DFA6475513423EC7C432A2 /* HomeSpeakerWatchWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7FA88887D56058624D3959C9 /* HomeSpeakerWatchWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		211F727D91953107DB0A5371 /* RadioStreamsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAE825C6CA30C690E37852BB /* RadioStreamsView.swift */; };
 		292C764312EA87DCAE62E163 /* HomeSpeakerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1C3B78E7383B49C16C349A3 /* HomeSpeakerApp.swift */; };
+		2EDA77DB38758CE3030825C3 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0387EAEB26350D3D2A73FB79 /* Models.swift */; };
 		35E15319F2930366E1238C96 /* ServerPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 719AD39AF69258B48ABFB67D /* ServerPickerView.swift */; };
 		4BA5FB8B5FE0E93D029DC294 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0387EAEB26350D3D2A73FB79 /* Models.swift */; };
 		4FB936FA2B2B8155D8599E51 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DFF600AE780822B97E207F38 /* AVFoundation.framework */; };
+		52B7A41CEE425C33204D8E16 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EFB5C8ED5F3AEFF04D228F0E /* UserNotifications.framework */; };
+		59CD7003E7A15F19CEBCBAE4 /* SpeakerActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5BE5FE1481D8954A6F58A31 /* SpeakerActivityAttributes.swift */; };
+		5B89CF04187AB42F9978969D /* SharedConnections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0C0CB4EB4E1C479E92F5FF /* SharedConnections.swift */; };
 		5DBB028FCF8D559EA3178DC6 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE39C0DB8FFD7DBDEC6E984 /* ContentView.swift */; };
 		6557F6C93F2FE3F713A9DE79 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1859B12913E4087DC6C8AE6D /* APIClient.swift */; };
 		655E5098AB3B6A11E9910F7F /* LocalPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E0801376B66A150D4878F32 /* LocalPlayer.swift */; };
+		666CD7EC6E3F17DE35E40D28 /* HomeSpeakerWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2DF6D3416F949009F451D1C /* HomeSpeakerWidgetBundle.swift */; };
 		66B6A956286916679528F1F1 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F27C12BCCE016B6AC25E97E5 /* WatchConnectivity.framework */; };
 		687EB1F65D3FD4831CF9D102 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1859B12913E4087DC6C8AE6D /* APIClient.swift */; };
+		6E2C3E7834110F873505533A /* PlaybackIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B23E69272D6BD2AFEE6FB70 /* PlaybackIntents.swift */; };
 		716E81D5609BFE112919F15F /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1859B12913E4087DC6C8AE6D /* APIClient.swift */; };
 		72CB3C0A15A20A1D470A2892 /* HomeSpeakerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE860A8EC2BC7A3510B7D5BE /* HomeSpeakerWidget.swift */; };
 		775F06E21ED5A5D9BAB69A2A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 932B931B88EC9D90133C7FB7 /* Assets.xcassets */; };
+		78F566C45A648E16FB61B2BB /* SpeakerActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25855234A5177BF3E2D4A640 /* SpeakerActivityController.swift */; };
 		7AB23637168FDA6113A1E116 /* YouTubeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742488CE44FEEA3523C46654 /* YouTubeView.swift */; };
+		7CADC60C7A1708F71B46DC3C /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F4223DA2F0CDF7DF37CB1511 /* SwiftUI.framework */; };
+		7CAF0538B8EB0C783A40F27B /* SpeakerActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5BE5FE1481D8954A6F58A31 /* SpeakerActivityAttributes.swift */; };
+		7D3C95BA8CC67C84805378DB /* OfflineDownloadsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9555FF4489A81CA16D89018 /* OfflineDownloadsStore.swift */; };
+		861F6E78D525A82304137840 /* PushNotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7738DF82AB47B8098E27FDFB /* PushNotificationsView.swift */; };
 		8BA769F8273F5002C64F9957 /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE72379FA5E35A1E24338A72 /* QueueView.swift */; };
+		8C1C25D55C151ACEEA3B359E /* SpeakerStatusStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049164FA7410622C07AE424F /* SpeakerStatusStore.swift */; };
 		8CAA466DE8E1AC4DDC182682 /* AIPlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5AB2945906B9634A6C844C9 /* AIPlaylistsView.swift */; };
 		8E27D4675795777A6FF971AD /* AIStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0708C23DBE902CD2AF78140D /* AIStatusView.swift */; };
-		8F19CA0B0CF8A14C6277FC0B /* OfflineDownloadsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1297287854A8D56CC65CA9A /* OfflineDownloadsStore.swift */; };
 		90BDA85488C40C638B27DEF3 /* RadioStreamsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97987F210143A29FA1EA204 /* RadioStreamsView.swift */; };
 		96F16D770BBC0004BCE29747 /* MediaPlayer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CAF6F1D2EC5D2112E6D5AECA /* MediaPlayer.framework */; };
 		97D4A59656382C9B54FD48D9 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F4223DA2F0CDF7DF37CB1511 /* SwiftUI.framework */; };
 		991824C7DE36205AB120A845 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F241EFDB1BBC7B42BF8AD924 /* WidgetKit.framework */; };
-		991EE3BA897BB77766B29131 /* ServerEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D82ABFFCC115B98EF80A10 /* ServerEntity.swift */; };
 		9C5C4BA3EC5EB7A7A650895B /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16D6F1E4E46A26F966D05A65 /* LibraryView.swift */; };
+		9D4461613A829EAC4E8864AF /* ServerEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F60039F059A00C1BD4451C5 /* ServerEntity.swift */; };
 		A08875BB22B217481D8F8A2B /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 991398AE4AA449825359CD71 /* QueueView.swift */; };
+		A14F0875A45360362B407ED1 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F241EFDB1BBC7B42BF8AD924 /* WidgetKit.framework */; };
+		A73E71C7146CC45775A516FA /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8192B9DE8753F971AF4FB86A /* ActivityKit.framework */; };
 		A9B7146EC9427277CF98A290 /* HomeSpeakerWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 3E6E950B3D6D2B30EA71133D /* HomeSpeakerWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AEBADB6BE17CAF8C6C9DEF7D /* SpeakerControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A7A2AF782DB61E5481B6575 /* SpeakerControls.swift */; };
 		AFBC50135B32EEDDB784AC73 /* MusicLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5362492C8FDA890DA502B7AE /* MusicLibraryView.swift */; };
 		B4920B1AB331FAD8F211E305 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0387EAEB26350D3D2A73FB79 /* Models.swift */; };
 		B882A143B6536C8135B12E20 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EB62922935DAAB7820E9B273 /* Assets.xcassets */; };
 		BC18B967C3D72E4E311A3A36 /* ConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8049584149E66D488080E43 /* ConnectionStore.swift */; };
+		C055CB83EFEE7E6BAF452625 /* SharedConnections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0C0CB4EB4E1C479E92F5FF /* SharedConnections.swift */; };
+		C2B2B5A73584E0CBEBE9A320 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F241EFDB1BBC7B42BF8AD924 /* WidgetKit.framework */; };
 		C4836BE207096383CD1E652A /* HomeSpeakerIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1709BAEE278DD434166E942C /* HomeSpeakerIntents.swift */; };
+		CA85BB629FBE9B8B53F6DD28 /* PlaybackMover.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA6A2857E5D9A42720AB5CCB /* PlaybackMover.swift */; };
 		CD02ED43DB2AB4DEA6E6D892 /* WidgetIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F4F22A2E9A3EBC7B2594BF4 /* WidgetIntents.swift */; };
 		D037E33A7AF0B10E6ABA5A5E /* AIPlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4783E8ABC24B91A6C939BF /* AIPlaylistsView.swift */; };
 		D03D1C8F483822096AD105C4 /* WatchSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA9B6AB8BBD67679356966D6 /* WatchSync.swift */; };
+		D232AC39669D829B2DC0C98B /* OfflineDownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27F461B4E1B9E75397474F95 /* OfflineDownloadsView.swift */; };
 		D4351CD4DDACED6A3DBC7B04 /* IntentHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 597E25C4A64424793FA0F786 /* IntentHelpers.swift */; };
 		D5262AFCA33339C74FD86834 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 972E6F741153B0F923CEB1D8 /* ContentView.swift */; };
+		D57C6B95E07375CE936357FC /* HomeSpeakerWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E18DCEE1A917A399B287794F /* HomeSpeakerWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		D5E9B351F36941F8BD43F65E /* WatchSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA9B6AB8BBD67679356966D6 /* WatchSync.swift */; };
+		D711EEE065266F24D4764E46 /* RoomsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A018CE30A63C93625371BDBB /* RoomsView.swift */; };
+		D8DB2296BE2DD75A9EEF9ACC /* ServerEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F60039F059A00C1BD4451C5 /* ServerEntity.swift */; };
 		D9E9AE5722B45A06324A4197 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 348CD51028183AD1583AC3BC /* AppIntents.framework */; };
 		DB776F605977B61BC0570A8C /* ConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8049584149E66D488080E43 /* ConnectionStore.swift */; };
 		DE6051148FA4909B497ECA63 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0387EAEB26350D3D2A73FB79 /* Models.swift */; };
+		E1DF17884CB21EA7F8AA2AA2 /* SpeakerLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0CBE3E6C41E061FCD5B6D5 /* SpeakerLiveActivityWidget.swift */; };
+		E4E397D8772241E63BA6FABE /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 348CD51028183AD1583AC3BC /* AppIntents.framework */; };
 		E67C1946D2602902FAEF6B24 /* PlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1ED18F91C6D18A84AC2CE2D /* PlaylistsView.swift */; };
 		E9CFA7C6C54884491EE42B74 /* ServerListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAA123689971EE3504312BBE /* ServerListView.swift */; };
-		EAF2A83051D1C3B135F5F21C /* OfflineDownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67AE50D977A86AB778373CCB /* OfflineDownloadsView.swift */; };
+		EAB640BDD8902A1A419A7E6C /* SharedConnections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0C0CB4EB4E1C479E92F5FF /* SharedConnections.swift */; };
+		EC64348371F34B3ABFB8174A /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1859B12913E4087DC6C8AE6D /* APIClient.swift */; };
 		ED6AA397244C91B925E949AF /* PlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B0125C146E59A5A2A1943C /* PlaylistsView.swift */; };
 		EE56A00AE4A62D3A70F3C141 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 348CD51028183AD1583AC3BC /* AppIntents.framework */; };
 		EFE57C1AEABFFD95F81531ED /* HomeSpeakerShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4079029A2C197EA0A4DB14CF /* HomeSpeakerShortcuts.swift */; };
+		F018D5CCE4A6B77EF9B09A5D /* AVKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2D51CE210976984C0DDB1E4C /* AVKit.framework */; };
+		F1D672AFC23F09741D2BC3D9 /* SharedConnections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0C0CB4EB4E1C479E92F5FF /* SharedConnections.swift */; };
 		F4089D82DB9CCF24A58D7150 /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC249750CEAD1C046D5E9F8 /* MoreView.swift */; };
 		FF6AC4DBAC26C4591175E5C6 /* NowPlayingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD72D0C245433BA64B16115 /* NowPlayingView.swift */; };
 /* End PBXBuildFile section */
@@ -79,9 +107,27 @@
 			remoteGlobalIDString = 2A9C51AE16AD79AE38C00127;
 			remoteInfo = HomeSpeakerWatchWidget;
 		};
+		AFCC5BC08806332C2041F38E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 336C22859EC68CB2185E0C6F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4578C4C62818AED29DE8EA3B;
+			remoteInfo = HomeSpeakerWidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		3828A79DB37C600801779395 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				D57C6B95E07375CE936357FC /* HomeSpeakerWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AAF725393CA4D0FF39E0B04E /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -107,28 +153,37 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		0A7A4D3E1C5B6A7980010101 /* PushNotificationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationStore.swift; sourceTree = "<group>"; };
-		0A7A4D3E1C5B6A7980010102 /* PushNotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationsView.swift; sourceTree = "<group>"; };
-		0A7A4D3E1C5B6A7980010103 /* HomeSpeaker.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HomeSpeaker.entitlements; sourceTree = "<group>"; };
-		0A7A4D3E1C5B6A7980010104 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
 		0387EAEB26350D3D2A73FB79 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		049164FA7410622C07AE424F /* SpeakerStatusStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerStatusStore.swift; sourceTree = "<group>"; };
 		0708C23DBE902CD2AF78140D /* AIStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIStatusView.swift; sourceTree = "<group>"; };
+		0B23E69272D6BD2AFEE6FB70 /* PlaybackIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackIntents.swift; sourceTree = "<group>"; };
 		16D6F1E4E46A26F966D05A65 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		16F2A1CA99C67EB4935F82B4 /* NowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingView.swift; sourceTree = "<group>"; };
 		1709BAEE278DD434166E942C /* HomeSpeakerIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerIntents.swift; sourceTree = "<group>"; };
 		1859B12913E4087DC6C8AE6D /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		21B3D000BF32658D2DB982D7 /* PushNotificationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationStore.swift; sourceTree = "<group>"; };
+		25855234A5177BF3E2D4A640 /* SpeakerActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerActivityController.swift; sourceTree = "<group>"; };
+		27F461B4E1B9E75397474F95 /* OfflineDownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineDownloadsView.swift; sourceTree = "<group>"; };
+		288EEF6FA035F1C03A48CEFC /* SpeakerWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerWidgetView.swift; sourceTree = "<group>"; };
+		2D51CE210976984C0DDB1E4C /* AVKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVKit.framework; path = System/Library/Frameworks/AVKit.framework; sourceTree = SDKROOT; };
 		2F4F22A2E9A3EBC7B2594BF4 /* WidgetIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetIntents.swift; sourceTree = "<group>"; };
 		348CD51028183AD1583AC3BC /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
 		3E6E950B3D6D2B30EA71133D /* HomeSpeakerWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HomeSpeakerWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4079029A2C197EA0A4DB14CF /* HomeSpeakerShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerShortcuts.swift; sourceTree = "<group>"; };
 		447D6C55CE8A9FA57984E129 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		4A7A2AF782DB61E5481B6575 /* SpeakerControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerControls.swift; sourceTree = "<group>"; };
 		5362492C8FDA890DA502B7AE /* MusicLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicLibraryView.swift; sourceTree = "<group>"; };
 		597E25C4A64424793FA0F786 /* IntentHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentHelpers.swift; sourceTree = "<group>"; };
+		5E0C0CB4EB4E1C479E92F5FF /* SharedConnections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedConnections.swift; sourceTree = "<group>"; };
+		5F60039F059A00C1BD4451C5 /* ServerEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEntity.swift; sourceTree = "<group>"; };
+		6141333445BEC07B44AF2AD6 /* HomeSpeaker.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HomeSpeaker.entitlements; sourceTree = "<group>"; };
 		719AD39AF69258B48ABFB67D /* ServerPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerPickerView.swift; sourceTree = "<group>"; };
 		742488CE44FEEA3523C46654 /* YouTubeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeView.swift; sourceTree = "<group>"; };
+		7738DF82AB47B8098E27FDFB /* PushNotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationsView.swift; sourceTree = "<group>"; };
 		79DF5D1CE59F6944F0B2B812 /* HomeSpeakerWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerWatchApp.swift; sourceTree = "<group>"; };
 		7DC249750CEAD1C046D5E9F8 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
 		7FA88887D56058624D3959C9 /* HomeSpeakerWatchWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = HomeSpeakerWatchWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8192B9DE8753F971AF4FB86A /* ActivityKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ActivityKit.framework; path = System/Library/Frameworks/ActivityKit.framework; sourceTree = SDKROOT; };
 		8E0801376B66A150D4878F32 /* LocalPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalPlayer.swift; sourceTree = "<group>"; };
 		932B931B88EC9D90133C7FB7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		972E6F741153B0F923CEB1D8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -136,28 +191,35 @@
 		9E4783E8ABC24B91A6C939BF /* AIPlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPlaylistsView.swift; sourceTree = "<group>"; };
 		9FDA0E7B88A5BE2BDCD91EBA /* HomeSpeaker.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = HomeSpeaker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9FE39C0DB8FFD7DBDEC6E984 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A018CE30A63C93625371BDBB /* RoomsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomsView.swift; sourceTree = "<group>"; };
 		A1ED18F91C6D18A84AC2CE2D /* PlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistsView.swift; sourceTree = "<group>"; };
 		AA9B6AB8BBD67679356966D6 /* WatchSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSync.swift; sourceTree = "<group>"; };
 		AAE825C6CA30C690E37852BB /* RadioStreamsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioStreamsView.swift; sourceTree = "<group>"; };
+		B5BE5FE1481D8954A6F58A31 /* SpeakerActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerActivityAttributes.swift; sourceTree = "<group>"; };
+		B9555FF4489A81CA16D89018 /* OfflineDownloadsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineDownloadsStore.swift; sourceTree = "<group>"; };
 		B97987F210143A29FA1EA204 /* RadioStreamsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioStreamsView.swift; sourceTree = "<group>"; };
-		B1297287854A8D56CC65CA9A /* OfflineDownloadsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineDownloadsStore.swift; sourceTree = "<group>"; };
+		CA0CBE3E6C41E061FCD5B6D5 /* SpeakerLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerLiveActivityWidget.swift; sourceTree = "<group>"; };
+		CA6A2857E5D9A42720AB5CCB /* PlaybackMover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackMover.swift; sourceTree = "<group>"; };
 		CAA123689971EE3504312BBE /* ServerListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerListView.swift; sourceTree = "<group>"; };
 		CAF6F1D2EC5D2112E6D5AECA /* MediaPlayer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MediaPlayer.framework; path = System/Library/Frameworks/MediaPlayer.framework; sourceTree = SDKROOT; };
 		CE5E33A6DF228F089492D54D /* HomeSpeakerWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HomeSpeakerWatch.entitlements; sourceTree = "<group>"; };
 		D1C3B78E7383B49C16C349A3 /* HomeSpeakerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerApp.swift; sourceTree = "<group>"; };
 		D3B0125C146E59A5A2A1943C /* PlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistsView.swift; sourceTree = "<group>"; };
+		D65DA15C5F8429240F336F95 /* SpeakerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerWidget.swift; sourceTree = "<group>"; };
 		DE860A8EC2BC7A3510B7D5BE /* HomeSpeakerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerWidget.swift; sourceTree = "<group>"; };
 		DFF600AE780822B97E207F38 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		E18DCEE1A917A399B287794F /* HomeSpeakerWidgetExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = HomeSpeakerWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E2DF6D3416F949009F451D1C /* HomeSpeakerWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerWidgetBundle.swift; sourceTree = "<group>"; };
 		E5AB2945906B9634A6C844C9 /* AIPlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPlaylistsView.swift; sourceTree = "<group>"; };
 		E8049584149E66D488080E43 /* ConnectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionStore.swift; sourceTree = "<group>"; };
 		EB62922935DAAB7820E9B273 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		EFB5C8ED5F3AEFF04D228F0E /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
 		F241EFDB1BBC7B42BF8AD924 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		F27C12BCCE016B6AC25E97E5 /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = System/Library/Frameworks/WatchConnectivity.framework; sourceTree = SDKROOT; };
-		F2D82ABFFCC115B98EF80A10 /* ServerEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEntity.swift; sourceTree = "<group>"; };
+		F40F2EB08338DF56D5F73B6F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		F4223DA2F0CDF7DF37CB1511 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		FAD72D0C245433BA64B16115 /* NowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingView.swift; sourceTree = "<group>"; };
 		FE72379FA5E35A1E24338A72 /* QueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueView.swift; sourceTree = "<group>"; };
-		67AE50D977A86AB778373CCB /* OfflineDownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineDownloadsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -185,9 +247,23 @@
 			files = (
 				66B6A956286916679528F1F1 /* WatchConnectivity.framework in Frameworks */,
 				4FB936FA2B2B8155D8599E51 /* AVFoundation.framework in Frameworks */,
+				F018D5CCE4A6B77EF9B09A5D /* AVKit.framework in Frameworks */,
 				96F16D770BBC0004BCE29747 /* MediaPlayer.framework in Frameworks */,
 				D9E9AE5722B45A06324A4197 /* AppIntents.framework in Frameworks */,
-				0A7A4D3E1C5B6A7980010003 /* UserNotifications.framework in Frameworks */,
+				52B7A41CEE425C33204D8E16 /* UserNotifications.framework in Frameworks */,
+				A14F0875A45360362B407ED1 /* WidgetKit.framework in Frameworks */,
+				A73E71C7146CC45775A516FA /* ActivityKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E5CEDC9EEDB9ABC4E00ED7C4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C2B2B5A73584E0CBEBE9A320 /* WidgetKit.framework in Frameworks */,
+				7CADC60C7A1708F71B46DC3C /* SwiftUI.framework in Frameworks */,
+				E4E397D8772241E63BA6FABE /* AppIntents.framework in Frameworks */,
+				095C8D1E44DAD502476EBEB9 /* ActivityKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -200,6 +276,7 @@
 				9FDA0E7B88A5BE2BDCD91EBA /* HomeSpeaker.app */,
 				3E6E950B3D6D2B30EA71133D /* HomeSpeakerWatch.app */,
 				7FA88887D56058624D3959C9 /* HomeSpeakerWatchWidget.appex */,
+				E18DCEE1A917A399B287794F /* HomeSpeakerWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -231,11 +308,13 @@
 		610BA3BD93B4819A04668901 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				8192B9DE8753F971AF4FB86A /* ActivityKit.framework */,
 				348CD51028183AD1583AC3BC /* AppIntents.framework */,
 				DFF600AE780822B97E207F38 /* AVFoundation.framework */,
+				2D51CE210976984C0DDB1E4C /* AVKit.framework */,
 				CAF6F1D2EC5D2112E6D5AECA /* MediaPlayer.framework */,
 				F4223DA2F0CDF7DF37CB1511 /* SwiftUI.framework */,
-				0A7A4D3E1C5B6A7980010104 /* UserNotifications.framework */,
+				EFB5C8ED5F3AEFF04D228F0E /* UserNotifications.framework */,
 				F27C12BCCE016B6AC25E97E5 /* WatchConnectivity.framework */,
 				F241EFDB1BBC7B42BF8AD924 /* WidgetKit.framework */,
 			);
@@ -277,7 +356,6 @@
 				1709BAEE278DD434166E942C /* HomeSpeakerIntents.swift */,
 				4079029A2C197EA0A4DB14CF /* HomeSpeakerShortcuts.swift */,
 				597E25C4A64424793FA0F786 /* IntentHelpers.swift */,
-				F2D82ABFFCC115B98EF80A10 /* ServerEntity.swift */,
 			);
 			path = Intents;
 			sourceTree = "<group>";
@@ -286,16 +364,28 @@
 			isa = PBXGroup;
 			children = (
 				9FE39C0DB8FFD7DBDEC6E984 /* ContentView.swift */,
+				6141333445BEC07B44AF2AD6 /* HomeSpeaker.entitlements */,
 				D1C3B78E7383B49C16C349A3 /* HomeSpeakerApp.swift */,
-				0A7A4D3E1C5B6A7980010103 /* HomeSpeaker.entitlements */,
 				8E0801376B66A150D4878F32 /* LocalPlayer.swift */,
-				B1297287854A8D56CC65CA9A /* OfflineDownloadsStore.swift */,
-				0A7A4D3E1C5B6A7980010101 /* PushNotificationStore.swift */,
+				B9555FF4489A81CA16D89018 /* OfflineDownloadsStore.swift */,
+				CA6A2857E5D9A42720AB5CCB /* PlaybackMover.swift */,
+				21B3D000BF32658D2DB982D7 /* PushNotificationStore.swift */,
+				049164FA7410622C07AE424F /* SpeakerStatusStore.swift */,
 				74812DE8131DA7912599C09A /* Intents */,
+				78D352825FDC7B76456F8FFC /* LiveActivity */,
 				6AA690D5044B747696D6E870 /* Resources */,
 				9640FB9053993F506946BA33 /* Views */,
+				84A08AE108A37670A8B8DB64 /* Widget */,
 			);
 			path = iOS;
+			sourceTree = "<group>";
+		};
+		78D352825FDC7B76456F8FFC /* LiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				25855234A5177BF3E2D4A640 /* SpeakerActivityController.swift */,
+			);
+			path = LiveActivity;
 			sourceTree = "<group>";
 		};
 		83C1AC4DB55E146C065824E8 /* Shared */ = {
@@ -304,9 +394,23 @@
 				1859B12913E4087DC6C8AE6D /* APIClient.swift */,
 				E8049584149E66D488080E43 /* ConnectionStore.swift */,
 				0387EAEB26350D3D2A73FB79 /* Models.swift */,
+				5E0C0CB4EB4E1C479E92F5FF /* SharedConnections.swift */,
 				AA9B6AB8BBD67679356966D6 /* WatchSync.swift */,
 			);
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		84A08AE108A37670A8B8DB64 /* Widget */ = {
+			isa = PBXGroup;
+			children = (
+				E2DF6D3416F949009F451D1C /* HomeSpeakerWidgetBundle.swift */,
+				F40F2EB08338DF56D5F73B6F /* Info.plist */,
+				4A7A2AF782DB61E5481B6575 /* SpeakerControls.swift */,
+				CA0CBE3E6C41E061FCD5B6D5 /* SpeakerLiveActivityWidget.swift */,
+				D65DA15C5F8429240F336F95 /* SpeakerWidget.swift */,
+				288EEF6FA035F1C03A48CEFC /* SpeakerWidgetView.swift */,
+			);
+			path = Widget;
 			sourceTree = "<group>";
 		};
 		9640FB9053993F506946BA33 /* Views */ = {
@@ -317,11 +421,12 @@
 				7DC249750CEAD1C046D5E9F8 /* MoreView.swift */,
 				5362492C8FDA890DA502B7AE /* MusicLibraryView.swift */,
 				FAD72D0C245433BA64B16115 /* NowPlayingView.swift */,
-				67AE50D977A86AB778373CCB /* OfflineDownloadsView.swift */,
+				27F461B4E1B9E75397474F95 /* OfflineDownloadsView.swift */,
 				A1ED18F91C6D18A84AC2CE2D /* PlaylistsView.swift */,
-				0A7A4D3E1C5B6A7980010102 /* PushNotificationsView.swift */,
+				7738DF82AB47B8098E27FDFB /* PushNotificationsView.swift */,
 				991398AE4AA449825359CD71 /* QueueView.swift */,
 				B97987F210143A29FA1EA204 /* RadioStreamsView.swift */,
+				A018CE30A63C93625371BDBB /* RoomsView.swift */,
 				CAA123689971EE3504312BBE /* ServerListView.swift */,
 				742488CE44FEEA3523C46654 /* YouTubeView.swift */,
 			);
@@ -332,11 +437,22 @@
 			isa = PBXGroup;
 			children = (
 				771C982BB7C6CED494318CEA /* iOS */,
+				D04E149D44996D0E5E5FB199 /* iOSShared */,
 				83C1AC4DB55E146C065824E8 /* Shared */,
 				6560DD7DD1DF3FA30198488E /* watchOS */,
 				610BA3BD93B4819A04668901 /* Frameworks */,
 				0DBEAC656ECC20E9DCAEC3E9 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		D04E149D44996D0E5E5FB199 /* iOSShared */ = {
+			isa = PBXGroup;
+			children = (
+				0B23E69272D6BD2AFEE6FB70 /* PlaybackIntents.swift */,
+				5F60039F059A00C1BD4451C5 /* ServerEntity.swift */,
+				B5BE5FE1481D8954A6F58A31 /* SpeakerActivityAttributes.swift */,
+			);
+			path = iOSShared;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -360,6 +476,24 @@
 			productReference = 7FA88887D56058624D3959C9 /* HomeSpeakerWatchWidget.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		4578C4C62818AED29DE8EA3B /* HomeSpeakerWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 47151AA9821A750DB3E83D90 /* Build configuration list for PBXNativeTarget "HomeSpeakerWidgetExtension" */;
+			buildPhases = (
+				C5832121C977699E7A43666D /* Sources */,
+				E5CEDC9EEDB9ABC4E00ED7C4 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HomeSpeakerWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = HomeSpeakerWidgetExtension;
+			productReference = E18DCEE1A917A399B287794F /* HomeSpeakerWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		A15168F97BCC9E467C5F6200 /* HomeSpeaker */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 82215EEF575EFD543522C406 /* Build configuration list for PBXNativeTarget "HomeSpeaker" */;
@@ -367,12 +501,14 @@
 				7984D897AA7DD367B5D1F218 /* Sources */,
 				7A3596777C94020829D3E8C3 /* Resources */,
 				B8F3E48F6020C37DF3D5BBB2 /* Frameworks */,
+				3828A79DB37C600801779395 /* Embed Foundation Extensions */,
 				B6B47B9463A65B9921ED1A19 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				B53484BFD5A9F7912A0F17F3 /* PBXTargetDependency */,
+				6929A6901992C157141EC74A /* PBXTargetDependency */,
 			);
 			name = HomeSpeaker;
 			packageProductDependencies = (
@@ -414,6 +550,9 @@
 					2A9C51AE16AD79AE38C00127 = {
 						DevelopmentTeam = 53VT2BR349;
 					};
+					4578C4C62818AED29DE8EA3B = {
+						DevelopmentTeam = 53VT2BR349;
+					};
 					A15168F97BCC9E467C5F6200 = {
 						DevelopmentTeam = 53VT2BR349;
 					};
@@ -437,6 +576,7 @@
 			projectRoot = "";
 			targets = (
 				A15168F97BCC9E467C5F6200 /* HomeSpeaker */,
+				4578C4C62818AED29DE8EA3B /* HomeSpeakerWidgetExtension */,
 				D0F3F38AD55547F90D067CFA /* HomeSpeakerWatch */,
 				2A9C51AE16AD79AE38C00127 /* HomeSpeakerWatchWidget */,
 			);
@@ -470,6 +610,7 @@
 				6557F6C93F2FE3F713A9DE79 /* APIClient.swift in Sources */,
 				72CB3C0A15A20A1D470A2892 /* HomeSpeakerWidget.swift in Sources */,
 				DE6051148FA4909B497ECA63 /* Models.swift in Sources */,
+				F1D672AFC23F09741D2BC3D9 /* SharedConnections.swift in Sources */,
 				CD02ED43DB2AB4DEA6E6D892 /* WidgetIntents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -492,17 +633,42 @@
 				F4089D82DB9CCF24A58D7150 /* MoreView.swift in Sources */,
 				AFBC50135B32EEDDB784AC73 /* MusicLibraryView.swift in Sources */,
 				FF6AC4DBAC26C4591175E5C6 /* NowPlayingView.swift in Sources */,
-				EAF2A83051D1C3B135F5F21C /* OfflineDownloadsView.swift in Sources */,
-				8F19CA0B0CF8A14C6277FC0B /* OfflineDownloadsStore.swift in Sources */,
+				7D3C95BA8CC67C84805378DB /* OfflineDownloadsStore.swift in Sources */,
+				D232AC39669D829B2DC0C98B /* OfflineDownloadsView.swift in Sources */,
+				6E2C3E7834110F873505533A /* PlaybackIntents.swift in Sources */,
+				CA85BB629FBE9B8B53F6DD28 /* PlaybackMover.swift in Sources */,
 				E67C1946D2602902FAEF6B24 /* PlaylistsView.swift in Sources */,
-				0A7A4D3E1C5B6A7980010001 /* PushNotificationStore.swift in Sources */,
-				0A7A4D3E1C5B6A7980010002 /* PushNotificationsView.swift in Sources */,
+				02C85889C82A7F6DFA0DA336 /* PushNotificationStore.swift in Sources */,
+				861F6E78D525A82304137840 /* PushNotificationsView.swift in Sources */,
 				A08875BB22B217481D8F8A2B /* QueueView.swift in Sources */,
 				90BDA85488C40C638B27DEF3 /* RadioStreamsView.swift in Sources */,
-				991EE3BA897BB77766B29131 /* ServerEntity.swift in Sources */,
+				D711EEE065266F24D4764E46 /* RoomsView.swift in Sources */,
+				D8DB2296BE2DD75A9EEF9ACC /* ServerEntity.swift in Sources */,
 				E9CFA7C6C54884491EE42B74 /* ServerListView.swift in Sources */,
+				5B89CF04187AB42F9978969D /* SharedConnections.swift in Sources */,
+				7CAF0538B8EB0C783A40F27B /* SpeakerActivityAttributes.swift in Sources */,
+				78F566C45A648E16FB61B2BB /* SpeakerActivityController.swift in Sources */,
+				8C1C25D55C151ACEEA3B359E /* SpeakerStatusStore.swift in Sources */,
 				D03D1C8F483822096AD105C4 /* WatchSync.swift in Sources */,
 				7AB23637168FDA6113A1E116 /* YouTubeView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C5832121C977699E7A43666D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EC64348371F34B3ABFB8174A /* APIClient.swift in Sources */,
+				666CD7EC6E3F17DE35E40D28 /* HomeSpeakerWidgetBundle.swift in Sources */,
+				2EDA77DB38758CE3030825C3 /* Models.swift in Sources */,
+				0A61DBBFEA2E9D502D1D7A3C /* PlaybackIntents.swift in Sources */,
+				9D4461613A829EAC4E8864AF /* ServerEntity.swift in Sources */,
+				C055CB83EFEE7E6BAF452625 /* SharedConnections.swift in Sources */,
+				59CD7003E7A15F19CEBCBAE4 /* SpeakerActivityAttributes.swift in Sources */,
+				AEBADB6BE17CAF8C6C9DEF7D /* SpeakerControls.swift in Sources */,
+				E1DF17884CB21EA7F8AA2AA2 /* SpeakerLiveActivityWidget.swift in Sources */,
+				0813CD098C05627156CFB242 /* SpeakerWidget.swift in Sources */,
+				0ADF6B78F5EF3369609411A7 /* SpeakerWidgetView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -522,6 +688,7 @@
 				8BA769F8273F5002C64F9957 /* QueueView.swift in Sources */,
 				211F727D91953107DB0A5371 /* RadioStreamsView.swift in Sources */,
 				35E15319F2930366E1238C96 /* ServerPickerView.swift in Sources */,
+				EAB640BDD8902A1A419A7E6C /* SharedConnections.swift in Sources */,
 				D5E9B351F36941F8BD43F65E /* WatchSync.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -529,6 +696,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		6929A6901992C157141EC74A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4578C4C62818AED29DE8EA3B /* HomeSpeakerWidgetExtension */;
+			targetProxy = AFCC5BC08806332C2041F38E /* PBXContainerItemProxy */;
+		};
 		759DB2342B2B8DC2472F576C /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 2A9C51AE16AD79AE38C00127 /* HomeSpeakerWatchWidget */;
@@ -575,6 +747,23 @@
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 4;
 				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		483C0A4787656A05A0AAD215 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = iOS/Widget/HomeSpeakerWidgetExtension.entitlements;
+				INFOPLIST_FILE = iOS/Widget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.homespeaker.ios.widget;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -708,8 +897,8 @@
 			buildSettings = {
 				APS_ENVIRONMENT = production;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_ENTITLEMENTS = iOS/HomeSpeaker.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = iOS/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -723,13 +912,30 @@
 			};
 			name = Release;
 		};
+		BD3D2362CEA135FAF631D07A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = iOS/Widget/HomeSpeakerWidgetExtension.entitlements;
+				INFOPLIST_FILE = iOS/Widget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.homespeaker.ios.widget;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		D204504CE1EC9EE48AF97AAF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APS_ENVIRONMENT = development;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_ENTITLEMENTS = iOS/HomeSpeaker.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = iOS/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -785,6 +991,15 @@
 			buildConfigurations = (
 				0798B2D823AB81C1E127063A /* Debug */,
 				0C11E10BF6AE0D80D84A3799 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		47151AA9821A750DB3E83D90 /* Build configuration list for PBXNativeTarget "HomeSpeakerWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BD3D2362CEA135FAF631D07A /* Debug */,
+				483C0A4787656A05A0AAD215 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
