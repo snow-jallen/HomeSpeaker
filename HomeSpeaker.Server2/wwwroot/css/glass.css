@@ -1400,28 +1400,7 @@ textarea.glass-input {
   height: auto;
   min-height: 88px;
   padding: 10px 14px;
-}
-
-/* FluentDialog hosting a .glass-dialog: make the dialog chrome transparent so only the glass card shows. */
-fluent-dialog.glass-fluent-dialog {
-  --dialog-width: min(420px, calc(100vw - 32px)) !important;
-}
-
-fluent-dialog.glass-fluent-dialog::part(control) {
-  background: transparent;
-  border: 0;
-  border-radius: var(--glass-radius-card);
-  box-shadow: none;
-  overflow: visible;
-}
-
-fluent-dialog.glass-fluent-dialog::part(overlay) {
-  background: rgba(0, 0, 0, 0.55);
-  opacity: 1;
-}
-
-fluent-dialog.glass-fluent-dialog .glass-dialog {
-  width: 100%;
+  resize: vertical;
 }
 
 @media (max-width: 700px) {
@@ -1745,7 +1724,6 @@ fluent-dialog.glass-fluent-dialog .glass-dialog {
   position: relative;
   flex: none;
   overflow: hidden;
-  padding: 0;
 }
 
 .hs-station-art > svg {
@@ -2600,13 +2578,6 @@ input.glass-input[type="file"]::file-selector-button {
 
 .glass-input-group > .glass-btn {
   flex: none;
-}
-
-textarea.glass-input {
-  height: auto;
-  min-height: 88px;
-  padding: 10px 14px;
-  resize: vertical;
 }
 
 /* User autocomplete: a menu-looking list under the input. */
