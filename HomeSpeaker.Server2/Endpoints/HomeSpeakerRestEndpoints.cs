@@ -1,15 +1,24 @@
 using System.Diagnostics;
+using System.Text.Json;
 using HomeSpeaker.Server2.Services;
+using HomeSpeaker.Server2.Services.LiveActivities;
 using HomeSpeaker.Shared;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using TagLib;
+using HttpJsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 using TagFile = TagLib.File;
 
 namespace HomeSpeaker.Server2.Endpoints;
 
 public static class HomeSpeakerRestEndpoints
 {
+    // The SSE stream re-sends the status at least this often, so clients see the elapsed time
+    // move and can tell a quiet stream from a dead connection.
+    private static readonly TimeSpan sseHeartbeatInterval = TimeSpan.FromSeconds(10);
+
     public static RouteGroupBuilder MapHomeSpeakerApi(this WebApplication app)
     {
         var homeSpeakerGroup = app.MapGroup("/api/homespeaker")
@@ -35,6 +44,9 @@ public static class HomeSpeakerRestEndpoints
 
         // Offline download endpoints
         mapOfflineDownloadEndpoints(homeSpeakerGroup);
+
+        // iOS Live Activity push registration endpoints
+        mapLiveActivityEndpoints(homeSpeakerGroup);
 
         return homeSpeakerGroup;
     }
@@ -115,6 +127,13 @@ public static class HomeSpeakerRestEndpoints
             .WithName("GetPlayerStatus")
             .WithSummary("Get current player status")
             .WithDescription("Returns current playback status including elapsed time, current song, and volume");
+
+        // GET /api/homespeaker/player/events
+        group.MapGet("/player/events", streamPlayerEvents)
+            .WithName("StreamPlayerEvents")
+            .WithSummary("Stream player status changes")
+            .WithDescription("Server-Sent Events stream: a 'status' event with the player status on connect, on every material change, and every 10 seconds as a heartbeat")
+            .Produces(StatusCodes.Status200OK, contentType: "text/event-stream");
 
         // POST /api/homespeaker/player/control
         group.MapPost("/player/control", playerControl)
@@ -583,9 +602,9 @@ public static class HomeSpeakerRestEndpoints
     }
 
     private static async Task<IResult> getPlayerStatus(
-        [FromServices] IMusicPlayer musicPlayer,
-        [FromServices] AiPlaybackService aiPlaybackService,
-        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+        [FromServices] IPlayerStatusProvider statusProvider,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger,
+        CancellationToken cancellationToken)
     {
         using var activity = Activity.Current?.Source.StartActivity("GetPlayerStatus");
 
@@ -593,23 +612,7 @@ public static class HomeSpeakerRestEndpoints
         {
             logger.LogInformation("Getting player status");
 
-            var status = musicPlayer.Status;
-            var volume = await musicPlayer.GetVolume();
-            var aiContext = await aiPlaybackService.GetCurrentContextAsync(CancellationToken.None);
-
-            var playerStatus = new
-            {
-                Elapsed = status.Elapsed,
-                Remaining = status.Remaining,
-                StillPlaying = musicPlayer.StillPlaying,
-                PercentComplete = status.PercentComplete,
-                CurrentSong = status.CurrentSong,
-                Volume = volume,
-                SleepTimerActive = musicPlayer.SleepTimerActive,
-                SleepTimerRemainingMinutes = musicPlayer.SleepTimerRemaining?.TotalMinutes,
-                RepeatMode = musicPlayer.RepeatMode,
-                AiContext = aiContext
-            };
+            var playerStatus = await statusProvider.GetAsync(cancellationToken);
 
             logger.LogInformation("Player status retrieved: playing={StillPlaying}, song={CurrentSong}",
                 playerStatus.StillPlaying, playerStatus.CurrentSong?.Name ?? "none");
@@ -625,6 +628,103 @@ public static class HomeSpeakerRestEndpoints
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return Results.Problem($"Failed to get player status: {ex.Message}");
         }
+    }
+
+    private static async Task streamPlayerEvents(
+        HttpContext context,
+        [FromServices] PlayerStatusBroadcaster broadcaster,
+        [FromServices] IOptions<HttpJsonOptions> jsonOptions,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        var cancellationToken = context.RequestAborted;
+        var serializerOptions = jsonOptions.Value.SerializerOptions;
+
+        // text/event-stream isn't in the response compression MIME list, so UseResponseCompression
+        // passes it through; disabling buffering makes every flush reach the client right away.
+        context.Response.ContentType = "text/event-stream";
+        context.Response.Headers.CacheControl = "no-cache";
+        context.Features.Get<IHttpResponseBodyFeature>()?.DisableBuffering();
+
+        // Subscribe before reading the initial status so no change can slip in between.
+        using var subscription = broadcaster.Subscribe();
+        logger.LogInformation("Player events stream opened");
+
+        try
+        {
+            var current = await broadcaster.GetFreshAsync(PlayerStatusBroadcaster.RefreshInterval, cancellationToken);
+            await writeStatusEventAsync(context.Response, current, serializerOptions, cancellationToken);
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                // A material change, or after the heartbeat interval the latest status (whose
+                // elapsed time the broadcaster keeps fresh while this subscription exists).
+                var update = await subscription.WaitForUpdateAsync(sseHeartbeatInterval, cancellationToken);
+
+                // The broadcaster's first refresh after subscribing can repeat what was just sent.
+                if (update is not null && !PlayerStatusChangeDetector.Compare(current, update).IsMaterial)
+                {
+                    continue;
+                }
+
+                current = update ?? await broadcaster.GetFreshAsync(PlayerStatusBroadcaster.RefreshInterval * 3, cancellationToken);
+                await writeStatusEventAsync(context.Response, current, serializerOptions, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // The client disconnected.
+        }
+        catch (IOException ex)
+        {
+            logger.LogDebug(ex, "Player events stream write failed; client likely disconnected");
+        }
+
+        logger.LogInformation("Player events stream closed");
+    }
+
+    private static async Task writeStatusEventAsync(
+        HttpResponse response,
+        PlayerStatusSnapshot snapshot,
+        JsonSerializerOptions serializerOptions,
+        CancellationToken cancellationToken)
+    {
+        var json = JsonSerializer.Serialize(snapshot.Status, serializerOptions);
+        await response.WriteAsync(ServerSentEventFormatter.Format("status", json), cancellationToken);
+        await response.Body.FlushAsync(cancellationToken);
+    }
+
+    private static IResult registerLiveActivity(
+        [FromRoute] string activityId,
+        [FromBody] LiveActivityRegistrationRequest request,
+        [FromServices] LiveActivityRegistry registry,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        try
+        {
+            var registration = registry.Register(activityId, request.PushToken);
+            logger.LogInformation("Registered Live Activity {ActivityId} (expires {ExpiresAt:u})", registration.ActivityId, registration.ExpiresAt);
+            return Results.NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>(StringComparer.Ordinal)
+            {
+                ["request"] = [ex.Message]
+            });
+        }
+    }
+
+    private static IResult unregisterLiveActivity(
+        [FromRoute] string activityId,
+        [FromServices] LiveActivityRegistry registry,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger)
+    {
+        if (registry.Remove(activityId))
+        {
+            logger.LogInformation("Unregistered Live Activity {ActivityId}", activityId);
+        }
+
+        return Results.NoContent();
     }
 
     private static async Task<IResult> playerControl(
@@ -1234,6 +1334,21 @@ public static class HomeSpeakerRestEndpoints
             .WithName("DeleteRadioStream")
             .WithSummary("Delete a radio stream")
             .WithDescription("Removes a radio stream from the library");
+    }
+
+    private static void mapLiveActivityEndpoints(RouteGroupBuilder group)
+    {
+        // PUT /api/homespeaker/live-activities/{activityId}
+        group.MapPut("/live-activities/{activityId}", registerLiveActivity)
+            .WithName("RegisterLiveActivity")
+            .WithSummary("Register a Live Activity push token")
+            .WithDescription("Registers (or replaces) the ActivityKit push token for a Live Activity so the server keeps it updated with the player status for up to 12 hours");
+
+        // DELETE /api/homespeaker/live-activities/{activityId}
+        group.MapDelete("/live-activities/{activityId}", unregisterLiveActivity)
+            .WithName("UnregisterLiveActivity")
+            .WithSummary("Unregister a Live Activity")
+            .WithDescription("Stops updating the Live Activity; succeeds even if it wasn't registered");
     }
 
     private static void mapOfflineDownloadEndpoints(RouteGroupBuilder group)

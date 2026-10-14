@@ -1,0 +1,66 @@
+name: iOS Build
+
+# Compile-checks the iOS + watchOS app on a macOS runner. The Xcode project is
+# generated from HomeSpeakerMobile/project.yml with XcodeGen, and the generated
+# project is uploaded as an artifact so it can be committed back.
+
+on:
+  push:
+    branches-ignore:
+      - master
+    paths:
+      - 'HomeSpeakerMobile/**'
+      - '.github/workflows/ios-build.yml'
+  pull_request:
+    paths:
+      - 'HomeSpeakerMobile/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: HomeSpeakerMobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: List schemes
+        run: xcodebuild -list -project HomeSpeakerMobile.xcodeproj
+
+      - name: Build iOS app (includes watch app and extensions)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project HomeSpeakerMobile.xcodeproj \
+            -scheme HomeSpeaker \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build.log | grep -E "(error|warning):|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" build.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: HomeSpeakerMobile/build.log
+          if-no-files-found: ignore
+
+      - name: Upload generated Xcode project
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodeproj
+          path: HomeSpeakerMobile/HomeSpeakerMobile.xcodeproj

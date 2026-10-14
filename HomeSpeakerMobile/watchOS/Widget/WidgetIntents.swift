@@ -59,10 +59,5 @@ struct QuietDownIntent: AppIntent {
 }
 
 func widgetAPI() -> APIClient? {
-    guard let defaults = UserDefaults(suiteName: "group.com.homespeaker"),
-          let data = defaults.data(forKey: "hs_connections"),
-          let connections = try? JSONDecoder().decode([ServerConnection].self, from: data) else { return nil }
-    let selectedId = defaults.string(forKey: "hs_selectedId")
-    let selected = connections.first(where: { $0.id.uuidString == selectedId }) ?? connections.first
-    return selected.map { APIClient(baseURL: $0.baseURL) }
+    SharedConnections.selected().map(APIClient.client(for:))
 }

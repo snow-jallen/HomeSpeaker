@@ -140,7 +140,7 @@ final class PushNotificationStore {
         isRefreshing = true
         defer { isRefreshing = false }
 
-        let api = APIClient(baseURL: connection.baseURL)
+        let api = APIClient.client(for: connection)
         do {
             if authorizationState.isAuthorized, let token = lastRegisteredToken {
                 _ = try await api.upsertPushInstallation(

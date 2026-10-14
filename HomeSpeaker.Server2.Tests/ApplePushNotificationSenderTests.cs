@@ -86,6 +86,55 @@ public sealed class ApplePushNotificationSenderTests
         Assert.Equal(new[] { SandboxHost }, handler.RequestedHosts);
     }
 
+    [Fact]
+    public async Task SendsLiveActivityPushWithActivityKitHeaders()
+    {
+        var handler = new StubApnsHandler(_ => StubResponse.Success());
+        var sender = createSender(handler, useSandbox: true);
+        const string payload = "{\"aps\":{\"event\":\"update\"}}";
+
+        var result = await sender.SendLiveActivityAsync(DeviceToken, payload, priority: 5);
+
+        Assert.True(result.IsSuccess);
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal($"/3/device/{DeviceToken}", request.Path);
+        Assert.Equal("liveactivity", request.Headers["apns-push-type"]);
+        Assert.Equal("com.homespeaker.mobile.push-type.liveactivity", request.Headers["apns-topic"]);
+        Assert.Equal("5", request.Headers["apns-priority"]);
+        Assert.False(request.Headers.ContainsKey("apns-collapse-id"));
+        Assert.Equal(payload, request.Body);
+    }
+
+    [Fact]
+    public async Task LiveActivityPushFallsBackToOtherEnvironmentOnBadDeviceToken()
+    {
+        var handler = new StubApnsHandler(host => host == ProductionHost
+            ? StubResponse.Success()
+            : StubResponse.BadRequest("BadDeviceToken"));
+        var sender = createSender(handler, useSandbox: true);
+
+        var result = await sender.SendLiveActivityAsync(DeviceToken, "{}", priority: 10);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(new[] { SandboxHost, ProductionHost }, handler.RequestedHosts);
+    }
+
+    [Fact]
+    public async Task AlertPushKeepsAlertHeaders()
+    {
+        var handler = new StubApnsHandler(_ => StubResponse.Success());
+        var sender = createSender(handler, useSandbox: true);
+
+        await sender.SendAsync(PushNotificationPlatform.Apns, DeviceToken, "title", "body", alertData());
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("alert", request.Headers["apns-push-type"]);
+        Assert.Equal("com.homespeaker.mobile", request.Headers["apns-topic"]);
+        Assert.Equal("10", request.Headers["apns-priority"]);
+        Assert.Equal("temperature-window-state", request.Headers["apns-collapse-id"]);
+        Assert.Contains("\"alert\":{\"title\":\"title\",\"body\":\"body\"}", request.Body, StringComparison.Ordinal);
+    }
+
     private static IReadOnlyDictionary<string, string> alertData() => new Dictionary<string, string>
     {
         ["alertKey"] = "temperature-window-state",
@@ -129,15 +178,22 @@ public sealed class ApplePushNotificationSenderTests
     {
         private readonly Func<string, StubResponse> responder;
         private readonly List<string> requestedHosts = new();
+        private readonly List<RecordedRequest> requests = new();
 
         public StubApnsHandler(Func<string, StubResponse> responder) => this.responder = responder;
 
         public IReadOnlyList<string> RequestedHosts => requestedHosts;
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        public IReadOnlyList<RecordedRequest> Requests => requests;
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var host = request.RequestUri!.Host;
             requestedHosts.Add(host);
+            requests.Add(new RecordedRequest(
+                request.RequestUri.AbsolutePath,
+                request.Headers.ToDictionary(h => h.Key, h => string.Join(",", h.Value), StringComparer.OrdinalIgnoreCase),
+                request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken)));
 
             var stub = responder(host);
             var response = new HttpResponseMessage(stub.StatusCode);
@@ -146,9 +202,11 @@ public sealed class ApplePushNotificationSenderTests
                 response.Content = new StringContent(stub.Body);
             }
 
-            return Task.FromResult(response);
+            return response;
         }
     }
+
+    private sealed record RecordedRequest(string Path, IReadOnlyDictionary<string, string> Headers, string Body);
 
     private sealed record StubResponse(HttpStatusCode StatusCode, string? Body)
     {

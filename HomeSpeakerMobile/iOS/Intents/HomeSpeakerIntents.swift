@@ -1,9 +1,15 @@
 import AppIntents
 
-private func resolvedConnectionAndAPI() throws -> (ServerConnection, APIClient) {
-    let connection = try resolveServer(nil)
-    UserDefaults.standard.set(connection.id.uuidString, forKey: "hs_selectedId")
-    return (connection, APIClient(baseURL: connection.baseURL))
+/// The server an intent targets: the one named, else the app's selected server.
+private func connectionAndAPI(_ server: ServerEntity?) throws -> (ServerConnection, APIClient) {
+    let connection = try resolveServer(server)
+    return (connection, APIClient.client(for: connection))
+}
+
+/// Legacy intents also make the server they acted on the app's selection.
+private func selectAndConnect(_ connection: ServerConnection) -> APIClient {
+    SharedConnections.setSelectedId(connection.id)
+    return APIClient.client(for: connection)
 }
 
 private func normalizedShortcutPhrase(_ value: String) -> String {
@@ -58,67 +64,185 @@ private func playNamedMix(
 
 struct NextSongOnHomeSpeakerIntent: AppIntent {
     static var title: LocalizedStringResource = "HomeSpeaker Next Song"
-    static var description = IntentDescription("Skip to the next song on the selected HomeSpeaker server.")
+    static var description = IntentDescription("Skip to the next song on a HomeSpeaker server.")
     static var openAppWhenRun: Bool = false
 
+    @Parameter(title: "Server")
+    var server: ServerEntity?
+
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let (connection, api) = try resolvedConnectionAndAPI()
+        let (connection, api) = try connectionAndAPI(server)
         try await api.skipToNext()
+        await SpeakerSurfaces.refresh(after: connection)
         return .result(dialog: "Skipping to the next song on \(connection.name).")
     }
 }
 
 struct PlayFunMusicOnHomeSpeakerIntent: AppIntent {
     static var title: LocalizedStringResource = "Play Fun Music on HomeSpeaker"
-    static var description = IntentDescription("Start the Fun Music mix on the selected HomeSpeaker server.")
+    static var description = IntentDescription("Start the Fun Music mix on a HomeSpeaker server.")
     static var openAppWhenRun: Bool = false
 
+    @Parameter(title: "Server")
+    var server: ServerEntity?
+
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let (connection, api) = try resolvedConnectionAndAPI()
+        let (connection, api) = try connectionAndAPI(server)
         try await api.playAiPlaylist(genreKey: "family-singalong")
+        await SpeakerSurfaces.refresh(after: connection)
         return .result(dialog: "Playing Fun Music on \(connection.name).")
     }
 }
 
 struct PlayHymnsOnHomeSpeakerIntent: AppIntent {
     static var title: LocalizedStringResource = "Play Hymns on HomeSpeaker"
-    static var description = IntentDescription("Start the Hymns mix on the selected HomeSpeaker server.")
+    static var description = IntentDescription("Start the Hymns mix on a HomeSpeaker server.")
     static var openAppWhenRun: Bool = false
 
+    @Parameter(title: "Server")
+    var server: ServerEntity?
+
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let (connection, api) = try resolvedConnectionAndAPI()
+        let (connection, api) = try connectionAndAPI(server)
         let playlistName = try await playNamedMix(
             userFacingName: "hymns",
             aliases: ["hymns", "hymn"],
             api: api
         )
+        await SpeakerSurfaces.refresh(after: connection)
         return .result(dialog: "Playing \(playlistName) on \(connection.name).")
     }
 }
 
 struct QuietDownOnHomeSpeakerIntent: AppIntent {
     static var title: LocalizedStringResource = "Quiet Down HomeSpeaker"
-    static var description = IntentDescription("Cut the current HomeSpeaker volume in half on the selected server.")
+    static var description = IntentDescription("Cut a HomeSpeaker server's volume in half.")
     static var openAppWhenRun: Bool = false
 
+    @Parameter(title: "Server")
+    var server: ServerEntity?
+
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let (connection, api) = try resolvedConnectionAndAPI()
+        let (connection, api) = try connectionAndAPI(server)
         let status = try await api.getPlayerStatus()
         let newVolume = status.quietDownVolume
         try await api.setVolume(newVolume)
+        await SpeakerSurfaces.refresh(after: connection)
         return .result(dialog: "Volume reduced to \(newVolume) on \(connection.name).")
     }
 }
 
 struct StopHomeSpeakerIntent: AppIntent {
     static var title: LocalizedStringResource = "Stop HomeSpeaker"
-    static var description = IntentDescription("Stop playback on the selected HomeSpeaker server.")
+    static var description = IntentDescription("Stop playback on a HomeSpeaker server.")
     static var openAppWhenRun: Bool = false
 
+    @Parameter(title: "Server")
+    var server: ServerEntity?
+
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let (connection, api) = try resolvedConnectionAndAPI()
+        let (connection, api) = try connectionAndAPI(server)
         try await api.stop()
+        await SpeakerSurfaces.refresh(after: connection)
         return .result(dialog: "Stopped \(connection.name).")
+    }
+}
+
+struct ResumeHomeSpeakerIntent: AppIntent {
+    static var title: LocalizedStringResource = "Resume HomeSpeaker"
+    static var description = IntentDescription("Resume playback on a HomeSpeaker server.")
+    static var openAppWhenRun: Bool = false
+
+    @Parameter(title: "Server")
+    var server: ServerEntity?
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let (connection, api) = try connectionAndAPI(server)
+        try await api.resume()
+        await SpeakerSurfaces.refresh(after: connection)
+        return .result(dialog: "Resuming \(connection.name).")
+    }
+}
+
+struct SetVolumeOnHomeSpeakerIntent: AppIntent {
+    static var title: LocalizedStringResource = "Set HomeSpeaker Volume"
+    static var description = IntentDescription("Set the volume of a HomeSpeaker server from 0 to 100.")
+    static var openAppWhenRun: Bool = false
+
+    @Parameter(title: "Volume", inclusiveRange: (0, 100),
+               requestValueDialog: IntentDialog("What volume, from 0 to 100?"))
+    var level: Int
+
+    @Parameter(title: "Server")
+    var server: ServerEntity?
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let (connection, api) = try connectionAndAPI(server)
+        let clamped = min(100, max(0, level))
+        try await api.setVolume(clamped)
+        await SpeakerSurfaces.refresh(after: connection)
+        return .result(dialog: "Volume set to \(clamped) on \(connection.name).")
+    }
+}
+
+struct SetSleepTimerOnHomeSpeakerIntent: AppIntent {
+    static var title: LocalizedStringResource = "Set HomeSpeaker Sleep Timer"
+    static var description = IntentDescription("Stop a HomeSpeaker server after some minutes.")
+    static var openAppWhenRun: Bool = false
+
+    @Parameter(title: "Minutes", inclusiveRange: (1, 240),
+               requestValueDialog: IntentDialog("How many minutes?"))
+    var minutes: Int
+
+    @Parameter(title: "Server")
+    var server: ServerEntity?
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let (connection, api) = try connectionAndAPI(server)
+        let clamped = min(240, max(1, minutes))
+        try await api.setSleepTimer(minutes: clamped)
+        await SpeakerSurfaces.refresh(after: connection)
+        return .result(dialog: "\(connection.name) will stop in \(clamped) minutes.")
+    }
+}
+
+struct CancelSleepTimerOnHomeSpeakerIntent: AppIntent {
+    static var title: LocalizedStringResource = "Cancel HomeSpeaker Sleep Timer"
+    static var description = IntentDescription("Cancel a HomeSpeaker server's sleep timer.")
+    static var openAppWhenRun: Bool = false
+
+    @Parameter(title: "Server")
+    var server: ServerEntity?
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let (connection, api) = try connectionAndAPI(server)
+        try await api.cancelSleepTimer()
+        await SpeakerSurfaces.refresh(after: connection)
+        return .result(dialog: "Sleep timer cancelled on \(connection.name).")
+    }
+}
+
+struct WhatsPlayingOnHomeSpeakerIntent: AppIntent {
+    static var title: LocalizedStringResource = "What's Playing on HomeSpeaker"
+    static var description = IntentDescription("Say what a HomeSpeaker server is playing.")
+    static var openAppWhenRun: Bool = false
+
+    @Parameter(title: "Server")
+    var server: ServerEntity?
+
+    func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
+        let (connection, api) = try connectionAndAPI(server)
+        let status = try await api.getPlayerStatus()
+        guard status.isPlaying else {
+            return .result(value: "", dialog: "Nothing is playing on \(connection.name).")
+        }
+        let description: String
+        if let song = status.currentSong {
+            description = song.artist.map { "\(song.displayTitle) by \($0)" } ?? song.displayTitle
+        } else {
+            description = status.displayTitle
+        }
+        return .result(value: description, dialog: "\(connection.name) is playing \(description).")
     }
 }
 
@@ -142,8 +266,7 @@ struct PlayArtistOnHomeSpeakerIntent: AppIntent {
         if let explicit = server { conn = try resolveServer(explicit) }
         else if let extracted = extractedServer { conn = extracted }
         else { conn = try resolveServer(nil) }
-        UserDefaults.standard.set(conn.id.uuidString, forKey: "hs_selectedId")
-        let api = APIClient(baseURL: conn.baseURL)
+        let api = selectAndConnect(conn)
         try await api.playArtist(contentName)
         try await api.shuffleQueue()
         return .result(dialog: "Shuffling \(contentName) on \(conn.name).")
@@ -170,8 +293,7 @@ struct PlayAlbumOnHomeSpeakerIntent: AppIntent {
         if let explicit = server { conn = try resolveServer(explicit) }
         else if let extracted = extractedServer { conn = extracted }
         else { conn = try resolveServer(nil) }
-        UserDefaults.standard.set(conn.id.uuidString, forKey: "hs_selectedId")
-        let api = APIClient(baseURL: conn.baseURL)
+        let api = selectAndConnect(conn)
         try await api.playAlbum(contentName)
         return .result(dialog: "Playing \(contentName) on \(conn.name).")
     }
@@ -197,8 +319,7 @@ struct PlayPlaylistOnHomeSpeakerIntent: AppIntent {
         if let explicit = server { conn = try resolveServer(explicit) }
         else if let extracted = extractedServer { conn = extracted }
         else { conn = try resolveServer(nil) }
-        UserDefaults.standard.set(conn.id.uuidString, forKey: "hs_selectedId")
-        let api = APIClient(baseURL: conn.baseURL)
+        let api = selectAndConnect(conn)
         let playlists = try await api.getPlaylists()
         guard let match = bestMatch(from: playlists, query: contentName, key: { $0.name }) else {
             throw HomeSpeakerIntentError.contentNotFound(contentName)
@@ -228,8 +349,7 @@ struct PlayAiPlaylistOnHomeSpeakerIntent: AppIntent {
         if let explicit = server { conn = try resolveServer(explicit) }
         else if let extracted = extractedServer { conn = extracted }
         else { conn = try resolveServer(nil) }
-        UserDefaults.standard.set(conn.id.uuidString, forKey: "hs_selectedId")
-        let api = APIClient(baseURL: conn.baseURL)
+        let api = selectAndConnect(conn)
         let playlists = try await api.getAiPlaylists()
         let match = bestMatch(from: playlists, query: contentName, key: { $0.displayName })
             ?? bestMatch(from: playlists, query: contentName, key: { $0.genreKey })
@@ -261,8 +381,7 @@ struct PlayStreamOnHomeSpeakerIntent: AppIntent {
         if let explicit = server { conn = try resolveServer(explicit) }
         else if let extracted = extractedServer { conn = extracted }
         else { conn = try resolveServer(nil) }
-        UserDefaults.standard.set(conn.id.uuidString, forKey: "hs_selectedId")
-        let api = APIClient(baseURL: conn.baseURL)
+        let api = selectAndConnect(conn)
         let streams = try await api.getRadioStreams()
         guard let match = bestMatch(from: streams, query: contentName, key: { $0.name }) else {
             throw HomeSpeakerIntentError.contentNotFound(contentName)

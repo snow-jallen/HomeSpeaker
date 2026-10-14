@@ -7,12 +7,16 @@ struct ServerConnection: Codable, Identifiable, Equatable, Hashable {
     var name: String
     var host: String
     var port: Int
+    /// Optional second address used when the home address can't be reached,
+    /// e.g. "kitchen.boston-cloud.ts.net" over Tailscale. Defaults to https.
+    var remoteURL: String?
 
-    init(id: UUID = UUID(), name: String, host: String, port: Int = 5000) {
+    init(id: UUID = UUID(), name: String, host: String, port: Int = 5000, remoteURL: String? = nil) {
         self.id = id
         self.name = name
         self.host = host
         self.port = port
+        self.remoteURL = remoteURL
     }
 
     var baseURL: URL {
@@ -21,6 +25,19 @@ struct ServerConnection: Codable, Identifiable, Equatable, Hashable {
             return URL(string: cleanHost)!
         }
         return URL(string: "http://\(cleanHost):\(port)")!
+    }
+
+    var remoteBaseURL: URL? {
+        guard let raw = remoteURL?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            return nil
+        }
+        return URL(string: raw.contains("://") ? raw : "https://\(raw)")
+    }
+
+    /// Addresses to try, home address first.
+    var candidateBaseURLs: [URL] {
+        guard let remote = remoteBaseURL, remote != baseURL else { return [baseURL] }
+        return [baseURL, remote]
     }
 }
 
@@ -83,9 +100,52 @@ struct PlayerStatus: Codable {
     let sleepTimerRemainingMinutes: Double?
     let repeatMode: Bool?
     let aiContext: AiPlayerContextDto?
+    let isStream: Bool?
+    let streamName: String?
 
     var isPlaying: Bool { stillPlaying }
     var quietDownVolume: Int { volume > 0 ? max(1, volume / 2) : 0 }
+
+    /// The playing song from the library. For radio the server reports a
+    /// stand-in "song" (the station's now-playing title, with the stream URL
+    /// as its path), which this leaves out.
+    var librarySong: Song? {
+        isStream == true ? nil : currentSong
+    }
+
+    /// What to show as the headline: the song (or radio now-playing title),
+    /// else the station. Matches the Live Activity title the server pushes.
+    var displayTitle: String {
+        if let name = currentSong?.name, !name.isEmpty { return name }
+        if let streamName, !streamName.isEmpty { return streamName }
+        return stillPlaying ? "Streaming" : "Not Playing"
+    }
+
+    /// The artist, or for radio the station under its now-playing title.
+    var displaySubtitle: String {
+        if isStream == true {
+            guard let streamName, !streamName.isEmpty, streamName != displayTitle else { return "" }
+            return streamName
+        }
+        return currentSong?.artist ?? ""
+    }
+
+    var elapsedSeconds: Double { elapsed.flatMap(Self.seconds) ?? 0 }
+    var remainingSeconds: Double { remaining.flatMap(Self.seconds) ?? 0 }
+
+    /// Parses a .NET TimeSpan ("hh:mm:ss.fffffff", or "d.hh:mm:ss") into seconds.
+    static func seconds(_ value: String) -> Double? {
+        var parts = value.split(separator: ":").map(String.init)
+        guard parts.count == 3 else { return nil }
+        var days = 0.0
+        let hourPart = parts[0].split(separator: ".")
+        if hourPart.count == 2 {
+            days = Double(hourPart[0]) ?? 0
+            parts[0] = String(hourPart[1])
+        }
+        guard let h = Double(parts[0]), let m = Double(parts[1]), let s = Double(parts[2]) else { return nil }
+        return days * 86_400 + h * 3_600 + m * 60 + s
+    }
 
     var elapsedFormatted: String {
         elapsed.flatMap { formatDuration($0) } ?? "0:00"
@@ -116,6 +176,7 @@ struct PlayerStatus: Codable {
 struct Features: Codable {
     let temperatureEnabled: Bool
     let bloodSugarEnabled: Bool
+    let aiEnabled: Bool?
 }
 
 struct ForecastData: Codable {
@@ -216,6 +277,10 @@ struct SetSleepTimerRequest: Codable {
 
 struct SetRepeatModeRequest: Codable {
     let enabled: Bool
+}
+
+struct LiveActivityRegistrationRequest: Codable {
+    let pushToken: String
 }
 
 struct RenamePlaylistRequest: Codable {

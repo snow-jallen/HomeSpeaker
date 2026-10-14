@@ -141,6 +141,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         startedPlaying = true;
         currentSong = song;
         isStream = false;
+        streamName = null;
         stopPlaying();
         stoppedSong = null;
 
@@ -283,6 +284,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
             logger.LogInformation("Nothing in the queue, so Status is now empty.");
             status = new PlayerStatus();
             isStream = false;
+            streamName = null;
         }
     }
 

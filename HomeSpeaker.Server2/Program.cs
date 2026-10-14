@@ -7,6 +7,7 @@ using HomeSpeaker.Server2;
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Endpoints;
 using HomeSpeaker.Server2.Services;
+using HomeSpeaker.Server2.Services.LiveActivities;
 using HomeSpeaker.Server2.Services.Photos;
 using HomeSpeaker.Shared;
 using HomeSpeaker.Shared.WindowMonitoring;
@@ -151,7 +152,15 @@ builder.Services.AddHttpClient("ApnsClient", client =>
     client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrHigher;
     client.Timeout = TimeSpan.FromSeconds(15);
 });
-builder.Services.AddSingleton<IPushNotificationSender, ApplePushNotificationSender>();
+builder.Services.AddSingleton<ApplePushNotificationSender>();
+builder.Services.AddSingleton<IPushNotificationSender>(sp => sp.GetRequiredService<ApplePushNotificationSender>());
+builder.Services.AddSingleton<ILiveActivityPushSender>(sp => sp.GetRequiredService<ApplePushNotificationSender>());
+builder.Services.AddSingleton<IPlayerStatusProvider, PlayerStatusProvider>();
+builder.Services.AddSingleton<PlayerStatusBroadcaster>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<PlayerStatusBroadcaster>());
+builder.Services.AddSingleton<LiveActivityRegistry>();
+builder.Services.AddSingleton<LiveActivityPushDispatcher>();
+builder.Services.AddHostedService<LiveActivityPushWorker>();
 builder.Services.AddHostedService<HealthAlertWorker>();
 builder.Services.AddHostedService<AiMusicAnalysisWorker>();
 builder.Services.AddHostedService<HomeSpeaker.Server2.Services.VolumeMonitorService>();
@@ -360,11 +369,13 @@ app.UseCors(LocalCorsPolicy);
 app.UseAntiforgery();
 app.MapHub<HomeSpeaker.Server2.Hubs.AnchorHub>("/anchorHub");
 app.MapGet("/ns", (IConfiguration config) => config["NIGHTSCOUT_URL"] ?? string.Empty);
-app.MapGet("/api/features", (IConfiguration config, PhotoLibrary photos) => new
+app.MapGet("/api/features", (IConfiguration config, PhotoLibrary photos, IChatClient chatClient) => new
 {
     TemperatureEnabled = FeatureFlags.TemperatureEnabled(config),
     BloodSugarEnabled = FeatureFlags.BloodSugarEnabled(config),
-    PhotosEnabled = photos.Count > 0
+    PhotosEnabled = photos.Count > 0,
+    // AddChatClient falls back to NullChatClient when no AI provider is configured.
+    AiEnabled = chatClient is not NullChatClient
 });
 
 app.MapPost("/api/push/devices/register", async (PushNotificationService pushNotificationService, PushDeviceRegistrationRequest request, CancellationToken cancellationToken) =>

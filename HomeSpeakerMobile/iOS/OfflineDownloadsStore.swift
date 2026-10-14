@@ -577,7 +577,7 @@ final class OfflineDownloadsStore {
         isLoadingLibrary = true
         defer { isLoadingLibrary = false }
 
-        let api = APIClient(baseURL: connection.baseURL)
+        let api = APIClient.client(for: connection)
 
         do {
             let songs = try await api.getSongs()
@@ -1019,7 +1019,7 @@ final class OfflineDownloadsStore {
             throw OfflineDownloadError.songUnavailable
         }
 
-        let api = APIClient(baseURL: connection.baseURL)
+        let api = APIClient.client(for: connection)
         let downloadURL = api.offlineSongMediaURL(songPath: key.songPath)
         let (tempURL, response) = try await URLSession.shared.download(from: downloadURL)
 

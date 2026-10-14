@@ -16,24 +16,79 @@ enum APIError: Error, LocalizedError {
     }
 }
 
-class APIClient {
-    let baseURL: URL
+final class APIClient: @unchecked Sendable {
+    /// Addresses for this server, home address first. Requests go to the one
+    /// that last worked and fall back to the others when it can't be reached.
+    let candidateBaseURLs: [URL]
+    private let preferenceKey: String?
     private let session: URLSession
+    private let streamingSession: URLSession
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
+    private let lock = NSLock()
+    private var preferredIndex = 0
+    private var lastSuccessAt: Date?
 
-    init(baseURL: URL) {
-        self.baseURL = baseURL
+    /// The address requests currently go to.
+    var baseURL: URL {
+        lock.withLock { candidateBaseURLs[preferredIndex] }
+    }
+
+    convenience init(baseURL: URL) {
+        self.init(candidates: [baseURL], preferenceKey: nil)
+    }
+
+    convenience init(connection: ServerConnection) {
+        self.init(candidates: connection.candidateBaseURLs,
+                  preferenceKey: "hs_preferredBase_\(connection.id.uuidString)")
+    }
+
+    private init(candidates: [URL], preferenceKey: String?) {
+        self.candidateBaseURLs = candidates
+        self.preferenceKey = preferenceKey
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 10
         self.session = URLSession(configuration: config)
+        // The status stream sends a heartbeat every 10 s, so allow a longer
+        // idle gap before treating it as dropped.
+        let streamingConfig = URLSessionConfiguration.default
+        streamingConfig.timeoutIntervalForRequest = 30
+        streamingConfig.timeoutIntervalForResource = 60 * 60 * 24
+        self.streamingSession = URLSession(configuration: streamingConfig)
+        if let preferenceKey {
+            let saved = SharedConnections.defaults.integer(forKey: preferenceKey)
+            preferredIndex = candidates.indices.contains(saved) ? saved : 0
+        }
+    }
+
+    // MARK: - Shared clients
+
+    private static let cacheLock = NSLock()
+    nonisolated(unsafe) private static var cache: [UUID: (connection: ServerConnection, client: APIClient)] = [:]
+
+    /// One client per server, rebuilt only when the server's addresses change.
+    static func client(for connection: ServerConnection) -> APIClient {
+        cacheLock.withLock {
+            if let cached = cache[connection.id], cached.connection.candidateBaseURLs == connection.candidateBaseURLs {
+                return cached.client
+            }
+            let client = APIClient(connection: connection)
+            cache[connection.id] = (connection, client)
+            return client
+        }
+    }
+
+    // MARK: - URLs
+
+    private func url(_ path: String, base: URL) -> URL {
+        let baseString = base.absoluteString.hasSuffix("/")
+            ? String(base.absoluteString.dropLast())
+            : base.absoluteString
+        return URL(string: "\(baseString)/\(path)")!
     }
 
     private func url(_ path: String) -> URL {
-        let base = baseURL.absoluteString.hasSuffix("/")
-            ? String(baseURL.absoluteString.dropLast())
-            : baseURL.absoluteString
-        return URL(string: "\(base)/\(path)")!
+        url(path, base: baseURL)
     }
 
     func resolveURL(_ pathOrURL: String) -> URL {
@@ -47,17 +102,107 @@ class APIClient {
         return url(normalizedPath)
     }
 
+    // MARK: - Transport
+
+    private func attemptOrder() -> [Int] {
+        let preferred = lock.withLock { preferredIndex }
+        return [preferred] + candidateBaseURLs.indices.filter { $0 != preferred }
+    }
+
+    private func markWorking(_ index: Int) {
+        let changed = lock.withLock { () -> Bool in
+            lastSuccessAt = .now
+            guard preferredIndex != index else { return false }
+            preferredIndex = index
+            return true
+        }
+        if changed, let preferenceKey {
+            SharedConnections.defaults.set(index, forKey: preferenceKey)
+        }
+    }
+
+    /// Errors meaning this address can't be reached, so another might work.
+    /// A timeout or dropped connection only counts for GETs: a command that
+    /// failed that way may still have landed (skipping twice would be wrong).
+    private static func isUnreachable(_ error: URLError, method: String) -> Bool {
+        switch error.code {
+        case .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed,
+             .secureConnectionFailed,
+             .serverCertificateUntrusted, .serverCertificateHasBadDate,
+             .serverCertificateNotYetValid, .serverCertificateHasUnknownRoot,
+             .appTransportSecurityRequiresSecureConnection:
+            return true
+        case .timedOut, .networkConnectionLost:
+            return method == "GET"
+        default:
+            return false
+        }
+    }
+
+    /// Commands can't safely be retried on a timeout, so before sending one
+    /// with an unconfirmed address (e.g. a Lock Screen tap after leaving home
+    /// Wi-Fi), find a reachable address with a quick read first. Reads also
+    /// re-check now and then whether the home address works again.
+    private func shouldProbe(method: String) -> Bool {
+        guard candidateBaseURLs.count > 1 else { return false }
+        return lock.withLock {
+            let age = lastSuccessAt.map { Date.now.timeIntervalSince($0) } ?? .infinity
+            if method != "GET" { return age > 60 }
+            return preferredIndex != 0 && age > 5 * 60
+        }
+    }
+
+    private func probe() async {
+        // Home first, so the app goes back to it once it's reachable again.
+        for index in candidateBaseURLs.indices {
+            var req = URLRequest(url: url("api/features", base: candidateBaseURLs[index]))
+            req.timeoutInterval = 3
+            if let result = try? await session.data(for: req), result.1 is HTTPURLResponse {
+                markWorking(index)
+                return
+            }
+        }
+    }
+
+    private func send(
+        _ path: String,
+        method: String,
+        body: Data?,
+        contentType: String?
+    ) async throws -> (Data, HTTPURLResponse) {
+        if shouldProbe(method: method) {
+            await probe()
+        }
+        let order = attemptOrder()
+        for (attempt, index) in order.enumerated() {
+            var req = URLRequest(url: url(path, base: candidateBaseURLs[index]))
+            req.httpMethod = method
+            if let body {
+                req.httpBody = body
+                if let contentType {
+                    req.setValue(contentType, forHTTPHeaderField: "Content-Type")
+                }
+            }
+            do {
+                let (data, response) = try await session.data(for: req)
+                guard let http = response as? HTTPURLResponse else {
+                    throw APIError.networkError(URLError(.badServerResponse))
+                }
+                markWorking(index)
+                return (data, http)
+            } catch let error as URLError
+                where attempt < order.count - 1 && Self.isUnreachable(error, method: method) {
+                continue
+            }
+        }
+        // The loop always returns or throws on its last attempt.
+        throw APIError.networkError(URLError(.cannotConnectToHost))
+    }
+
     private func request<T: Decodable>(_ path: String, method: String = "GET", body: (any Encodable)? = nil) async throws -> T {
-        var req = URLRequest(url: url(path))
-        req.httpMethod = method
-        if let body {
-            req.httpBody = try encoder.encode(body)
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        }
-        let (data, response) = try await session.data(for: req)
-        guard let http = response as? HTTPURLResponse else {
-            throw APIError.networkError(URLError(.badServerResponse))
-        }
+        let (data, http) = try await send(path, method: method,
+                                          body: try body.map { try encoder.encode($0) },
+                                          contentType: "application/json")
         guard (200..<300).contains(http.statusCode) else {
             let msg = String(data: data, encoding: .utf8) ?? "Unknown error"
             throw APIError.serverError(http.statusCode, msg)
@@ -70,32 +215,60 @@ class APIClient {
     }
 
     private func requestVoidRaw(_ path: String, method: String, body: Data, contentType: String) async throws {
-        var req = URLRequest(url: url(path))
-        req.httpMethod = method
-        req.httpBody = body
-        req.setValue(contentType, forHTTPHeaderField: "Content-Type")
-        let (_, response) = try await session.data(for: req)
-        guard let http = response as? HTTPURLResponse else {
-            throw APIError.networkError(URLError(.badServerResponse))
-        }
+        let (_, http) = try await send(path, method: method, body: body, contentType: contentType)
         guard (200..<300).contains(http.statusCode) else {
             throw APIError.serverError(http.statusCode, "Request failed")
         }
     }
 
     private func requestVoid(_ path: String, method: String = "GET", body: (any Encodable)? = nil) async throws {
-        var req = URLRequest(url: url(path))
-        req.httpMethod = method
-        if let body {
-            req.httpBody = try encoder.encode(body)
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        }
-        let (_, response) = try await session.data(for: req)
-        guard let http = response as? HTTPURLResponse else {
-            throw APIError.networkError(URLError(.badServerResponse))
-        }
+        let (_, http) = try await send(path, method: method,
+                                       body: try body.map { try encoder.encode($0) },
+                                       contentType: "application/json")
         guard (200..<300).contains(http.statusCode) else {
             throw APIError.serverError(http.statusCode, "Request failed")
+        }
+    }
+
+    /// Fetches raw bytes (e.g. album art), or nil when there are none.
+    func data(at url: URL) async -> Data? {
+        guard let result = try? await session.data(from: url),
+              let http = result.1 as? HTTPURLResponse,
+              (200..<300).contains(http.statusCode),
+              !result.0.isEmpty else { return nil }
+        return result.0
+    }
+
+    // MARK: - Live status
+
+    /// Player status pushed by the server as it changes (server-sent events),
+    /// plus a heartbeat every 10 s. Finishes or throws when the connection
+    /// drops; servers without the endpoint throw straight away, so callers
+    /// should fall back to polling `getPlayerStatus()`.
+    func statusUpdates() -> AsyncThrowingStream<PlayerStatus, Error> {
+        let request = URLRequest(url: url("api/homespeaker/player/events"))
+        let session = streamingSession
+        let decoder = decoder
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    let (bytes, response) = try await session.bytes(for: request)
+                    guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                        throw APIError.serverError((response as? HTTPURLResponse)?.statusCode ?? 0, "No status stream")
+                    }
+                    // Each event is "event: status" then one "data: {json}" line.
+                    for try await line in bytes.lines where line.hasPrefix("data:") {
+                        let payload = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
+                        if let status = try? decoder.decode(PlayerStatus.self, from: Data(payload.utf8)) {
+                            continuation.yield(status)
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 
@@ -341,6 +514,20 @@ class APIClient {
     func playStream(url: String) async throws {
         try await requestVoid("api/homespeaker/stream/play", method: "POST",
             body: PlayStreamRequest(streamUrl: url))
+    }
+
+    // MARK: - Live Activities
+
+    /// Lets the server push playback changes to a Lock Screen Live Activity.
+    func registerLiveActivity(id: String, pushToken: String) async throws {
+        let enc = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
+        try await requestVoid("api/homespeaker/live-activities/\(enc)", method: "PUT",
+            body: LiveActivityRegistrationRequest(pushToken: pushToken))
+    }
+
+    func unregisterLiveActivity(id: String) async throws {
+        let enc = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
+        try await requestVoid("api/homespeaker/live-activities/\(enc)", method: "DELETE")
     }
 
     func faviconURL(for fileName: String) -> URL {
