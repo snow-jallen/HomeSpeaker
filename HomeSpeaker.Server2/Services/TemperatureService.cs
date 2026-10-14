@@ -85,19 +85,33 @@ public sealed class TemperatureService : ITemperatureService
         }
     }
 
-    public async Task<double> GetDeviceTemperatureAsync(Device device, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// The device's current temperature, or null when it can't be read (no API key, request failed, or the
+    /// response has no temperature). Callers must treat null as "unknown", never substitute a made-up value.
+    /// </summary>
+    public async Task<double?> GetDeviceTemperatureAsync(Device device, CancellationToken cancellationToken = default)
     {
-        // Check if API key is configured
+        var state = await getDeviceStateAsync(device, cancellationToken);
+        if (state is not null && state.SensorTemperature is null)
+        {
+            logger.LogWarning("Temperature capability not found in state for device {DeviceName}", device.DeviceName);
+        }
+
+        return state?.SensorTemperature;
+    }
+
+    private async Task<DeviceStatePayload?> getDeviceStateAsync(Device device, CancellationToken cancellationToken)
+    {
         var apiKey = configuration["Temperature:ApiKey"];
         if (string.IsNullOrEmpty(apiKey))
         {
-            logger.LogWarning("Govee API key not configured. Using default temperature for device {DeviceName}.", device.DeviceName);
-            return 70.0; // Default room temperature
+            logger.LogWarning("Govee API key not configured; no reading for device {DeviceName}.", device.DeviceName);
+            return null;
         }
 
         try
         {
-            logger.LogInformation("Fetching temperature for device: {DeviceName} ({DeviceId})", device.DeviceName, device.DeviceId);
+            logger.LogInformation("Fetching state for device: {DeviceName} ({DeviceId})", device.DeviceName, device.DeviceId);
             var payload = new
             {
                 requestId = Guid.NewGuid().ToString(),
@@ -107,16 +121,12 @@ public sealed class TemperatureService : ITemperatureService
             var response = await httpClient.PostAsync("device/state", content, cancellationToken);
             response.EnsureSuccessStatusCode();
             var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
-            var stateResponse = JsonSerializer.Deserialize<DeviceStateResponse>(responseJson);
-
-            return stateResponse?.Payload?.SensorTemperature
-                ?? throw new InvalidOperationException("Temperature capability not found in device state response.");
+            return JsonSerializer.Deserialize<DeviceStateResponse>(responseJson)?.Payload;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogError(ex, "Failed to get temperature for device {DeviceName}", device.DeviceName);
-            // Return a default temperature if device is not available
-            return 70.0; // Default room temperature
+            logger.LogError(ex, "Failed to get state for device {DeviceName}", device.DeviceName);
+            return null;
         }
     }
 
