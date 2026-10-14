@@ -297,6 +297,65 @@ public sealed class VideoPrefetcherTests : IDisposable
     }
 
     [Fact]
+    public async Task RunOnce_ASlowButSteadyStreamLongerThanTheInactivityTimeout_StillCompletes()
+    {
+        await seedAsync(videos: 10);
+        options.VideoPrefetchAhead = 1;
+        options.VideoPrefetchMaxMB = 5;
+        var target = upcoming()[0];
+
+        // Six 64 KB chunks, one every 80 ms: about 480 ms in total, well past the 200 ms inactivity timeout, but never silent that long.
+        immich.OpenVideo = (_, _) =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new UnknownLengthContent(6 * 64 * 1024, chunkDelay: TimeSpan.FromMilliseconds(80)) };
+            response.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("video/mp4");
+            return Task.FromResult(response);
+        };
+
+        await createPrefetcher(inactivityTimeout: TimeSpan.FromMilliseconds(200)).RunOnceAsync(CancellationToken.None);
+
+        Assert.True(store.HasVideo(target));
+        Assert.DoesNotContain(log.Entries, e => e.Level == LogLevel.Warning);
+        Assert.Equal(6 * 64 * 1024, new FileInfo(Path.Combine(store.VideosPath, target + ".mp4")).Length);
+    }
+
+    [Fact]
+    public async Task RunOnce_WithNoContentLength_AssumesTheCapAsTheWorstCaseForTheFreeSpaceGuard()
+    {
+        await seedAsync(videos: 10);
+        options.VideoPrefetchAhead = 1;
+        immich.OpenVideo = (_, _) =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new UnknownLengthContent(100) };
+            response.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("video/mp4");
+            return Task.FromResult(response);
+        };
+
+        // 1 GB plus half the 1 MB cap: enough for the 100 bytes that actually arrive, not for a download that runs to the cap.
+        await createPrefetcher(freeSpace: () => (1024 * MB) + (MB / 2)).RunOnceAsync(CancellationToken.None);
+
+        Assert.Empty(store.ListCachedVideoIds());
+        Assert.Contains(log.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("free", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RunOnce_WithNoContentLengthAndRoomForTheCap_Downloads()
+    {
+        await seedAsync(videos: 10);
+        options.VideoPrefetchAhead = 1;
+        immich.OpenVideo = (_, _) =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new UnknownLengthContent(100) };
+            response.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("video/mp4");
+            return Task.FromResult(response);
+        };
+
+        await createPrefetcher(freeSpace: () => (1024 * MB) + (2 * MB)).RunOnceAsync(CancellationToken.None);
+
+        Assert.Single(store.ListCachedVideoIds());
+    }
+
+    [Fact]
     public async Task RunOnce_WhenImmichNeverSendsHeaders_TimesOutAndMovesOn()
     {
         await seedAsync(videos: 10);
@@ -438,16 +497,31 @@ public sealed class VideoPrefetcherTests : IDisposable
     [Theory]
     [InlineData(0)]
     [InlineData(-5)]
-    public async Task ExecuteAsync_WhenTheMaxSizeIsZeroOrLess_PrefetchIsDisabled(int maxMb)
+    public async Task ExecuteAsync_WhenTheMaxSizeIsZeroOrLess_ReturnsImmediatelyAsDisabled(int maxMb)
     {
         await seedAsync(videos: 10);
         options.VideoPrefetchMaxMB = maxMb;
         using var prefetcher = createPrefetcher();
 
         await prefetcher.StartAsync(CancellationToken.None);
-        await prefetcher.StopAsync(CancellationToken.None);
 
+        // An enabled prefetcher keeps looping until stopped; a disabled one finishes on its own.
+        await prefetcher.ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(10));
         Assert.Empty(immich.OpenedVideoIds);
+        Assert.Contains(log.Entries, e => e.Level == LogLevel.Information && e.Message.Contains("disabled", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithPrefetchEnabled_KeepsRunningUntilStopped()
+    {
+        await seedAsync(videos: 10);
+        using var prefetcher = createPrefetcher();
+
+        await prefetcher.StartAsync(CancellationToken.None);
+        await waitForAsync(() => store.ListCachedVideoIds().Count == 3);
+
+        Assert.False(prefetcher.ExecuteTask!.IsCompleted);
+        await prefetcher.StopAsync(CancellationToken.None);
     }
 
     [Fact]
@@ -467,19 +541,18 @@ public sealed class VideoPrefetcherTests : IDisposable
     }
 
     [Fact]
-    public async Task Next_AfterThePrefetcherIsDisposed_StillWorks()
+    public async Task RequestPass_AfterDisposeOrRepeatedly_NeverThrows()
     {
         await seedAsync(videos: 5);
         var prefetcher = createPrefetcher();
-        await prefetcher.StartAsync(CancellationToken.None);
 
-        // A /next that races shutdown invokes the handler on a disposed semaphore; it must not surface as a 500.
+        // A /next racing shutdown invokes this on a disposed semaphore, and a second call finds the semaphore already full.
+        prefetcher.RequestPass();
+        prefetcher.RequestPass();
         prefetcher.Dispose();
+        prefetcher.RequestPass();
 
-        for (var i = 0; i < 3; i++)
-        {
-            Assert.NotNull(library!.Next());
-        }
+        Assert.NotNull(library!.Next());
     }
 
     [Fact]
@@ -525,8 +598,8 @@ public sealed class VideoPrefetcherTests : IDisposable
             library!.Next();
         }
 
-        // Up to 10 recently served videos plus the 3 upcoming ones.
-        Assert.InRange(store.ListCachedVideoIds().Count, 3, 13);
+        // After the pass at 24 slides served: the 3 upcoming videos plus the 10 served at slides 15-24 (a video goes 10 slides after its last serve).
+        Assert.Equal(13, store.ListCachedVideoIds().Count);
     }
 
     [Fact]
@@ -635,7 +708,7 @@ public sealed class VideoPrefetcherTests : IDisposable
     }
 
     /// <summary>A body that reports no Content-Length, streamed in chunks.</summary>
-    private sealed class UnknownLengthContent(long totalBytes, Action? onFirstChunk = null, bool stallAfterFirstChunk = false) : HttpContent
+    private sealed class UnknownLengthContent(long totalBytes, Action? onFirstChunk = null, bool stallAfterFirstChunk = false, TimeSpan chunkDelay = default) : HttpContent
     {
         protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context)
         {
@@ -649,7 +722,7 @@ public sealed class VideoPrefetcherTests : IDisposable
         protected override async Task<Stream> CreateContentReadStreamAsync()
         {
             await Task.CompletedTask;
-            return new ChunkStream(totalBytes, onFirstChunk, stallAfterFirstChunk);
+            return new ChunkStream(totalBytes, onFirstChunk, stallAfterFirstChunk, chunkDelay);
         }
 
         protected override bool TryComputeLength(out long length)
@@ -659,7 +732,7 @@ public sealed class VideoPrefetcherTests : IDisposable
         }
     }
 
-    private sealed class ChunkStream(long totalBytes, Action? onFirstChunk, bool stallAfterFirstChunk = false) : Stream
+    private sealed class ChunkStream(long totalBytes, Action? onFirstChunk, bool stallAfterFirstChunk = false, TimeSpan chunkDelay = default) : Stream
     {
         private long sent;
 
@@ -676,6 +749,11 @@ public sealed class VideoPrefetcherTests : IDisposable
             {
                 // A peer that went silent: the read only ends when the caller's token fires.
                 await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+
+            if (chunkDelay > TimeSpan.Zero)
+            {
+                await Task.Delay(chunkDelay, cancellationToken);
             }
 
             if (sent == 0)

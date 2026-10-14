@@ -64,7 +64,7 @@ public sealed class VideoPrefetcher : BackgroundService
         // Keep the cleanup off the host startup path: a failure there must never stop the app from starting.
         await Task.Yield();
         store.DeleteStrayVideoFiles();
-        library.UpcomingChanged += requestPass;
+        library.UpcomingChanged += RequestPass;
         try
         {
             while (!stoppingToken.IsCancellationRequested)
@@ -94,7 +94,7 @@ public sealed class VideoPrefetcher : BackgroundService
         }
         finally
         {
-            library.UpcomingChanged -= requestPass;
+            library.UpcomingChanged -= RequestPass;
         }
     }
 
@@ -133,7 +133,8 @@ public sealed class VideoPrefetcher : BackgroundService
         base.Dispose();
     }
 
-    private void requestPass()
+    /// <summary>Wakes the loop for a pass. Safe to call at any time, including while shutting down.</summary>
+    public void RequestPass()
     {
         try
         {
@@ -202,7 +203,8 @@ public sealed class VideoPrefetcher : BackgroundService
                 return;
             }
 
-            if (freeSpaceTooLow(length ?? 0, assetId))
+            // Without a Content-Length, assume the worst case: the download runs up to the cap.
+            if (freeSpaceTooLow(length ?? maxBytes, assetId))
             {
                 return;
             }
