@@ -189,7 +189,7 @@
 		972E6F741153B0F923CEB1D8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		991398AE4AA449825359CD71 /* QueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueView.swift; sourceTree = "<group>"; };
 		9E4783E8ABC24B91A6C939BF /* AIPlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPlaylistsView.swift; sourceTree = "<group>"; };
-		9FDA0E7B88A5BE2BDCD91EBA /* HomeSpeaker.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = HomeSpeaker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9FDA0E7B88A5BE2BDCD91EBA /* HomeSpeaker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HomeSpeaker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9FE39C0DB8FFD7DBDEC6E984 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A018CE30A63C93625371BDBB /* RoomsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomsView.swift; sourceTree = "<group>"; };
 		A1ED18F91C6D18A84AC2CE2D /* PlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistsView.swift; sourceTree = "<group>"; };
@@ -208,7 +208,7 @@
 		D65DA15C5F8429240F336F95 /* SpeakerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerWidget.swift; sourceTree = "<group>"; };
 		DE860A8EC2BC7A3510B7D5BE /* HomeSpeakerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerWidget.swift; sourceTree = "<group>"; };
 		DFF600AE780822B97E207F38 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
-		E18DCEE1A917A399B287794F /* HomeSpeakerWidgetExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = HomeSpeakerWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E18DCEE1A917A399B287794F /* HomeSpeakerWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = HomeSpeakerWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		E2DF6D3416F949009F451D1C /* HomeSpeakerWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerWidgetBundle.swift; sourceTree = "<group>"; };
 		E5AB2945906B9634A6C844C9 /* AIPlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPlaylistsView.swift; sourceTree = "<group>"; };
 		E8049584149E66D488080E43 /* ConnectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionStore.swift; sourceTree = "<group>"; };
@@ -546,20 +546,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1600;
-				TargetAttributes = {
-					2A9C51AE16AD79AE38C00127 = {
-						DevelopmentTeam = 53VT2BR349;
-					};
-					4578C4C62818AED29DE8EA3B = {
-						DevelopmentTeam = 53VT2BR349;
-					};
-					A15168F97BCC9E467C5F6200 = {
-						DevelopmentTeam = 53VT2BR349;
-					};
-					D0F3F38AD55547F90D067CFA = {
-						DevelopmentTeam = 53VT2BR349;
-					};
-				};
 			};
 			buildConfigurationList = E3B9BE366A907B393F85208E /* Build configuration list for PBXProject "HomeSpeakerMobile" */;
 			developmentRegion = en;
@@ -718,6 +704,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = watchOS/Widget/HomeSpeakerWidget.entitlements;
+				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				INFOPLIST_FILE = watchOS/Widget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -736,6 +723,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = watchOS/Widget/HomeSpeakerWidget.entitlements;
+				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				INFOPLIST_FILE = watchOS/Widget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -754,6 +742,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = iOS/Widget/HomeSpeakerWidgetExtension.entitlements;
+				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				INFOPLIST_FILE = iOS/Widget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -899,6 +888,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = iOS/HomeSpeaker.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = iOS/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -916,6 +906,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = iOS/Widget/HomeSpeakerWidgetExtension.entitlements;
+				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				INFOPLIST_FILE = iOS/Widget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -936,6 +927,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = iOS/HomeSpeaker.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = iOS/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -954,6 +946,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = watchOS/HomeSpeakerWatch.entitlements;
+				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = watchOS/Resources/Info.plist;
 				PRODUCT_BUNDLE_IDENTIFIER = com.homespeaker.ios.watchos;
@@ -971,6 +964,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = watchOS/HomeSpeakerWatch.entitlements;
+				DEVELOPMENT_TEAM = UCSTTHUC8Z;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = watchOS/Resources/Info.plist;
 				PRODUCT_BUNDLE_IDENTIFIER = com.homespeaker.ios.watchos;
