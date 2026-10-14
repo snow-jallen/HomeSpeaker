@@ -1,4 +1,4 @@
-using System.Text.Json;
+using System.Globalization;
 using HomeSpeaker.Shared.BloodSugar;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -13,7 +13,11 @@ public sealed class BloodSugarService : IBloodSugarService
     private readonly TimeProvider timeProvider;
 
     private const string CacheKey = "blood-sugar-status";
-    private static readonly JsonSerializerOptions jsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    /// <summary>Upper bound on entries for the 3-hour window: 180 at a 1-minute cadence, with headroom.</summary>
+    private const int HistoryCountCap = 400;
+
+    private static readonly TimeSpan historyWindow = TimeSpan.FromHours(3);
 
     public BloodSugarService(HttpClient httpClient, ILogger<BloodSugarService> logger, IConfiguration configuration, IMemoryCache cache, TimeProvider timeProvider)
     {
@@ -32,7 +36,7 @@ public sealed class BloodSugarService : IBloodSugarService
             var shouldRefresh = shouldRefreshBloodSugarCache(cachedValue);
             if (!shouldRefresh)
             {
-                logger.LogInformation("Returning cached blood sugar status {CachedValue}", JsonSerializer.Serialize(cachedValue));
+                logger.LogInformation("Returning cached blood sugar status ({Sgv} mg/dL, {Count} recent readings)", cachedValue.CurrentReading?.Sgv, cachedValue.RecentReadings.Count);
                 return cachedValue;
             }
         }
@@ -50,7 +54,7 @@ public sealed class BloodSugarService : IBloodSugarService
         };
 
         cache.Set(CacheKey, bloodSugarStatus, cacheOptions);
-        logger.LogInformation("Blood sugar data cached for {Seconds} seconds {CachedValue}", cacheExpiration.TotalSeconds, JsonSerializer.Serialize(bloodSugarStatus));
+        logger.LogInformation("Blood sugar data cached for {Seconds} seconds ({Sgv} mg/dL, {Count} recent readings)", cacheExpiration.TotalSeconds, bloodSugarStatus.CurrentReading?.Sgv, bloodSugarStatus.RecentReadings.Count);
 
         return bloodSugarStatus;
     }
@@ -109,6 +113,25 @@ public sealed class BloodSugarService : IBloodSugarService
         return TimeSpan.FromSeconds(30);
     }
 
+    /// <summary>
+    /// Keeps real glucose readings only (type "sgv" or untyped, and above zero) and orders them newest first,
+    /// whatever order NightScout answered in.
+    /// </summary>
+    private static List<BloodSugarReading> selectReadings(IEnumerable<BloodSugarReading>? entries) =>
+        (entries ?? [])
+            .Where(e => e.Sgv > 0 && (string.IsNullOrEmpty(e.Type) || string.Equals(e.Type, "sgv", StringComparison.OrdinalIgnoreCase)))
+            .OrderByDescending(e => e.Date)
+            .ToList();
+
+    private async Task<List<BloodSugarReading>> fetchEntriesAsync(string apiUrl, CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Fetching blood sugar data from: {ApiUrl}", apiUrl);
+        var response = await httpClient.GetAsync(apiUrl, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        return selectReadings(NightscoutEntryParser.Parse(json));
+    }
+
     private async Task<BloodSugarStatus> getBloodSugarStatusInternalAsync(CancellationToken cancellationToken = default)
     {
         try
@@ -125,17 +148,20 @@ public sealed class BloodSugarService : IBloodSugarService
                 };
             }
 
-            // Get the latest entry from NightScout
-            var apiUrl = $"{nightscoutUrl.TrimEnd('/')}/api/v1/entries.json?count=1";
-            logger.LogInformation("Fetching blood sugar data from: {ApiUrl}", apiUrl);
+            // One request serves both the current reading and the trend line: everything in the last 3 hours,
+            // whatever the uploader's cadence is.
+            var now = timeProvider.GetUtcNow().UtcDateTime;
+            var since = new DateTimeOffset(now - historyWindow).ToUnixTimeMilliseconds();
+            var baseUrl = $"{nightscoutUrl.TrimEnd('/')}/api/v1/entries.json";
+            var entries = await fetchEntriesAsync($"{baseUrl}?find[type]=sgv&find[date][$gte]={since.ToString(CultureInfo.InvariantCulture)}&count={HistoryCountCap}", cancellationToken);
 
-            var response = await httpClient.GetAsync(apiUrl, cancellationToken);
-            response.EnsureSuccessStatusCode();
+            if (entries.Count == 0)
+            {
+                // Nothing in the window: the uploader may have been down for hours. Still show the last reading, as stale.
+                entries = await fetchEntriesAsync($"{baseUrl}?find[type]=sgv&count=1", cancellationToken);
+            }
 
-            var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            var entries = JsonSerializer.Deserialize<BloodSugarReading[]>(json, jsonOptions);
-
-            if (entries == null || entries.Length == 0)
+            if (entries.Count == 0)
             {
                 logger.LogWarning("No blood sugar entries found");
                 return new BloodSugarStatus
@@ -147,9 +173,8 @@ public sealed class BloodSugarService : IBloodSugarService
             }
 
             var latestReading = entries[0];
-            var now = timeProvider.GetUtcNow().UtcDateTime;
             var readingTime = latestReading.Date;
-            var timeSinceReading = now - readingTime;
+            var timeSinceReading = now - readingTime.ToUniversalTime();
 
             // Consider data stale if it's more than 15 minutes old
             var isStale = timeSinceReading.TotalMinutes > 15;
@@ -157,6 +182,7 @@ public sealed class BloodSugarService : IBloodSugarService
             return new BloodSugarStatus
             {
                 CurrentReading = latestReading,
+                RecentReadings = entries.Where(r => r.Date.ToUniversalTime() >= now - historyWindow).ToList(),
                 LastUpdated = now,
                 IsStale = isStale,
                 TimeSinceLastReading = timeSinceReading

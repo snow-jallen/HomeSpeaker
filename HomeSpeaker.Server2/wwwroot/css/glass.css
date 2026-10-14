@@ -460,6 +460,15 @@ html.hs-mode-night .hs-backdrop {
   height: 100%;
 }
 
+.hs-home-left {
+  width: 420px;
+  flex: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .hs-np-card {
   width: 420px;
   flex: none;
@@ -636,53 +645,200 @@ html.hs-mode-night .hs-backdrop {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
+/* Compact Now Playing on Home: sized to its content so the forecast strip gets the rest of the column. */
+.hs-np-card--compact {
+  width: auto;
+  flex: none;
+  padding: 12px 18px;
+  gap: 6px;
+}
+
+.hs-home-left > .hs-np-card--compact:only-child {
+  flex: 1;
+  justify-content: center;
+  gap: 20px;
+}
+
+.hs-np-card--compact .hs-art--lg {
+  width: 88px;
+  height: 88px;
+  border-radius: 14px;
+}
+
+.hs-np-card--compact .hs-np-head {
+  gap: 14px;
+}
+
+.hs-np-card--compact .hs-np-title {
+  font-size: 20px;
+}
+
+.hs-np-card--compact .hs-np-sub {
+  font-size: 15px;
+}
+
+.hs-np-card--compact .hs-np-times {
+  margin-top: 4px;
+}
+
+.hs-np-card--compact .hs-icon-btn {
+  width: 48px;
+  height: 48px;
+}
+
+.hs-np-card--compact .hs-play-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
+}
+
+.hs-np-card--compact .hs-volume {
+  margin-top: 0;
+}
+
+.hs-np-card--compact .hs-volume input[type="range"],
+.hs-np-card--compact .hs-volume input[type="range"]:hover {
+  height: 44px;
+  min-height: 44px;
+}
+
+/* Next hours: one column per hour; the strip scrolls sideways inside the card when it is too narrow. */
+.hs-hours {
+  flex: 1 1 0;
+  min-height: 96px;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hs-hours-cols {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(44px, 1fr);
+  grid-auto-rows: max-content;
+  align-content: center;
+  gap: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.hs-hour {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 0 4px;
+  border-radius: 12px;
+}
+
+.hs-hour:first-child {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.hs-hour-label {
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.hs-hour-temp {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.hs-wx-icon {
+  flex: none;
+}
+
+.hs-wx-sun,
+.hs-wx-bolt {
+  color: #ffd27a;
+}
+
+.hs-wx-moon {
+  color: #cdd8ff;
+}
+
+/* Rain: a fixed scale (24px = 100%), no track, drawn from 10% up, so a chance always draws the same height. */
+.hs-hour-rain {
+  flex: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+}
+
+.hs-hour-rain-bar {
+  flex: none;
+  width: 6px;
+  height: 24px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.hs-hour-rain-bar > span {
+  display: block;
+  width: 100%;
+  border-radius: 3px;
+  background: #7ec8ff;
+}
+
+.hs-hour-rain-pct {
+  flex: none;
+  height: 14px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 14px;
+}
+
 .hs-home-side {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
+/* One slim row of music sources: icon and label inline. */
 .hs-source-tiles {
+  flex: none;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
 .hs-tile {
-  min-height: 100px;
+  min-height: 72px;
   box-sizing: border-box;
   border-radius: var(--glass-radius-tile);
-  padding: 14px 16px;
+  padding: 0 8px;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   color: #fff;
   text-decoration: none;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
+}
+
+.hs-tile svg {
+  flex: none;
 }
 
 .hs-tile:hover,
 .hs-tile:focus {
   color: #fff;
-}
-
-.hs-info-tiles {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.hs-tile--info {
-  min-height: 112px;
-}
-
-/* No Home row: let the tiles fill the column. */
-.hs-home--no-home-row .hs-source-tiles,
-.hs-home--no-home-row .hs-info-tiles {
-  flex: 1;
 }
 
 .hs-tile-label {
@@ -693,32 +849,426 @@ html.hs-mode-night .hs-backdrop {
   opacity: 0.75;
 }
 
-.hs-tile-value-row {
+/* Glanceable info cards: glucose, climate, anchors. */
+.hs-info-card {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--glass-radius-tile);
+  padding: 12px 16px;
+  display: flex;
+  color: #fff;
+  text-decoration: none;
+}
+
+.hs-info-card:hover,
+.hs-info-card:focus {
+  color: #fff;
+}
+
+.hs-card-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.hs-card-label-text {
+  opacity: 0.75;
+}
+
+.hs-battery-low {
+  flex: none;
+  color: #ff4d4d;
+}
+
+.hs-glucose {
+  flex: 1 1 0;
+  min-height: 112px;
+  flex-direction: row;
+  gap: 14px;
+}
+
+.hs-glucose-reading {
+  flex: none;
+  width: 156px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2px;
+}
+
+.hs-glucose-now {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.hs-tile-value {
-  font-size: 38px;
-  font-weight: 800;
-  letter-spacing: -1px;
-}
-
-.hs-tile-value.is-stale {
+.hs-glucose-now.is-stale {
   opacity: 0.5;
 }
 
-.hs-tile-meta {
+.hs-glucose-value {
+  font-size: 52px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+
+.hs-glucose-arrow {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.hs-glucose-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   opacity: 0.85;
 }
 
-.hs-home-row {
+.hs-glucose-delta {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.hs-glucose-age {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.hs-glucose-age.is-stale {
+  font-weight: 800;
+  opacity: 1;
+}
+
+/* Trend line: the SVG stretches to the box, so the latest-point dot is a positioned element, not an SVG circle. */
+.hs-trend {
+  flex: 1;
+  min-width: 0;
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+}
+
+.hs-trend-plot {
+  position: relative;
   flex: 1;
   min-height: 0;
+  margin: 6px 8px 0 28px;
+}
+
+.hs-trend-plot svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.hs-trend-band {
+  fill: rgba(255, 255, 255, 0.13);
+}
+
+.hs-trend-line {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.hs-trend-dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+}
+
+.hs-trend-tick {
+  position: absolute;
+  left: -28px;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.hs-trend-axis {
+  flex: none;
+  display: flex;
+  justify-content: space-between;
+  margin: 4px 8px 0 28px;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.hs-home-lower {
+  flex: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hs-climate {
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* No glucose card: the lower cards take the whole column. */
+.hs-source-tiles + .hs-home-lower {
+  flex: 1 1 0;
+}
+
+.hs-source-tiles + .hs-home-lower .hs-climate {
+  flex: 1 1 auto;
+  justify-content: space-between;
+}
+
+.hs-source-tiles + .hs-home-lower .hs-climate-big {
+  font-size: 64px;
+}
+
+/* With room to spare, long conditions ("Thunderstorm with Hail") wrap instead of being cut off. */
+.hs-source-tiles + .hs-home-lower .hs-climate-detail > span,
+.hs-source-tiles + .hs-home-lower .hs-climate-outlook > span {
+  white-space: normal;
+}
+
+/* Only anchors: let the strip fill the column instead of leaving blank space under it. */
+.hs-source-tiles + .hs-home-lower > .hs-anchors:only-child {
+  flex: 1;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 20px;
+  padding: 24px 32px;
+}
+
+.hs-source-tiles + .hs-home-lower > .hs-anchors:only-child .hs-anchors-list {
+  flex: none;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 18px;
+}
+
+.hs-source-tiles + .hs-home-lower > .hs-anchors:only-child .hs-anchor-person {
+  font-size: 22px;
+  gap: 16px;
+}
+
+.hs-source-tiles + .hs-home-lower > .hs-anchors:only-child .hs-anchor-name {
+  width: 120px;
+}
+
+.hs-source-tiles + .hs-home-lower > .hs-anchors:only-child .hs-anchor-person .hs-progress {
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+}
+
+.hs-source-tiles + .hs-home-lower > .hs-anchors:only-child .hs-anchor-person .hs-progress > span {
+  border-radius: 5px;
+}
+
+/* Nothing else on the right: the music sources become a 2x2 grid of large tiles. */
+.hs-source-tiles:last-child {
+  flex: 1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.hs-source-tiles:last-child .hs-tile {
+  flex-direction: column;
+  font-size: 18px;
+}
+
+.hs-source-tiles:last-child .hs-tile svg {
+  width: 36px;
+  height: 36px;
+}
+
+.hs-card-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hs-climate-advice {
+  min-width: 0;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hs-climate-advice.is-open {
+  background: rgba(104, 214, 140, 0.3);
+}
+
+.hs-climate-top {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hs-climate-outside {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hs-climate-big {
+  flex: none;
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1;
+}
+
+.hs-climate-detail,
+.hs-climate-outlook {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  opacity: 0.9;
+}
+
+.hs-climate-outlook {
+  align-items: flex-end;
+  text-align: right;
+  max-width: 45%;
+}
+
+.hs-climate-detail > span,
+.hs-climate-outlook > span {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hs-rooms {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 8px;
+}
+
+.hs-room {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 5px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.hs-room-name {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hs-room-temp {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.hs-anchors {
+  flex: none;
+  min-height: 52px;
+  padding: 8px 16px;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+}
+
+.hs-anchors-list {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+
+.hs-anchor-person {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.hs-anchor-person .hs-progress {
+  display: block;
+  flex: none;
+  width: 48px;
+  height: 6px;
+}
+
+.hs-anchor-person .hs-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: #fff;
+}
+
+.hs-anchor-count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.hs-anchor-person.is-done .hs-anchor-count {
+  opacity: 1;
+}
+
+.hs-anchor-person.is-done .hs-anchor-count::after {
+  content: " \2713";
+}
+
+.hs-home-row {
+  flex: none;
+  min-height: 92px;
   border-radius: var(--glass-radius-tile);
   padding: 14px 16px;
   display: flex;
@@ -767,12 +1317,85 @@ html.hs-mode-night .hs-backdrop {
     width: auto;
   }
 
+  .hs-home-left {
+    width: auto;
+  }
+
+  .hs-hours {
+    flex: none;
+  }
+
+  .hs-source-tiles:last-child {
+    flex: none;
+  }
+
+  .hs-home-side {
+    flex: none;
+  }
+
   .hs-source-tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .hs-info-tiles {
-    grid-template-columns: 1fr;
+  .hs-glucose,
+  .hs-home-lower {
+    flex: none;
+  }
+
+  .hs-glucose {
+    flex-direction: column;
+  }
+
+  .hs-glucose-reading {
+    width: auto;
+  }
+
+  .hs-trend {
+    flex: none;
+    height: 120px;
+  }
+
+  .hs-climate-top {
+    flex-wrap: wrap;
+  }
+
+  .hs-climate-outlook {
+    align-items: flex-start;
+    max-width: none;
+    text-align: left;
+  }
+
+  .hs-card-head {
+    flex-wrap: wrap;
+  }
+
+  .hs-climate-advice {
+    white-space: normal;
+  }
+}
+
+/* Short kiosk with the Home row present: the anchors strip yields so the cards keep their room. */
+@media (min-width: 701px) and (max-height: 700px) {
+  .hs-home:not(.hs-home--no-home-row) .hs-anchors {
+    display: none;
+  }
+
+  .hs-home:not(.hs-home--no-home-row) .hs-glucose {
+    min-height: 120px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .hs-home:not(.hs-home--no-home-row) .hs-glucose-reading {
+    gap: 0;
+  }
+
+  .hs-home:not(.hs-home--no-home-row) .hs-glucose-value {
+    font-size: 40px;
+  }
+
+  .hs-home:not(.hs-home--no-home-row) .hs-glucose-arrow {
+    font-size: 26px;
   }
 }
 

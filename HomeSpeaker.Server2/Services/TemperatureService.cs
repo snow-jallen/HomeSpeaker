@@ -14,7 +14,21 @@ public sealed class TemperatureService : ITemperatureService
     private readonly TimeProvider timeProvider;
 
     private const string CacheKey = "temperature-status";
+    private const string DiagnosticsCacheKey = "temperature-diagnostics";
+    private static readonly TimeSpan diagnosticsCacheExpiration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan cacheExpiration = TimeSpan.FromMinutes(2);
+
+    // Order matters: each device is claimed by the first room that matches it, so more specific
+    // patterns come first (Emma before Girl).
+    private static readonly TemperatureDeviceMatcher.RoomPattern[] roomPatterns =
+    [
+        new("Outside", ["Outside"]),
+        new("Greenhouse", ["Greenhouse"]),
+        new("Emma", ["Emma"]),
+        new("Boy", ["Boy"]),
+        new("Downstairs", ["Downstairs", "Mom", "Dad", "Parent"]),
+        new("Girl", ["Girl"]),
+    ];
 
     public TemperatureService(HttpClient httpClient, IConfiguration configuration, ILogger<TemperatureService> logger, IMemoryCache cache, TimeProvider timeProvider)
     {
@@ -73,19 +87,18 @@ public sealed class TemperatureService : ITemperatureService
         }
     }
 
-    public async Task<double> GetDeviceTemperatureAsync(Device device, CancellationToken cancellationToken = default)
+    private async Task<DeviceStatePayload?> getDeviceStateAsync(Device device, CancellationToken cancellationToken)
     {
-        // Check if API key is configured
         var apiKey = configuration["Temperature:ApiKey"];
         if (string.IsNullOrEmpty(apiKey))
         {
-            logger.LogWarning("Govee API key not configured. Using default temperature for device {DeviceName}.", device.DeviceName);
-            return 70.0; // Default room temperature
+            logger.LogWarning("Govee API key not configured; no reading for device {DeviceName}.", device.DeviceName);
+            return null;
         }
 
         try
         {
-            logger.LogInformation("Fetching temperature for device: {DeviceName} ({DeviceId})", device.DeviceName, device.DeviceId);
+            logger.LogInformation("Fetching state for device: {DeviceName} ({DeviceId})", device.DeviceName, device.DeviceId);
             var payload = new
             {
                 requestId = Guid.NewGuid().ToString(),
@@ -95,16 +108,12 @@ public sealed class TemperatureService : ITemperatureService
             var response = await httpClient.PostAsync("device/state", content, cancellationToken);
             response.EnsureSuccessStatusCode();
             var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
-            var stateResponse = JsonSerializer.Deserialize<DeviceStateResponse>(responseJson);
-
-            return stateResponse?.Payload?.SensorTemperature
-                ?? throw new InvalidOperationException("Temperature capability not found in device state response.");
+            return JsonSerializer.Deserialize<DeviceStateResponse>(responseJson)?.Payload;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogError(ex, "Failed to get temperature for device {DeviceName}", device.DeviceName);
-            // Return a default temperature if device is not available
-            return 70.0; // Default room temperature
+            logger.LogError(ex, "Failed to get state for device {DeviceName}", device.DeviceName);
+            return null;
         }
     }
 
@@ -170,6 +179,48 @@ public sealed class TemperatureService : ITemperatureService
         return await GetTemperatureStatusAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// What each matched sensor reports, plus the devices no room claimed. Never includes the API key or device ids.
+    /// Cached briefly, because it costs one Govee call per sensor and the account has a request quota.
+    /// </summary>
+    public async Task<SensorDiagnosticsReport> GetSensorDiagnosticsAsync(CancellationToken cancellationToken = default)
+    {
+        if (cache.TryGetValue(DiagnosticsCacheKey, out SensorDiagnosticsReport? cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        var devices = await GetDevicesAsync(cancellationToken);
+        var deviceMap = TemperatureDeviceMatcher.Match(devices, roomPatterns);
+        var report = new SensorDiagnosticsReport();
+        foreach (var (room, _) in roomPatterns)
+        {
+            if (deviceMap[room] is not { } device)
+            {
+                continue;
+            }
+
+            var state = await getDeviceStateAsync(device, cancellationToken);
+            report.Sensors.Add(new SensorDiagnostic
+            {
+                Room = room,
+                DeviceName = device.DeviceName,
+                Sku = device.Sku,
+                StateAvailable = state is not null,
+                CapabilityInstances = state?.CapabilityInstances ?? [],
+                BatteryPercent = state?.Battery,
+            });
+        }
+
+        var claimed = deviceMap.Values.OfType<Device>().Select(d => d.DeviceId).ToHashSet(StringComparer.Ordinal);
+        report.UnmatchedDevices.AddRange(devices
+            .Where(d => !claimed.Contains(d.DeviceId))
+            .Select(d => new UnmatchedDevice { Name = d.DeviceName, Sku = d.Sku }));
+
+        cache.Set(DiagnosticsCacheKey, report, diagnosticsCacheExpiration);
+        return report;
+    }
+
     private async Task<TemperatureStatus> getTemperatureStatusInternalAsync(CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Getting temperature status...");
@@ -182,31 +233,29 @@ public sealed class TemperatureService : ITemperatureService
             Threshold = threshold
         };
 
-        // Define device search patterns
-        var devicePatterns = new Dictionary<string, string[]>
+        var deviceMap = TemperatureDeviceMatcher.Match(devices, roomPatterns);
+
+        // One state request per matched device gives both the temperature and (when reported) the battery.
+        var readings = new Dictionary<string, RoomReading>(StringComparer.Ordinal);
+        foreach (var (room, _) in roomPatterns)
         {
-            ["Outside"] = ["Outside"],
-            ["Girl"] = ["Girl"],
-            ["Emma"] = ["Emma"],
-            ["Boy"] = ["Boy"],
-            ["Downstairs"] = ["Downstairs", "Mom", "Dad", "Parent"],
-            ["Greenhouse"] = ["Greenhouse"]
-        };
+            var device = deviceMap[room];
+            var state = device is null ? null : await getDeviceStateAsync(device, cancellationToken);
+            if (device is not null && state is not null && state.SensorTemperature is null)
+            {
+                logger.LogWarning("Temperature capability not found in state for device {DeviceName}", device.DeviceName);
+            }
 
-        // Find devices using modern LINQ
-        var deviceMap = devicePatterns.ToDictionary(
-            kvp => kvp.Key,
-            kvp => devices.FirstOrDefault(d => kvp.Value.Any(pattern =>
-                d.DeviceName.Contains(pattern, StringComparison.OrdinalIgnoreCase)))
-        );
+            readings[room] = new RoomReading { Name = room, Temperature = state?.SensorTemperature, BatteryPercent = state?.Battery };
+        }
 
-        // Get temperatures for found devices
-        temperatureStatus.OutsideTemperature = await getTemperatureForDevice(deviceMap["Outside"], cancellationToken);
-        temperatureStatus.YoungerGirlsRoomTemperature = await getTemperatureForDevice(deviceMap["Girl"], cancellationToken);
-        temperatureStatus.OlderGirlsRoomTemperature = await getTemperatureForDevice(deviceMap["Emma"], cancellationToken);
-        temperatureStatus.BoysRoomTemperature = await getTemperatureForDevice(deviceMap["Boy"], cancellationToken);
-        temperatureStatus.MomAndDadsRoomTemperature = await getTemperatureForDevice(deviceMap["Downstairs"], cancellationToken);
-        temperatureStatus.GreenhouseTemperature = await getTemperatureForDevice(deviceMap["Greenhouse"], cancellationToken);
+        temperatureStatus.Rooms = [.. roomPatterns.Select(p => readings[p.Room])];
+        temperatureStatus.OutsideTemperature = readings["Outside"].Temperature;
+        temperatureStatus.YoungerGirlsRoomTemperature = readings["Girl"].Temperature;
+        temperatureStatus.OlderGirlsRoomTemperature = readings["Emma"].Temperature;
+        temperatureStatus.BoysRoomTemperature = readings["Boy"].Temperature;
+        temperatureStatus.MomAndDadsRoomTemperature = readings["Downstairs"].Temperature;
+        temperatureStatus.GreenhouseTemperature = readings["Greenhouse"].Temperature;
 
         // Calculate temperature difference and determine if within threshold
         if (temperatureStatus.OutsideTemperature is { } outsideTemp &&
@@ -219,9 +268,4 @@ public sealed class TemperatureService : ITemperatureService
 
         return temperatureStatus;
     }
-
-    private async Task<double?> getTemperatureForDevice(Device? device, CancellationToken cancellationToken)
-        => device is not null
-            ? await GetDeviceTemperatureAsync(device, cancellationToken)
-            : null;
 }

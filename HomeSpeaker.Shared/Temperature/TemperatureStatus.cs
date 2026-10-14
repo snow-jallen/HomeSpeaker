@@ -10,6 +10,13 @@ public sealed class TemperatureStatus
     public double? BoysRoomTemperature { get; set; }
     public double? MomAndDadsRoomTemperature { get; set; }
     public double? GreenhouseTemperature { get; set; }
+
+    /// <summary>
+    /// Every room the service looked for, with its battery level where reported. The single-room properties
+    /// above are kept for existing callers and always agree with these.
+    /// </summary>
+    public List<RoomReading> Rooms { get; set; } = [];
+
     public DateTime ReadingTakenAt { get; set; } = DateTime.UtcNow;
     public DateTime LastCachedAt { get; set; } = DateTime.UtcNow;
     public bool ShouldWindowsBeClosed { get; set; }

@@ -1,4 +1,5 @@
 using HomeSpeaker.Server2.Data;
+using HomeSpeaker.Server2.Services.Dashboard;
 using HomeSpeaker.Shared;
 using Microsoft.EntityFrameworkCore;
 
@@ -295,6 +296,26 @@ public class AnchorService
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Today's completion per person (local date), people ordered by name. Anyone with no anchors today is left out,
+    /// so an empty result means there is nothing to show.
+    /// </summary>
+    public async Task<IReadOnlyList<AnchorProgress>> GetTodayProgressAsync(CancellationToken cancellationToken = default)
+    {
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(timeProvider.GetUtcNow().UtcDateTime, timeProvider.LocalTimeZone));
+
+        var rows = await dbContext.DailyAnchors
+            .Where(da => da.Date == today)
+            .GroupBy(da => da.UserId)
+            .Select(g => new { UserId = g.Key, Done = g.Count(da => da.IsCompleted), Total = g.Count() })
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return [.. rows
+            .OrderBy(r => r.UserId, StringComparer.OrdinalIgnoreCase)
+            .Select(r => new AnchorProgress(r.UserId, r.Done, r.Total))];
     }
 
     // Ensure daily anchors exist for today for all users with anchors

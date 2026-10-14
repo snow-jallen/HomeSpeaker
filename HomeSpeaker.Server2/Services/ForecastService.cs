@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using HomeSpeaker.Shared.Forecast;
@@ -116,7 +117,7 @@ public sealed class ForecastService : IForecastService
 
         // Use Open-Meteo API (free, no API key required). Exceptions propagate to
         // GetForecastStatusAsync, which reports the failure rather than caching placeholder data.
-        var url = $"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,weather_code&temperature_unit=fahrenheit&timezone=auto&forecast_days=2";
+        var url = $"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,weather_code,is_day&temperature_unit=fahrenheit&timezone=auto&forecast_days=2";
 
         var response = await httpClient.GetAsync(url, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -133,7 +134,9 @@ public sealed class ForecastService : IForecastService
         var now = getForecastNow(weatherData.Timezone);
         var forecastStatus = new ForecastStatus
         {
-            LastUpdated = timeProvider.GetUtcNow().UtcDateTime
+            LastUpdated = timeProvider.GetUtcNow().UtcDateTime,
+            TimeZoneId = weatherData.Timezone,
+            Hourly = buildHourly(weatherData.Hourly)
         };
 
         // Find tonight's low (remaining hours of today in forecast timezone)
@@ -218,6 +221,26 @@ public sealed class ForecastService : IForecastService
         return forecastStatus;
     }
 
+    private static List<ForecastData> buildHourly(HourlyData hourly)
+    {
+        var count = new[] { hourly.Time.Length, hourly.Temperature2m.Length, hourly.WeatherCode.Length }.Min();
+        var entries = new List<ForecastData>(count);
+        for (var i = 0; i < count; i++)
+        {
+            entries.Add(new ForecastData
+            {
+                DateTime = DateTime.Parse(hourly.Time[i], CultureInfo.InvariantCulture),
+                Temperature = hourly.Temperature2m[i],
+                Conditions = getConditionDescription(hourly.WeatherCode[i]),
+                PrecipitationChance = hourly.PrecipitationProbability is { } rain && i < rain.Length ? rain[i] : null,
+                WeatherCode = hourly.WeatherCode[i],
+                IsDay = hourly.IsDay is { } day && i < day.Length ? day[i] != 0 : null,
+            });
+        }
+
+        return entries;
+    }
+
     private static string getConditionDescription(int weatherCode)
     {
         // WMO Weather interpretation codes
@@ -263,28 +286,11 @@ public sealed class ForecastService : IForecastService
 
         [JsonPropertyName("weather_code")]
         public int[] WeatherCode { get; set; } = Array.Empty<int>();
+
+        [JsonPropertyName("is_day")]
+        public int[]? IsDay { get; set; }
     }
 
-    private DateTime getForecastNow(string? timezone)
-    {
-        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
-        if (string.IsNullOrWhiteSpace(timezone))
-        {
-            return TimeZoneInfo.ConvertTimeFromUtc(utcNow, TimeZoneInfo.Local);
-        }
-
-        try
-        {
-            var timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById(timezone);
-            return TimeZoneInfo.ConvertTimeFromUtc(utcNow, timeZoneInfo);
-        }
-        catch (TimeZoneNotFoundException)
-        {
-            return TimeZoneInfo.ConvertTimeFromUtc(utcNow, TimeZoneInfo.Local);
-        }
-        catch (InvalidTimeZoneException)
-        {
-            return TimeZoneInfo.ConvertTimeFromUtc(utcNow, TimeZoneInfo.Local);
-        }
-    }
+    private DateTime getForecastNow(string? timezone) =>
+        ForecastTime.LocalNow(timezone, timeProvider.GetUtcNow().UtcDateTime);
 }
