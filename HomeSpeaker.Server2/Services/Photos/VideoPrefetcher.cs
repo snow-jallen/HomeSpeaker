@@ -193,7 +193,7 @@ public sealed class VideoPrefetcher : BackgroundService
             logger.LogInformation(
                 "Prefetched video {AssetId}: {SizeMB} MB in {ElapsedMs} ms",
                 assetId,
-                (written / (double)BytesPerMB).ToString("0.0", CultureInfo.InvariantCulture),
+                (written / (double)BytesPerMB).ToString("0.00", CultureInfo.InvariantCulture),
                 (long)timeProvider.GetElapsedTime(started).TotalMilliseconds);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

@@ -245,7 +245,7 @@ public sealed class VideoPrefetcherTests : IDisposable
         await createPrefetcher().RunOnceAsync(CancellationToken.None);
 
         var line = Assert.Single(log.Entries, e => e.Level == LogLevel.Information && e.Message.Contains(upcoming()[0], StringComparison.Ordinal) && e.Message.StartsWith("Prefetched", StringComparison.Ordinal));
-        Assert.Contains("0.5 MB", line.Message, StringComparison.Ordinal);
+        Assert.Contains("0.50 MB", line.Message, StringComparison.Ordinal);
         Assert.Contains(" ms", line.Message, StringComparison.Ordinal);
     }
 
