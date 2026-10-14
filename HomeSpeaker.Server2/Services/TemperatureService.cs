@@ -16,6 +16,18 @@ public sealed class TemperatureService : ITemperatureService
     private const string CacheKey = "temperature-status";
     private static readonly TimeSpan cacheExpiration = TimeSpan.FromMinutes(2);
 
+    // Order matters: each device is claimed by the first room that matches it, so more specific
+    // patterns come first (Emma before Girl).
+    private static readonly TemperatureDeviceMatcher.RoomPattern[] roomPatterns =
+    [
+        new("Outside", ["Outside"]),
+        new("Greenhouse", ["Greenhouse"]),
+        new("Emma", ["Emma"]),
+        new("Boy", ["Boy"]),
+        new("Downstairs", ["Downstairs", "Mom", "Dad", "Parent"]),
+        new("Girl", ["Girl"]),
+    ];
+
     public TemperatureService(HttpClient httpClient, IConfiguration configuration, ILogger<TemperatureService> logger, IMemoryCache cache, TimeProvider timeProvider)
     {
         this.httpClient = httpClient;
@@ -182,23 +194,7 @@ public sealed class TemperatureService : ITemperatureService
             Threshold = threshold
         };
 
-        // Define device search patterns
-        var devicePatterns = new Dictionary<string, string[]>
-        {
-            ["Outside"] = ["Outside"],
-            ["Girl"] = ["Girl"],
-            ["Emma"] = ["Emma"],
-            ["Boy"] = ["Boy"],
-            ["Downstairs"] = ["Downstairs", "Mom", "Dad", "Parent"],
-            ["Greenhouse"] = ["Greenhouse"]
-        };
-
-        // Find devices using modern LINQ
-        var deviceMap = devicePatterns.ToDictionary(
-            kvp => kvp.Key,
-            kvp => devices.FirstOrDefault(d => kvp.Value.Any(pattern =>
-                d.DeviceName.Contains(pattern, StringComparison.OrdinalIgnoreCase)))
-        );
+        var deviceMap = TemperatureDeviceMatcher.Match(devices, roomPatterns);
 
         // Get temperatures for found devices
         temperatureStatus.OutsideTemperature = await getTemperatureForDevice(deviceMap["Outside"], cancellationToken);
