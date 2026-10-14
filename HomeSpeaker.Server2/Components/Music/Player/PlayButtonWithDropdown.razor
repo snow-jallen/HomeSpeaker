@@ -9,7 +9,11 @@
 @implements IAsyncDisposable
 
 <div class="position-relative d-inline-block" id="@menuAnchorId">
-    <button @onclick="ToggleMenu" class="hs-icon-btn hs-icon-btn--filled" title="Play" aria-label="Play" aria-haspopup="menu" aria-expanded="@(showMenu ? "true" : "false")">
+    @* The kiosk is the speaker itself, so it always plays on the server and never offers "Stream to Device". *@
+    <button @onclick="PlayOnServer" class="hs-icon-btn hs-icon-btn--filled kiosk-only" title="Play" aria-label="Play">
+        <i class="fas fa-play" aria-hidden="true"></i>
+    </button>
+    <button @onclick="ToggleMenu" class="hs-icon-btn hs-icon-btn--filled not-kiosk" title="Play" aria-label="Play" aria-haspopup="menu" aria-expanded="@(showMenu ? "true" : "false")">
         <i class="fas fa-play" aria-hidden="true"></i>
     </button>@if (showMenu)
     {

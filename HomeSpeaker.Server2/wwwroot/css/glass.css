@@ -46,6 +46,10 @@ body:not([data-kiosk="true"]) .kiosk-only {
   display: none !important;
 }
 
+body[data-kiosk="true"] .not-kiosk {
+  display: none !important;
+}
+
 /* ---------- Shell ---------- */
 
 .hs-backdrop {

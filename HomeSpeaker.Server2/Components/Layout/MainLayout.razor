@@ -28,10 +28,10 @@
             </a>
         }
         <div class="hs-topbar-spacer"></div>
+        <Clock Format="h:mm" Class="hs-topbar-clock" />
         <button type="button" class="glass glass-pill" aria-label="All pages" @onclick="ToggleMenu">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
         </button>
-        <Clock Format="h:mm" Class="hs-topbar-clock" />
     </header>
 
     <main class="hs-main @(isHome ? "hs-main--home" : "glass glass-panel")">
