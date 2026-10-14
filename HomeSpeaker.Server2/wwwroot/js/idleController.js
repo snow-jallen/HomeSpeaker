@@ -50,7 +50,12 @@ window.idleController = (function () {
         // A modal <dialog> sits in the top layer above the ambient and night layers, so close any that are open.
         // Each dialog's close event lets its Blazor component reset its own state.
         // Blazor's reconnect modal is also a <dialog>; leave it open so a dropped connection still shows.
+        // Open Play/Plus menus are not dialogs, so ask menuDismiss to close those too: the next wake must not
+        // land on a menu left open from before the screen dimmed.
         if (mode !== 'active') {
+            if (window.menuDismiss) {
+                try { window.menuDismiss.dismissAll(); } catch (e) { console.error('idleController could not close menus', e); }
+            }
             document.querySelectorAll('dialog[open]:not(#components-reconnect-modal)').forEach(function (dialog) {
                 try { dialog.close(); } catch (e) { console.error('idleController could not close dialog', e); }
             });

@@ -53,29 +53,30 @@ else
 
 @if (!isEditModalHidden)
 {
-    <FluentDialog Hidden=@isEditModalHidden class="glass-fluent-dialog">
-        <div class="glass-dialog">
-            <h2 class="glass-dialog-title">Edit Song</h2>
-            <div class="glass-dialog-body">
-                <label class="glass-field">
-                    <span>Title</span>
-                    <input type="text" class="glass-input" id="songName" @bind="editedName" />
-                </label>
-                <label class="glass-field">
-                    <span>Artist</span>
-                    <input type="text" class="glass-input" id="songArtist" @bind="editedArtist" />
-                </label>
-                <label class="glass-field">
-                    <span>Album</span>
-                    <input type="text" class="glass-input" id="songAlbum" @bind="editedAlbum" />
-                </label>
-            </div>
-            <div class="glass-dialog-actions">
-                <button type="button" class="glass-btn glass-btn--ghost" @onclick=cancelEdit>Cancel</button>
-                <button type="button" class="glass-btn" @onclick=saveEdit>Save</button>
-            </div>
+    @* Native dialog: it renders in the browser top layer (above the glass panel) and idleController can close it
+       when the screen goes ambient; @onclose then resets this component's state. *@
+    <dialog id="@editDialogId" class="glass-dialog" aria-labelledby="@(editDialogId + "-title")"
+            @oncancel="cancelEdit" @oncancel:preventDefault="true" @onclose="cancelEdit">
+        <h2 class="glass-dialog-title" id="@(editDialogId + "-title")">Edit Song</h2>
+        <div class="glass-dialog-body">
+            <label class="glass-field">
+                <span>Title</span>
+                <input type="text" class="glass-input" @bind="editedName" />
+            </label>
+            <label class="glass-field">
+                <span>Artist</span>
+                <input type="text" class="glass-input" @bind="editedArtist" />
+            </label>
+            <label class="glass-field">
+                <span>Album</span>
+                <input type="text" class="glass-input" @bind="editedAlbum" />
+            </label>
         </div>
-    </FluentDialog>
+        <div class="glass-dialog-actions">
+            <button type="button" class="glass-btn glass-btn--ghost" @onclick=cancelEdit>Cancel</button>
+            <button type="button" class="glass-btn" @onclick=saveEdit>Save</button>
+        </div>
+    </dialog>
 }
 
 
@@ -97,6 +98,8 @@ else
 
     private bool showDetails { get; set; }
     private bool isEditModalHidden = true;
+    private bool editDialogNeedsOpen;
+    private readonly string editDialogId = "songEditDialog-" + Guid.NewGuid().ToString("N");
     private string editedName = string.Empty;
     private string editedArtist = string.Empty;
     private string editedAlbum = string.Empty;
@@ -124,6 +127,27 @@ else
             editedAlbum = SongViewModel.Album;
         }
         isEditModalHidden = !isEditModalHidden;
+        editDialogNeedsOpen = !isEditModalHidden;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!editDialogNeedsOpen)
+        {
+            return;
+        }
+
+        editDialogNeedsOpen = false;
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("eval", $"document.getElementById('{editDialogId}')?.showModal()");
+        }
+        catch (Exception ex) when (ex is JSDisconnectedException or JSException or TaskCanceledException)
+        {
+            // Dialog could not be opened (circuit gone or script error): keep the UI consistent.
+            isEditModalHidden = true;
+            StateHasChanged();
+        }
     }
 
     void cancelEdit()

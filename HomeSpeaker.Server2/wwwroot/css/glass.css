@@ -1221,7 +1221,7 @@ select.glass-input option {
   color: var(--glass-text);
 }
 
-/* Dialog content (our own markup, native dialog or FluentDialog). */
+/* Dialog content (our own markup in a native dialog). */
 .glass-dialog {
   box-sizing: border-box;
   width: min(420px, calc(100vw - 32px));

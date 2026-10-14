@@ -1,17 +1,20 @@
 /* ===== Play Controls (glass) ===== */
 
 .play-controls {
+    --play-controls-gap: 12px;
+    --play-controls-play-size: 64px;
+    --play-controls-skip-size: 52px;
     display: flex;
-    gap: 12px;
+    gap: var(--play-controls-gap);
     align-items: center;
     justify-content: center;
     flex-wrap: wrap;
 }
 
 .play-controls .hs-play-btn {
-    width: 64px;
-    height: 64px;
-    border-radius: 32px;
+    width: var(--play-controls-play-size);
+    height: var(--play-controls-play-size);
+    border-radius: calc(var(--play-controls-play-size) / 2);
     font-size: 24px;
     transition: transform 0.15s ease;
 }
@@ -26,29 +29,42 @@
 }
 
 .play-controls .skip-button {
-    width: 52px;
-    height: 52px;
-    border-radius: 26px;
+    width: var(--play-controls-skip-size);
+    height: var(--play-controls-skip-size);
+    border-radius: calc(var(--play-controls-skip-size) / 2);
     font-size: 18px;
 }
 
-/* Compact variant: used by NavMenu (NoTopLayout pages) */
-.play-controls--compact {
-    gap: 8px;
+/* Compact variant (NavMenu on NoTopLayout pages): smaller buttons only where space is tight, that is on
+   kiosk browsers and at 1024px wide or less. Wider screens keep the normal size. */
+body[data-kiosk="true"] .play-controls--compact {
+    --play-controls-gap: 8px;
+    --play-controls-play-size: 52px;
+    --play-controls-skip-size: 44px;
 }
 
-.play-controls--compact .hs-play-btn {
-    width: 52px;
-    height: 52px;
-    border-radius: 26px;
+body[data-kiosk="true"] .play-controls--compact .hs-play-btn {
     font-size: 20px;
 }
 
-.play-controls--compact .skip-button {
-    width: 44px;
-    height: 44px;
-    border-radius: 22px;
+body[data-kiosk="true"] .play-controls--compact .skip-button {
     font-size: 16px;
+}
+
+@media (max-width: 1024px) {
+    .play-controls--compact {
+        --play-controls-gap: 8px;
+        --play-controls-play-size: 52px;
+        --play-controls-skip-size: 44px;
+    }
+
+    .play-controls--compact .hs-play-btn {
+        font-size: 20px;
+    }
+
+    .play-controls--compact .skip-button {
+        font-size: 16px;
+    }
 }
 
 .play-button .fa-play {
