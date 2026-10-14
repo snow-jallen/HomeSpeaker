@@ -51,6 +51,19 @@ public sealed class VideoEvictionPolicyTests
     }
 
     [Fact]
+    public void NeverServedVideoThatIsEvictedAndCachedAgain_StartsAFreshTenSlideAge()
+    {
+        var policy = new VideoEvictionPolicy();
+        Assert.Empty(policy.SelectEvictions(["a"], snapshot(0, ["a"], ["a"])));
+        Assert.Equal(["a"], policy.SelectEvictions(["a"], snapshot(11, ["a"], [])));
+
+        // Downloaded again at slide 11 and out of the window: it must not inherit the old first-seen of slide 0.
+        Assert.Empty(policy.SelectEvictions(["a"], snapshot(12, ["a"], [])));
+        Assert.Empty(policy.SelectEvictions(["a"], snapshot(21, ["a"], [])));
+        Assert.Equal(["a"], policy.SelectEvictions(["a"], snapshot(22, ["a"], [])));
+    }
+
+    [Fact]
     public void ServedVideoIsKeptWhileItIsServedAgain()
     {
         var policy = new VideoEvictionPolicy();
