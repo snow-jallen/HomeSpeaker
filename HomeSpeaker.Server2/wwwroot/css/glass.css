@@ -303,9 +303,13 @@ html.hs-mode-night .hs-backdrop {
   background: var(--glass-tone-urgent) !important;
 }
 
-/* Slideshow chips sit on photos, so they're a little more opaque than other glass. */
+/* Slideshow chips let the photo show through: a light tint and a light blur, with a
+   text shadow to keep the numbers readable. */
 .hs-ov-chips .hs-chip {
-  background: rgba(22, 22, 26, 0.66);
+  background: rgba(22, 22, 26, 0.28);
+  -webkit-backdrop-filter: blur(6px) saturate(140%);
+  backdrop-filter: blur(6px) saturate(140%);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
 }
 
 /* Blood sugar: fixed at the size the chip had with its old 40px number, which now fills
@@ -339,15 +343,15 @@ html.hs-mode-night .hs-backdrop {
 
 /* Green / yellow / red by the reading (GlucoseToneMap). */
 .hs-ov-chips .hs-tone-normal {
-  background: rgba(22, 132, 64, 0.85) !important;
+  background: rgba(22, 132, 64, 0.5) !important;
 }
 
 .hs-ov-chips .hs-tone-caution {
-  background: rgba(196, 150, 0, 0.9) !important;
+  background: rgba(196, 150, 0, 0.55) !important;
 }
 
 .hs-ov-chips .hs-tone-urgent {
-  background: rgba(180, 28, 40, 0.9) !important;
+  background: rgba(180, 28, 40, 0.55) !important;
 }
 
 .hs-ov-playing {
