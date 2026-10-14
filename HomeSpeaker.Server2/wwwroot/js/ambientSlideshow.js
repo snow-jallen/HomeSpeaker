@@ -4,7 +4,9 @@
 // <video class="hs-slide hs-slide-video"> layer. A short history lets the user swipe back and
 // forward. Advances only while idleController is in 'ambient' mode: outside it no timer runs and the
 // blurred backdrop stays on the last photo. On the first init it seeds that backdrop on every device
-// (phones and laptops never enter ambient mode), skipping past videos until a photo arrives.
+// (phones and laptops never enter ambient mode), skipping past videos until a photo arrives. The
+// photo API has no still image for a video, so if every seeded item is a video it tries once more
+// after seedRetryMs (a single one-shot timer, never a repeating one).
 window.ambientSlideshow = (function () {
     const maxHistory = 20;
     const videoLoadTimeoutMs = 10000;
@@ -12,11 +14,14 @@ window.ambientSlideshow = (function () {
     const videoStallGraceMs = 5000;
     const fadeMs = 1600; // a little longer than the 1.5s CSS opacity transition
     const maxSeedAttempts = 5;
+    const seedRetryMs = 60000;
 
     let slideMs = 30000;
     let maxVideoMs = 60000;
     let timer = null;
     let unloadTimer = null;
+    let seedRetryTimer = null;
+    let backdropReady = false; // a photo has been shown, so the blurred backdrop is set
     let front = 0;
     let busy = false;
     let initialized = false;
@@ -93,6 +98,7 @@ window.ambientSlideshow = (function () {
         unloadVideo();
         history = [];
         pos = -1;
+        backdropReady = false;
     }
 
     function applyMeta(item) {
@@ -152,7 +158,7 @@ window.ambientSlideshow = (function () {
 
     async function showPhoto(item, token) {
         const slides = imgSlides();
-        if (slides.length < 2) return;
+        if (slides.length < 2) return false;
         const incoming = slides[1 - front];
         incoming.src = item.url;
         // If decode() never settles the timer would stay cleared and the slideshow would freeze.
@@ -161,6 +167,7 @@ window.ambientSlideshow = (function () {
         if (token !== showToken) return false;
 
         document.documentElement.style.setProperty('--hs-photo', 'url("' + item.url + '")');
+        backdropReady = true;
         applyMeta(item);
 
         consecutiveSkips = 0;
@@ -177,7 +184,7 @@ window.ambientSlideshow = (function () {
 
     async function showVideo(item, token) {
         const video = videoEl();
-        if (!video) return;
+        if (!video) return false;
 
         // Outside ambient mode the video stays in the history but never plays.
         if (!isAmbient()) return false;
@@ -187,10 +194,10 @@ window.ambientSlideshow = (function () {
         video.src = item.url;
 
         const loaded = await waitForCanPlay(video);
-        if (token !== showToken) return;
-        if (loaded.reason === 'cancelled') return; // the user left ambient mode mid-load
-        if (!loaded.ok) { skipVideo(item, loaded.reason); return; }
-        if (!isAmbient()) return;
+        if (token !== showToken) return false;
+        if (loaded.reason === 'cancelled') return false; // the user left ambient mode mid-load
+        if (!loaded.ok) { skipVideo(item, loaded.reason); return false; }
+        if (!isAmbient()) return false;
 
         video.currentTime = 0;
         // Same safety net for a play() that never settles; the normal schedule replaces it.
@@ -198,12 +205,12 @@ window.ambientSlideshow = (function () {
         try {
             await video.play();
         } catch (e) {
-            if (token !== showToken) return;
+            if (token !== showToken) return false;
             skipVideo(item, e);
-            return;
+            return false;
         }
-        if (token !== showToken) return;
-        if (!isAmbient()) { video.pause(); return; }
+        if (token !== showToken) return false;
+        if (!isAmbient()) { video.pause(); return false; }
 
         consecutiveSkips = 0;
         applyMeta(item);
@@ -229,8 +236,7 @@ window.ambientSlideshow = (function () {
         clearTimer();
         disposeVideoListeners();
         try {
-            if (isVideo(item)) return await showVideo(item, token) === true;
-            return await showPhoto(item, token) === true;
+            return isVideo(item) ? await showVideo(item, token) : await showPhoto(item, token);
         } catch (e) {
             if (token !== showToken) return false;
             console.debug('ambientSlideshow: keeping current item', e);
@@ -277,14 +283,22 @@ window.ambientSlideshow = (function () {
 
     // Gives the blurred backdrop a photo on every device. Outside ambient mode a video never plays
     // (so it would leave the page black): keep it in the history and fetch again, up to
-    // maxSeedAttempts items. Once ambient mode is running, the normal slideshow takes over.
-    async function seedBackdrop() {
+    // maxSeedAttempts items. Once ambient mode is running, the normal slideshow takes over. If every
+    // item was a video, retry once after seedRetryMs (retry = false for that second pass).
+    async function seedBackdrop(retry) {
         for (let attempt = 0; attempt < maxSeedAttempts; attempt++) {
             const item = await fetchNext();
             if (!item) return;
             remember(item);
             const shown = await show(item);
             if (shown || isAmbient()) return;
+        }
+        if (retry) {
+            clearTimeout(seedRetryTimer);
+            seedRetryTimer = setTimeout(function () {
+                seedRetryTimer = null;
+                if (!backdropReady && !isAmbient()) seedBackdrop(false);
+            }, seedRetryMs);
         }
     }
 
@@ -330,6 +344,9 @@ window.ambientSlideshow = (function () {
 
     function onModeChange(mode) {
         if (mode === 'ambient') {
+            // The slideshow itself now supplies photos, so the pending backdrop retry is unnecessary.
+            clearTimeout(seedRetryTimer);
+            seedRetryTimer = null;
             lastDirection = 'forward';
             if (pos >= 0 && history[pos]) show(history[pos]);
             else next();
@@ -364,7 +381,7 @@ window.ambientSlideshow = (function () {
                     else previous();
                 });
             }
-            seedBackdrop();
+            seedBackdrop(true);
         },
         next: next,
         previous: previous
