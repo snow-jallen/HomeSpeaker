@@ -68,6 +68,25 @@ public sealed class LiveActivityPayloadTests
         Assert.Equal(string.Empty, state.GetProperty("artist").GetString());
     }
 
+    [Theory]
+    [InlineData("Take Five", "KUSC", "KUSC")]
+    [InlineData(null, "KUSC", "")]
+    [InlineData("KUSC", "KUSC", "")]
+    public void RadioShowsTheStationUnderTheNowPlayingTitle(string? nowPlaying, string streamName, string expectedArtist)
+    {
+        var status = new PlayerStatusDto
+        {
+            CurrentSong = nowPlaying is null ? null : new Song { Name = nowPlaying, Path = "http://radio.example/stream" },
+            StreamName = streamName,
+            IsStream = true,
+            StillPlaying = true
+        };
+
+        var state = LiveActivityPayload.CreateContentState(new PlayerStatusSnapshot(status, capturedAt));
+
+        Assert.Equal(expectedArtist, state.Artist);
+    }
+
     [Fact]
     public void EndPayloadDismissesImmediately()
     {

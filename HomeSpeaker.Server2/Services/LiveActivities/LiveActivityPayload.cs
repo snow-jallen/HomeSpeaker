@@ -19,9 +19,14 @@ public static class LiveActivityPayload
             : status.StillPlaying ? "Streaming"
             : "Not Playing";
 
+        // For radio the "song" is the station's now-playing title, so the station goes underneath.
+        var artist = !status.IsStream ? status.CurrentSong?.Artist ?? string.Empty
+            : !string.IsNullOrWhiteSpace(status.StreamName) && !string.Equals(title, status.StreamName, StringComparison.Ordinal) ? status.StreamName
+            : string.Empty;
+
         return new LiveActivityContentState(
             Title: title,
-            Artist: status.CurrentSong?.Artist ?? string.Empty,
+            Artist: artist,
             IsPlaying: status.StillPlaying,
             IsStream: status.IsStream,
             Volume: status.Volume,

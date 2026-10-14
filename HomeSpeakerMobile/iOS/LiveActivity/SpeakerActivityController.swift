@@ -26,12 +26,25 @@ final class SpeakerActivityController {
         activeServerIds.contains(connection.id.uuidString)
     }
 
-    /// Picks up activities that outlived the previous app launch.
+    /// Picks up activities that outlived the previous app launch and re-sends
+    /// their push tokens: speakers keep registrations in memory only, so a
+    /// redeploy or restart forgets them. Call whenever the app comes forward.
     func reattach() {
         for activity in Activity<SpeakerActivityAttributes>.activities {
             observe(activity)
+            if let token = activity.pushToken {
+                register(token, activityId: activity.id, serverId: activity.attributes.serverId)
+            }
         }
         refreshActiveIds()
+    }
+
+    private func register(_ token: Data, activityId: String, serverId: String) {
+        guard let connection = UUID(uuidString: serverId).flatMap(SharedConnections.connection(id:)) else { return }
+        let hex = token.map { String(format: "%02x", $0) }.joined()
+        Task {
+            try? await APIClient.client(for: connection).registerLiveActivity(id: activityId, pushToken: hex)
+        }
     }
 
     func start(for connection: ServerConnection, status: PlayerStatus) async {
@@ -87,11 +100,9 @@ final class SpeakerActivityController {
         let activityId = activity.id
         let serverId = activity.attributes.serverId
 
-        let tokenTask = Task {
+        let tokenTask = Task { [weak self] in
             for await tokenData in activity.pushTokenUpdates {
-                let token = tokenData.map { String(format: "%02x", $0) }.joined()
-                guard let connection = UUID(uuidString: serverId).flatMap(SharedConnections.connection(id:)) else { continue }
-                try? await APIClient.client(for: connection).registerLiveActivity(id: activityId, pushToken: token)
+                self?.register(tokenData, activityId: activityId, serverId: serverId)
             }
         }
 

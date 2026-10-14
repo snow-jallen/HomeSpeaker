@@ -13,7 +13,8 @@ final class SpeakerStatusStore {
     private(set) var connection: ServerConnection?
 
     @ObservationIgnored private var task: Task<Void, Never>?
-    @ObservationIgnored private var lastSurfaceKey: String?
+    @ObservationIgnored private var lastWidgetKey: String?
+    @ObservationIgnored private var lastActivityKey: String?
 
     /// Starts following a speaker, or stops when `connection` is nil.
     func follow(_ connection: ServerConnection?) {
@@ -22,6 +23,8 @@ final class SpeakerStatusStore {
         task = nil
         if connection?.id != self.connection?.id {
             status = nil
+            lastWidgetKey = nil
+            lastActivityKey = nil
         }
         self.connection = connection
         guard let connection else { return }
@@ -57,9 +60,18 @@ final class SpeakerStatusStore {
 
     private func run(_ connection: ServerConnection) async {
         let api = APIClient.client(for: connection)
+        var hadStream = false
         while !Task.isCancelled {
             do {
+                var isFirstEvent = true
                 for try await update in api.statusUpdates() {
+                    // A stream coming back usually means the server restarted
+                    // and forgot its Live Activity registrations.
+                    if isFirstEvent && hadStream {
+                        SpeakerActivityController.shared.reattach()
+                    }
+                    isFirstEvent = false
+                    hadStream = true
                     apply(update, from: connection)
                 }
             } catch {
@@ -78,24 +90,36 @@ final class SpeakerStatusStore {
         status = newStatus
         receivedAt = .now
 
-        // Widgets and the Live Activity only care about what's on screen there,
-        // not elapsed time, so skip reloading them for heartbeats.
-        let key = [
+        // Widgets and the Live Activity only care about what they show, not
+        // elapsed time, so skip updating them for heartbeats. Widget reloads
+        // are rationed by iOS, so they only follow the song and play state.
+        let widgetKey = [
             newStatus.displayTitle,
             newStatus.displaySubtitle,
             String(newStatus.isPlaying),
-            String(newStatus.volume),
-            String(newStatus.sleepTimerActive ?? false),
-            String(newStatus.repeatMode ?? false),
         ].joined(separator: "|")
-        guard key != lastSurfaceKey else { return }
-        let isFirst = lastSurfaceKey == nil
-        lastSurfaceKey = key
-        Task {
-            await SpeakerActivityController.shared.update(for: source, status: newStatus)
+        let sleepEnds = newStatus.sleepTimerActive == true
+            ? newStatus.sleepTimerRemainingMinutes.map { Int((Date.now.timeIntervalSince1970 + $0 * 60) / 30) }
+            : nil
+        let activityKey = [
+            widgetKey,
+            String(newStatus.volume),
+            String(newStatus.repeatMode ?? false),
+            sleepEnds.map(String.init) ?? "-",
+        ].joined(separator: "|")
+
+        if activityKey != lastActivityKey {
+            lastActivityKey = activityKey
+            Task {
+                await SpeakerActivityController.shared.update(for: source, status: newStatus)
+            }
         }
-        if !isFirst {
-            SpeakerSurfaces.reloadWidgets()
+        if widgetKey != lastWidgetKey {
+            let isFirst = lastWidgetKey == nil
+            lastWidgetKey = widgetKey
+            if !isFirst {
+                SpeakerSurfaces.reloadWidgets()
+            }
         }
     }
 }

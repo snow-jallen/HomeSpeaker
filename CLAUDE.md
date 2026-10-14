@@ -16,6 +16,10 @@ Three projects (`HomeSpeaker.sln`), all `net10.0`:
 
 `HomeSpeaker.Server2/HomeSpeaker.Server2.sln` is a stale single-project solution; use the top-level `HomeSpeaker.sln`.
 
+### iOS / watchOS app
+
+`HomeSpeakerMobile/` is a SwiftUI iPhone app with a watch app, not part of `HomeSpeaker.sln`. The Xcode project is generated from `project.yml` by XcodeGen (`xcodegen generate` on a Mac); the generated `.xcodeproj` is checked in, so regenerate and commit it when targets or folders change. Targets: `HomeSpeaker` (iOS), `HomeSpeakerWidgetExtension` (Home/Lock Screen widget, Live Activity, iOS 18 controls), `HomeSpeakerWatch`, `HomeSpeakerWatchWidget`. Source folders: `Shared/` (all targets: models, `APIClient`, `SharedConnections`), `iOSShared/` (iOS app + widget extension: `ServerEntity`, playback intents, Live Activity attributes), `iOS/`, `iOS/Widget/`, `watchOS/`. Saved servers live in the `group.com.homespeaker` App Group so intents and widgets can read them. `.github/workflows/ios-build.yml` compile-checks the app on a macOS runner for pushes to non-master branches touching `HomeSpeakerMobile/`, and uploads the generated project as an artifact.
+
 ## Build / run / test commands
 
 ```powershell
@@ -73,7 +77,9 @@ Minimal APIs. The bulk are mapped in `Endpoints/HomeSpeakerRestEndpoints.cs` via
 
 ### Background hosted services
 
-Registered in `Program.cs` and run for the process lifetime: `MigrationApplier`, `DailyAnchorWorker`, `AirPlayReceiverService`, `LifecycleEvents`, `AutoPlayMonitorService`, `PhotoSyncWorker`, `VideoPrefetcher`, `HealthAlertWorker`, `AiMusicAnalysisWorker`, and `VolumeMonitorService`. AI playlist analysis is gated by config and signalled through `AiProcessingSignal`.
+Registered in `Program.cs` and run for the process lifetime: `MigrationApplier`, `DailyAnchorWorker`, `AirPlayReceiverService`, `LifecycleEvents`, `AutoPlayMonitorService`, `PhotoSyncWorker`, `VideoPrefetcher`, `PlayerStatusBroadcaster`, `LiveActivityPushWorker`, `HealthAlertWorker`, `AiMusicAnalysisWorker`, and `VolumeMonitorService`. AI playlist analysis is gated by config and signalled through `AiProcessingSignal`.
+
+`PlayerStatusBroadcaster` polls the player (only while something is subscribed) and publishes *material* status changes (song, play state, volume, repeat, sleep timer; not elapsed time). It feeds `GET /api/homespeaker/player/events`, a server-sent-events stream with a 10 s heartbeat, and `LiveActivityPushWorker`, which sends APNs `liveactivity` pushes to iOS Live Activities registered via `PUT/DELETE /api/homespeaker/live-activities/{activityId}` (in memory, 12 h; the app re-registers on foreground). The push `content-state` keys are a contract with `SpeakerActivityAttributes.ContentState` in the iOS app.
 
 ### AI integration
 

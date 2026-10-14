@@ -59,7 +59,10 @@ struct SpeakerTimelineProvider: AppIntentTimelineProvider {
         // Refresh just after the song ends so the next title shows up; iOS
         // still rations widget reloads, so this is best effort.
         let next: Date
-        if entry.isPlaying, let end = entry.songInterval?.upperBound, end > .now {
+        if entry.content == .unreachable {
+            // Often just a blip, e.g. switching networks; try again soon.
+            next = .now.addingTimeInterval(5 * 60)
+        } else if entry.isPlaying, let end = entry.songInterval?.upperBound, end > .now {
             next = min(end.addingTimeInterval(3), .now.addingTimeInterval(15 * 60))
         } else if entry.isPlaying {
             next = .now.addingTimeInterval(10 * 60)
@@ -83,7 +86,7 @@ struct SpeakerTimelineProvider: AppIntentTimelineProvider {
 
         var artwork: UIImage?
         let showsArt = family == .systemSmall || family == .systemMedium || family == .systemLarge
-        if showsArt, let song = status.currentSong,
+        if showsArt, let song = status.librarySong,
            let data = await api.data(at: api.albumArtURL(songId: song.songId)) {
             artwork = UIImage(data: data)?.preparingThumbnail(of: CGSize(width: 240, height: 240))
         }
@@ -91,7 +94,7 @@ struct SpeakerTimelineProvider: AppIntentTimelineProvider {
         var interval: ClosedRange<Date>?
         let elapsed = status.elapsedSeconds
         let remaining = status.remainingSeconds
-        if status.isPlaying, status.currentSong != nil, remaining > 0 {
+        if status.isPlaying, status.librarySong != nil, remaining > 0 {
             let now = Date.now
             interval = now.addingTimeInterval(-elapsed)...now.addingTimeInterval(remaining)
         }

@@ -29,18 +29,19 @@ enum PlaybackMover {
         let targetAPI = APIClient.client(for: target)
         let status = try await sourceAPI.getPlayerStatus()
 
-        if let current = status.currentSong {
-            let queue = (try? await sourceAPI.getQueue()) ?? []
+        if let current = status.librarySong {
+            // Read everything before changing anything, so a failure leaves both rooms as they were.
+            let queue = try await sourceAPI.getQueue()
             let wanted = [current] + queue
             let library = try await targetAPI.getSongs()
             let matched = match(wanted, in: library)
             guard let first = matched.first else { throw MoveError.notInLibrary(target.name) }
 
             try await targetAPI.playSong(first.songId)
+            // Playing a song leaves the target's old queue alone; replacing it
+            // (with an empty list if need be) clears it.
             let rest = matched.dropFirst().compactMap(\.path)
-            if !rest.isEmpty {
-                try await targetAPI.updateQueue(songPaths: rest)
-            }
+            try await targetAPI.updateQueue(songPaths: Array(rest))
             try await sourceAPI.stop()
             try? await sourceAPI.clearQueue()
             let missing = wanted.count - matched.count

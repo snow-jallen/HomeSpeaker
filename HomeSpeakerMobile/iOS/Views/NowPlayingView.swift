@@ -148,7 +148,7 @@ struct NowPlayingView: View {
 
                     songInfo
 
-                    if status?.currentSong != nil {
+                    if status?.librarySong != nil {
                         TimelineView(.periodic(from: .now, by: 1)) { context in
                             progressSection(at: context.date)
                         }
@@ -186,7 +186,7 @@ struct NowPlayingView: View {
             ? "dot.radiowaves.left.and.right"
             : "music.note"
         Group {
-            if let song = status?.currentSong {
+            if let song = status?.librarySong {
                 AsyncImage(url: api.albumArtURL(songId: song.songId)) { phase in
                     if let image = phase.image {
                         image.resizable().scaledToFill()
@@ -216,7 +216,7 @@ struct NowPlayingView: View {
 
     private var songInfo: some View {
         VStack(spacing: 6) {
-            if let song = status?.currentSong {
+            if let song = status?.librarySong {
                 Text(song.displayTitle)
                     .font(.title2.bold())
                     .multilineTextAlignment(.center)
@@ -230,6 +230,11 @@ struct NowPlayingView: View {
                 Text(status.displayTitle)
                     .font(.title2.bold())
                     .multilineTextAlignment(.center)
+                if !status.displaySubtitle.isEmpty {
+                    Text(status.displaySubtitle)
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                }
             } else {
                 Text("Not Playing")
                     .font(.title2)
@@ -308,7 +313,7 @@ struct NowPlayingView: View {
             .tint(repeatOn ? Color.accentColor : .secondary)
             .accessibilityValue(repeatOn ? "On" : "Off")
 
-            if features?.aiEnabled == true, status?.currentSong != nil {
+            if features?.aiEnabled == true, status?.librarySong != nil {
                 Button {
                     Task {
                         await run { try await api.startAiAutoplayFromCurrent() }

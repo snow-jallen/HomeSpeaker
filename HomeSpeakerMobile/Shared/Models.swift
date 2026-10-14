@@ -106,15 +106,28 @@ struct PlayerStatus: Codable {
     var isPlaying: Bool { stillPlaying }
     var quietDownVolume: Int { volume > 0 ? max(1, volume / 2) : 0 }
 
-    /// What to show as the headline: the song, else the radio station.
+    /// The playing song from the library. For radio the server reports a
+    /// stand-in "song" (the station's now-playing title, with the stream URL
+    /// as its path), which this leaves out.
+    var librarySong: Song? {
+        isStream == true ? nil : currentSong
+    }
+
+    /// What to show as the headline: the song (or radio now-playing title),
+    /// else the station. Matches the Live Activity title the server pushes.
     var displayTitle: String {
-        if let song = currentSong { return song.displayTitle }
+        if let name = currentSong?.name, !name.isEmpty { return name }
         if let streamName, !streamName.isEmpty { return streamName }
         return stillPlaying ? "Streaming" : "Not Playing"
     }
 
+    /// The artist, or for radio the station under its now-playing title.
     var displaySubtitle: String {
-        currentSong?.displayArtist ?? ""
+        if isStream == true {
+            guard let streamName, !streamName.isEmpty, streamName != displayTitle else { return "" }
+            return streamName
+        }
+        return currentSong?.artist ?? ""
     }
 
     var elapsedSeconds: Double { elapsed.flatMap(Self.seconds) ?? 0 }

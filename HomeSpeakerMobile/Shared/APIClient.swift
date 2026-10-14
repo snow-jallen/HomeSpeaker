@@ -27,6 +27,7 @@ final class APIClient: @unchecked Sendable {
     private let encoder = JSONEncoder()
     private let lock = NSLock()
     private var preferredIndex = 0
+    private var lastSuccessAt: Date?
 
     /// The address requests currently go to.
     var baseURL: URL {
@@ -110,6 +111,7 @@ final class APIClient: @unchecked Sendable {
 
     private func markWorking(_ index: Int) {
         let changed = lock.withLock { () -> Bool in
+            lastSuccessAt = .now
             guard preferredIndex != index else { return false }
             preferredIndex = index
             return true
@@ -120,19 +122,45 @@ final class APIClient: @unchecked Sendable {
     }
 
     /// Errors meaning this address can't be reached, so another might work.
-    /// A timeout only counts for GETs: a POST that timed out may have landed.
+    /// A timeout or dropped connection only counts for GETs: a command that
+    /// failed that way may still have landed (skipping twice would be wrong).
     private static func isUnreachable(_ error: URLError, method: String) -> Bool {
         switch error.code {
         case .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed,
-             .networkConnectionLost, .secureConnectionFailed,
+             .secureConnectionFailed,
              .serverCertificateUntrusted, .serverCertificateHasBadDate,
              .serverCertificateNotYetValid, .serverCertificateHasUnknownRoot,
              .appTransportSecurityRequiresSecureConnection:
             return true
-        case .timedOut:
+        case .timedOut, .networkConnectionLost:
             return method == "GET"
         default:
             return false
+        }
+    }
+
+    /// Commands can't safely be retried on a timeout, so before sending one
+    /// with an unconfirmed address (e.g. a Lock Screen tap after leaving home
+    /// Wi-Fi), find a reachable address with a quick read first. Reads also
+    /// re-check now and then whether the home address works again.
+    private func shouldProbe(method: String) -> Bool {
+        guard candidateBaseURLs.count > 1 else { return false }
+        return lock.withLock {
+            let age = lastSuccessAt.map { Date.now.timeIntervalSince($0) } ?? .infinity
+            if method != "GET" { return age > 60 }
+            return preferredIndex != 0 && age > 5 * 60
+        }
+    }
+
+    private func probe() async {
+        // Home first, so the app goes back to it once it's reachable again.
+        for index in candidateBaseURLs.indices {
+            var req = URLRequest(url: url("api/features", base: candidateBaseURLs[index]))
+            req.timeoutInterval = 3
+            if let result = try? await session.data(for: req), result.1 is HTTPURLResponse {
+                markWorking(index)
+                return
+            }
         }
     }
 
@@ -142,6 +170,9 @@ final class APIClient: @unchecked Sendable {
         body: Data?,
         contentType: String?
     ) async throws -> (Data, HTTPURLResponse) {
+        if shouldProbe(method: method) {
+            await probe()
+        }
         let order = attemptOrder()
         for (attempt, index) in order.enumerated() {
             var req = URLRequest(url: url(path, base: candidateBaseURLs[index]))

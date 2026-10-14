@@ -37,6 +37,7 @@ struct HomeSpeakerApp: App {
             if scenePhase == .active {
                 store.reload()
                 speakerStatus.follow(store.selectedConnection)
+                SpeakerActivityController.shared.reattach()
                 offlineDownloads.updateConnection(store.selectedConnection)
                 Task {
                     await pushNotifications.handleSceneBecameActive(connection: store.selectedConnection)

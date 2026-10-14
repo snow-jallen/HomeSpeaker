@@ -220,13 +220,29 @@ struct RoomsView: View {
 
     private func stopAll() async {
         let connections = store.connections
-        await withTaskGroup(of: Void.self) { group in
+        let failed = await withTaskGroup(of: String?.self) { group in
             for connection in connections {
-                group.addTask { try? await APIClient.client(for: connection).stop() }
+                group.addTask {
+                    do {
+                        try await APIClient.client(for: connection).stop()
+                        return nil
+                    } catch {
+                        return connection.name
+                    }
+                }
             }
+            var names: [String] = []
+            for await name in group {
+                if let name { names.append(name) }
+            }
+            return names.sorted()
         }
-        message = "Stopped all rooms."
-        SpeakerSurfaces.reloadWidgets()
+        message = failed.isEmpty
+            ? "Stopped all rooms."
+            : "Couldn't reach \(ListFormatter.localizedString(byJoining: failed))."
+        for connection in connections where !failed.contains(connection.name) {
+            await SpeakerSurfaces.refresh(after: connection)
+        }
         await refreshAll()
     }
 
