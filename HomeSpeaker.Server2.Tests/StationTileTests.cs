@@ -13,15 +13,16 @@ public sealed class StationTileTests
     [InlineData("Radio", "R")] // only filler: fall back to the filler words rather than nothing
     [InlineData("The Radio Stream", "TR")]
     [InlineData("lo-fi beats to relax", "LB")]
-    [InlineData("  bbc   radio 3 ", "3")]
-    [InlineData("Classical 89", "89")] // a numeric word is more recognisable than a letter
-    [InlineData("98.7 KLOS", "98")] // the whole-number part of a frequency
-    [InlineData("KZ 104 FM", "104")]
-    [InlineData("Hits 1055 FM", "105")] // capped at three characters
+    [InlineData("  bbc   radio 3 ", "B3")]
+    [InlineData("Classical 89", "C89")] // a short number keeps a letter beside it, in name order
+    [InlineData("98.7 KLOS", "98K")] // the whole-number part of a frequency, then the letter
+    [InlineData("KBYU 89", "K89")]
+    [InlineData("KZ 104 FM", "104")] // three digits fill the tile on their own
+    [InlineData("Hits 1055 FM", "HF")] // four digits cannot be shown faithfully: back to the letters
     [InlineData("89", "89")]
-    [InlineData("Radio 1", "1")]
+    [InlineData("Radio 1", "R1")] // only filler besides the number: use the filler's letter
     [InlineData("Jazz24", "J")] // digits glued to letters are not a numeric word
-    [InlineData("Chamber 3 Music 7", "3")] // the first numeric word wins
+    [InlineData("Chamber 3 Music 7", "C3")] // the first numeric word wins
     [InlineData("Jazz", "J")]
     public void InitialsSkipFillerWords(string name, string expected) =>
         Assert.Equal(expected, StationTile.InitialsFor(name));

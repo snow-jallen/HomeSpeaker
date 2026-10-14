@@ -66,7 +66,7 @@ public sealed class DashboardState : IDisposable
     /// returned while it was resolved for the station that <see cref="Status"/> currently describes, so a card
     /// never pairs one station's name with another's image, even when another circuit changed the status.
     /// </summary>
-    public string? StationImageUrl => stationImage is { } resolved && string.Equals(resolved.Key, stationKey(Status), StringComparison.Ordinal)
+    public string? StationImageUrl => stationImage is { } resolved && string.Equals(resolved.Key, StationKey(Status), StringComparison.Ordinal)
         ? resolved.Url
         : null;
     public BloodSugarStatus? BloodSugar { get; private set; }
@@ -226,7 +226,7 @@ public sealed class DashboardState : IDisposable
 
         // Another circuit (or the queue page) may have published a different station. Until its art is resolved,
         // StationImageUrl is null, so the card shows the new name over its generated tile, never the old art.
-        if (!string.Equals(stationImage?.Key, stationKey(Status), StringComparison.Ordinal))
+        if (!string.Equals(stationImage?.Key, StationKey(Status), StringComparison.Ordinal))
         {
             _ = resolveForCurrentStatusAsync();
         }
@@ -240,7 +240,7 @@ public sealed class DashboardState : IDisposable
         {
             var status = Status;
             var resolved = await resolveStationImageAsync(status);
-            if (disposed || !string.Equals(resolved.Key, stationKey(Status), StringComparison.Ordinal))
+            if (disposed || !string.Equals(resolved.Key, StationKey(Status), StringComparison.Ordinal))
             {
                 return;
             }
@@ -255,11 +255,14 @@ public sealed class DashboardState : IDisposable
     }
 
     private async Task<StationImage> resolveStationImageAsync(SharedPlayerStatus? status) =>
-        new(stationKey(status), status is { IsStream: true }
+        new(StationKey(status), status is { IsStream: true }
             ? await homeSpeaker.GetStationImageUrlAsync(status.CurrentSong?.Path, status.StreamName)
             : null);
 
-    /// <summary>Identifies the station a status describes (its stream URL and name), or null when it is not a stream.</summary>
-    private static string? stationKey(SharedPlayerStatus? status) =>
+    /// <summary>
+    /// Identifies the station a status describes (its stream URL and name), or null when it is not a stream.
+    /// <see cref="StationImageUrl"/> is only shown while its key equals the current status' key.
+    /// </summary>
+    public static string? StationKey(SharedPlayerStatus? status) =>
         status is { IsStream: true } ? string.Concat(status.CurrentSong?.Path, "|", status.StreamName) : null;
 }

@@ -4,7 +4,7 @@ using System.Text;
 namespace HomeSpeaker.Server2.Components.Glass;
 
 /// <summary>
-/// The look of a generated station tile: a hue and 1–2 initials derived from the station name.
+/// The look of a generated station tile: a hue and 1–3 initials derived from the station name.
 /// The hue uses FNV-1a over the UTF-8 bytes (not string.GetHashCode, which changes per process),
 /// so a station keeps its colour across restarts and devices.
 /// </summary>
@@ -12,7 +12,7 @@ public sealed record StationTile(int Hue, string Initials)
 {
     private const uint FnvOffsetBasis = 2166136261;
     private const uint FnvPrime = 16777619;
-    private const int MaxNumberLength = 3;
+    private const int MaxInitialsLength = 3;
     private const string FallbackInitials = "♪";
 
     private static readonly HashSet<string> fillerWords = new(StringComparer.OrdinalIgnoreCase) { "Stream", "Radio", "The", "Your" };
@@ -38,8 +38,10 @@ public sealed record StationTile(int Hue, string Initials)
     /// <summary>
     /// First letters of the first two meaningful words ("Classical Kids" → "CK"), skipping filler words
     /// unless that would leave nothing. A lone all-caps word such as a call sign keeps two letters ("KBAQ" → "KB").
-    /// When a meaningful word is all digits (a frequency or channel number such as "89" or "98.7"), the number
-    /// wins over letters ("Classical 89" → "89"), using its whole-number digits and at most three of them.
+    /// A numeric word (all digits and punctuation: a frequency or channel such as "89" or "98.7") is kept whole, with
+    /// one letter from the name beside it when that fits in <see cref="MaxInitialsLength"/> characters, in the order
+    /// the name has them: "Classical 89" → "C89", "98.7 KLOS" → "98K", "BBC Radio 3" → "B3", "KZ 104 FM" → "104".
+    /// A number of four or more digits cannot be shown faithfully, so it is ignored ("Hits 1055 FM" → "HF").
     /// </summary>
     public static string InitialsFor(string? name)
     {
@@ -58,10 +60,34 @@ public sealed record StationTile(int Hue, string Initials)
             meaningful = words;
         }
 
-        var number = meaningful.Select(numberIn).FirstOrDefault(n => n is not null);
-        if (number is not null)
+        var numberIndex = meaningful.FindIndex(w => numberIn(w) is not null);
+        if (numberIndex >= 0)
         {
-            return number;
+            var number = numberIn(meaningful[numberIndex])!;
+            if (number.Length <= MaxInitialsLength)
+            {
+                if (number.Length == MaxInitialsLength)
+                {
+                    return number;
+                }
+
+                // Pair a short number with the first letter word (a filler word if nothing else), in name order.
+                var letterWord = meaningful.FirstOrDefault(w => numberIn(w) is null) ?? words.FirstOrDefault(w => numberIn(w) is null);
+                if (letterWord is null)
+                {
+                    return number;
+                }
+
+                var letter = char.ToUpperInvariant(letterWord.First(char.IsLetterOrDigit)).ToString();
+                return words.IndexOf(letterWord) < words.IndexOf(meaningful[numberIndex]) ? letter + number : number + letter;
+            }
+
+            // Four or more digits: fall back to the letters rather than show a different number.
+            var lettered = meaningful.Where(w => numberIn(w) is null).ToList();
+            if (lettered.Count > 0)
+            {
+                meaningful = lettered;
+            }
         }
 
         if (meaningful.Count == 1)
@@ -75,8 +101,8 @@ public sealed record StationTile(int Hue, string Initials)
     }
 
     /// <summary>
-    /// The leading digits (at most <see cref="MaxNumberLength"/>) of a word made only of digits and punctuation
-    /// ("98.7" → "98"), or null when the word contains letters.
+    /// The whole leading run of digits of a word made only of digits and punctuation ("98.7" → "98"),
+    /// or null when the word contains letters.
     /// </summary>
     private static string? numberIn(string word)
     {
@@ -86,7 +112,7 @@ public sealed record StationTile(int Hue, string Initials)
             return null;
         }
 
-        var leadingRun = word.SkipWhile(c => !char.IsDigit(c)).TakeWhile(char.IsDigit).Take(MaxNumberLength);
+        var leadingRun = word.SkipWhile(c => !char.IsDigit(c)).TakeWhile(char.IsDigit);
         return new string(leadingRun.ToArray());
     }
 

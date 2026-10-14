@@ -2778,7 +2778,7 @@ input.glass-input[type="file"]::file-selector-button {
 
   /* The header row has date text scrolling under it, so it stays denser than the body cells. */
   .glass-anchor-table thead .anchor-name-col {
-    background: rgba(30, 30, 36, 0.92);
+    background: rgba(30, 30, 36, 0.96);
   }
 
   .glass-anchor-table tbody tr:hover > .anchor-name-col {
