@@ -385,3 +385,6 @@ DerivedData/
 /Packages/
 Package.resolved
 HomeSpeaker.Server2/HomeSpeaker.Server2.csproj.lscache
+
+# Playwright MCP session output
+.playwright-mcp/
