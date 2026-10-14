@@ -84,19 +84,27 @@
         </label>
     </section>
 
-    @if (hourly.Count > 0)
+    @{
+        var hourlyColumns = hourly;
+    }
+    @if (hourlyColumns.Count > 0)
     {
-        <a class="glass hs-info-card hs-hours" href="climate" aria-label="Hourly forecast">
+        <a class="glass hs-info-card hs-hours" href="climate">
             <span class="hs-card-label"><span class="hs-card-label-text">Next hours</span></span>
             <div class="hs-hours-cols">
-                @foreach (var hour in hourly)
+                @foreach (var hour in hourlyColumns)
                 {
                     <div class="hs-hour">
                         <span class="hs-hour-label">@hour.Label</span>
-                        <WeatherIconSvg Icon="hour.Icon" IsDay="hour.IsDay" Label="@hour.Conditions" />
+                        <WeatherIconSvg Icon="hour.Icon" IsDay="hour.IsDay" Size="36" Label="@hour.Conditions" />
                         <span class="hs-hour-temp">@(hour.Temperature is { } temp ? temp.ToString("0", CultureInfo.InvariantCulture) + "°" : "--")</span>
                         <span class="hs-hour-rain" title="@(hour.RainPercent)% chance of rain">
-                            <span class="hs-hour-rain-bar"><span style="height:@(hour.RainPercent)%"></span></span>
+                            <span class="hs-hour-rain-bar">
+                                @if (hour.RainBarPx > 0)
+                                {
+                                    <span style="height:@(hour.RainBarPx)px"></span>
+                                }
+                            </span>
                             <span class="hs-hour-rain-pct">@(hour.ShowRainLabel ? hour.RainPercent + "%" : "")</span>
                         </span>
                     </div>

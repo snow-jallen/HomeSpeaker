@@ -712,6 +712,8 @@ html.hs-mode-night .hs-backdrop {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(44px, 1fr);
+  grid-auto-rows: max-content;
+  align-content: center;
   gap: 2px;
   overflow-x: auto;
   overflow-y: hidden;
@@ -724,7 +726,8 @@ html.hs-mode-night .hs-backdrop {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 6px;
   padding: 6px 0 4px;
   border-radius: 12px;
 }
@@ -740,7 +743,7 @@ html.hs-mode-night .hs-backdrop {
 }
 
 .hs-hour-temp {
-  font-size: 17px;
+  font-size: 22px;
   font-weight: 800;
   line-height: 1.1;
 }
@@ -758,31 +761,29 @@ html.hs-mode-night .hs-backdrop {
   color: #cdd8ff;
 }
 
+/* Rain: a fixed scale (24px = 100%), no track, drawn from 10% up, so a chance always draws the same height. */
 .hs-hour-rain {
-  flex: 1;
-  min-height: 0;
+  flex: none;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-end;
   gap: 3px;
 }
 
 .hs-hour-rain-bar {
-  flex: 1;
-  min-height: 12px;
+  flex: none;
   width: 6px;
+  height: 24px;
   display: flex;
   align-items: flex-end;
-  overflow: hidden;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.14);
 }
 
 .hs-hour-rain-bar > span {
   display: block;
   width: 100%;
-  border-radius: 4px;
+  border-radius: 3px;
   background: #7ec8ff;
 }
 
@@ -1037,6 +1038,12 @@ html.hs-mode-night .hs-backdrop {
 
 .hs-source-tiles + .hs-home-lower .hs-climate-big {
   font-size: 64px;
+}
+
+/* With room to spare, long conditions ("Thunderstorm with Hail") wrap instead of being cut off. */
+.hs-source-tiles + .hs-home-lower .hs-climate-detail > span,
+.hs-source-tiles + .hs-home-lower .hs-climate-outlook > span {
+  white-space: normal;
 }
 
 /* Only anchors: let the strip fill the column instead of leaving blank space under it. */
@@ -1312,11 +1319,6 @@ html.hs-mode-night .hs-backdrop {
 
   .hs-hours {
     flex: none;
-  }
-
-  .hs-hour-rain-bar {
-    flex: none;
-    height: 36px;
   }
 
   .hs-source-tiles:last-child {

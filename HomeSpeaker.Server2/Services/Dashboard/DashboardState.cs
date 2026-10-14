@@ -194,7 +194,7 @@ public sealed class DashboardState : IDisposable
             Temperature = await tryGetAsync(() => temperatureService.GetTemperatureStatusAsync(), "temperature") ?? Temperature;
         }
 
-        Forecast = await tryGetAsync(() => forecastService.GetForecastStatusAsync(), "forecast") ?? Forecast;
+        Forecast = ForecastMerge.Latest(Forecast, await tryGetAsync(() => forecastService.GetForecastStatusAsync(), "forecast"));
         await refreshAnchorsAsync();
 
         raiseChanged("health refresh");

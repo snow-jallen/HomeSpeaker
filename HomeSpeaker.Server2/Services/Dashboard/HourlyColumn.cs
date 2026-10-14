@@ -8,10 +8,21 @@ public sealed record HourlyColumn(string Label, WeatherIcon Icon, bool IsDay, st
 {
     public const int DefaultCount = 8;
 
-    /// <summary>The rain chance is only written out from this percent up; the bar shows every value.</summary>
+    /// <summary>The rain chance is only written out from this percent up.</summary>
     public const int RainLabelThreshold = 20;
 
+    /// <summary>The rain bar is only drawn from this percent up.</summary>
+    public const int RainBarThreshold = 10;
+
+    /// <summary>The bar's height at 100%. It is a fixed scale, so the same chance always draws the same height.</summary>
+    public const int RainBarMaxPx = 24;
+
     public bool ShowRainLabel => RainPercent >= RainLabelThreshold;
+
+    /// <summary>The rain bar's height in pixels: 0 (not drawn) below 10%, otherwise proportional, at least 3px.</summary>
+    public int RainBarPx => RainPercent < RainBarThreshold
+        ? 0
+        : Math.Max(3, (int)Math.Round(RainPercent * RainBarMaxPx / 100.0, MidpointRounding.AwayFromZero));
 
     /// <summary>
     /// The next <paramref name="count"/> hours starting with the current one (labelled "Now"), chosen against
@@ -32,7 +43,7 @@ public sealed record HourlyColumn(string Label, WeatherIcon Icon, bool IsDay, st
             .Where(h => h.DateTime >= thisHour)
             .OrderBy(h => h.DateTime)
             .Take(count)
-            .Select(h => fromHour(h, h.DateTime == thisHour))];
+            .Select((h, index) => fromHour(h, index == 0 && h.DateTime == thisHour))];
     }
 
     /// <summary>"Now", then "3p", "12a" (12-hour like the clock, no minutes).</summary>
@@ -51,7 +62,7 @@ public sealed record HourlyColumn(string Label, WeatherIcon Icon, bool IsDay, st
         FormatLabel(hour.DateTime, isNow),
         WeatherIconMap.From(hour.WeatherCode),
         hour.IsDay ?? true,
-        hour.Conditions ?? "",
+        WeatherIconMap.Label(WeatherIconMap.From(hour.WeatherCode)),
         hour.Temperature,
         (int)Math.Clamp(Math.Round(hour.PrecipitationChance ?? 0), 0, 100));
 }

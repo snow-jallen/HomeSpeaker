@@ -95,6 +95,50 @@ public sealed class HourlyForecastTests
     public void FormatLabel_NowWinsOverTheHour() =>
         Assert.Equal("Now", HourlyColumn.FormatLabel(new DateTime(2026, 10, 13, 15, 0, 0, DateTimeKind.Unspecified), isNow: true));
 
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(9, 0)]
+    [InlineData(10, 3)]
+    [InlineData(30, 7)]
+    [InlineData(50, 12)]
+    [InlineData(100, 24)]
+    public void RainBar_IsAFixedScaleOf24px_DrawnFromTenPercent(int percent, int expectedPx) =>
+        Assert.Equal(expectedPx, new HourlyColumn("x", WeatherIcon.Rain, true, "", 50, percent).RainBarPx);
+
+    [Fact]
+    public void Select_AccessibleLabelFollowsTheIconNotTheMergedForecastText()
+    {
+        var status = forecast(midnight);
+        status.Hourly[15].WeatherCode = 1;   // mainly clear: drawn as a sun
+        status.Hourly[16].WeatherCode = 3;   // overcast: drawn as a cloud
+
+        var columns = HourlyColumn.Select(status, utcNow);
+
+        Assert.Equal(["Clear", "Cloudy"], columns.Take(2).Select(c => c.Conditions));
+    }
+
+    [Fact]
+    public void Select_MissingDayFlag_DefaultsToDay()
+    {
+        var status = forecast(midnight);
+        status.Hourly[15].IsDay = null;
+
+        Assert.True(HourlyColumn.Select(status, utcNow)[0].IsDay);
+    }
+
+    [Fact]
+    public void Select_RepeatedHourAtDstEnd_OnlyTheFirstIsNow()
+    {
+        var status = new ForecastStatus { TimeZoneId = "America/Denver" };
+        var repeated = new DateTime(2026, 10, 13, 15, 0, 0, DateTimeKind.Unspecified);
+        status.Hourly.Add(new ForecastData { DateTime = repeated, Temperature = 1, WeatherCode = 0 });
+        status.Hourly.Add(new ForecastData { DateTime = repeated, Temperature = 2, WeatherCode = 0 });
+
+        var columns = HourlyColumn.Select(status, utcNow);
+
+        Assert.Equal(["Now", "3p"], columns.Select(c => c.Label));
+    }
+
     [Fact]
     public void RainLabel_OnlyFromTwentyPercent()
     {
@@ -135,6 +179,29 @@ public sealed class HourlyForecastTests
     [InlineData(null, WeatherIcon.Cloudy)]
     public void WeatherIconMap_CoversRepresentativeWmoCodes(int? code, WeatherIcon expected) =>
         Assert.Equal(expected, WeatherIconMap.From(code));
+
+    [Fact]
+    public void ForecastMerge_KeepsTheLastGoodForecastThroughAFailedRefresh()
+    {
+        var good = forecast(midnight);
+        var failed = new ForecastStatus { Error = "boom" };
+
+        Assert.Same(good, ForecastMerge.Latest(good, failed));
+        Assert.Same(good, ForecastMerge.Latest(good, null));
+    }
+
+    [Fact]
+    public void ForecastMerge_UsesTheRefreshWhenItSucceedsOrThereIsNothingToKeep()
+    {
+        var good = forecast(midnight);
+        var newer = forecast(midnight);
+        var failed = new ForecastStatus { Error = "boom" };
+
+        Assert.Same(newer, ForecastMerge.Latest(good, newer));
+        Assert.Same(failed, ForecastMerge.Latest(null, failed));
+        Assert.Same(failed, ForecastMerge.Latest(new ForecastStatus { Error = "earlier" }, failed));
+        Assert.Null(ForecastMerge.Latest(null, null));
+    }
 
     [Fact]
     public async Task ForecastService_ExposesEveryHourWithCodeAndDayFlag_AndAsksForIsDay()
