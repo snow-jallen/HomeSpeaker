@@ -79,15 +79,13 @@ public sealed class DashboardState : IDisposable
         bool alreadyStarted;
         lock (lifecycleGate)
         {
-            alreadyStarted = started;
-            if (started || disposed)
+            if (disposed && !started)
             {
-                if (!alreadyStarted)
-                {
-                    return;
-                }
+                return;
             }
-            else
+
+            alreadyStarted = started;
+            if (!started)
             {
                 started = true;
                 homeSpeaker.StatusChanged += onPlayerEvent;
