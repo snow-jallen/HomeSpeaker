@@ -426,6 +426,19 @@ app.MapGet("/api/temperature", async (ITemperatureService temperatureService, Ca
     }
 });
 
+// Read-only diagnostic: what each matched sensor reports (e.g. whether battery is available at all).
+app.MapGet("/api/temperature/capabilities", async (ITemperatureService temperatureService, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        return Results.Ok(await temperatureService.GetSensorDiagnosticsAsync(cancellationToken));
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to get sensor capabilities: {ex.Message}");
+    }
+});
+
 // Blood Sugar API endpoint
 app.MapGet("/api/bloodsugar", async (IBloodSugarService bloodSugarService, CancellationToken cancellationToken) =>
 {

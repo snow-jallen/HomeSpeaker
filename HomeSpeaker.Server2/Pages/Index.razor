@@ -3,6 +3,7 @@
 @inject DashboardState Dashboard
 @inject HomeSpeakerService Svc
 @inject IHomeControl HomeControl
+@inject TimeProvider Time
 @inject ILogger<Index> Logger
 @implements IDisposable
 
@@ -102,38 +103,143 @@
             </a>
         </nav>
 
-        <div class="hs-info-tiles">
-            @if (Dashboard.BloodSugarEnabled)
-            {
-                <a class="glass hs-tile hs-tile--info hs-tone-@toneClass" href="nightscout">
-                    <span class="hs-tile-label">Glucose</span>
-                    @if (Dashboard.BloodSugar?.CurrentReading is { } reading)
-                    {
-                        <span class="hs-tile-value-row">
-                            <span class="hs-tile-value @(Dashboard.BloodSugar.IsStale ? "is-stale" : "")">@reading.Sgv.ToString("0", CultureInfo.InvariantCulture)</span>
-                            <span class="hs-tile-meta">mg/dL @reading.DirectionIcon · @(Dashboard.BloodSugar.IsStale ? "Stale" : Dashboard.BloodSugar.StatusText) · @age(Dashboard.BloodSugar.TimeSinceLastReading)</span>
+        @if (glucoseCardVisible)
+        {
+            var card = glucoseCard;
+            <a class="glass hs-card hs-glucose hs-tone-@toneClass" href="nightscout">
+                @if (card is not null)
+                {
+                    <div class="hs-glucose-reading">
+                        <span class="hs-card-label">Glucose</span>
+                        <span class="hs-glucose-now @(card.IsStale ? "is-stale" : "")">
+                            <span class="hs-glucose-value">@card.Value</span>
+                            @if (card.Arrow is not null)
+                            {
+                                <span class="hs-glucose-arrow" aria-hidden="true">@card.Arrow</span>
+                            }
                         </span>
-                    }
-                    else
+                        <span class="hs-glucose-meta">
+                            <span>mg/dL</span>
+                            @if (card.DeltaText is not null)
+                            {
+                                <span class="hs-glucose-delta" aria-label="Change since last reading">@card.DeltaText</span>
+                            }
+                        </span>
+                        <span class="hs-glucose-age @(card.IsStale ? "is-stale" : "")">@card.AgeText</span>
+                    </div>
+                    @if (card.Chart is { } chart)
                     {
-                        <span class="hs-tile-meta">No reading yet</span>
+                        <div class="hs-trend" role="img" aria-label="Glucose over the last 3 hours">
+                            <div class="hs-trend-plot">
+                                <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                                    <rect class="hs-trend-band" x="0" y="@pct(chart.BandTopPercent)" width="100" height="@pct(chart.BandHeightPercent)"></rect>
+                                    @foreach (var path in chart.Paths)
+                                    {
+                                        <path class="hs-trend-line" d="@path"></path>
+                                    }
+                                </svg>
+                                <span class="hs-trend-dot" style="left:@(pct(chart.Latest.X))%;top:@(pct(chart.Latest.Y))%"></span>
+                                <span class="hs-trend-tick" style="top:@(pct(chart.BandTopPercent))%">180</span>
+                                <span class="hs-trend-tick" style="top:@(pct(chart.BandTopPercent + chart.BandHeightPercent))%">70</span>
+                            </div>
+                            <div class="hs-trend-axis"><span>3h ago</span><span>now</span></div>
+                        </div>
                     }
-                </a>
-            }
-            @if (Dashboard.TemperatureEnabled)
-            {
-                <a class="glass hs-tile hs-tile--info" href="climate">
-                    <span class="hs-tile-label">Outside@(conditions is null ? "" : " · " + conditions)</span>
-                    <span class="hs-tile-value-row">
-                        <span class="hs-tile-value">@(Dashboard.Temperature?.OutsideTemperature is { } t ? t.ToString("0", CultureInfo.InvariantCulture) + "°" : "--")</span>
-                        @if (highLow is not null)
+                }
+                else
+                {
+                    <div class="hs-glucose-reading">
+                        <span class="hs-card-label">Glucose</span>
+                        <span class="hs-glucose-meta">No reading yet</span>
+                    </div>
+                }
+            </a>
+        }
+
+        @if (Dashboard.TemperatureEnabled || anchors.Count > 0)
+        {
+            <div class="hs-home-lower">
+                @if (Dashboard.TemperatureEnabled)
+                {
+                    var advice = WindowAdvice.From(Dashboard.Temperature);
+                    var outsideLow = Dashboard.Temperature?.Rooms.Any(r => string.Equals(r.Name, "Outside", StringComparison.Ordinal) && ClimateRoom.IsLow(r.BatteryPercent)) == true;
+                    <a class="glass hs-card hs-climate" href="climate">
+                        <div class="hs-card-head">
+                            <span class="hs-card-label">
+                                Climate
+                                @if (ClimateRoom.AnySensorLow(Dashboard.Temperature))
+                                {
+                                    <LowBatteryIcon Label="A temperature sensor battery is low" />
+                                }
+                            </span>
+                            @if (advice is not null)
+                            {
+                                <span class="hs-climate-advice @(advice.Close ? "is-close" : "is-open")">@advice.Text</span>
+                            }
+                        </div>
+                        <div class="hs-climate-top">
+                            <div class="hs-climate-outside">
+                                <span class="hs-climate-big">@(Dashboard.Temperature?.OutsideTemperature is { } t ? t.ToString("0", CultureInfo.InvariantCulture) + "°" : "--")</span>
+                                @if (outsideLow)
+                                {
+                                    <LowBatteryIcon Label="Outside sensor battery is low" />
+                                }
+                                <span class="hs-climate-detail">
+                                    <span>Outside@(conditions is null ? "" : " · " + conditions)</span>
+                                    @if (highLow is not null)
+                                    {
+                                        <span>@highLow</span>
+                                    }
+                                </span>
+                            </div>
+                            @if (outlook.Count > 0)
+                            {
+                                <div class="hs-climate-outlook">
+                                    @foreach (var line in outlook)
+                                    {
+                                        <span>@line</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                        @if (indoorRooms.Count > 0)
                         {
-                            <span class="hs-tile-meta">@highLow</span>
+                            <div class="hs-rooms">
+                                @foreach (var room in indoorRooms)
+                                {
+                                    <span class="hs-room">
+                                        <span class="hs-room-name">@room.Label</span>
+                                        <span class="hs-room-temp">
+                                            @(room.Temperature.ToString("0", CultureInfo.InvariantCulture))°
+                                            @if (room.LowBattery)
+                                            {
+                                                <LowBatteryIcon Label="@(room.Label + " sensor battery is low")" />
+                                            }
+                                        </span>
+                                    </span>
+                                }
+                            </div>
                         }
-                    </span>
-                </a>
-            }
-        </div>
+                    </a>
+                }
+                @if (anchors.Count > 0)
+                {
+                    <a class="glass hs-card hs-anchors" href="anchors" aria-label="Anchors done today">
+                        <span class="hs-card-label">Anchors</span>
+                        <ul class="hs-anchors-list">
+                            @foreach (var person in anchors)
+                            {
+                                <li class="hs-anchor-person @(person.IsComplete ? "is-done" : "")">
+                                    <span class="hs-anchor-name">@person.UserId</span>
+                                    <span class="hs-progress"><span style="width:@(pct(person.Fraction * 100))%"></span></span>
+                                    <span class="hs-anchor-count">@person.Done/@person.Total</span>
+                                </li>
+                            }
+                        </ul>
+                    </a>
+                }
+            </div>
+        }
 
         <HomeTileRow />
     </div>
@@ -152,15 +258,45 @@
         _ => "normal",
     };
 
+    private bool glucoseCardVisible => Dashboard.BloodSugarEnabled;
+
+    private GlucoseCard? glucoseCard => GlucoseCard.From(Dashboard.BloodSugar, Time.GetUtcNow().UtcDateTime);
+
+    private IReadOnlyList<AnchorProgress> anchors => Dashboard.Anchors;
+
+    private IReadOnlyList<ClimateRoom> indoorRooms => ClimateRoom.From(Dashboard.Temperature);
+
     private string? highLow =>
         Dashboard.Forecast is { Error: null, TodayHigh.Temperature: { } high, TonightLow.Temperature: { } low }
             ? string.Create(CultureInfo.InvariantCulture, $"H {high:0}° · L {low:0}°")
             : null;
 
-    private static string age(TimeSpan sinceReading) =>
-        sinceReading.TotalMinutes < 1 ? "just now" : string.Create(CultureInfo.InvariantCulture, $"{(int)sinceReading.TotalMinutes} min ago");
-
     private string? conditions => Dashboard.Forecast is { Error: null } ? Dashboard.Forecast.TodayHigh?.Conditions : null;
+
+    // Rain chance today and tomorrow's high, each only when the forecast has it.
+    private IReadOnlyList<string> outlook
+    {
+        get
+        {
+            var lines = new List<string>();
+            if (Dashboard.Forecast is { Error: null } forecast)
+            {
+                if (forecast.TodayHigh?.PrecipitationChance is { } rain)
+                {
+                    lines.Add(string.Create(CultureInfo.InvariantCulture, $"Rain {rain:0}%"));
+                }
+
+                if (forecast.TomorrowHigh is { Temperature: { } tomorrow } next)
+                {
+                    lines.Add(string.Create(CultureInfo.InvariantCulture, $"Tomorrow {tomorrow:0}°") + (string.IsNullOrEmpty(next.Conditions) ? "" : " · " + next.Conditions));
+                }
+            }
+
+            return lines;
+        }
+    }
+
+    private static string pct(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
 
     protected override void OnInitialized()
     {

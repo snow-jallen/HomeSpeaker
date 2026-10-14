@@ -132,4 +132,100 @@ public sealed class TemperatureServiceTests
         Assert.Null(status.YoungerGirlsRoomTemperature);
         Assert.Equal(0, status.TemperatureDifference);
     }
+
+    private const string BatteryCapability = """
+        ,{"type":"devices.capabilities.property","instance":"battery","state":{"value":3}}
+        """;
+
+    [Fact]
+    public async Task BatteryCapability_IsParsedPerRoom()
+    {
+        var devices = devicesJson(("out", "Outside"), ("boys", "Boys Room"));
+        var service = createService((request, body) => respondWith(request, body, devices, requestBody =>
+            FakeHttpMessageHandler.Json(requestBody.Contains("\"boys\"", StringComparison.Ordinal)
+                ? stateJson(70, BatteryCapability)
+                : stateJson(55))));
+
+        var status = await service.GetTemperatureStatusAsync();
+
+        var boys = Assert.Single(status.Rooms, r => string.Equals(r.Name, "Boy", StringComparison.Ordinal));
+        Assert.Equal(3, boys.BatteryPercent);
+        Assert.Equal(70, boys.Temperature);
+        var outside = Assert.Single(status.Rooms, r => string.Equals(r.Name, "Outside", StringComparison.Ordinal));
+        Assert.Null(outside.BatteryPercent);
+        Assert.Equal(70, status.BoysRoomTemperature);
+    }
+
+    [Theory]
+    [InlineData("battery")]
+    [InlineData("batteryLevel")]
+    [InlineData("BatteryPercent")]
+    public async Task BatteryInstance_MatchedCaseInsensitively(string instance)
+    {
+        var capability = $",{{\"type\":\"devices.capabilities.property\",\"instance\":\"{instance}\",\"state\":{{\"value\":42}}}}";
+        var devices = devicesJson(("boys", "Boys Room"));
+        var service = createService((request, body) => respondWith(request, body, devices, _ =>
+            FakeHttpMessageHandler.Json(stateJson(70, capability))));
+
+        var status = await service.GetTemperatureStatusAsync();
+
+        Assert.Equal(42, status.Rooms.Single(r => string.Equals(r.Name, "Boy", StringComparison.Ordinal)).BatteryPercent);
+    }
+
+    [Fact]
+    public async Task NoBatteryCapability_MeansNullBattery()
+    {
+        var devices = devicesJson(("boys", "Boys Room"));
+        var service = createService((request, body) => respondWith(request, body, devices, _ => FakeHttpMessageHandler.Json(stateJson(70))));
+
+        var status = await service.GetTemperatureStatusAsync();
+
+        Assert.All(status.Rooms, r => Assert.Null(r.BatteryPercent));
+    }
+
+    [Fact]
+    public async Task Rooms_ListsEveryRoom_EvenWithoutADevice()
+    {
+        var devices = devicesJson(("out", "Outside"));
+        var service = createService((request, body) => respondWith(request, body, devices, _ => FakeHttpMessageHandler.Json(stateJson(55))));
+
+        var status = await service.GetTemperatureStatusAsync();
+
+        Assert.Equal(["Outside", "Greenhouse", "Emma", "Boy", "Downstairs", "Girl"], status.Rooms.Select(r => r.Name));
+        Assert.Equal(55, status.Rooms[0].Temperature);
+        Assert.All(status.Rooms.Skip(1), r => Assert.Null(r.Temperature));
+    }
+
+    [Fact]
+    public async Task SensorDiagnostics_ListInstancesAndBattery_ForMatchedRoomsOnly()
+    {
+        var devices = devicesJson(("boys", "Boys Room"), ("misc", "Garage"));
+        var service = createService((request, body) => respondWith(request, body, devices, _ =>
+            FakeHttpMessageHandler.Json(stateJson(70, BatteryCapability))));
+
+        var diagnostics = await service.GetSensorDiagnosticsAsync();
+
+        var boys = Assert.Single(diagnostics);
+        Assert.Equal("Boy", boys.Room);
+        Assert.Equal("Boys Room", boys.DeviceName);
+        Assert.Equal("H5179", boys.Sku);
+        Assert.True(boys.StateAvailable);
+        Assert.Equal(["online", "sensorTemperature", "sensorHumidity", "battery"], boys.CapabilityInstances);
+        Assert.Equal(3, boys.BatteryPercent);
+        Assert.DoesNotContain("test-key", System.Text.Json.JsonSerializer.Serialize(diagnostics), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SensorDiagnostics_FailedStateRead_IsMarkedUnavailable()
+    {
+        var devices = devicesJson(("boys", "Boys Room"));
+        var service = createService((request, body) => respondWith(request, body, devices, _ =>
+            new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError)));
+
+        var boys = Assert.Single(await service.GetSensorDiagnosticsAsync());
+
+        Assert.False(boys.StateAvailable);
+        Assert.Empty(boys.CapabilityInstances);
+        Assert.Null(boys.BatteryPercent);
+    }
 }

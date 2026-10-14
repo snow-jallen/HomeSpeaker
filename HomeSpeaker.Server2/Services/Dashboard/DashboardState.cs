@@ -22,6 +22,7 @@ public sealed class DashboardState : IDisposable
     private readonly ITemperatureService temperatureService;
     private readonly IForecastService forecastService;
     private readonly PhotoLibrary photoLibrary;
+    private readonly IServiceScopeFactory scopeFactory;
     private readonly ILogger<DashboardState> logger;
     private readonly SemaphoreSlim statusGate = new(1, 1);
     private readonly Lock lifecycleGate = new();
@@ -38,6 +39,7 @@ public sealed class DashboardState : IDisposable
         IForecastService forecastService,
         IConfiguration configuration,
         PhotoLibrary photoLibrary,
+        IServiceScopeFactory scopeFactory,
         ILogger<DashboardState> logger)
     {
         this.homeSpeaker = homeSpeaker;
@@ -46,6 +48,7 @@ public sealed class DashboardState : IDisposable
         this.temperatureService = temperatureService;
         this.forecastService = forecastService;
         this.photoLibrary = photoLibrary;
+        this.scopeFactory = scopeFactory;
         this.logger = logger;
         BloodSugarEnabled = FeatureFlags.BloodSugarEnabled(configuration);
         TemperatureEnabled = FeatureFlags.TemperatureEnabled(configuration);
@@ -63,6 +66,9 @@ public sealed class DashboardState : IDisposable
     public BloodSugarStatus? BloodSugar { get; private set; }
     public TemperatureStatus? Temperature { get; private set; }
     public ForecastStatus? Forecast { get; private set; }
+
+    /// <summary>Today's anchor completion per person; empty when nobody has anchors today.</summary>
+    public IReadOnlyList<AnchorProgress> Anchors { get; private set; } = [];
     public bool BloodSugarEnabled { get; }
     public bool TemperatureEnabled { get; }
     public bool PhotosEnabled => photoLibrary.Count > 0;
@@ -70,17 +76,33 @@ public sealed class DashboardState : IDisposable
 
     public async Task StartAsync()
     {
+        bool alreadyStarted;
         lock (lifecycleGate)
         {
+            alreadyStarted = started;
             if (started || disposed)
             {
-                return;
+                if (!alreadyStarted)
+                {
+                    return;
+                }
             }
+            else
+            {
+                started = true;
+                homeSpeaker.StatusChanged += onPlayerEvent;
+                homeSpeaker.QueueChanged += onQueueChanged;
+                playerState.StateChanged += onPlayerStateChanged;
+            }
+        }
 
-            started = true;
-            homeSpeaker.StatusChanged += onPlayerEvent;
-            homeSpeaker.QueueChanged += onQueueChanged;
-            playerState.StateChanged += onPlayerStateChanged;
+        if (alreadyStarted)
+        {
+            // A page visited later in the same circuit: anchors may have just been ticked off elsewhere, so
+            // refresh them now rather than waiting for the next health tick. The timers are already running.
+            await refreshAnchorsAsync();
+            raiseChanged("anchor refresh");
+            return;
         }
 
         await Task.WhenAll(RefreshStatusAsync(), refreshHealthAsync());
@@ -175,7 +197,29 @@ public sealed class DashboardState : IDisposable
         }
 
         Forecast = await tryGetAsync(() => forecastService.GetForecastStatusAsync(), "forecast") ?? Forecast;
+        await refreshAnchorsAsync();
 
+        raiseChanged("health refresh");
+    }
+
+    private async Task refreshAnchorsAsync()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        // The circuit's own scoped DbContext may be mid-query for the page, and a DbContext is single-threaded,
+        // so this reads through a scope of its own.
+        Anchors = await tryGetAsync(async () =>
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            return await scope.ServiceProvider.GetRequiredService<AnchorService>().GetTodayProgressAsync();
+        }, "anchors") ?? Anchors;
+    }
+
+    private void raiseChanged(string after)
+    {
         if (!disposed)
         {
             try
@@ -184,7 +228,7 @@ public sealed class DashboardState : IDisposable
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Dashboard Changed subscriber threw after health refresh");
+                logger.LogWarning(ex, "Dashboard Changed subscriber threw after {After}", after);
             }
         }
     }

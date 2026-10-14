@@ -192,6 +192,36 @@ public sealed class TemperatureService : ITemperatureService
         return await GetTemperatureStatusAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Live (uncached) look at what each matched sensor reports. Never includes the API key or device ids.
+    /// </summary>
+    public async Task<List<SensorDiagnostic>> GetSensorDiagnosticsAsync(CancellationToken cancellationToken = default)
+    {
+        var devices = await GetDevicesAsync(cancellationToken);
+        var deviceMap = TemperatureDeviceMatcher.Match(devices, roomPatterns);
+        var result = new List<SensorDiagnostic>();
+        foreach (var (room, _) in roomPatterns)
+        {
+            if (deviceMap[room] is not { } device)
+            {
+                continue;
+            }
+
+            var state = await getDeviceStateAsync(device, cancellationToken);
+            result.Add(new SensorDiagnostic
+            {
+                Room = room,
+                DeviceName = device.DeviceName,
+                Sku = device.Sku,
+                StateAvailable = state is not null,
+                CapabilityInstances = state?.CapabilityInstances ?? [],
+                BatteryPercent = state?.Battery,
+            });
+        }
+
+        return result;
+    }
+
     private async Task<TemperatureStatus> getTemperatureStatusInternalAsync(CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Getting temperature status...");
@@ -206,13 +236,27 @@ public sealed class TemperatureService : ITemperatureService
 
         var deviceMap = TemperatureDeviceMatcher.Match(devices, roomPatterns);
 
-        // Get temperatures for found devices
-        temperatureStatus.OutsideTemperature = await getTemperatureForDevice(deviceMap["Outside"], cancellationToken);
-        temperatureStatus.YoungerGirlsRoomTemperature = await getTemperatureForDevice(deviceMap["Girl"], cancellationToken);
-        temperatureStatus.OlderGirlsRoomTemperature = await getTemperatureForDevice(deviceMap["Emma"], cancellationToken);
-        temperatureStatus.BoysRoomTemperature = await getTemperatureForDevice(deviceMap["Boy"], cancellationToken);
-        temperatureStatus.MomAndDadsRoomTemperature = await getTemperatureForDevice(deviceMap["Downstairs"], cancellationToken);
-        temperatureStatus.GreenhouseTemperature = await getTemperatureForDevice(deviceMap["Greenhouse"], cancellationToken);
+        // One state request per matched device gives both the temperature and (when reported) the battery.
+        var readings = new Dictionary<string, RoomReading>(StringComparer.Ordinal);
+        foreach (var (room, _) in roomPatterns)
+        {
+            var device = deviceMap[room];
+            var state = device is null ? null : await getDeviceStateAsync(device, cancellationToken);
+            if (device is not null && state is not null && state.SensorTemperature is null)
+            {
+                logger.LogWarning("Temperature capability not found in state for device {DeviceName}", device.DeviceName);
+            }
+
+            readings[room] = new RoomReading { Name = room, Temperature = state?.SensorTemperature, BatteryPercent = state?.Battery };
+        }
+
+        temperatureStatus.Rooms = [.. roomPatterns.Select(p => readings[p.Room])];
+        temperatureStatus.OutsideTemperature = readings["Outside"].Temperature;
+        temperatureStatus.YoungerGirlsRoomTemperature = readings["Girl"].Temperature;
+        temperatureStatus.OlderGirlsRoomTemperature = readings["Emma"].Temperature;
+        temperatureStatus.BoysRoomTemperature = readings["Boy"].Temperature;
+        temperatureStatus.MomAndDadsRoomTemperature = readings["Downstairs"].Temperature;
+        temperatureStatus.GreenhouseTemperature = readings["Greenhouse"].Temperature;
 
         // Calculate temperature difference and determine if within threshold
         if (temperatureStatus.OutsideTemperature is { } outsideTemp &&
@@ -225,9 +269,4 @@ public sealed class TemperatureService : ITemperatureService
 
         return temperatureStatus;
     }
-
-    private async Task<double?> getTemperatureForDevice(Device? device, CancellationToken cancellationToken)
-        => device is not null
-            ? await GetDeviceTemperatureAsync(device, cancellationToken)
-            : null;
 }

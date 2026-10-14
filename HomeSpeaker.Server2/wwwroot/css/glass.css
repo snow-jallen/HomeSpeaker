@@ -635,50 +635,43 @@ html.hs-mode-night .hs-backdrop {
 .hs-home-side {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
+/* One slim row of music sources: icon and label inline. */
 .hs-source-tiles {
+  flex: none;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
 .hs-tile {
-  min-height: 100px;
+  min-height: 72px;
   box-sizing: border-box;
   border-radius: var(--glass-radius-tile);
-  padding: 14px 16px;
+  padding: 0 8px;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   color: #fff;
   text-decoration: none;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
+}
+
+.hs-tile svg {
+  flex: none;
 }
 
 .hs-tile:hover,
 .hs-tile:focus {
   color: #fff;
-}
-
-.hs-info-tiles {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.hs-tile--info {
-  min-height: 112px;
-}
-
-/* No Home row: let the tiles fill the column. */
-.hs-home--no-home-row .hs-source-tiles,
-.hs-home--no-home-row .hs-info-tiles {
-  flex: 1;
 }
 
 .hs-tile-label {
@@ -689,32 +682,356 @@ html.hs-mode-night .hs-backdrop {
   opacity: 0.75;
 }
 
-.hs-tile-value-row {
+/* Glanceable info cards: glucose, climate, anchors. */
+.hs-card {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--glass-radius-tile);
+  padding: 12px 16px;
+  display: flex;
+  color: #fff;
+  text-decoration: none;
+}
+
+.hs-card:hover,
+.hs-card:focus {
+  color: #fff;
+}
+
+.hs-card-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.hs-card-label .hs-battery-low {
+  opacity: 1;
+}
+
+.hs-battery-low {
+  flex: none;
+  color: #ff4d4d;
+}
+
+.hs-glucose {
+  flex: 1.15 1 0;
+  min-height: 112px;
+  flex-direction: row;
+  gap: 14px;
+}
+
+.hs-glucose-reading {
+  flex: none;
+  width: 156px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2px;
+}
+
+.hs-glucose-now {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.hs-tile-value {
-  font-size: 38px;
-  font-weight: 800;
-  letter-spacing: -1px;
-}
-
-.hs-tile-value.is-stale {
+.hs-glucose-now.is-stale {
   opacity: 0.5;
 }
 
-.hs-tile-meta {
+.hs-glucose-value {
+  font-size: 52px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+
+.hs-glucose-arrow {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.hs-glucose-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   opacity: 0.85;
 }
 
-.hs-home-row {
+.hs-glucose-delta {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.hs-glucose-age {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.hs-glucose-age.is-stale {
+  font-weight: 800;
+  opacity: 1;
+}
+
+/* Trend line: the SVG stretches to the box, so the latest-point dot is a positioned element, not an SVG circle. */
+.hs-trend {
+  flex: 1;
+  min-width: 0;
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+}
+
+.hs-trend-plot {
+  position: relative;
   flex: 1;
   min-height: 0;
+  margin: 6px 8px 0 28px;
+}
+
+.hs-trend-plot svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.hs-trend-band {
+  fill: rgba(255, 255, 255, 0.13);
+}
+
+.hs-trend-line {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.hs-trend-dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+}
+
+.hs-trend-tick {
+  position: absolute;
+  left: -28px;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.hs-trend-axis {
+  flex: none;
+  display: flex;
+  justify-content: space-between;
+  margin: 4px 8px 0 28px;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.hs-home-lower {
+  flex: 1.45 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hs-climate {
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hs-card-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hs-climate-advice {
+  min-width: 0;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hs-climate-advice.is-open {
+  background: rgba(104, 214, 140, 0.3);
+}
+
+.hs-climate-top {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hs-climate-outside {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hs-climate-big {
+  flex: none;
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1;
+}
+
+.hs-climate-detail,
+.hs-climate-outlook {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  opacity: 0.9;
+}
+
+.hs-climate-outlook {
+  align-items: flex-end;
+  text-align: right;
+  max-width: 45%;
+}
+
+.hs-climate-detail > span,
+.hs-climate-outlook > span {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hs-rooms {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 8px;
+}
+
+.hs-room {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 5px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.hs-room-name {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hs-room-temp {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.hs-anchors {
+  flex: none;
+  min-height: 52px;
+  padding: 8px 16px;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+}
+
+.hs-anchors-list {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+
+.hs-anchor-person {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.hs-anchor-person .hs-progress {
+  display: block;
+  flex: none;
+  width: 48px;
+  height: 6px;
+}
+
+.hs-anchor-person .hs-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: #fff;
+}
+
+.hs-anchor-count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.hs-anchor-person.is-done .hs-anchor-count {
+  opacity: 1;
+}
+
+.hs-anchor-person.is-done .hs-anchor-count::after {
+  content: " \2713";
+}
+
+.hs-home-row {
+  flex: 0.8 1 0;
+  min-height: 92px;
   border-radius: var(--glass-radius-tile);
   padding: 14px 16px;
   display: flex;
@@ -763,12 +1080,55 @@ html.hs-mode-night .hs-backdrop {
     width: auto;
   }
 
+  .hs-home-side {
+    flex: none;
+  }
+
   .hs-source-tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .hs-info-tiles {
-    grid-template-columns: 1fr;
+  .hs-glucose,
+  .hs-home-lower {
+    flex: none;
+  }
+
+  .hs-glucose {
+    flex-direction: column;
+  }
+
+  .hs-glucose-reading {
+    width: auto;
+  }
+
+  .hs-trend {
+    flex: none;
+    height: 120px;
+  }
+
+  .hs-climate-top {
+    flex-wrap: wrap;
+  }
+
+  .hs-climate-outlook {
+    align-items: flex-start;
+    max-width: none;
+    text-align: left;
+  }
+
+  .hs-card-head {
+    flex-wrap: wrap;
+  }
+
+  .hs-climate-advice {
+    white-space: normal;
+  }
+}
+
+/* Short kiosk with the Home row present: the anchors strip yields so the cards keep their room. */
+@media (min-width: 701px) and (max-height: 700px) {
+  .hs-home:not(.hs-home--no-home-row) .hs-anchors {
+    display: none;
   }
 }
 
