@@ -24,6 +24,7 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
+    scheme: {}
     sources:
       - path: Shared
         createIntermediateGroups: true
