@@ -134,4 +134,98 @@ public sealed class PhotoCacheStoreTests : IDisposable
         createStore().AddHidden(idA);
         Assert.Contains(idA, createStore().LoadHidden());
     }
+
+    [Fact]
+    public async Task SaveVideoAsync_PublishesTheFileOnlyOnceComplete()
+    {
+        var store = createStore();
+
+        await store.SaveVideoAsync(idA, ".mp4", async s =>
+        {
+            await s.WriteAsync(new byte[] { 1, 2 });
+            Assert.False(store.HasVideo(idA));
+            Assert.True(File.Exists(Path.Combine(store.VideosPath, idA + ".mp4.tmp")));
+        });
+
+        Assert.True(store.TryGetVideo(idA, out var path, out var contentType));
+        Assert.Equal(Path.Combine(store.VideosPath, idA + ".mp4"), path);
+        Assert.Equal("video/mp4", contentType);
+        Assert.Equal([idA], store.ListCachedVideoIds());
+        Assert.False(File.Exists(path + ".tmp"));
+    }
+
+    [Fact]
+    public async Task SaveVideoAsync_WhenWritingFails_LeavesNoFileBehind()
+    {
+        var store = createStore();
+
+        await Assert.ThrowsAsync<IOException>(() => store.SaveVideoAsync(idA, ".mp4", async s =>
+        {
+            await s.WriteAsync(new byte[] { 1 });
+            throw new IOException("disk full");
+        }));
+
+        Assert.False(store.HasVideo(idA));
+        Assert.Empty(Directory.GetFiles(store.VideosPath));
+    }
+
+    [Fact]
+    public async Task SaveVideoAsync_RejectsAnInvalidAssetId() =>
+        await Assert.ThrowsAsync<ArgumentException>(() => createStore().SaveVideoAsync("../evil", ".mp4", _ => Task.CompletedTask));
+
+    [Theory]
+    [InlineData("video/mp4", ".mp4")]
+    [InlineData("Video/MP4; codecs=avc1", ".mp4")]
+    [InlineData("video/quicktime", ".mov")]
+    [InlineData("video/webm", ".webm")]
+    [InlineData("application/octet-stream", null)]
+    [InlineData(null, null)]
+    public void VideoExtensionFor_MapsPlayableTypes(string? contentType, string? expected) =>
+        Assert.Equal(expected, PhotoCacheStore.VideoExtensionFor(contentType));
+
+    [Fact]
+    public async Task TryGetVideo_ReturnsTheRecordedTypeForTheStoredExtension()
+    {
+        var store = createStore();
+        await store.SaveVideoAsync(idA, ".mov", s => s.WriteAsync(new byte[] { 1 }).AsTask());
+
+        Assert.True(store.TryGetVideo(idA, out _, out var contentType));
+        Assert.Equal("video/quicktime", contentType);
+        Assert.False(store.TryGetVideo("not-a-guid", out _, out _));
+    }
+
+    [Fact]
+    public async Task TryDeleteVideo_RemovesTheFile()
+    {
+        var store = createStore();
+        await store.SaveVideoAsync(idA, ".mp4", s => s.WriteAsync(new byte[] { 1 }).AsTask());
+
+        Assert.True(store.TryDeleteVideo(idA));
+
+        Assert.False(store.HasVideo(idA));
+    }
+
+    [Fact]
+    public async Task DeleteStrayVideoFiles_RemovesTempAndUnknownFilesButKeepsCompletedVideos()
+    {
+        var store = createStore();
+        await store.SaveVideoAsync(idA, ".mp4", s => s.WriteAsync(new byte[] { 1 }).AsTask());
+        await File.WriteAllBytesAsync(Path.Combine(store.VideosPath, "22222222-2222-4222-8222-222222222222.mp4.tmp"), [1]);
+        await File.WriteAllBytesAsync(Path.Combine(store.VideosPath, "junk.mp4"), [1]);
+        await File.WriteAllBytesAsync(Path.Combine(store.VideosPath, "notes.txt"), [1]);
+
+        store.DeleteStrayVideoFiles();
+
+        Assert.Equal([Path.Combine(store.VideosPath, idA + ".mp4")], Directory.GetFiles(store.VideosPath));
+    }
+
+    [Fact]
+    public void VideoFolderQueries_WhenFolderDoesNotExist_AreEmpty()
+    {
+        var store = createStore();
+
+        Assert.Empty(store.ListCachedVideoIds());
+        Assert.False(store.HasVideo(idA));
+        store.DeleteStrayVideoFiles();
+    }
 }

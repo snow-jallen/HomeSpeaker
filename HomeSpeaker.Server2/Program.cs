@@ -128,6 +128,7 @@ builder.Services.AddScoped(sp => new PhotoSyncer(
     sp.GetRequiredService<ILogger<PhotoSyncer>>(),
     Random.Shared));
 builder.Services.AddHostedService<PhotoSyncWorker>();
+builder.Services.AddHostedService<VideoPrefetcher>();
 builder.Services.AddSingleton<AiProcessingSignal>();
 builder.Services.AddSingleton<AiMusicAnalyzer>();
 builder.Services.AddScoped<AiMusicCatalogService>();

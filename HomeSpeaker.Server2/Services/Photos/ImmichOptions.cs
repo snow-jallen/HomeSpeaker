@@ -15,6 +15,12 @@ public class ImmichOptions
     /// <summary>Percent of a full cache replaced with fresh photos on each sync (0 disables rotation).</summary>
     public int RotatePercent { get; set; } = 25;
 
+    /// <summary>How many upcoming slides to look ahead when pre-downloading videos to the Pi (0 disables prefetching).</summary>
+    public int VideoPrefetchAhead { get; set; } = 5;
+
+    /// <summary>Videos larger than this many MB are not prefetched; they keep streaming live from Immich.</summary>
+    public int VideoPrefetchMaxMB { get; set; } = 300;
+
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(BaseUrl) &&
         !string.IsNullOrWhiteSpace(ApiKey) &&

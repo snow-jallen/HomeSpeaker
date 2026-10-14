@@ -14,6 +14,8 @@ public sealed class PhotoLibrary
     private readonly int cacheSize;
     private readonly Lock gate = new();
     private Dictionary<string, PhotoEntry> photos = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> videoLastServed = new(StringComparer.Ordinal);
+    private long slidesServed;
 
     public PhotoLibrary(PhotoCacheStore store, TimeProvider timeProvider, IOptions<ImmichOptions> options)
         : this(store, timeProvider, Random.Shared, options.Value.CacheSize)
@@ -29,6 +31,9 @@ public sealed class PhotoLibrary
         cycle = new PhotoCycle(random);
         Reload();
     }
+
+    /// <summary>Raised (outside the lock) after Next() or Reload(), when the upcoming slide order may have changed.</summary>
+    public event Action? UpcomingChanged;
 
     public int Count
     {
@@ -73,6 +78,28 @@ public sealed class PhotoLibrary
 
             photos = visible;
             cycle.SetAvailable(visible.Keys);
+            foreach (var id in videoLastServed.Keys.Where(id => !visible.ContainsKey(id)).ToList())
+            {
+                videoLastServed.Remove(id);
+            }
+        }
+
+        UpcomingChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// What the video prefetcher needs, read under one lock: the videos among the next <paramref name="ahead"/> slides, every
+    /// visible video, and the served-slide counter with the count at which each video was last served.
+    /// </summary>
+    public VideoPrefetchSnapshot GetVideoPrefetchSnapshot(int ahead)
+    {
+        lock (gate)
+        {
+            return new VideoPrefetchSnapshot(
+                cycle.Peek(ahead).Where(id => photos.TryGetValue(id, out var entry) && entry.IsVideo).ToList(),
+                photos.Values.Where(p => p.IsVideo).Select(p => p.AssetId).ToHashSet(StringComparer.Ordinal),
+                slidesServed,
+                new Dictionary<string, long>(videoLastServed, StringComparer.Ordinal));
         }
     }
 
@@ -111,7 +138,14 @@ public sealed class PhotoLibrary
             }
 
             entry = photos[id];
+            slidesServed++;
+            if (entry.IsVideo)
+            {
+                videoLastServed[id] = slidesServed;
+            }
         }
+
+        UpcomingChanged?.Invoke();
 
         var now = timeProvider.GetLocalNow();
         var today = new DateTime(now.Year, now.Month, now.Day);
