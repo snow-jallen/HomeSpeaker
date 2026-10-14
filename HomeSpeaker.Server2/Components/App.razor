@@ -38,8 +38,29 @@
         </div>
     </div>
 
+    @* Blazor uses this element as its reconnect UI (instead of its built-in dialog) because of the id,
+       and puts the state on it as components-reconnect-* classes; glass.css shows the matching text. *@
+    <button type="button" id="components-reconnect-modal" class="hs-reconnect" data-permanent aria-live="polite">
+        <span class="hs-reconnect-dot" aria-hidden="true"></span>
+        <span class="hs-reconnect-text hs-reconnect-when-connecting">Reconnecting…</span>
+        <span class="hs-reconnect-text hs-reconnect-when-paused">Paused · tap to resume</span>
+        <span class="hs-reconnect-text hs-reconnect-when-failed">Reloading…</span>
+    </button>
+
     <script src="_framework/blazor.web.js"></script>
     <script>
+        // Tapping the pill resumes a paused circuit (which waits for the user), and otherwise reloads.
+        document.getElementById('components-reconnect-modal').addEventListener('click', async function () {
+            if (this.classList.contains('components-reconnect-paused')) {
+                try {
+                    if (await Blazor.resumeCircuit()) return;
+                } catch {
+                    // Fall through to a reload.
+                }
+            }
+            location.reload();
+        });
+
         // Kiosk self-healing: the touchscreen Pis have no keyboard, so a dead
         // circuit must recover on its own. (The old version of this watched
         // body classes, which blazor.server.js used - blazor.web.js signals
@@ -58,7 +79,8 @@
             setInterval(function () {
                 const modal = document.getElementById('components-reconnect-modal');
                 if (modal && (modal.classList.contains('components-reconnect-failed') ||
-                              modal.classList.contains('components-reconnect-rejected'))) {
+                              modal.classList.contains('components-reconnect-rejected') ||
+                              modal.classList.contains('components-reconnect-resume-failed'))) {
                     location.reload();
                 }
             }, 5000);

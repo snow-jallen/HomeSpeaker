@@ -23,6 +23,90 @@
   color: var(--glass-text);
 }
 
+/* Blazor's reconnect UI (App.razor): a small glass pill at the bottom center. Blazor puts the
+   state on it as components-reconnect-* classes; it's hidden otherwise. It fades in after a
+   second so a brief blip doesn't flash it. The !importants beat MudBlazor's own rule for this id,
+   which paints it solid. */
+#components-reconnect-modal {
+  display: none;
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 100000 !important;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 20px 0 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: rgba(22, 22, 26, 0.72) !important;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  color: var(--glass-text);
+  font-family: var(--glass-font);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  opacity: 0;
+  animation: hs-reconnect-in 0.4s ease-out 1s forwards;
+}
+
+#components-reconnect-modal.components-reconnect-show,
+#components-reconnect-modal.components-reconnect-retrying,
+#components-reconnect-modal.components-reconnect-paused,
+#components-reconnect-modal.components-reconnect-failed,
+#components-reconnect-modal.components-reconnect-resume-failed,
+#components-reconnect-modal.components-reconnect-rejected {
+  display: inline-flex;
+}
+
+.hs-reconnect-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f0b429;
+  animation: hs-reconnect-pulse 1.4s ease-in-out infinite;
+}
+
+.hs-reconnect-text {
+  display: none;
+}
+
+.components-reconnect-show .hs-reconnect-when-connecting,
+.components-reconnect-retrying .hs-reconnect-when-connecting,
+.components-reconnect-paused .hs-reconnect-when-paused,
+.components-reconnect-failed .hs-reconnect-when-failed,
+.components-reconnect-resume-failed .hs-reconnect-when-failed,
+.components-reconnect-rejected .hs-reconnect-when-failed {
+  display: inline;
+}
+
+.components-reconnect-paused .hs-reconnect-dot {
+  animation: none;
+}
+
+@keyframes hs-reconnect-in {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes hs-reconnect-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .glass-pill {
   display: inline-flex;
   align-items: center;
