@@ -11,8 +11,8 @@
     <div class="hs-ov-chips">
         @if (Dashboard.BloodSugarEnabled && Dashboard.BloodSugar?.CurrentReading is { } reading)
         {
-            <div class="glass hs-chip hs-tone-@toneClass">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c3 4 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 3-7 6-11z"></path></svg>
+            @* No drop icon: the panel's green/yellow/red color marks it, and the space goes to the number. *@
+            <div class="glass hs-chip hs-chip-glucose hs-tone-@toneClass">
                 <span class="hs-chip-value @(Dashboard.BloodSugar.IsStale ? "is-stale" : "")">@reading.Sgv.ToString("0", CultureInfo.InvariantCulture)</span>
                 <span class="hs-chip-arrow" title="@reading.DirectionDescription">@reading.DirectionIcon</span>
                 <span class="hs-chip-meta"><span>mg/dL</span><span>@age(Dashboard.BloodSugar.TimeSinceLastReading)</span></span>
@@ -85,8 +85,13 @@
 
     private void onChanged() => _ = InvokeAsync(StateHasChanged);
 
-    private static string age(TimeSpan sinceReading) =>
-        sinceReading.TotalMinutes < 1 ? "just now" : string.Create(CultureInfo.InvariantCulture, $"{(int)sinceReading.TotalMinutes} min ago");
+    // Hours past the first hour, so an old reading can't widen the fixed-size panel.
+    private static string age(TimeSpan sinceReading) => sinceReading.TotalMinutes switch
+    {
+        < 1 => "just now",
+        < 60 => string.Create(CultureInfo.InvariantCulture, $"{(int)sinceReading.TotalMinutes} min ago"),
+        _ => string.Create(CultureInfo.InvariantCulture, $"{(int)sinceReading.TotalHours} hr ago"),
+    };
 
     public void Dispose() => Dashboard.Changed -= onChanged;
 }

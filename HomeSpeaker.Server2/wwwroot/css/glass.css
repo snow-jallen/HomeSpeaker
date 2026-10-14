@@ -303,6 +303,53 @@ html.hs-mode-night .hs-backdrop {
   background: var(--glass-tone-urgent) !important;
 }
 
+/* Slideshow chips sit on photos, so they're a little more opaque than other glass. */
+.hs-ov-chips .hs-chip {
+  background: rgba(22, 22, 26, 0.66);
+}
+
+/* Blood sugar: fixed at the size the chip had with its old 40px number, which now fills
+   it. 58px fits three digits beside the widest meta ("59 min ago"). */
+.hs-ov-chips .hs-chip-glucose {
+  box-sizing: border-box;
+  width: 246px;
+  height: 90px;
+  padding: 6px 16px;
+  gap: 8px;
+}
+
+.hs-chip-glucose .hs-chip-value {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: 58px;
+  line-height: 1;
+  letter-spacing: -3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hs-chip-glucose .hs-chip-arrow {
+  font-size: 30px;
+}
+
+.hs-chip-glucose .hs-chip-meta {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Green / yellow / red by the reading (GlucoseToneMap). */
+.hs-ov-chips .hs-tone-normal {
+  background: rgba(22, 132, 64, 0.85) !important;
+}
+
+.hs-ov-chips .hs-tone-caution {
+  background: rgba(196, 150, 0, 0.9) !important;
+}
+
+.hs-ov-chips .hs-tone-urgent {
+  background: rgba(180, 28, 40, 0.9) !important;
+}
+
 .hs-ov-playing {
   position: absolute;
   left: 32px;
