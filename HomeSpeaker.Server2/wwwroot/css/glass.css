@@ -2801,8 +2801,13 @@ textarea.glass-input {
     position: sticky;
     left: 0;
     z-index: 1;
-    background: rgba(30, 30, 36, 0.75);
+    background: rgba(30, 30, 36, 0.72);
     border-right: 1px solid var(--glass-border);
+  }
+
+  /* The header row has date text scrolling under it, so it stays denser than the body cells. */
+  .glass-anchor-table thead .anchor-name-col {
+    background: rgba(30, 30, 36, 0.92);
   }
 
   .glass-anchor-table tbody tr:hover > .anchor-name-col {
