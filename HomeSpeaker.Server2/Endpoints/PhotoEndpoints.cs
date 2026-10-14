@@ -27,10 +27,11 @@ public static class PhotoEndpoints
         group.MapGet("/{id}/video", (
             string id,
             PhotoLibrary library,
+            PhotoCacheStore store,
             IImmichClient immich,
             HttpContext context,
             ILogger<PhotoLibrary> logger) =>
-            StreamVideoAsync(id, library, immich, context, logger, TimeSpan.FromSeconds(VideoHeaderTimeoutSeconds)));
+            StreamVideoAsync(id, library, store, immich, context, logger, TimeSpan.FromSeconds(VideoHeaderTimeoutSeconds)));
 
         group.MapPost("/{id}/hide", (string id, PhotoLibrary library) =>
             library.Hide(id) ? Results.NoContent() : Results.NotFound());
@@ -44,10 +45,14 @@ public static class PhotoEndpoints
         return app;
     }
 
-    /// <summary>Streams a known album video from Immich to the browser, honoring Range requests. Never buffers the body.</summary>
+    /// <summary>
+    /// Serves a known album video, honoring Range requests. A video the prefetcher has already downloaded is served from disk;
+    /// otherwise it is streamed live from Immich without buffering the body.
+    /// </summary>
     public static async Task<IResult> StreamVideoAsync(
         string id,
         PhotoLibrary library,
+        PhotoCacheStore store,
         IImmichClient immich,
         HttpContext context,
         ILogger<PhotoLibrary> logger,
@@ -56,6 +61,11 @@ public static class PhotoEndpoints
         if (!PhotoCacheStore.IsValidAssetId(id) || !library.IsVideo(id))
         {
             return Results.NotFound();
+        }
+
+        if (store.TryGetVideo(id, out var cachedPath, out var cachedContentType))
+        {
+            return TypedResults.PhysicalFile(cachedPath, cachedContentType, enableRangeProcessing: true);
         }
 
         try

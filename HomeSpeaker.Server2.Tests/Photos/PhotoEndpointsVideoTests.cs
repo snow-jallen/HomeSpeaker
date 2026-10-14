@@ -3,6 +3,7 @@ using HomeSpeaker.Server2.Endpoints;
 using HomeSpeaker.Server2.Services.Photos;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace HomeSpeaker.Server2.Tests.Photos;
@@ -13,11 +14,12 @@ public sealed class PhotoEndpointsVideoTests : IDisposable
     private static readonly TimeSpan longTimeout = TimeSpan.FromSeconds(30);
     private readonly TempDirectory temp = new();
     private readonly FakeImmichClient immich = new();
+    private readonly PhotoCacheStore store;
     private readonly PhotoLibrary library;
 
     public PhotoEndpointsVideoTests()
     {
-        var store = new PhotoCacheStore(temp.Path, NullLogger<PhotoCacheStore>.Instance);
+        store = new PhotoCacheStore(temp.Path, NullLogger<PhotoCacheStore>.Instance);
         store.SaveManifest([new PhotoEntry { AssetId = VideoId, TakenAt = new DateTime(2021, 8, 14), IsVideo = true, DurationMs = 5000 }]);
         library = new PhotoLibrary(store, new FixedTimeProvider(new DateTimeOffset(2026, 10, 13, 12, 0, 0, TimeSpan.Zero)), new Random(1));
     }
@@ -28,7 +30,61 @@ public sealed class PhotoEndpointsVideoTests : IDisposable
         Assert.Equal(expected, Assert.IsType<Microsoft.AspNetCore.Http.HttpResults.StatusCodeHttpResult>(result).StatusCode);
 
     private Task<IResult> stream(HttpContext context, TimeSpan? headerTimeout = null) =>
-        PhotoEndpoints.StreamVideoAsync(VideoId, library, immich, context, NullLogger<PhotoLibrary>.Instance, headerTimeout ?? longTimeout);
+        PhotoEndpoints.StreamVideoAsync(VideoId, library, store, immich, context, NullLogger<PhotoLibrary>.Instance, headerTimeout ?? longTimeout);
+
+    private async Task<byte[]> saveCachedVideoAsync(byte[] bytes)
+    {
+        await store.SaveVideoAsync(VideoId, ".mp4", s => s.WriteAsync(bytes).AsTask());
+        return bytes;
+    }
+
+    private static DefaultHttpContext rangeContext(string? range, MemoryStream body)
+    {
+        var services = new ServiceCollection().AddLogging().BuildServiceProvider();
+        var context = new DefaultHttpContext { RequestServices = services };
+        context.Request.Method = HttpMethods.Get;
+        if (range is not null)
+        {
+            context.Request.Headers.Range = range;
+        }
+
+        context.Response.Body = body;
+        return context;
+    }
+
+    [Fact]
+    public async Task Stream_WhenVideoIsCached_ServesTheFileWithRangeSupportAndNeverCallsImmich()
+    {
+        var bytes = await saveCachedVideoAsync(Enumerable.Range(0, 200).Select(i => (byte)i).ToArray());
+        using var body = new MemoryStream();
+        var context = rangeContext("bytes=0-99", body);
+
+        var result = await stream(context);
+        await result.ExecuteAsync(context);
+
+        var file = Assert.IsType<Microsoft.AspNetCore.Http.HttpResults.PhysicalFileHttpResult>(result);
+        Assert.True(file.EnableRangeProcessing);
+        Assert.Equal("video/mp4", file.ContentType);
+        Assert.Equal(StatusCodes.Status206PartialContent, context.Response.StatusCode);
+        Assert.Equal("bytes 0-99/200", context.Response.Headers.ContentRange.ToString());
+        Assert.Equal(bytes.Take(100), body.ToArray());
+        Assert.Empty(immich.OpenedVideoIds);
+    }
+
+    [Fact]
+    public async Task Stream_WhenOnlyAPartialDownloadExists_FallsBackToTheProxy()
+    {
+        Directory.CreateDirectory(store.VideosPath);
+        await File.WriteAllBytesAsync(Path.Combine(store.VideosPath, VideoId + ".mp4.tmp"), [1, 2, 3]);
+        immich.OpenVideo = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([9, 9]) });
+        using var body = new MemoryStream();
+
+        var result = await stream(rangeContext(null, body));
+
+        Assert.Same(Results.Empty, result);
+        Assert.Equal(new byte[] { 9, 9 }, body.ToArray());
+        Assert.Equal([VideoId], immich.OpenedVideoIds);
+    }
 
     [Fact]
     public async Task Stream_WhenImmichNeverSendsHeaders_TimesOutWith502()
@@ -111,8 +167,8 @@ public sealed class PhotoEndpointsVideoTests : IDisposable
         var context = new DefaultHttpContext();
 
         var unknown = await PhotoEndpoints.StreamVideoAsync(
-            "22222222-2222-4222-8222-222222222222", library, immich, context, NullLogger<PhotoLibrary>.Instance, longTimeout);
-        var invalid = await PhotoEndpoints.StreamVideoAsync("../x", library, immich, context, NullLogger<PhotoLibrary>.Instance, longTimeout);
+            "22222222-2222-4222-8222-222222222222", library, store, immich, context, NullLogger<PhotoLibrary>.Instance, longTimeout);
+        var invalid = await PhotoEndpoints.StreamVideoAsync("../x", library, store, immich, context, NullLogger<PhotoLibrary>.Instance, longTimeout);
 
         Assert.IsType<Microsoft.AspNetCore.Http.HttpResults.NotFound>(unknown);
         Assert.IsType<Microsoft.AspNetCore.Http.HttpResults.NotFound>(invalid);
