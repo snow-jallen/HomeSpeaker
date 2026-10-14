@@ -12,6 +12,7 @@ public sealed record StationTile(int Hue, string Initials)
 {
     private const uint FnvOffsetBasis = 2166136261;
     private const uint FnvPrime = 16777619;
+    private const int MaxNumberLength = 3;
     private const string FallbackInitials = "♪";
 
     private static readonly HashSet<string> fillerWords = new(StringComparer.OrdinalIgnoreCase) { "Stream", "Radio", "The", "Your" };
@@ -22,10 +23,13 @@ public sealed record StationTile(int Hue, string Initials)
     public static int HueFor(string? name)
     {
         var hash = FnvOffsetBasis;
-        foreach (var b in Encoding.UTF8.GetBytes((name ?? string.Empty).Trim().ToUpperInvariant()))
+        unchecked
         {
-            hash ^= b;
-            hash *= FnvPrime;
+            foreach (var b in Encoding.UTF8.GetBytes((name ?? string.Empty).Trim().ToUpperInvariant()))
+            {
+                hash ^= b;
+                hash *= FnvPrime;
+            }
         }
 
         return (int)(hash % 360);
@@ -34,6 +38,8 @@ public sealed record StationTile(int Hue, string Initials)
     /// <summary>
     /// First letters of the first two meaningful words ("Classical Kids" → "CK"), skipping filler words
     /// unless that would leave nothing. A lone all-caps word such as a call sign keeps two letters ("KBAQ" → "KB").
+    /// When a meaningful word is all digits (a frequency or channel number such as "89" or "98.7"), the number
+    /// wins over letters ("Classical 89" → "89"), using its whole-number digits and at most three of them.
     /// </summary>
     public static string InitialsFor(string? name)
     {
@@ -52,6 +58,12 @@ public sealed record StationTile(int Hue, string Initials)
             meaningful = words;
         }
 
+        var number = meaningful.Select(numberIn).FirstOrDefault(n => n is not null);
+        if (number is not null)
+        {
+            return number;
+        }
+
         if (meaningful.Count == 1)
         {
             var letters = meaningful[0].Where(char.IsLetterOrDigit).ToArray();
@@ -60,6 +72,22 @@ public sealed record StationTile(int Hue, string Initials)
         }
 
         return string.Concat(meaningful.Take(2).Select(w => char.ToUpperInvariant(w.First(char.IsLetterOrDigit))));
+    }
+
+    /// <summary>
+    /// The leading digits (at most <see cref="MaxNumberLength"/>) of a word made only of digits and punctuation
+    /// ("98.7" → "98"), or null when the word contains letters.
+    /// </summary>
+    private static string? numberIn(string word)
+    {
+        var alphanumerics = word.Where(char.IsLetterOrDigit).ToList();
+        if (alphanumerics.Count == 0 || !alphanumerics.All(char.IsDigit))
+        {
+            return null;
+        }
+
+        var leadingRun = word.SkipWhile(c => !char.IsDigit(c)).TakeWhile(char.IsDigit).Take(MaxNumberLength);
+        return new string(leadingRun.ToArray());
     }
 
     /// <summary>The tile background: a diagonal two-stop gradient from the hue to a deeper neighbour.</summary>

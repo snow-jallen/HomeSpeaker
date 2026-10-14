@@ -1,11 +1,12 @@
-@* A radio station's artwork: its uploaded image, cover-fitted, over a generated tile (gradient + initials)
-   that shows whenever there is no image or the image fails to load. Size and radius come from Class. *@
+@* A radio station's artwork: its uploaded image, shown whole (contain) on the tile's gradient so wide logos keep
+   their sides while square art still fills the tile. The generated tile (gradient + initials) shows whenever
+   there is no image or the image fails to load. Size and radius come from Class. *@
 @{
     var tile = StationTile.For(Name);
-    var fontSize = tile.Initials.Length > 1 ? 40 : 50;
+    var fontSize = tile.Initials.Length switch { > 2 => 32, 2 => 40, _ => 50 };
 }
 <div class="hs-station-art @Class"
-     style="background:@tile.Background"
+     style="--hs-tile-bg:@tile.Background;background:@tile.Background"
      role="@(Label is null ? null : "img")"
      aria-label="@Label"
      aria-hidden="@(Label is null ? "true" : null)">

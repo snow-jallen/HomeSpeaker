@@ -1768,8 +1768,10 @@ fluent-dialog.glass-fluent-dialog .glass-dialog {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  background: #16181d;
+  /* Whole image, never cropped: a square one still fills the tile, a wide one sits between bands of the
+     tile's own gradient (set by StationArt), which hides the initials underneath while the image is up. */
+  object-fit: contain;
+  background: var(--hs-tile-bg, #16181d);
 }
 
 /* ---------- Page: radio streams ---------- */
@@ -1823,10 +1825,7 @@ dialog.glass-dialog--picker[open] {
   box-sizing: border-box;
   width: 64px;
   height: 64px;
-  padding: 4px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.1);
-  object-fit: contain;
 }
 
 .glass-chip-row {
