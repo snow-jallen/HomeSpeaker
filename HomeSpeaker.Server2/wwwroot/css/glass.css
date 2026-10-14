@@ -683,7 +683,7 @@ html.hs-mode-night .hs-backdrop {
 }
 
 /* Glanceable info cards: glucose, climate, anchors. */
-.hs-card {
+.hs-info-card {
   box-sizing: border-box;
   min-width: 0;
   min-height: 0;
@@ -695,8 +695,8 @@ html.hs-mode-night .hs-backdrop {
   text-decoration: none;
 }
 
-.hs-card:hover,
-.hs-card:focus {
+.hs-info-card:hover,
+.hs-info-card:focus {
   color: #fff;
 }
 
@@ -721,7 +721,7 @@ html.hs-mode-night .hs-backdrop {
 }
 
 .hs-glucose {
-  flex: 1.15 1 0;
+  flex: 1 1 0;
   min-height: 112px;
   flex-direction: row;
   gap: 14px;
@@ -851,7 +851,7 @@ html.hs-mode-night .hs-backdrop {
 }
 
 .hs-home-lower {
-  flex: 1.45 1 0;
+  flex: none;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -859,10 +859,23 @@ html.hs-mode-night .hs-backdrop {
 }
 
 .hs-climate {
-  flex: 1 1 0;
+  flex: none;
   flex-direction: column;
-  justify-content: space-between;
   gap: 8px;
+}
+
+/* No glucose card: the lower cards take the whole column. */
+.hs-source-tiles + .hs-home-lower {
+  flex: 1 1 0;
+}
+
+.hs-source-tiles + .hs-home-lower .hs-climate {
+  flex: 1 1 auto;
+  justify-content: space-between;
+}
+
+.hs-source-tiles + .hs-home-lower .hs-climate-big {
+  font-size: 64px;
 }
 
 .hs-card-head {
@@ -1030,7 +1043,7 @@ html.hs-mode-night .hs-backdrop {
 }
 
 .hs-home-row {
-  flex: 0.8 1 0;
+  flex: none;
   min-height: 92px;
   border-radius: var(--glass-radius-tile);
   padding: 14px 16px;

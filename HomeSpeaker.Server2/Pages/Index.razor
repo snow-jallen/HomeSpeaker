@@ -106,7 +106,7 @@
         @if (glucoseCardVisible)
         {
             var card = glucoseCard;
-            <a class="glass hs-card hs-glucose hs-tone-@toneClass" href="nightscout">
+            <a class="glass hs-info-card hs-glucose hs-tone-@toneClass" href="nightscout">
                 @if (card is not null)
                 {
                     <div class="hs-glucose-reading">
@@ -163,7 +163,7 @@
                 {
                     var advice = WindowAdvice.From(Dashboard.Temperature);
                     var outsideLow = Dashboard.Temperature?.Rooms.Any(r => string.Equals(r.Name, "Outside", StringComparison.Ordinal) && ClimateRoom.IsLow(r.BatteryPercent)) == true;
-                    <a class="glass hs-card hs-climate" href="climate">
+                    <a class="glass hs-info-card hs-climate" href="climate">
                         <div class="hs-card-head">
                             <span class="hs-card-label">
                                 Climate
@@ -224,7 +224,7 @@
                 }
                 @if (anchors.Count > 0)
                 {
-                    <a class="glass hs-card hs-anchors" href="anchors" aria-label="Anchors done today">
+                    <a class="glass hs-info-card hs-anchors" href="anchors" aria-label="Anchors done today">
                         <span class="hs-card-label">Anchors</span>
                         <ul class="hs-anchors-list">
                             @foreach (var person in anchors)
