@@ -74,7 +74,7 @@ public static partial class NightscoutEntryParser
             : null;
     }
 
-    /// <summary>Accepts ISO-8601 with Z, with +hh:mm, or with the Java-style +hhmm; no offset means UTC.</summary>
+    /// <summary>Accepts ISO-8601 with Z, with +hh:mm, or with the Java-style +hhmm. No offset means server-local time (as before).</summary>
     public static DateTime? ParseDateString(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -83,7 +83,7 @@ public static partial class NightscoutEntryParser
         }
 
         var normalised = compactOffset().Replace(value.Trim(), "$1:$2");
-        return DateTimeOffset.TryParse(normalised, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed)
+        return DateTimeOffset.TryParse(normalised, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var parsed)
             ? parsed.UtcDateTime
             : null;
     }

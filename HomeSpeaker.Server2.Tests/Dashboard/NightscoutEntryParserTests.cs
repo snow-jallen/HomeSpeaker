@@ -9,9 +9,16 @@ public sealed class NightscoutEntryParserTests
     [InlineData("2026-10-13T06:00:00.000-06:00")]
     [InlineData("2026-10-13T06:00:00.000-0600")]
     [InlineData("2026-10-13T14:00:00+0200")]
-    [InlineData("2026-10-13T12:00:00")]
     public void ParseDateString_HandlesTheShapesUploadersWrite(string value) =>
         Assert.Equal(new DateTime(2026, 10, 13, 12, 0, 0, DateTimeKind.Utc), NightscoutEntryParser.ParseDateString(value));
+
+    [Fact]
+    public void ParseDateString_WithoutAnOffset_IsServerLocalTime()
+    {
+        var expected = new DateTime(2026, 10, 13, 12, 0, 0, DateTimeKind.Local).ToUniversalTime();
+
+        Assert.Equal(expected, NightscoutEntryParser.ParseDateString("2026-10-13T12:00:00"));
+    }
 
     [Theory]
     [InlineData(null)]
