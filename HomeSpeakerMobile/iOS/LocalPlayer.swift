@@ -80,6 +80,12 @@ final class LocalPlayer {
     func pause() { player.pause() }
     func resume() { player.play() }
 
+    func seek(to seconds: Double) {
+        player.seek(to: CMTime(seconds: seconds, preferredTimescale: CMTimeScale(NSEC_PER_SEC)))
+        elapsed = seconds
+        updateNowPlayingInfo()
+    }
+
     func skipToNext() {
         let next = currentIndex + 1
         guard next < songs.count else { return }
@@ -173,7 +179,7 @@ final class LocalPlayer {
             return localURL
         }
 
-        let api = APIClient(baseURL: connection.baseURL)
+        let api = APIClient.client(for: connection)
         if let path = song.path, !path.isEmpty {
             return api.offlineSongMediaURL(songPath: path)
         }

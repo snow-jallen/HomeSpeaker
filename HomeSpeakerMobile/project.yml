@@ -28,10 +28,13 @@ targets:
     sources:
       - path: Shared
         createIntermediateGroups: true
+      - path: iOSShared
+        createIntermediateGroups: true
       - path: iOS
         createIntermediateGroups: true
         excludes:
           - Resources
+          - Widget
       - path: iOS/Resources/Assets.xcassets
     settings:
       base:
@@ -49,11 +52,54 @@ targets:
     dependencies:
       - target: HomeSpeakerWatch
         embed: true
+      - target: HomeSpeakerWidgetExtension
+        embed: true
       - sdk: WatchConnectivity.framework
       - sdk: AVFoundation.framework
+      - sdk: AVKit.framework
       - sdk: MediaPlayer.framework
       - sdk: AppIntents.framework
       - sdk: UserNotifications.framework
+      - sdk: WidgetKit.framework
+      - sdk: ActivityKit.framework
+
+  # Home Screen / Lock Screen widgets, the Live Activity, and Control Center
+  # controls for the iPhone.
+  HomeSpeakerWidgetExtension:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Shared
+        createIntermediateGroups: true
+        excludes:
+          - ConnectionStore.swift
+          - WatchSync.swift
+      - path: iOSShared
+        createIntermediateGroups: true
+      - path: iOS/Widget
+        createIntermediateGroups: true
+        excludes:
+          - HomeSpeakerWidgetExtension.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.homespeaker.ios.widget
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_ENTITLEMENTS: iOS/Widget/HomeSpeakerWidgetExtension.entitlements
+    info:
+      path: iOS/Widget/Info.plist
+      properties:
+        CFBundleDisplayName: HomeSpeaker Widgets
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        NSLocalNetworkUsageDescription: HomeSpeaker widgets connect to your HomeSpeaker server on your local network.
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+      - sdk: AppIntents.framework
+      - sdk: ActivityKit.framework
 
   HomeSpeakerWatch:
     type: application

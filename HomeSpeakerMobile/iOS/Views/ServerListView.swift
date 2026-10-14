@@ -126,6 +126,7 @@ struct AddEditServerView: View {
     @State private var name = ""
     @State private var host = ""
     @State private var port = "5000"
+    @State private var remoteURL = ""
     @State private var isVerifying = false
     @State private var pendingConn: ServerConnection?
     @State private var verifyWarning: VerifyWarning?
@@ -156,6 +157,16 @@ struct AddEditServerView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                Section {
+                    TextField("Remote address (optional)", text: $remoteURL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+                } header: {
+                    Text("Away From Home")
+                } footer: {
+                    Text("Used when the address above can't be reached, e.g. kitchen.boston-cloud.ts.net over Tailscale. Uses https unless you type http://.")
+                }
             }
             .navigationTitle(isEditing ? "Edit Server" : "Add Server")
             .navigationBarTitleDisplayMode(.inline)
@@ -177,6 +188,7 @@ struct AddEditServerView: View {
                     name = existing.name
                     host = existing.host
                     port = "\(existing.port)"
+                    remoteURL = existing.remoteURL ?? ""
                 }
             }
             .alert(item: $verifyWarning) { warning in
@@ -194,14 +206,17 @@ struct AddEditServerView: View {
 
     private func save() {
         let portNum = Int(port) ?? 5000
+        let trimmedRemote = remoteURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let remote = trimmedRemote.isEmpty ? nil : trimmedRemote
         let conn: ServerConnection
         if var existing {
             existing.name = name
             existing.host = host
             existing.port = portNum
+            existing.remoteURL = remote
             conn = existing
         } else {
-            conn = ServerConnection(name: name, host: host, port: portNum)
+            conn = ServerConnection(name: name, host: host, port: portNum, remoteURL: remote)
         }
 
         isVerifying = true
@@ -209,7 +224,7 @@ struct AddEditServerView: View {
 
         Task {
             defer { isVerifying = false }
-            let client = APIClient(baseURL: conn.baseURL)
+            let client = APIClient(connection: conn)
             do {
                 _ = try await client.getPlayerStatus()
                 commitSave(conn)

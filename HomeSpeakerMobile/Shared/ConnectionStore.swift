@@ -3,35 +3,24 @@ import Observation
 
 @Observable
 class ConnectionStore {
-    private let connectionsKey = "hs_connections"
-    private let selectedIdKey = "hs_selectedId"
-    #if os(watchOS)
-    private let defaults = UserDefaults(suiteName: "group.com.homespeaker") ?? .standard
-    #else
-    private let defaults: UserDefaults = .standard
-    #endif
+    private let connectionsKey = SharedConnections.connectionsKey
+    private let selectedIdKey = SharedConnections.selectedIdKey
+    private let defaults = SharedConnections.defaults
 
     var connections: [ServerConnection] = []
     var selectedConnection: ServerConnection?
 
-    // Reuse one APIClient (and its URLSession) per selected server. Building a
-    // fresh URLSession on every access leaks connections - sessions are never
-    // invalidated - and gets flaky over a long-running app session.
-    @ObservationIgnored private var cachedAPI: APIClient?
-    @ObservationIgnored private var cachedAPIBaseURL: URL?
-
+    // APIClient.client(for:) reuses one client (and its URLSession) per server.
+    // Building a fresh URLSession on every access leaks connections - sessions
+    // are never invalidated - and gets flaky over a long-running app session.
     var api: APIClient? {
-        guard let conn = selectedConnection else { return nil }
-        if let cachedAPI, cachedAPIBaseURL == conn.baseURL {
-            return cachedAPI
-        }
-        let client = APIClient(baseURL: conn.baseURL)
-        cachedAPI = client
-        cachedAPIBaseURL = conn.baseURL
-        return client
+        selectedConnection.map(APIClient.client(for:))
     }
 
     init() {
+        #if os(iOS)
+        SharedConnections.migrateFromStandardDefaultsIfNeeded()
+        #endif
         load()
     }
 

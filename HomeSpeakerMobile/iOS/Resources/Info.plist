@@ -26,6 +26,10 @@
     <true/>
     <key>NSLocalNetworkUsageDescription</key>
     <string>HomeSpeaker needs access to your local network to connect to your HomeSpeaker server.</string>
+    <key>NSSupportsLiveActivities</key>
+    <true/>
+    <key>NSSupportsLiveActivitiesFrequentUpdates</key>
+    <true/>
     <key>NSSiriUsageDescription</key>
     <string>HomeSpeaker uses Siri to let you play music and streams by voice.</string>
     <key>NSAppTransportSecurity</key>
