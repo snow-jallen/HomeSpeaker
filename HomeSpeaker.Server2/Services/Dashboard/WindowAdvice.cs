@@ -26,6 +26,11 @@ public sealed record WindowAdvice(bool Close, string Text)
             return new WindowAdvice(false, $"Open windows · {amount}cooler outside");
         }
 
+        if (degrees == 0)
+        {
+            return new WindowAdvice(true, "Close windows · same as inside");
+        }
+
         var warmer = outside >= inside;
         return new WindowAdvice(true, $"Close windows · {amount}{(warmer ? "warmer" : "colder")} outside");
     }

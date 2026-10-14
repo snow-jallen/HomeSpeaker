@@ -82,6 +82,15 @@ public sealed class ClimateCardTests
     }
 
     [Fact]
+    public void WindowAdvice_CloseWhenTemperaturesAreEqual_SaysSame()
+    {
+        var result = WindowAdvice.From(advice(70, 70, shouldClose: true));
+
+        Assert.True(result!.Close);
+        Assert.Equal("Close windows · same as inside", result.Text);
+    }
+
+    [Fact]
     public void WindowAdvice_OpenWhenCoolerOutside()
     {
         var result = WindowAdvice.From(advice(60, 70, shouldClose: false));
