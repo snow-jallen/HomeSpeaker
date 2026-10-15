@@ -64,6 +64,24 @@ public sealed class PhotoCycle(Random random)
         return id;
     }
 
+    /// <summary>
+    /// Removes and returns the first id still pending in this round that matches, or null when none does. Used to pull a
+    /// partner slide forward; it never reaches into the next round, so every photo is still shown once per round.
+    /// </summary>
+    public string? TakeNext(Func<string, bool> match)
+    {
+        var index = pending.FindIndex(id => match(id));
+        if (index < 0)
+        {
+            return null;
+        }
+
+        var id = pending[index];
+        pending.RemoveAt(index);
+        shownThisRound.Add(id);
+        return id;
+    }
+
     /// <summary>Shuffles a full round that does not start with the photo ending the current one (the last pending id, or the last shown).</summary>
     private List<string> buildNextRound()
     {

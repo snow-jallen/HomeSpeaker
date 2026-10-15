@@ -131,4 +131,29 @@ public sealed class PhotoCycleTests
         Assert.Equal(["x", "y"], peeked.Order());
         Assert.Equal(peeked, [cycle.Next()!, cycle.Next()!]);
     }
+
+    [Fact]
+    public void TakeNext_PullsAMatchingPhotoForwardWithoutRepeatingIt()
+    {
+        var cycle = new PhotoCycle(new Random(5));
+        cycle.SetAvailable(["a", "b", "c", "d"]);
+        var first = cycle.Next()!;
+
+        var taken = cycle.TakeNext(id => id != "zzz");
+        var rest = new[] { cycle.Next()!, cycle.Next()! };
+
+        Assert.NotNull(taken);
+        Assert.Equal(new[] { "a", "b", "c", "d" }, new[] { first, taken }.Concat(rest).Order());
+    }
+
+    [Fact]
+    public void TakeNext_WithNoMatchLeftInTheRound_ReturnsNull()
+    {
+        var cycle = new PhotoCycle(new Random(5));
+        cycle.SetAvailable(["a", "b"]);
+        cycle.Next();
+
+        Assert.Null(cycle.TakeNext(_ => false));
+        Assert.NotNull(cycle.Next());
+    }
 }
