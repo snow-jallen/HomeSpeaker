@@ -4,6 +4,17 @@
 <dict>
     <key>CFBundleDisplayName</key>
     <string>HomeSpeaker</string>
+    <key>INAlternativeAppNames</key>
+    <array>
+        <dict>
+            <key>INAlternativeAppName</key>
+            <string>Home Speaker</string>
+        </dict>
+        <dict>
+            <key>INAlternativeAppName</key>
+            <string>Speaker</string>
+        </dict>
+    </array>
     <key>CFBundleIconName</key>
     <string>AppIcon</string>
     <key>CFBundleExecutable</key>
