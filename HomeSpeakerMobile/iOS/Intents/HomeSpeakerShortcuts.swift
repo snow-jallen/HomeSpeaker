@@ -5,7 +5,8 @@ import AppIntents
 // server ("... on Kitchen"); without one it acts on the server selected in the app.
 // The app also answers to "Home Speaker" and "Speaker" (INAlternativeAppNames in
 // Info.plist), so phrases ending in the app name read naturally: "Stop Kitchen Speaker".
-// iOS allows at most 10 App Shortcuts.
+// iOS allows at most 10 App Shortcuts. SiriCommandsView lists these phrases in the
+// app; update it when they change.
 
 struct HomeSpeakerShortcuts: AppShortcutsProvider {
     static var shortcutTileColor: ShortcutTileColor = .blue
