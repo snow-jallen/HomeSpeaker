@@ -54,6 +54,27 @@ public sealed class PhotoCacheStore
         return true;
     }
 
+    /// <summary>The cached image's pixel size, read from its JPEG header; false when it is missing or not a readable JPEG.</summary>
+    public bool TryReadImageSize(string assetId, out int width, out int height)
+    {
+        width = 0;
+        height = 0;
+        if (!TryGetImagePath(assetId, out var path))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var stream = File.OpenRead(path);
+            return JpegSize.TryRead(stream, out width, out height);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
     public async Task SaveImageAsync(string assetId, Func<Stream, Task> writeContent)
     {
         if (!IsValidAssetId(assetId))

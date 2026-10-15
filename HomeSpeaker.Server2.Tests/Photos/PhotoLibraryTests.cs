@@ -281,4 +281,70 @@ public sealed class PhotoLibraryTests : IDisposable
 
         Assert.Equal("August 2021 · 4 years ago", next.When);
     }
+
+    private async Task seedSizedAsync(params (int Width, int Height)[] sizes)
+    {
+        var entries = new List<PhotoEntry>();
+        for (var i = 0; i < sizes.Length; i++)
+        {
+            var id = idFor(i + 1);
+            var bytes = TestJpeg.Header(sizes[i].Width, sizes[i].Height);
+            await store.SaveImageAsync(id, s => s.WriteAsync(bytes).AsTask());
+            entries.Add(new PhotoEntry { AssetId = id, TakenAt = new DateTime(2021, 8, 14) });
+        }
+
+        store.SaveManifest(entries);
+    }
+
+    [Fact]
+    public async Task Next_GivesOnlyTallPhotosAPortraitStyle()
+    {
+        await seedSizedAsync((1920, 1080), (1000, 1000), (1080, 1440));
+        var library = new PhotoLibrary(store, today, new Random(1), cacheSize: 40);
+
+        var styles = new Dictionary<string, string?>();
+        for (var i = 0; i < 30; i++)
+        {
+            var photo = library.Next()!;
+            styles[photo.Id] = photo.Portrait;
+            if (photo.Partner is not null)
+            {
+                styles[photo.Partner.Id] = photo.Portrait;
+            }
+        }
+
+        Assert.Null(styles[idFor(1)]);
+        Assert.Contains(styles[idFor(2)], PortraitStyle.All);
+        Assert.Contains(styles[idFor(3)], PortraitStyle.All);
+    }
+
+    [Fact]
+    public async Task Next_PairsTwoTallPhotosAndShowsEachOncePerRound()
+    {
+        await seedSizedAsync((1080, 1440), (1080, 1440), (1080, 1440), (1080, 1440), (1920, 1080), (1920, 1080));
+        var library = new PhotoLibrary(store, today, new Random(3), cacheSize: 40);
+
+        var sawPair = false;
+        for (var round = 0; round < 20; round++)
+        {
+            var shown = new List<string>();
+            while (shown.Count < 6)
+            {
+                var photo = library.Next()!;
+                shown.Add(photo.Id);
+                if (photo.Partner is not null)
+                {
+                    sawPair = true;
+                    Assert.Equal(PortraitStyle.Pair, photo.Portrait);
+                    Assert.NotEqual(photo.Id, photo.Partner.Id);
+                    Assert.True(int.Parse(photo.Partner.Id[..8], System.Globalization.NumberStyles.HexNumber) <= 4, "the partner must be tall");
+                    shown.Add(photo.Partner.Id);
+                }
+            }
+
+            Assert.Equal(6, shown.Distinct().Count());
+        }
+
+        Assert.True(sawPair);
+    }
 }

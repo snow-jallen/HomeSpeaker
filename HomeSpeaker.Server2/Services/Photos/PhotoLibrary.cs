@@ -7,6 +7,9 @@ public sealed class PhotoLibrary
 {
     private const int DefaultCacheSize = 40;
 
+    /// <summary>A photo narrower than 6:5 loses too much to the cover crop on the wide screen, so it gets a <see cref="PortraitStyle"/>.</summary>
+    private const double TallAspectLimit = 1.2;
+
     private readonly PhotoCacheStore store;
     private readonly TimeProvider timeProvider;
     private readonly PhotoCycle cycle;
@@ -14,6 +17,7 @@ public sealed class PhotoLibrary
     private readonly int cacheSize;
     private readonly Lock gate = new();
     private Dictionary<string, PhotoEntry> photos = new(StringComparer.Ordinal);
+    private HashSet<string> tallPhotos = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> videoLastServed = new(StringComparer.Ordinal);
     private long slidesServed;
 
@@ -62,6 +66,7 @@ public sealed class PhotoLibrary
             .Where(p => !p.IsVideo && !hidden.Contains(p.AssetId) && store.HasImage(p.AssetId))
             .GroupBy(p => p.AssetId, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+        var tall = visible.Keys.Where(isTall).ToHashSet(StringComparer.Ordinal);
         var videos = manifest
             .Where(p => p.IsVideo && !hidden.Contains(p.AssetId))
             .GroupBy(p => p.AssetId, StringComparer.Ordinal)
@@ -77,6 +82,7 @@ public sealed class PhotoLibrary
             }
 
             photos = visible;
+            tallPhotos = tall;
             cycle.SetAvailable(visible.Keys);
             foreach (var id in videoLastServed.Keys.Where(id => !visible.ContainsKey(id)).ToList())
             {
@@ -102,6 +108,9 @@ public sealed class PhotoLibrary
                 new Dictionary<string, long>(videoLastServed, StringComparer.Ordinal));
         }
     }
+
+    private bool isTall(string assetId) =>
+        store.TryReadImageSize(assetId, out var width, out var height) && width < height * TallAspectLimit;
 
     private int videoSampleSize(int visiblePhotos, int albumImageCount, int albumVideoCount)
     {
@@ -129,6 +138,8 @@ public sealed class PhotoLibrary
     public NextPhoto? Next()
     {
         PhotoEntry entry;
+        PhotoEntry? partner = null;
+        string? portrait = null;
         lock (gate)
         {
             var id = cycle.Next();
@@ -143,6 +154,23 @@ public sealed class PhotoLibrary
             {
                 videoLastServed[id] = slidesServed;
             }
+            else if (tallPhotos.Contains(id))
+            {
+                portrait = PortraitStyle.All[random.Next(PortraitStyle.All.Count)];
+                if (portrait == PortraitStyle.Pair)
+                {
+                    // The partner is the next tall photo of this round, so it is not shown again on its own.
+                    var partnerId = cycle.TakeNext(tallPhotos.Contains);
+                    if (partnerId is null)
+                    {
+                        portrait = PortraitStyle.Blur;
+                    }
+                    else
+                    {
+                        partner = photos[partnerId];
+                    }
+                }
+            }
         }
 
         UpcomingChanged?.Invoke();
@@ -152,10 +180,43 @@ public sealed class PhotoLibrary
         var layout = OverlayLayoutChooser.Choose(entry) == OverlayLayout.Mirrored ? "mirrored" : "default";
         var place = PhotoCaption.Place(entry);
         var when = PhotoCaption.When(entry.TakenAt, today);
-        return entry.IsVideo
-            ? new NextPhoto(entry.AssetId, $"/api/photos/{entry.AssetId}/video", place, when, "default", "video", entry.DurationMs)
-            : new NextPhoto(entry.AssetId, $"/api/photos/{entry.AssetId}.jpg", place, when, layout, "photo", null);
+        if (entry.IsVideo)
+        {
+            return new NextPhoto(entry.AssetId, $"/api/photos/{entry.AssetId}/video", place, when, "default", "video", entry.DurationMs);
+        }
+
+        if (portrait is null)
+        {
+            return new NextPhoto(entry.AssetId, imageUrl(entry), place, when, layout, "photo", null);
+        }
+
+        if (partner is not null)
+        {
+            place = joinDistinct(place, PhotoCaption.Place(partner));
+            when = joinDistinct(when, PhotoCaption.When(partner.TakenAt, today))!;
+        }
+
+        // The overlay chooser assumes a full-screen cover crop; the blurred and paired styles keep faces off the corners anyway.
+        var portraitLayout = portrait is PortraitStyle.Blur or PortraitStyle.Pair ? "default" : layout;
+        return new NextPhoto(
+            entry.AssetId,
+            imageUrl(entry),
+            place,
+            when,
+            portraitLayout,
+            "photo",
+            null,
+            portrait,
+            entry.Faces,
+            partner is null ? null : new PairedPhoto(partner.AssetId, imageUrl(partner), partner.Faces));
     }
+
+    private static string imageUrl(PhotoEntry entry) => $"/api/photos/{entry.AssetId}.jpg";
+
+    private static string? joinDistinct(string? first, string? second) =>
+        string.IsNullOrEmpty(second) || string.Equals(first, second, StringComparison.Ordinal) ? first
+        : string.IsNullOrEmpty(first) ? second
+        : $"{first} · {second}";
 
     /// <summary>True only for a currently visible (not hidden) video entry.</summary>
     public bool IsVideo(string assetId)

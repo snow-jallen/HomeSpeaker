@@ -300,6 +300,14 @@ html.hs-mode-night .hs-backdrop {
   opacity: 1;
 }
 
+/* Portrait "pan" style: the photo at full width and its own height, slid up by ambientSlideshow.js. */
+.hs-slide.is-pan {
+  bottom: auto;
+  height: auto;
+  object-fit: fill;
+  will-change: transform;
+}
+
 .hs-ambient-scrim {
   position: absolute;
   inset: 0;
