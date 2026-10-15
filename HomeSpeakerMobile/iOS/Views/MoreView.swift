@@ -214,6 +214,11 @@ struct MoreView: View {
             } label: {
                 Label("Manage Servers", systemImage: "server.rack")
             }
+            NavigationLink {
+                SiriCommandsView()
+            } label: {
+                Label("Siri Commands", systemImage: "mic.fill")
+            }
         }
     }
 

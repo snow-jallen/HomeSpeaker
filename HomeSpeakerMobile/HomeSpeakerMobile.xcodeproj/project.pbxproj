@@ -37,6 +37,7 @@
 		775F06E21ED5A5D9BAB69A2A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 932B931B88EC9D90133C7FB7 /* Assets.xcassets */; };
 		78F566C45A648E16FB61B2BB /* SpeakerActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25855234A5177BF3E2D4A640 /* SpeakerActivityController.swift */; };
 		7AB23637168FDA6113A1E116 /* YouTubeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742488CE44FEEA3523C46654 /* YouTubeView.swift */; };
+		5C1A7E2D9F3B4C6D8E0A1B2C /* SiriCommandsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C1A7E2D9F3B4C6D8E0A1B2D /* SiriCommandsView.swift */; };
 		7CADC60C7A1708F71B46DC3C /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F4223DA2F0CDF7DF37CB1511 /* SwiftUI.framework */; };
 		7CAF0538B8EB0C783A40F27B /* SpeakerActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5BE5FE1481D8954A6F58A31 /* SpeakerActivityAttributes.swift */; };
 		7D3C95BA8CC67C84805378DB /* OfflineDownloadsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9555FF4489A81CA16D89018 /* OfflineDownloadsStore.swift */; };
@@ -179,6 +180,7 @@
 		6141333445BEC07B44AF2AD6 /* HomeSpeaker.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HomeSpeaker.entitlements; sourceTree = "<group>"; };
 		719AD39AF69258B48ABFB67D /* ServerPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerPickerView.swift; sourceTree = "<group>"; };
 		742488CE44FEEA3523C46654 /* YouTubeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeView.swift; sourceTree = "<group>"; };
+		5C1A7E2D9F3B4C6D8E0A1B2D /* SiriCommandsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriCommandsView.swift; sourceTree = "<group>"; };
 		7738DF82AB47B8098E27FDFB /* PushNotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationsView.swift; sourceTree = "<group>"; };
 		79DF5D1CE59F6944F0B2B812 /* HomeSpeakerWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerWatchApp.swift; sourceTree = "<group>"; };
 		7DC249750CEAD1C046D5E9F8 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
@@ -427,6 +429,7 @@
 				991398AE4AA449825359CD71 /* QueueView.swift */,
 				B97987F210143A29FA1EA204 /* RadioStreamsView.swift */,
 				A018CE30A63C93625371BDBB /* RoomsView.swift */,
+				5C1A7E2D9F3B4C6D8E0A1B2D /* SiriCommandsView.swift */,
 				CAA123689971EE3504312BBE /* ServerListView.swift */,
 				742488CE44FEEA3523C46654 /* YouTubeView.swift */,
 			);
@@ -631,6 +634,7 @@
 				D711EEE065266F24D4764E46 /* RoomsView.swift in Sources */,
 				D8DB2296BE2DD75A9EEF9ACC /* ServerEntity.swift in Sources */,
 				E9CFA7C6C54884491EE42B74 /* ServerListView.swift in Sources */,
+				5C1A7E2D9F3B4C6D8E0A1B2C /* SiriCommandsView.swift in Sources */,
 				5B89CF04187AB42F9978969D /* SharedConnections.swift in Sources */,
 				7CAF0538B8EB0C783A40F27B /* SpeakerActivityAttributes.swift in Sources */,
 				78F566C45A648E16FB61B2BB /* SpeakerActivityController.swift in Sources */,
