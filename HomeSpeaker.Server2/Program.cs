@@ -8,6 +8,7 @@ using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Endpoints;
 using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Server2.Services.LiveActivities;
+using HomeSpeaker.Server2.Services.MediaSearch;
 using HomeSpeaker.Server2.Services.Photos;
 using HomeSpeaker.Shared;
 using HomeSpeaker.Shared.WindowMonitoring;
@@ -145,6 +146,7 @@ builder.Services.AddSingleton<AiProcessingSignal>();
 builder.Services.AddSingleton<AiMusicAnalyzer>();
 builder.Services.AddScoped<AiMusicCatalogService>();
 builder.Services.AddScoped<AiPlaybackService>();
+builder.Services.AddScoped<MediaSearchService>();
 builder.Services.AddScoped<PushNotificationService>();
 builder.Services.AddHttpClient("ApnsClient", client =>
 {
@@ -869,6 +871,7 @@ app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, Htt
 
 // Map HomeSpeaker REST API endpoints
 app.MapHomeSpeakerApi();
+app.MapMediaSearchApi();
 app.MapPhotoApi();
 app.MapAiApi();
 

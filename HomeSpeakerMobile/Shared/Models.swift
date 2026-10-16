@@ -78,6 +78,13 @@ struct RadioStream: Codable, Identifiable, Hashable {
     let displayOrder: Int
 }
 
+/// What the server's "play ..." search picked. Kind is Playlist, Stream, Mix, Artist, Album or Song.
+struct MediaMatch: Codable, Hashable {
+    let kind: String
+    let name: String
+    let artist: String?
+}
+
 struct VideoDto: Codable, Identifiable, Hashable {
     let title: String
     let id: String

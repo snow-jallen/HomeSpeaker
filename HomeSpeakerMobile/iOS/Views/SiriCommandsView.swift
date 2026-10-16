@@ -77,6 +77,15 @@ struct SiriCommandsView: View {
         ]),
     ]
 
+    // Siri's own "play" command (PlayMediaIntentHandler), which takes any name.
+    private static let playExamples = [
+        "Play King's Singers on {app}",
+        "Play the Hymns for Home and Church playlist on {app}",
+        "Play Classical Kids on {app}",
+        "Play Quiet Classical in the {server} on {app}",
+        "Play {app}",
+    ]
+
     // Intents without Siri phrases (iOS caps an app at 10 App Shortcuts).
     private static let shortcutsOnly: [(title: String, systemImage: String)] = [
         ("Play Artist", "music.mic"),
@@ -93,11 +102,21 @@ struct SiriCommandsView: View {
     var body: some View {
         List {
             Section {
-                Text("Say \u{201C}Hey Siri\u{201D}, then any phrase below. Start with \u{201C}Home Speaker\u{201D}: Siri keeps plain commands like \u{201C}next song\u{201D} or \u{201C}stop\u{201D} for itself.")
+                Text("Say \u{201C}Hey Siri\u{201D}, then any phrase below. Siri keeps plain commands like \u{201C}next song\u{201D} or \u{201C}stop\u{201D} for itself, so the others start with \u{201C}Home Speaker\u{201D}.")
                 Text("Phrases without a server act on the server selected in the app.")
                     .foregroundStyle(.secondary)
             }
             .font(.subheadline)
+
+            Section {
+                ForEach(Self.playExamples, id: \.self) { phrase in
+                    Text("\u{201C}\(spoken(phrase))\u{201D}")
+                }
+            } header: {
+                Label("Play Anything", systemImage: "play.circle")
+            } footer: {
+                Text("Name a playlist, radio stream, AI mix, artist, album or song. \u{201C}Play Home Speaker\u{201D} picks up where it left off.")
+            }
 
             ForEach(Self.commands) { command in
                 Section {

@@ -1,4 +1,5 @@
 import AppIntents
+import Intents
 import SwiftUI
 
 @main
@@ -26,6 +27,11 @@ struct HomeSpeakerApp: App {
                     WatchSync.shared.activate()
                     WatchSync.shared.send(connections: store.connections, selectedId: store.selectedConnection?.id)
                     HomeSpeakerShortcuts.updateAppShortcutParameters()
+                    // Siri's own "play ..." command needs permission, asked for once.
+                    if INPreferences.siriAuthorizationStatus() == .notDetermined {
+                        INPreferences.requestSiriAuthorization { _ in }
+                    }
+                    Task { await SiriVocabulary.update(for: store.selectedConnection) }
                     offlineDownloads.updateConnection(store.selectedConnection)
                     pushNotifications.updateConnection(store.selectedConnection)
                     Task {
@@ -56,6 +62,7 @@ struct HomeSpeakerApp: App {
             SpeakerSurfaces.reloadWidgets()
             offlineDownloads.updateConnection(store.selectedConnection)
             pushNotifications.updateConnection(store.selectedConnection)
+            Task { await SiriVocabulary.update(for: store.selectedConnection) }
         }
     }
 }
