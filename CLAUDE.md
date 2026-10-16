@@ -73,7 +73,7 @@ Blazor components live under `HomeSpeaker.Server2/Components` (layout, music, he
 
 ### REST API
 
-Minimal APIs. The bulk are mapped in `Endpoints/HomeSpeakerRestEndpoints.cs` via `MapHomeSpeakerApi()` (route group `/api/homespeaker`, split into song/player/playlist/queue/youtube/radio/offline-download groups) `Endpoints/AiRestEndpoints.cs` via `MapAiApi()`, and the ambient-photo endpoints (`/api/photos/*`) in `Endpoints/PhotoEndpoints.cs` via `MapPhotoApi()`. A number of standalone endpoints (temperature, blood sugar, forecast, anchors, recently-played, the `/api/music/{songId}` range-aware streaming endpoint, image search/upload) are defined inline in `Program.cs`.
+Minimal APIs. The bulk are mapped in `Endpoints/HomeSpeakerRestEndpoints.cs` via `MapHomeSpeakerApi()` (route group `/api/homespeaker`, split into song/player/playlist/queue/youtube/radio/offline-download groups) `Endpoints/AiRestEndpoints.cs` via `MapAiApi()`, the ambient-photo endpoints (`/api/photos/*`) in `Endpoints/PhotoEndpoints.cs` via `MapPhotoApi()`, and play-by-name (`/api/homespeaker/media/match` and `/play`, what Siri's "Play X on Home Speaker" calls; `MediaSearchService` gathers playlists, streams, non-empty AI mixes, artists, albums and songs and `MediaMatcher` scores them) in `Endpoints/MediaSearchEndpoints.cs` via `MapMediaSearchApi()`. A number of standalone endpoints (temperature, blood sugar, forecast, anchors, recently-played, the `/api/music/{songId}` range-aware streaming endpoint, image search/upload) are defined inline in `Program.cs`.
 
 ### Background hosted services
 

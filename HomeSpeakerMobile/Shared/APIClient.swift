@@ -534,8 +534,37 @@ final class APIClient: @unchecked Sendable {
         url("favicons/\(fileName)")
     }
     
+    // MARK: - Play by Name
+
+    /// The playlist, stream, AI mix, artist, album or song a spoken name means, or nil when nothing matches.
+    func findMedia(query: String, kind: String? = nil, artist: String? = nil) async throws -> MediaMatch? {
+        try await mediaRequest("api/homespeaker/media/match", method: "GET", query: query, kind: kind, artist: artist)
+    }
+
+    /// Plays the best match for a spoken name in place of what's playing, or returns nil when nothing matches.
+    func playMedia(query: String, kind: String? = nil, artist: String? = nil) async throws -> MediaMatch? {
+        try await mediaRequest("api/homespeaker/media/play", method: "POST", query: query, kind: kind, artist: artist)
+    }
+
+    private func mediaRequest(_ path: String, method: String, query: String, kind: String?, artist: String?) async throws -> MediaMatch? {
+        var components = URLComponents()
+        components.queryItems = [
+            URLQueryItem(name: "query", value: query),
+            kind.map { URLQueryItem(name: "kind", value: $0) },
+            artist.map { URLQueryItem(name: "artist", value: $0) },
+        ].compactMap { $0 }
+        // URLComponents leaves "+" alone, which servers read as a space.
+        let encoded = (components.percentEncodedQuery ?? "").replacingOccurrences(of: "+", with: "%2B")
+        do {
+            let match: MediaMatch = try await request("\(path)?\(encoded)", method: method)
+            return match
+        } catch APIError.serverError(404, _) {
+            return nil
+        }
+    }
+
     // MARK: - AI Playlists
-    
+
     func getAiPlaylists() async throws -> [AiPlaylistSummaryDto] {
         try await request("api/ai/playlists")
     }

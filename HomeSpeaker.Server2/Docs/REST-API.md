@@ -63,6 +63,11 @@ Example: `https://localhost:7072/api/homespeaker/songs`
 - `POST /api/ai/autoplay/from-current` - Start AI autoplay from current track
 - `POST /api/ai/feedback` - Submit thumbs up/down feedback
 
+### Play by Name
+Used by Siri's "Play King's Singers on Home Speaker". `query` is what was said; optional `kind` (`Playlist`, `Stream`, `Mix`, `Artist`, `Album`, `Song`) is a hint; optional `artist` narrows songs and albums. Both return `{ kind, name, artist }`, or 404 when nothing matches.
+- `GET /media/match?query=&kind=&artist=` - Find the playlist, radio stream, AI mix, artist, album or song a spoken name means
+- `POST /media/play?query=&kind=&artist=` - Play that match in place of what's playing
+
 ## Detailed Endpoint Documentation
 
 ### Song Management

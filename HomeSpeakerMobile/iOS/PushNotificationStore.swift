@@ -1,4 +1,5 @@
 import Foundation
+import Intents
 import Observation
 import UIKit
 import UserNotifications
@@ -233,5 +234,10 @@ final class PushNotificationAppDelegate: NSObject, UIApplicationDelegate {
         Task { @MainActor in
             store?.didFailToRegisterForRemoteNotifications(error: error)
         }
+    }
+
+    /// Siri's own "play ..." command is handled here in the app rather than in an Intents extension.
+    func application(_ application: UIApplication, handlerFor intent: INIntent) -> Any? {
+        intent is INPlayMediaIntent ? PlayMediaIntentHandler() : nil
     }
 }

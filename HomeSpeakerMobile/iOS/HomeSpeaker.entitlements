@@ -8,5 +8,7 @@
 	</array>
 	<key>aps-environment</key>
 	<string>$(APS_ENVIRONMENT)</string>
+	<key>com.apple.developer.siri</key>
+	<true/>
 </dict>
 </plist>
