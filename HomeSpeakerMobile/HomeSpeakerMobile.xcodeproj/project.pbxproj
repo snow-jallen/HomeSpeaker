@@ -88,6 +88,7 @@
 		EE56A00AE4A62D3A70F3C141 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 348CD51028183AD1583AC3BC /* AppIntents.framework */; };
 		EFE57C1AEABFFD95F81531ED /* HomeSpeakerShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4079029A2C197EA0A4DB14CF /* HomeSpeakerShortcuts.swift */; };
 		6D2B8F1A3C4E5A7B9C0D1E31 /* SiriVocabulary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2B8F1A3C4E5A7B9C0D1E32 /* SiriVocabulary.swift */; };
+		6D2B8F1A3C4E5A7B9C0D1E33 /* SiriRequestLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2B8F1A3C4E5A7B9C0D1E34 /* SiriRequestLog.swift */; };
 		6D2B8F1A3C4E5A7B9C0D1E2F /* PlayMediaIntentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2B8F1A3C4E5A7B9C0D1E30 /* PlayMediaIntentHandler.swift */; };
 		F018D5CCE4A6B77EF9B09A5D /* AVKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2D51CE210976984C0DDB1E4C /* AVKit.framework */; };
 		F1D672AFC23F09741D2BC3D9 /* SharedConnections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0C0CB4EB4E1C479E92F5FF /* SharedConnections.swift */; };
@@ -174,6 +175,7 @@
 		3E6E950B3D6D2B30EA71133D /* HomeSpeakerWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HomeSpeakerWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4079029A2C197EA0A4DB14CF /* HomeSpeakerShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerShortcuts.swift; sourceTree = "<group>"; };
 		6D2B8F1A3C4E5A7B9C0D1E32 /* SiriVocabulary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriVocabulary.swift; sourceTree = "<group>"; };
+		6D2B8F1A3C4E5A7B9C0D1E34 /* SiriRequestLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriRequestLog.swift; sourceTree = "<group>"; };
 		6D2B8F1A3C4E5A7B9C0D1E30 /* PlayMediaIntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayMediaIntentHandler.swift; sourceTree = "<group>"; };
 		447D6C55CE8A9FA57984E129 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		4A7A2AF782DB61E5481B6575 /* SpeakerControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerControls.swift; sourceTree = "<group>"; };
@@ -363,6 +365,7 @@
 				4079029A2C197EA0A4DB14CF /* HomeSpeakerShortcuts.swift */,
 				597E25C4A64424793FA0F786 /* IntentHelpers.swift */,
 				6D2B8F1A3C4E5A7B9C0D1E32 /* SiriVocabulary.swift */,
+				6D2B8F1A3C4E5A7B9C0D1E34 /* SiriRequestLog.swift */,
 				6D2B8F1A3C4E5A7B9C0D1E30 /* PlayMediaIntentHandler.swift */,
 			);
 			path = Intents;
@@ -624,6 +627,7 @@
 				EFE57C1AEABFFD95F81531ED /* HomeSpeakerShortcuts.swift in Sources */,
 				D4351CD4DDACED6A3DBC7B04 /* IntentHelpers.swift in Sources */,
 				6D2B8F1A3C4E5A7B9C0D1E31 /* SiriVocabulary.swift in Sources */,
+				6D2B8F1A3C4E5A7B9C0D1E33 /* SiriRequestLog.swift in Sources */,
 				6D2B8F1A3C4E5A7B9C0D1E2F /* PlayMediaIntentHandler.swift in Sources */,
 				655E5098AB3B6A11E9910F7F /* LocalPlayer.swift in Sources */,
 				4BA5FB8B5FE0E93D029DC294 /* Models.swift in Sources */,

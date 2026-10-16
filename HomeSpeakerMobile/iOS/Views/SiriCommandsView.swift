@@ -5,6 +5,7 @@ import SwiftUI
 // mirrors HomeSpeakerShortcuts.swift by hand: keep the two in sync.
 struct SiriCommandsView: View {
     @Environment(ConnectionStore.self) private var store
+    @State private var recentRequests: [SiriRequestLog.Entry] = []
 
     private struct Command: Identifiable {
         let title: String
@@ -118,6 +119,22 @@ struct SiriCommandsView: View {
                 Text("Name a playlist, radio stream, AI mix, artist, album or song. \u{201C}Play Home Speaker\u{201D} picks up where it left off.")
             }
 
+            if !recentRequests.isEmpty {
+                Section("Recent Play Requests") {
+                    ForEach(recentRequests) { entry in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(entry.outcome)
+                            Text("Siri sent \(entry.heard)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(entry.date, format: .dateTime.month().day().hour().minute().second())
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+            }
+
             ForEach(Self.commands) { command in
                 Section {
                     ForEach(command.phrases, id: \.self) { phrase in
@@ -143,6 +160,8 @@ struct SiriCommandsView: View {
         }
         .navigationTitle("Siri Commands")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear { recentRequests = SiriRequestLog.entries() }
+        .refreshable { recentRequests = SiriRequestLog.entries() }
     }
 
     private func spoken(_ phrase: String) -> String {
