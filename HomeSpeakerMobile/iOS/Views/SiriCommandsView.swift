@@ -5,7 +5,6 @@ import SwiftUI
 // mirrors HomeSpeakerShortcuts.swift by hand: keep the two in sync.
 struct SiriCommandsView: View {
     @Environment(ConnectionStore.self) private var store
-    @State private var recentRequests: [SiriRequestLog.Entry] = []
 
     private struct Command: Identifiable {
         let title: String
@@ -106,6 +105,11 @@ struct SiriCommandsView: View {
                 Text("Say \u{201C}Hey Siri\u{201D}, then any phrase below. Siri keeps plain commands like \u{201C}next song\u{201D} or \u{201C}stop\u{201D} for itself, so the others start with \u{201C}Home Speaker\u{201D}.")
                 Text("Phrases without a server act on the server selected in the app.")
                     .foregroundStyle(.secondary)
+                NavigationLink {
+                    SiriCommandHistoryView()
+                } label: {
+                    Label("Siri Command History", systemImage: "clock.arrow.circlepath")
+                }
             }
             .font(.subheadline)
 
@@ -117,22 +121,6 @@ struct SiriCommandsView: View {
                 Label("Play Anything", systemImage: "play.circle")
             } footer: {
                 Text("Name a playlist, radio stream, AI mix, artist, album or song. \u{201C}Play Home Speaker\u{201D} picks up where it left off.")
-            }
-
-            if !recentRequests.isEmpty {
-                Section("Recent Play Requests") {
-                    ForEach(recentRequests) { entry in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(entry.outcome)
-                            Text("Siri sent \(entry.heard)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text(entry.date, format: .dateTime.month().day().hour().minute().second())
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-                }
             }
 
             ForEach(Self.commands) { command in
@@ -160,8 +148,6 @@ struct SiriCommandsView: View {
         }
         .navigationTitle("Siri Commands")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { recentRequests = SiriRequestLog.entries() }
-        .refreshable { recentRequests = SiriRequestLog.entries() }
     }
 
     private func spoken(_ phrase: String) -> String {
