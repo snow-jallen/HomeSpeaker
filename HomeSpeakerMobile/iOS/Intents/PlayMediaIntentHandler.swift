@@ -24,10 +24,12 @@ final class PlayMediaIntentHandler: NSObject, INPlayMediaIntentHandling {
         }
 
         let search = intent.mediaSearch
-        // Siri usually puts the name in mediaName, but albums, genres, moods and names it
-        // already resolved land elsewhere.
+        // Siri usually puts the name in mediaName, but albums, moods and names it already
+        // resolved land elsewhere, and some names come as genres: "classical kids" arrives as
+        // the genres "classical" and "kidsfamily", so every genre is sent together.
+        let genresAndMoods = ((search?.genreNames ?? []) + (search?.moodNames ?? [])).joined(separator: " ")
         var text = [
-            search?.mediaName, search?.albumName, search?.genreNames?.first, search?.moodNames?.first,
+            search?.mediaName, search?.albumName, genresAndMoods,
             intent.mediaContainer?.title, intent.mediaItems?.first?.title,
         ].compactMap { $0 }.first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         if let spoken = text, let split = splitServer(spoken, from: connections) {

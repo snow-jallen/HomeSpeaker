@@ -65,6 +65,22 @@ public sealed class MediaMatcherTests
     }
 
     [Fact]
+    public void SiriGenreCodesMatchTheStreamTheyCameFrom()
+    {
+        // "Home Speaker, play classical kids" reaches the app as the genres "classical" and "kidsfamily".
+        MediaCandidate[] streams =
+        [
+            new(MediaKind.Stream, "Classical Favorites", "10"),
+            new(MediaKind.Stream, "Classical 89", "18"),
+            new(MediaKind.Stream, "Classical Kids", "16"),
+            new(MediaKind.Stream, "Your Classical Radio", "5"),
+            new(MediaKind.Mix, "Quiet Classical", "quiet-classical"),
+        ];
+
+        Assert.Equal("16", MediaMatcher.Match(streams, new MediaQuery("classical kidsfamily"))!.Key);
+    }
+
+    [Fact]
     public void ArtistNarrowsSongs() =>
         Assert.Equal("17", match("because", artist: "Beatles")!.Key);
 
