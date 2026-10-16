@@ -26,6 +26,21 @@ public static partial class MediaMatcher
         ("song", MediaKind.Song),
     ];
 
+    // Siri hears some names as genres and passes them as run-together codes:
+    // "classical kids" arrives as "classical" and "kidsfamily".
+    private static readonly Dictionary<string, string> genreCodes = new(StringComparer.Ordinal)
+    {
+        ["kidsfamily"] = "kids family",
+        ["childrensmusic"] = "childrens music",
+        ["christiangospel"] = "christian gospel",
+        ["easylistening"] = "easy listening",
+        ["hiphoprap"] = "hip hop rap",
+        ["newage"] = "new age",
+        ["rbsoul"] = "r and b soul",
+        ["singersongwriter"] = "singer songwriter",
+        ["worldmusic"] = "world music",
+    };
+
     public static MediaCandidate? Match(IEnumerable<MediaCandidate> candidates, MediaQuery query)
     {
         var full = Normalize(query.Text);
@@ -82,6 +97,7 @@ public static partial class MediaMatcher
         text = apostrophes().Replace(text, "");
         text = trackNumber().Replace(text, "");
         text = nonWord().Replace(text, " ").Trim();
+        text = string.Join(' ', text.Split(' ').Select(word => genreCodes.GetValueOrDefault(word, word)));
         return text.StartsWith("the ", StringComparison.Ordinal) ? text[4..] : text;
     }
 
