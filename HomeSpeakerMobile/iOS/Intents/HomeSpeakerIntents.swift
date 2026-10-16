@@ -42,14 +42,23 @@ private func matchedPlaylist(from playlists: [Playlist], aliases: [String]) -> P
     }
 }
 
+/// Plays the AI mix matching `aliases`, else a regular playlist that does.
+/// Servers without AI configured list every AI mix with no tracks, and playing
+/// an empty mix is a 404, so empty mixes are skipped.
 private func playNamedMix(
     userFacingName: String,
     aliases: [String],
+    connection: ServerConnection,
     api: APIClient
 ) async throws -> String {
-    if let match = matchedAiPlaylist(from: (try? await api.getAiPlaylists()) ?? [], aliases: aliases) {
-        try await api.playAiPlaylist(genreKey: match.genreKey)
-        return match.displayName
+    let aiPlaylists = ((try? await api.getAiPlaylists()) ?? []).filter { $0.trackCount > 0 }
+    if let match = matchedAiPlaylist(from: aiPlaylists, aliases: aliases) {
+        do {
+            try await api.playAiPlaylist(genreKey: match.genreKey)
+            return match.displayName
+        } catch APIError.serverError(404, _) {
+            // The mix emptied since it was listed; try a regular playlist.
+        }
     }
 
     if let match = matchedPlaylist(from: (try? await api.getPlaylists()) ?? [], aliases: aliases) {
@@ -57,7 +66,7 @@ private func playNamedMix(
         return match.name
     }
 
-    throw HomeSpeakerIntentError.contentNotFound(userFacingName)
+    throw HomeSpeakerIntentError.mixUnavailable(userFacingName, server: connection.name)
 }
 
 // MARK: - Focused Siri Controls
@@ -88,9 +97,14 @@ struct PlayFunMusicOnHomeSpeakerIntent: AppIntent {
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let (connection, api) = try connectionAndAPI(server)
-        try await api.playAiPlaylist(genreKey: "family-singalong")
+        let playlistName = try await playNamedMix(
+            userFacingName: "Fun Music",
+            aliases: ["family-singalong", "fun music", "fun"],
+            connection: connection,
+            api: api
+        )
         await SpeakerSurfaces.refresh(after: connection)
-        return .result(dialog: "Playing Fun Music on \(connection.name).")
+        return .result(dialog: "Playing \(playlistName) on \(connection.name).")
     }
 }
 
@@ -105,8 +119,9 @@ struct PlayHymnsOnHomeSpeakerIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let (connection, api) = try connectionAndAPI(server)
         let playlistName = try await playNamedMix(
-            userFacingName: "hymns",
-            aliases: ["hymns", "hymn"],
+            userFacingName: "Hymns",
+            aliases: ["hymns", "hymn", "Hymns for Home and Church"],
+            connection: connection,
             api: api
         )
         await SpeakerSurfaces.refresh(after: connection)

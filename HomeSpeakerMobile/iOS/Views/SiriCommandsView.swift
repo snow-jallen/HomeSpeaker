@@ -16,66 +16,64 @@ struct SiriCommandsView: View {
     // "{app}" stands for the app name, "{server}" for a saved server's name.
     private static let commands: [Command] = [
         Command(title: "Next Song", systemImage: "forward.fill", phrases: [
-            "Next song in {app}",
-            "In {app}, next song",
-            "Next song in {app} on {server}",
-            "Next song on {server} {app}",
-            "Skip {server} {app}",
+            "{app}, skip this song",
+            "{app}, skip this song on {server}",
+            "Tell {app} to skip this song",
+            "Tell {app} to skip the song on {server}",
         ]),
         Command(title: "Fun Music", systemImage: "sparkles", phrases: [
-            "Play fun music in {app}",
-            "In {app}, play fun music",
-            "Play fun music in {app} on {server}",
-            "Play fun music on {server} {app}",
+            "{app}, fun music",
+            "{app}, fun music on {server}",
+            "Tell {app} to put on fun music",
+            "Tell {app} to put on fun music on {server}",
         ]),
         Command(title: "Hymns", systemImage: "music.note", phrases: [
-            "Play hymns in {app}",
-            "In {app}, play hymns",
-            "Play hymns in {app} on {server}",
-            "Play hymns on {server} {app}",
+            "{app}, hymns",
+            "{app}, hymns on {server}",
+            "Tell {app} to put on hymns",
+            "Tell {app} to put on hymns on {server}",
         ]),
         Command(title: "Quiet Down", systemImage: "speaker.wave.1.fill", phrases: [
-            "Quiet down in {app}",
-            "In {app}, quiet down",
-            "Quiet down {server} in {app}",
-            "Quiet down {server} {app}",
-            "Turn down {server} {app}",
+            "{app}, quiet down",
+            "{app}, quiet down {server}",
+            "Tell {app} to quiet down",
+            "Tell {app} to quiet down {server}",
         ]),
         Command(title: "Stop", systemImage: "stop.fill", phrases: [
-            "Stop HomeSpeaker in {app}",
-            "In {app}, stop HomeSpeaker",
-            "Stop {server} in {app}",
-            "Stop {server} {app}",
-            "Stop the {app}",
+            "{app}, stop the music",
+            "{app}, stop the music on {server}",
+            "Tell {app} to stop the music",
+            "Tell {app} to stop {server}",
         ]),
         Command(title: "Resume", systemImage: "play.fill", phrases: [
-            "Resume {app}",
-            "In {app}, resume music",
-            "Resume {server} in {app}",
-            "Resume {server} {app}",
-            "Start {server} {app}",
+            "{app}, start the music",
+            "{app}, start the music on {server}",
+            "Tell {app} to start the music",
+            "Tell {app} to start {server}",
         ]),
         Command(title: "Set Volume", systemImage: "speaker.wave.2.fill", phrases: [
-            "Set volume in {app}",
-            "In {app}, set the volume",
-            "Set {server} volume in {app}",
-            "Set {server} {app} volume",
+            "{app}, change the volume",
+            "{app}, change the volume on {server}",
+            "Tell {app} to change the volume",
+            "Tell {app} to change the volume on {server}",
         ]),
         Command(title: "Sleep Timer", systemImage: "moon.fill", phrases: [
-            "Set a sleep timer in {app}",
-            "In {app}, set a sleep timer",
-            "Set a sleep timer on {server} in {app}",
-            "Set a sleep timer on {server} {app}",
+            "{app}, start a sleep timer",
+            "{app}, start a sleep timer on {server}",
+            "Tell {app} to start a sleep timer",
+            "Tell {app} to start a sleep timer on {server}",
         ]),
         Command(title: "Cancel Sleep Timer", systemImage: "moon.zzz", phrases: [
-            "Cancel the sleep timer in {app}",
-            "In {app}, cancel the sleep timer",
+            "{app}, cancel the sleep timer",
+            "{app}, cancel the sleep timer on {server}",
+            "Tell {app} to cancel the sleep timer",
+            "Tell {app} to cancel the sleep timer on {server}",
         ]),
         Command(title: "What's Playing", systemImage: "music.note.list", phrases: [
-            "What's playing in {app}",
-            "In {app}, what's playing",
-            "What's playing on {server} in {app}",
-            "What's playing on {server} {app}",
+            "{app}, what song is this",
+            "{app}, what song is on {server}",
+            "Ask {app} what's playing",
+            "Ask {app} what's playing on {server}",
         ]),
     ]
 
@@ -95,7 +93,7 @@ struct SiriCommandsView: View {
     var body: some View {
         List {
             Section {
-                Text("Say \u{201C}Hey Siri\u{201D} followed by any phrase below. Siri also answers to \u{201C}Home Speaker\u{201D} and \u{201C}Speaker\u{201D}, so \u{201C}Stop \(exampleServer) Speaker\u{201D} works too.")
+                Text("Say \u{201C}Hey Siri\u{201D}, then any phrase below. Start with \u{201C}Home Speaker\u{201D}: Siri keeps plain commands like \u{201C}next song\u{201D} or \u{201C}stop\u{201D} for itself.")
                 Text("Phrases without a server act on the server selected in the app.")
                     .foregroundStyle(.secondary)
             }
@@ -130,7 +128,7 @@ struct SiriCommandsView: View {
 
     private func spoken(_ phrase: String) -> String {
         phrase
-            .replacingOccurrences(of: "{app}", with: "HomeSpeaker")
+            .replacingOccurrences(of: "{app}", with: "Home Speaker")
             .replacingOccurrences(of: "{server}", with: exampleServer)
     }
 }
