@@ -13,13 +13,15 @@ final class PlayMediaIntentHandler: NSObject, INPlayMediaIntentHandling {
         var query: String?
         var kind: String?
         var artist: String?
+        /// The Siri Command History entry the search step recorded, finished by the play step.
+        var logId: UUID?
     }
 
     func resolveMediaItems(for intent: INPlayMediaIntent) async -> [INPlayMediaMediaItemResolutionResult] {
-        let heard = describe(intent)
+        let captured = describe(intent)
         let connections = storedConnections()
         guard var connection = SharedConnections.selected() ?? connections.first else {
-            SiriRequestLog.add(heard: heard, outcome: "No servers saved")
+            SiriCommandLog.add(command: "Play", captured: captured, translated: "No server", result: "No servers are saved in the app")
             return [.unsupported(forReason: .serviceUnavailable)]
         }
 
@@ -39,24 +41,31 @@ final class PlayMediaIntentHandler: NSObject, INPlayMediaIntentHandling {
         let artist = search?.artistName
 
         if (text ?? "").isEmpty && (artist ?? "").isEmpty {
-            SiriRequestLog.add(heard: heard, outcome: "No name heard, so resuming \(connection.name)")
-            let resume = Request(serverId: connection.id)
+            let logId = SiriCommandLog.add(command: "Play", captured: captured,
+                                           translated: "No name, so resume \(connection.name)",
+                                           result: "Waiting for Siri's play step")
+            let resume = Request(serverId: connection.id, logId: logId)
             return [.success(with: mediaItem(resume, title: connection.name, type: .music))]
         }
 
+        let kind = kindName(search?.mediaType ?? .unknown)
+        let translated = searchDescription(text: text ?? "", kind: kind, artist: artist, on: connection)
         do {
             let api = APIClient.client(for: connection)
-            let kind = kindName(search?.mediaType ?? .unknown)
             guard let match = try await api.findMedia(query: text ?? "", kind: kind, artist: artist) else {
-                SiriRequestLog.add(heard: heard, outcome: "\(connection.name) has nothing matching \"\(text ?? artist ?? "")\"")
+                SiriCommandLog.add(command: "Play", captured: captured, translated: translated,
+                                   result: "Nothing on \(connection.name) matched")
                 return [.unsupported()]
             }
-            SiriRequestLog.add(heard: heard, outcome: "Found \(match.kind) \"\(match.name)\" on \(connection.name)")
+            let logId = SiriCommandLog.add(command: "Play", captured: captured, translated: translated,
+                                           result: "Found \(describe(match)); waiting for Siri's play step")
             // Replaying the match's own name and kind finds it again exactly.
-            let request = Request(serverId: connection.id, query: match.name, kind: match.kind, artist: match.artist)
+            let request = Request(serverId: connection.id, query: match.name, kind: match.kind,
+                                  artist: match.artist, logId: logId)
             return [.success(with: mediaItem(request, title: match.name, type: itemType(match.kind)))]
         } catch {
-            SiriRequestLog.add(heard: heard, outcome: "Couldn't reach \(connection.name): \(error.localizedDescription)")
+            SiriCommandLog.add(command: "Play", captured: captured, translated: translated,
+                               result: "Couldn't reach \(connection.name): \(error.localizedDescription)")
             return [.unsupported(forReason: .serviceUnavailable)]
         }
     }
@@ -65,31 +74,60 @@ final class PlayMediaIntentHandler: NSObject, INPlayMediaIntentHandling {
         guard let identifier = intent.mediaItems?.first?.identifier,
               let request = try? JSONDecoder().decode(Request.self, from: Data(identifier.utf8)),
               let connection = SharedConnections.connection(id: request.serverId) else {
-            SiriRequestLog.add(heard: describe(intent), outcome: "Play step got no item it could use")
+            SiriCommandLog.add(command: "Play", captured: describe(intent), translated: "Nothing to play",
+                               result: "Siri's play step came without an item from the search step")
             return INPlayMediaIntentResponse(code: .failure, userActivity: nil)
         }
 
         let api = APIClient.client(for: connection)
+        let result: String
+        var code = INPlayMediaIntentResponseCode.success
         do {
             if let query = request.query {
-                guard let played = try await api.playMedia(query: query, kind: request.kind, artist: request.artist) else {
-                    SiriRequestLog.add(heard: query, outcome: "\(connection.name) couldn't play it")
-                    return INPlayMediaIntentResponse(code: .failureUnknownMediaType, userActivity: nil)
+                if let played = try await api.playMedia(query: query, kind: request.kind, artist: request.artist) {
+                    result = "\(connection.name) is playing \(describe(played))"
+                } else {
+                    result = "\(connection.name) found nothing to play for \"\(query)\""
+                    code = .failureUnknownMediaType
                 }
-                SiriRequestLog.add(heard: query, outcome: "Playing \(played.kind) \"\(played.name)\" on \(connection.name)")
             } else {
                 try await api.resume()
-                SiriRequestLog.add(heard: "(no name)", outcome: "Resumed \(connection.name)")
+                result = "\(connection.name) resumed"
             }
-            await SpeakerSurfaces.refresh(after: connection)
-            return INPlayMediaIntentResponse(code: .success, userActivity: nil)
         } catch {
-            SiriRequestLog.add(heard: request.query ?? "(no name)", outcome: "Play failed on \(connection.name): \(error.localizedDescription)")
-            return INPlayMediaIntentResponse(code: .failure, userActivity: nil)
+            result = "Play failed on \(connection.name): \(error.localizedDescription)"
+            code = .failure
         }
+
+        if let logId = request.logId {
+            SiriCommandLog.update(logId, result: result)
+        } else {
+            SiriCommandLog.add(command: "Play", captured: describe(intent), translated: request.query ?? "Resume", result: result)
+        }
+        if code == .success {
+            await SpeakerSurfaces.refresh(after: connection)
+        }
+        return INPlayMediaIntentResponse(code: code, userActivity: nil)
     }
 
-    /// Everything Siri passed, for the request log.
+    private func mediaItem(_ request: Request, title: String, type: INMediaItemType) -> INMediaItem {
+        let identifier = (try? JSONEncoder().encode(request)).map { String(decoding: $0, as: UTF8.self) }
+        return INMediaItem(identifier: identifier, title: title, type: type, artwork: nil)
+    }
+
+    private func searchDescription(text: String, kind: String?, artist: String?, on connection: ServerConnection) -> String {
+        var parts = ["Search \(connection.name) for \"\(text)\""]
+        if let kind { parts.append("as a \(kind.lowercased())") }
+        if let artist, !artist.isEmpty { parts.append("by \(artist)") }
+        return parts.joined(separator: " ")
+    }
+
+    private func describe(_ match: MediaMatch) -> String {
+        let base = "\(match.kind.lowercased()) \"\(match.name)\""
+        return match.artist.map { "\(base) by \($0)" } ?? base
+    }
+
+    /// Everything Siri passed, for the history.
     private func describe(_ intent: INPlayMediaIntent) -> String {
         let search = intent.mediaSearch
         let parts: [(String, String?)] = [
@@ -98,7 +136,7 @@ final class PlayMediaIntentHandler: NSObject, INPlayMediaIntentHandling {
             ("artist", search?.artistName),
             ("genre", search?.genreNames?.joined(separator: ", ")),
             ("mood", search?.moodNames?.joined(separator: ", ")),
-            ("type", search.map { String(describing: $0.mediaType.rawValue) }),
+            ("type", search.map { typeName($0.mediaType) }),
             ("container", intent.mediaContainer?.title),
             ("items", intent.mediaItems?.compactMap(\.title).joined(separator: ", ")),
         ]
@@ -108,9 +146,18 @@ final class PlayMediaIntentHandler: NSObject, INPlayMediaIntentHandling {
         return described.isEmpty ? "(nothing)" : described.joined(separator: "; ")
     }
 
-    private func mediaItem(_ request: Request, title: String, type: INMediaItemType) -> INMediaItem {
-        let identifier = (try? JSONEncoder().encode(request)).map { String(decoding: $0, as: UTF8.self) }
-        return INMediaItem(identifier: identifier, title: title, type: type, artwork: nil)
+    private func typeName(_ type: INMediaItemType) -> String {
+        switch type {
+        case .unknown: return "unspecified"
+        case .song: return "song"
+        case .album: return "album"
+        case .artist: return "artist"
+        case .genre: return "genre"
+        case .playlist: return "playlist"
+        case .music: return "music"
+        case .radioStation, .station, .musicStation: return "station"
+        default: return "other (\(type.rawValue))"
+        }
     }
 
     /// "Hymns in the kitchen" or "Hymns upstairs" names a server; the rest is what to play.

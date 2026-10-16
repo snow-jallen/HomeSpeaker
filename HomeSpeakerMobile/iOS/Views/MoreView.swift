@@ -219,6 +219,11 @@ struct MoreView: View {
             } label: {
                 Label("Siri Commands", systemImage: "mic.fill")
             }
+            NavigationLink {
+                SiriCommandHistoryView()
+            } label: {
+                Label("Siri Command History", systemImage: "clock.arrow.circlepath")
+            }
         }
     }
 
