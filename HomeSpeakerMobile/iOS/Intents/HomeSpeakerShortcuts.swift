@@ -1,10 +1,11 @@
 import AppIntents
 
-// Keep Siri phrases explicit and app-scoped so playback commands don't collide with
-// more generic system music requests. Each command also has phrases naming a
+// Siri keeps common phrases for its own features ("next song", "resume", "stop",
+// "set the volume", "set a timer", "what's playing", "play X in <app>") and won't
+// hand them to an app shortcut, even one naming the app. So every phrase leads
+// with the app name ("Home Speaker, ..." or "Tell/Ask Home Speaker to ...") and
+// avoids those bare system commands. Each command also has phrases naming a
 // server ("... on Kitchen"); without one it acts on the server selected in the app.
-// The app also answers to "Home Speaker" and "Speaker" (INAlternativeAppNames in
-// Info.plist), so phrases ending in the app name read naturally: "Stop Kitchen Speaker".
 // iOS allows at most 10 App Shortcuts. SiriCommandsView lists these phrases in the
 // app; update it when they change.
 
@@ -15,11 +16,10 @@ struct HomeSpeakerShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: NextSongOnHomeSpeakerIntent(),
             phrases: [
-                "Next song in \(.applicationName)",
-                "In \(.applicationName), next song",
-                "Next song in \(.applicationName) on \(\.$server)",
-                "Next song on \(\.$server) \(.applicationName)",
-                "Skip \(\.$server) \(.applicationName)",
+                "\(.applicationName), skip this song",
+                "\(.applicationName), skip this song on \(\.$server)",
+                "Tell \(.applicationName) to skip this song",
+                "Tell \(.applicationName) to skip the song on \(\.$server)",
             ],
             shortTitle: "Next Song",
             systemImageName: "forward.fill"
@@ -27,10 +27,10 @@ struct HomeSpeakerShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: PlayFunMusicOnHomeSpeakerIntent(),
             phrases: [
-                "Play fun music in \(.applicationName)",
-                "In \(.applicationName), play fun music",
-                "Play fun music in \(.applicationName) on \(\.$server)",
-                "Play fun music on \(\.$server) \(.applicationName)",
+                "\(.applicationName), fun music",
+                "\(.applicationName), fun music on \(\.$server)",
+                "Tell \(.applicationName) to put on fun music",
+                "Tell \(.applicationName) to put on fun music on \(\.$server)",
             ],
             shortTitle: "Fun Music",
             systemImageName: "sparkles"
@@ -38,10 +38,10 @@ struct HomeSpeakerShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: PlayHymnsOnHomeSpeakerIntent(),
             phrases: [
-                "Play hymns in \(.applicationName)",
-                "In \(.applicationName), play hymns",
-                "Play hymns in \(.applicationName) on \(\.$server)",
-                "Play hymns on \(\.$server) \(.applicationName)",
+                "\(.applicationName), hymns",
+                "\(.applicationName), hymns on \(\.$server)",
+                "Tell \(.applicationName) to put on hymns",
+                "Tell \(.applicationName) to put on hymns on \(\.$server)",
             ],
             shortTitle: "Hymns",
             systemImageName: "music.note"
@@ -49,11 +49,10 @@ struct HomeSpeakerShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: QuietDownOnHomeSpeakerIntent(),
             phrases: [
-                "Quiet down in \(.applicationName)",
-                "In \(.applicationName), quiet down",
-                "Quiet down \(\.$server) in \(.applicationName)",
-                "Quiet down \(\.$server) \(.applicationName)",
-                "Turn down \(\.$server) \(.applicationName)",
+                "\(.applicationName), quiet down",
+                "\(.applicationName), quiet down \(\.$server)",
+                "Tell \(.applicationName) to quiet down",
+                "Tell \(.applicationName) to quiet down \(\.$server)",
             ],
             shortTitle: "Quiet Down",
             systemImageName: "speaker.wave.1.fill"
@@ -61,11 +60,10 @@ struct HomeSpeakerShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: StopHomeSpeakerIntent(),
             phrases: [
-                "Stop HomeSpeaker in \(.applicationName)",
-                "In \(.applicationName), stop HomeSpeaker",
-                "Stop \(\.$server) in \(.applicationName)",
-                "Stop \(\.$server) \(.applicationName)",
-                "Stop the \(.applicationName)",
+                "\(.applicationName), stop the music",
+                "\(.applicationName), stop the music on \(\.$server)",
+                "Tell \(.applicationName) to stop the music",
+                "Tell \(.applicationName) to stop \(\.$server)",
             ],
             shortTitle: "Stop",
             systemImageName: "stop.fill"
@@ -73,11 +71,10 @@ struct HomeSpeakerShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: ResumeHomeSpeakerIntent(),
             phrases: [
-                "Resume \(.applicationName)",
-                "In \(.applicationName), resume music",
-                "Resume \(\.$server) in \(.applicationName)",
-                "Resume \(\.$server) \(.applicationName)",
-                "Start \(\.$server) \(.applicationName)",
+                "\(.applicationName), start the music",
+                "\(.applicationName), start the music on \(\.$server)",
+                "Tell \(.applicationName) to start the music",
+                "Tell \(.applicationName) to start \(\.$server)",
             ],
             shortTitle: "Resume",
             systemImageName: "play.fill"
@@ -85,10 +82,10 @@ struct HomeSpeakerShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: SetVolumeOnHomeSpeakerIntent(),
             phrases: [
-                "Set volume in \(.applicationName)",
-                "In \(.applicationName), set the volume",
-                "Set \(\.$server) volume in \(.applicationName)",
-                "Set \(\.$server) \(.applicationName) volume",
+                "\(.applicationName), change the volume",
+                "\(.applicationName), change the volume on \(\.$server)",
+                "Tell \(.applicationName) to change the volume",
+                "Tell \(.applicationName) to change the volume on \(\.$server)",
             ],
             shortTitle: "Set Volume",
             systemImageName: "speaker.wave.2.fill"
@@ -96,10 +93,10 @@ struct HomeSpeakerShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: SetSleepTimerOnHomeSpeakerIntent(),
             phrases: [
-                "Set a sleep timer in \(.applicationName)",
-                "In \(.applicationName), set a sleep timer",
-                "Set a sleep timer on \(\.$server) in \(.applicationName)",
-                "Set a sleep timer on \(\.$server) \(.applicationName)",
+                "\(.applicationName), start a sleep timer",
+                "\(.applicationName), start a sleep timer on \(\.$server)",
+                "Tell \(.applicationName) to start a sleep timer",
+                "Tell \(.applicationName) to start a sleep timer on \(\.$server)",
             ],
             shortTitle: "Sleep Timer",
             systemImageName: "moon.fill"
@@ -107,8 +104,10 @@ struct HomeSpeakerShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: CancelSleepTimerOnHomeSpeakerIntent(),
             phrases: [
-                "Cancel the sleep timer in \(.applicationName)",
-                "In \(.applicationName), cancel the sleep timer",
+                "\(.applicationName), cancel the sleep timer",
+                "\(.applicationName), cancel the sleep timer on \(\.$server)",
+                "Tell \(.applicationName) to cancel the sleep timer",
+                "Tell \(.applicationName) to cancel the sleep timer on \(\.$server)",
             ],
             shortTitle: "Cancel Sleep Timer",
             systemImageName: "moon.zzz"
@@ -116,10 +115,10 @@ struct HomeSpeakerShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: WhatsPlayingOnHomeSpeakerIntent(),
             phrases: [
-                "What's playing in \(.applicationName)",
-                "In \(.applicationName), what's playing",
-                "What's playing on \(\.$server) in \(.applicationName)",
-                "What's playing on \(\.$server) \(.applicationName)",
+                "\(.applicationName), what song is this",
+                "\(.applicationName), what song is on \(\.$server)",
+                "Ask \(.applicationName) what's playing",
+                "Ask \(.applicationName) what's playing on \(\.$server)",
             ],
             shortTitle: "What's Playing",
             systemImageName: "music.note.list"

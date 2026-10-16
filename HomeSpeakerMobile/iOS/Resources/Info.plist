@@ -3,12 +3,12 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleDisplayName</key>
-    <string>HomeSpeaker</string>
+    <string>Home Speaker</string>
     <key>INAlternativeAppNames</key>
     <array>
         <dict>
             <key>INAlternativeAppName</key>
-            <string>Home Speaker</string>
+            <string>HomeSpeaker</string>
         </dict>
         <dict>
             <key>INAlternativeAppName</key>

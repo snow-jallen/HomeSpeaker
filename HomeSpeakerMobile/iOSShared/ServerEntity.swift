@@ -73,12 +73,14 @@ enum HomeSpeakerIntentError: LocalizedError {
     case noServers
     case serverNotFound(String)
     case contentNotFound(String)
+    case mixUnavailable(String, server: String)
 
     var errorDescription: String? {
         switch self {
         case .noServers: return "No HomeSpeaker servers are configured."
         case .serverNotFound(let name): return "No HomeSpeaker server named \"\(name)\" was found."
         case .contentNotFound(let name): return "Could not find \"\(name)\"."
+        case .mixUnavailable(let mix, let server): return "\(server) doesn't have a \(mix) mix yet."
         }
     }
 }
