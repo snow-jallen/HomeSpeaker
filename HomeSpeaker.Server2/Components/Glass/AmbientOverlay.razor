@@ -1,5 +1,7 @@
 @using System.Globalization
+@using HomeSpeaker.Shared.BloodSugar
 @inject DashboardState Dashboard
+@inject TimeProvider Time
 @implements IDisposable
 
 <div class="hs-ambient-overlay" data-layout="default">
@@ -12,11 +14,25 @@
         @if (Dashboard.BloodSugarEnabled && Dashboard.BloodSugar?.CurrentReading is { } reading)
         {
             @* No drop icon: the panel's green/yellow/red color marks it, and the space goes to the number. *@
-            <div class="glass hs-chip hs-chip-glucose hs-tone-@toneClass">
-                <span class="hs-chip-value @(Dashboard.BloodSugar.IsStale ? "is-stale" : "")">@reading.Sgv.ToString("0", CultureInfo.InvariantCulture)</span>
-                <span class="hs-chip-arrow" title="@reading.DirectionDescription">@reading.DirectionIcon</span>
-                <span class="hs-chip-meta"><span>mg/dL</span><span>@age(Dashboard.BloodSugar.TimeSinceLastReading)</span></span>
-            </div>
+            var sinceReading = readingAge(reading);
+            var sgv = reading.Sgv.ToString("0", CultureInfo.InvariantCulture);
+            if (sinceReading >= OldAfter)
+            {
+                @* Old data: how long it's been is the news, so it takes the panel, colored by age rather than by the
+                   reading (an old good number is still bad news); past an hour it grows and pulses. *@
+                <div class="glass hs-chip hs-chip-glucose hs-chip-glucose--aged @(sinceReading >= MissingAfter ? "is-missing" : "") hs-age-@ageLevel(sinceReading)">
+                    <span class="hs-chip-age">@longAge(sinceReading)</span>
+                    <span class="hs-chip-meta"><span>last @sgv @reading.DirectionIcon</span><span>mg/dL</span></span>
+                </div>
+            }
+            else
+            {
+                <div class="glass hs-chip hs-chip-glucose hs-tone-@toneClass">
+                    <span class="hs-chip-value @(Dashboard.BloodSugar.IsStale ? "is-stale" : "")">@sgv</span>
+                    <span class="hs-chip-arrow" title="@reading.DirectionDescription">@reading.DirectionIcon</span>
+                    <span class="hs-chip-meta"><span>mg/dL</span><span>@age(sinceReading)</span></span>
+                </div>
+            }
         }
         @if (Dashboard.TemperatureEnabled && Dashboard.Temperature?.OutsideTemperature is { } outside)
         {
@@ -67,6 +83,10 @@
 </div>
 
 @code {
+    // Past these the reading's age becomes the headline, then grows and pulses.
+    private static readonly TimeSpan OldAfter = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan MissingAfter = TimeSpan.FromMinutes(60);
+
     private string toneClass => Dashboard.GlucoseTone switch
     {
         GlucoseTone.Caution => "caution",
@@ -92,6 +112,34 @@
         < 60 => string.Create(CultureInfo.InvariantCulture, $"{(int)sinceReading.TotalMinutes} min ago"),
         _ => string.Create(CultureInfo.InvariantCulture, $"{(int)sinceReading.TotalHours} hr ago"),
     };
+
+    // 1 at 30 min, 2 at 45, 3 at an hour, 4 at two hours: amber through deep red.
+    private static int ageLevel(TimeSpan sinceReading) => sinceReading.TotalMinutes switch
+    {
+        < 45 => 1,
+        < 60 => 2,
+        < 120 => 3,
+        _ => 4,
+    };
+
+    // Measured now rather than at fetch time; the overlay re-renders every few seconds.
+    private TimeSpan readingAge(BloodSugarReading reading)
+    {
+        var since = Time.GetUtcNow().UtcDateTime - reading.Date.ToUniversalTime();
+        return since < TimeSpan.Zero ? TimeSpan.Zero : since;
+    }
+
+    // "42 min", "1h 15m", and whole hours past ten so the headline stays inside the panel.
+    private static string longAge(TimeSpan sinceReading)
+    {
+        var minutes = (int)sinceReading.TotalMinutes;
+        return minutes switch
+        {
+            < 60 => string.Create(CultureInfo.InvariantCulture, $"{minutes} min"),
+            < 600 => string.Create(CultureInfo.InvariantCulture, $"{minutes / 60}h {minutes % 60}m"),
+            _ => string.Create(CultureInfo.InvariantCulture, $"{minutes / 60} hr"),
+        };
+    }
 
     public void Dispose() => Dashboard.Changed -= onChanged;
 }

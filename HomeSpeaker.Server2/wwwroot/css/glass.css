@@ -433,6 +433,93 @@ html.hs-mode-night .hs-backdrop {
   white-space: nowrap;
 }
 
+/* Reading over 30 min old: its age is the headline, with the last value on one line
+   beneath it, so the age gets the panel's full width ("8h 59m" at 50px still fits). */
+.hs-ov-chips .hs-chip-glucose--aged {
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.hs-chip-glucose .hs-chip-age {
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -1px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.hs-chip-glucose--aged .hs-chip-meta {
+  flex-direction: row;
+  gap: 6px;
+  opacity: 0.75;
+}
+
+/* Colored by how old the reading is, not by the reading: amber at 30 min, orange at 45,
+   red at an hour, deep red at two, each with a brighter border and a wider glow. */
+.hs-ov-chips .hs-chip-glucose--aged {
+  border: 2px solid var(--hs-age-edge);
+  box-shadow: 0 0 var(--hs-age-glow) var(--hs-age-edge), inset 0 0 14px rgba(0, 0, 0, 0.25);
+  background: var(--hs-age-fill) !important;
+}
+
+.hs-ov-chips .hs-age-1 {
+  --hs-age-fill: rgba(200, 140, 0, 0.6);
+  --hs-age-edge: rgba(255, 196, 60, 0.85);
+  --hs-age-glow: 10px;
+}
+
+.hs-ov-chips .hs-age-2 {
+  --hs-age-fill: rgba(214, 92, 0, 0.65);
+  --hs-age-edge: rgba(255, 140, 40, 0.9);
+  --hs-age-glow: 16px;
+}
+
+.hs-ov-chips .hs-age-3 {
+  --hs-age-fill: rgba(196, 24, 36, 0.7);
+  --hs-age-edge: rgba(255, 70, 70, 0.95);
+  --hs-age-glow: 22px;
+}
+
+.hs-ov-chips .hs-age-4 {
+  --hs-age-fill: rgba(140, 0, 16, 0.82);
+  --hs-age-edge: rgb(255, 40, 40);
+  --hs-age-glow: 30px;
+}
+
+/* Over an hour: bigger still, and the number and the glow pulse together to draw the
+   eye to the missing data. */
+.hs-chip-glucose.is-missing .hs-chip-age {
+  font-size: 50px;
+  letter-spacing: -2px;
+  animation: hs-glucose-missing-pulse 1.6s ease-in-out infinite;
+}
+
+.hs-ov-chips .hs-chip-glucose.is-missing {
+  animation: hs-glucose-missing-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes hs-glucose-missing-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes hs-glucose-missing-glow {
+  0%, 100% {
+    box-shadow: 0 0 var(--hs-age-glow) var(--hs-age-edge), inset 0 0 14px rgba(0, 0, 0, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 calc(var(--hs-age-glow) * 2) calc(var(--hs-age-glow) / 3) var(--hs-age-edge), inset 0 0 14px rgba(0, 0, 0, 0.25);
+  }
+}
+
 /* Green / yellow / red by the reading (GlucoseToneMap). */
 .hs-ov-chips .hs-tone-normal {
   background: rgba(22, 132, 64, 0.5) !important;
