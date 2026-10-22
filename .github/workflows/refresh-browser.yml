@@ -7,6 +7,9 @@ name: Refresh Pi Browser
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   refresh:
     runs-on: [self-hosted, "${{ matrix.runner }}"]

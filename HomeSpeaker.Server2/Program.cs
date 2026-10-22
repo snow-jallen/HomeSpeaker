@@ -254,17 +254,6 @@ builder.Services.AddHttpClient<ImageSearchService>(client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 
-// Add named HttpClient for backlight control with SSL bypass
-builder.Services.AddHttpClient("BacklightClient", client =>
-{
-    client.BaseAddress = new Uri("https://192.168.1.111:5001");
-})
-.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-{
-    ClientCertificateOptions = ClientCertificateOption.Manual,
-    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
-});
-
 // A "self" check tagged "live" is already registered by AddServiceDefaults()
 // (Extensions.cs AddDefaultHealthChecks) — the Docker HEALTHCHECK hits /alive, which
 // runs only "live"-tagged checks (no DB). Here we add just the DB-backed readiness
@@ -322,6 +311,14 @@ app.Logger.LogInformation("Starting HomeSpeaker.Server2");
 
 app.UseResponseCompression();
 //app.UseHttpsRedirection();
+
+// Stop browsers from sniffing uploaded files as another type, and from framing the app on other sites.
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.XContentTypeOptions = "nosniff";
+    context.Response.Headers.ContentSecurityPolicy = "frame-ancestors 'self'";
+    await next(context);
+});
 app.UseStaticFiles();
 
 // Serve favicons from the media folder (writable volume) at /favicons
@@ -792,7 +789,7 @@ app.MapGet("/api/anchors/daily", async (AnchorService anchorService, DateOnly? s
 });
 
 // Music streaming endpoint for browser playback
-app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, HttpContext context, ILogger<Program> logger) =>
+app.MapGet("/api/music/{songId:int}", (int songId, Mp3Library library, ILogger<Program> logger) =>
 {
     logger.LogInformation("Streaming endpoint called for song ID: {SongId}", songId);
     var song = library.Songs.FirstOrDefault(s => s.SongId == songId);
@@ -806,7 +803,7 @@ app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, Htt
     if (!File.Exists(song.Path))
     {
         logger.LogWarning("Music file not found on disk: {Path}", song.Path);
-        return Results.NotFound($"Music file not found: {song.Path}");
+        return Results.NotFound($"Music file for song {songId} not found");
     }
 
     var fileInfo = new FileInfo(song.Path);
@@ -819,54 +816,8 @@ app.MapGet("/api/music/{songId:int}", async (int songId, Mp3Library library, Htt
         _ => "application/octet-stream"
     };
 
-    // Set headers for audio streaming
-    context.Response.Headers.Append("Accept-Ranges", "bytes");
-    context.Response.Headers.Append("Content-Type", mimeType);
-    context.Response.Headers.Append("Content-Length", fileInfo.Length.ToString());
-
-    // Handle range requests for audio seeking
-    var rangeHeader = context.Request.Headers["Range"].FirstOrDefault();
-    if (!string.IsNullOrEmpty(rangeHeader) && rangeHeader.StartsWith("bytes=", StringComparison.OrdinalIgnoreCase))
-    {
-        var range = rangeHeader.Substring(6).Split('-');
-        if (long.TryParse(range[0], out var start))
-        {
-            var end = range.Length > 1 && long.TryParse(range[1], out var endValue)
-                ? endValue
-                : fileInfo.Length - 1;
-
-            context.Response.StatusCode = 206; // Partial Content
-            context.Response.Headers.Append("Content-Range", $"bytes {start}-{end}/{fileInfo.Length}");
-            context.Response.Headers["Content-Length"] = (end - start + 1).ToString();
-
-            using var fileStream = new FileStream(song.Path, FileMode.Open, FileAccess.Read);
-            fileStream.Seek(start, SeekOrigin.Begin);
-
-            var buffer = new byte[8192];
-            var remaining = end - start + 1;
-
-            while (remaining > 0)
-            {
-                var bytesToRead = (int)Math.Min(buffer.Length, remaining);
-                var mem = new Memory<byte>(buffer, 0, bytesToRead);
-                var bytesRead = await fileStream.ReadAsync(mem, context.RequestAborted);
-                if (bytesRead == 0)
-                {
-                    break;
-                }
-
-                await context.Response.Body.WriteAsync(mem.Slice(0, bytesRead), context.RequestAborted);
-                remaining -= bytesRead;
-            }
-        }
-    }
-    else
-    {
-        // Serve entire file
-        return Results.File(song.Path, mimeType, enableRangeProcessing: true);
-    }
-
-    return Results.Empty;
+    // Range requests (audio seeking) are handled, and validated, by the framework.
+    return Results.File(fileInfo.FullName, mimeType, enableRangeProcessing: true);
 });
 
 // Map HomeSpeaker REST API endpoints

@@ -22,4 +22,11 @@
 **/secrets.dev.yaml
 **/values.dev.yaml
 LICENSE
-README.md
+README.md**/*.db
+**/*.db-shm
+**/*.db-wal
+**/*.http
+.claude
+.squad
+.copilot
+HomeSpeakerMobile

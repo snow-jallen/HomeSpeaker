@@ -6,6 +6,9 @@ name: Diagnose Pi
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   diagnose:
     runs-on: [self-hosted, "${{ matrix.runner }}"]
@@ -66,7 +69,7 @@ jobs:
         fi
 
     - name: Upload screenshot
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       continue-on-error: true
       with:
         name: screen-${{ matrix.runner }}

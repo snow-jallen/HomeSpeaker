@@ -869,6 +869,11 @@ public static class HomeSpeakerRestEndpoints
         using var activity = Activity.Current?.Source.StartActivity("PlayStream");
         activity?.SetTag("stream_url", request.StreamUrl);
 
+        if (StreamUrl.Normalize(request.StreamUrl) is null)
+        {
+            return Results.BadRequest(new { Error = "StreamUrl must be an absolute http or https URL." });
+        }
+
         try
         {
             logger.LogInformation("Playing stream: {StreamUrl}", request.StreamUrl);

@@ -7,6 +7,10 @@ on:
       - completed
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   deploy:
     runs-on: [self-hosted, "${{ matrix.runner}}" ]
@@ -22,11 +26,14 @@ jobs:
             airplay_name: "Upstairs HomeSpeaker"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
     - name: Log in to GitHub Container Registry
+      env:
+        GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GHCR_USER: ${{ github.actor }}
       run: |
-        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
     - name: Renew Tailscale certificate
       run: |
@@ -35,6 +42,8 @@ jobs:
         sudo tailscale cert ${HOSTNAME}.boston-cloud.ts.net
         sudo openssl pkcs12 -export -out certificate.pfx -inkey ${HOSTNAME}.boston-cloud.ts.net.key -in ${HOSTNAME}.boston-cloud.ts.net.crt -passout pass:
         sudo chown piuser. certificate.pfx
+        # The PFX holds the unencrypted private key; only piuser (uid 1000, same as the container's user) reads it.
+        sudo chmod 600 certificate.pfx ${HOSTNAME}.boston-cloud.ts.net.key
 
     - name: Write deployment variables to .env file
       env:
@@ -157,3 +166,7 @@ jobs:
     - name: Clean up old images
       run: docker image prune -af --filter "until=168h"
       continue-on-error: true
+
+    - name: Log out of GitHub Container Registry
+      if: always()
+      run: docker logout ghcr.io

@@ -388,3 +388,9 @@ HomeSpeaker.Server2/HomeSpeaker.Server2.csproj.lscache
 
 # Playwright MCP session output
 .playwright-mcp/
+
+# Local SQLite databases and per-machine Claude settings
+*.db
+*.db-shm
+*.db-wal
+.claude/settings.local.json

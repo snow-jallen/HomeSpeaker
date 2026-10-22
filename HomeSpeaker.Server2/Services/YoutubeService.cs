@@ -105,7 +105,7 @@ public class YoutubeService : IDisposable
 
     public async Task CacheVideoAsync(string id, string title, string? channelName, IProgress<double> progress)
     {
-        var fileName = string.Join("_", $"{title}.mp3".Split(Path.GetInvalidFileNameChars()));
+        var fileName = SafeFileName.From($"{title}.mp3");
         var destinationPath = Path.Combine(config[ConfigKeys.MediaFolder]!, "YouTube Cache");
         if (!Directory.Exists(destinationPath))
         {

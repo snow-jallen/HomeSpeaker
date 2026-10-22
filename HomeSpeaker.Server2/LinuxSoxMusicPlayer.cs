@@ -97,9 +97,9 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
     {
         logger.LogInformation("Asked to play stream: {StreamUrl}", streamUrl);
 
-        //make a Uri first...to make sure the argument is a valid URL.
-        //...maybe that helps a bit with unsafe input??
-        var url = new Uri(streamUrl).ToString();
+        // Only http/https, and the escaped form, so the URL can't smuggle extra VLC options.
+        var url = StreamUrl.Normalize(streamUrl)
+            ?? throw new ArgumentException("Stream URL must be an absolute http or https URL.", nameof(streamUrl));
         logger.LogInformation("After converting to a Uri: {StreamUrl}", url);
 
         stopPlaying();
@@ -112,10 +112,13 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         playerProcess.StartInfo.FileName = "cvlc";
 
         // Use detected audio device for VLC via ALSA
-        var vlcAudioArgs = audioDeviceDetector.SelectedCard != null
-            ? $"--aout=alsa --alsa-audio-device=hw:{audioDeviceDetector.SelectedCard}"
-            : "";
-        playerProcess.StartInfo.Arguments = $"{vlcAudioArgs} \"{streamUrl}\"";
+        if (audioDeviceDetector.SelectedCard != null)
+        {
+            playerProcess.StartInfo.ArgumentList.Add("--aout=alsa");
+            playerProcess.StartInfo.ArgumentList.Add($"--alsa-audio-device=hw:{audioDeviceDetector.SelectedCard}");
+        }
+
+        playerProcess.StartInfo.ArgumentList.Add(url);
         playerProcess.StartInfo.UseShellExecute = false;
         playerProcess.StartInfo.RedirectStandardOutput = true;
         playerProcess.StartInfo.RedirectStandardError = true;
@@ -127,7 +130,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         {
             logger.LogInformation("ErrorDataReceived: {Data}", e.Data);
         });
-        logger.LogInformation("Starting vlc {StreamUrl}", streamUrl);
+        logger.LogInformation("Starting vlc {StreamUrl}", url);
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
         playerProcess.Exited += playerProcess_Exited;
@@ -147,7 +150,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
 
         playerProcess = new Process();
         playerProcess.StartInfo.FileName = "play";
-        playerProcess.StartInfo.Arguments = $"\"{song.Path}\"";
+        playerProcess.StartInfo.ArgumentList.Add(song.Path ?? string.Empty);
         playerProcess.StartInfo.UseShellExecute = false;
         playerProcess.StartInfo.RedirectStandardOutput = true;
         playerProcess.StartInfo.RedirectStandardError = true;
@@ -394,7 +397,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
         try
         {
             var result = await CliWrap.Cli.Wrap("amixer")
-                                 .WithArguments($"-c {card} sget {mixer}")
+                                 .WithArguments(["-c", card, "sget", mixer])
                                  .WithValidation(CliWrap.CommandResultValidation.None)
                                   .ExecuteBufferedAsync(CancellationToken.None);
 
@@ -475,7 +478,7 @@ public class LinuxSoxMusicPlayer : IMusicPlayer, IDisposable
                 try
                 {
                     var result = await CliWrap.Cli.Wrap("amixer")
-                                         .WithArguments($"-c {card} sset {mixer} {actualLevel}%")
+                                         .WithArguments(["-c", card, "sset", mixer, $"{actualLevel}%"])
                                          .WithValidation(CliWrap.CommandResultValidation.None)
                                          .ExecuteBufferedAsync(CancellationToken.None);
 
