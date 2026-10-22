@@ -27,4 +27,12 @@ public sealed class RadioStreamRequestValidatorTests
     {
         Assert.NotNull(RadioStreamRequestValidator.Validate("KBAQ", url));
     }
+
+    [Theory]
+    [InlineData("file:///certs/certificate.pfx")]
+    [InlineData("not a url")]
+    public void NonHttpUrlIsRejected(string url)
+    {
+        Assert.NotNull(RadioStreamRequestValidator.Validate("KBAQ", url));
+    }
 }

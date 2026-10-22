@@ -90,7 +90,9 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
 
         playerProcess = new Process();
         playerProcess.StartInfo.FileName = VlcPath;
-        playerProcess.StartInfo.Arguments = $"--play-and-exit \"{song.Path}\" --qt-start-minimized";
+        playerProcess.StartInfo.ArgumentList.Add("--play-and-exit");
+        playerProcess.StartInfo.ArgumentList.Add(song.Path ?? string.Empty);
+        playerProcess.StartInfo.ArgumentList.Add("--qt-start-minimized");
         playerProcess.StartInfo.UseShellExecute = false;
         playerProcess.StartInfo.RedirectStandardOutput = true;
         playerProcess.StartInfo.RedirectStandardError = true;
@@ -332,9 +334,9 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
     {
         logger.LogInformation("Asked to play stream: {StreamUrl}", streamUrl);
 
-        //make a Uri first...to make sure the argument is a valid URL.
-        //...maybe that helps a bit with unsafe input??
-        var url = new Uri(streamUrl).ToString();
+        // Only http/https, and the escaped form, so the URL can't smuggle extra VLC options.
+        var url = StreamUrl.Normalize(streamUrl)
+            ?? throw new ArgumentException("Stream URL must be an absolute http or https URL.", nameof(streamUrl));
         logger.LogInformation("After converting to a Uri: {StreamUrl}", url);
 
         stopPlaying();
@@ -345,7 +347,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         icyReader.Start(url);
         playerProcess = new Process();
         playerProcess.StartInfo.FileName = VlcPath;
-        playerProcess.StartInfo.Arguments = $"\"{streamUrl}\"";
+        playerProcess.StartInfo.ArgumentList.Add(url);
         playerProcess.StartInfo.UseShellExecute = false;
         playerProcess.StartInfo.RedirectStandardOutput = true;
         playerProcess.StartInfo.RedirectStandardError = true;
@@ -357,7 +359,7 @@ public class WindowsMusicPlayer : IMusicPlayer, IDisposable
         {
             logger.LogInformation("ErrorDataReceived: {Data}", e.Data);
         });
-        logger.LogInformation("Starting vlc {StreamUrl}", streamUrl);
+        logger.LogInformation("Starting vlc {StreamUrl}", url);
         playerProcess.EnableRaisingEvents = true;
         playerProcess.Start();
         playerProcess.Exited += playerProcess_Exited;

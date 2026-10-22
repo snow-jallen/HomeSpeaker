@@ -164,7 +164,7 @@ public class AudioDeviceDetector
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = "amixer",
-                    Arguments = $"-c {cardName} scontrols",
+                    ArgumentList = { "-c", cardName, "scontrols" },
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false

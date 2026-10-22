@@ -6,7 +6,7 @@ namespace HomeSpeaker.Server2.Services;
 /// </summary>
 public static class RadioStreamRequestValidator
 {
-    /// <summary>Returns an error message, or null when both the name and the URL are present.</summary>
+    /// <summary>Returns an error message, or null when the name is present and the URL is an http or https URL.</summary>
     public static string? Validate(string? name, string? url)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -17,6 +17,11 @@ public static class RadioStreamRequestValidator
         if (string.IsNullOrWhiteSpace(url))
         {
             return "Url is required.";
+        }
+
+        if (StreamUrl.Normalize(url) is null)
+        {
+            return "Url must be an absolute http or https URL.";
         }
 
         return null;
