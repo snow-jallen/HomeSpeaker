@@ -1,12 +1,17 @@
 # HTTPS overlay. Use together with the generic file:
 #   docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
-# Set CERT_DIR in .env to a folder containing certificate.pfx.
+# Set CERT_DIR in .env to a folder containing certificate.pfx, and DEPLOY_USER to the host user whose
+# home holds homespeaker-secrets.env (a required env_file; create it empty if you have no secrets).
 services:
   homespeaker.server2:
     ports:
     - "443:443"
     volumes:
-    - "${CERT_DIR}:/certs"
+    - "${CERT_DIR:?Set CERT_DIR in .env}:/certs"
+    # Secrets/settings file the deploy workflow keeps on the host (required here).
+    env_file:
+    - path: /home/${DEPLOY_USER:?Set DEPLOY_USER in .env}/homespeaker-secrets.env
+      required: true
     environment:
     - ASPNETCORE_URLS=https://+:443;http://+:80
     - ASPNETCORE_Kestrel__Certificates__Default__Path=/certs/certificate.pfx

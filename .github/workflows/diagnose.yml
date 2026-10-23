@@ -12,10 +12,13 @@ permissions:
 jobs:
   diagnose:
     runs-on: [self-hosted, "${{ matrix.runner }}"]
+    if: ${{ vars.DEPLOY_TARGETS != '' }}
+    env:
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
     strategy:
       fail-fast: false
       matrix:
-        runner: [kitchen, upstairs]
+        include: ${{ fromJSON(vars.DEPLOY_TARGETS || '[{}]') }}
 
     steps:
     - name: Host clock and timezone
@@ -46,7 +49,7 @@ jobs:
       continue-on-error: true
       run: |
         export DISPLAY=:0
-        XAUTH=$(find /home/piuser -name '.Xauthority' 2>/dev/null | head -1)
+        XAUTH=$(find "/home/${DEPLOY_USER}" -name '.Xauthority' 2>/dev/null | head -1)
         [ -n "$XAUTH" ] && export XAUTHORITY=$XAUTH
         rm -rf /tmp/pi-diag && mkdir -p /tmp/pi-diag
         # Wayland desktops (labwc/wayfire): X screenshots come out black, so try grim first.

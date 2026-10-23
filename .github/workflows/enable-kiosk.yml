@@ -1,6 +1,6 @@
 name: Enable Kiosk Mode
 
-# One-shot: points each Pi's open kiosk Chromium at https://<host>/?kiosk=1.
+# One-shot: points each Pi's open kiosk Chromium at https://<host>.<tailnet>/?kiosk=1.
 # The app then sets a long-lived "hs-kiosk=1" cookie, so the touchscreen gets
 # the ambient photo slideshow and night clock even though it loads the
 # Tailscale hostname (not localhost). The cookie lives in Chromium's profile and
@@ -14,20 +14,21 @@ permissions:
 jobs:
   enable:
     runs-on: [self-hosted, "${{ matrix.runner }}"]
+    if: ${{ vars.DEPLOY_TARGETS != '' }}
+    env:
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+      TAILNET_DOMAIN: ${{ vars.TAILNET_DOMAIN }}
+      KIOSK_HOST: ${{ matrix.host }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - runner: kitchen
-            host: kitchen.boston-cloud.ts.net
-          - runner: upstairs
-            host: rpi42.boston-cloud.ts.net
+        include: ${{ fromJSON(vars.DEPLOY_TARGETS || '[{}]') }}
 
     steps:
     - name: Navigate kiosk to ?kiosk=1
       run: |
         export DISPLAY=:0
-        XAUTH=$(find /home/piuser -name '.Xauthority' 2>/dev/null | head -1)
+        XAUTH=$(find "/home/${DEPLOY_USER}" -name '.Xauthority' 2>/dev/null | head -1)
         [ -n "$XAUTH" ] && export XAUTHORITY=$XAUTH
 
         WID=$(xdotool search --onlyvisible --class chromium 2>/dev/null | head -1)
@@ -43,9 +44,9 @@ jobs:
         # Ctrl+L focuses the (hidden) omnibox even in --kiosk mode.
         xdotool key --clearmodifiers ctrl+l
         sleep 0.5
-        xdotool type --delay 20 "https://${{ matrix.host }}/?kiosk=1"
+        xdotool type --delay 20 "https://${KIOSK_HOST}.${TAILNET_DOMAIN}/?kiosk=1"
         xdotool key Return
-        echo "Navigated to https://${{ matrix.host }}/?kiosk=1"
+        echo "Navigated to https://${KIOSK_HOST}.${TAILNET_DOMAIN}/?kiosk=1"
 
     - name: Wait for the idle slideshow (75s)
       run: sleep 75
@@ -54,7 +55,7 @@ jobs:
       continue-on-error: true
       run: |
         export DISPLAY=:0
-        XAUTH=$(find /home/piuser -name '.Xauthority' 2>/dev/null | head -1)
+        XAUTH=$(find "/home/${DEPLOY_USER}" -name '.Xauthority' 2>/dev/null | head -1)
         [ -n "$XAUTH" ] && export XAUTHORITY=$XAUTH
         rm -rf /tmp/pi-kiosk && mkdir -p /tmp/pi-kiosk
         if command -v scrot >/dev/null 2>&1; then

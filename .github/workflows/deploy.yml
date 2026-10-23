@@ -13,17 +13,20 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, "${{ matrix.runner}}" ]
-    # Only deploy if the build workflow succeeded
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: [self-hosted, "${{ matrix.runner }}"]
+    # Deploys only run where the DEPLOY_TARGETS repository variable is set (forks leave it unset),
+    # and only if the build workflow succeeded.
+    if: ${{ vars.DEPLOY_TARGETS != '' && (github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch') }}
+    env:
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+      TAILNET_DOMAIN: ${{ vars.TAILNET_DOMAIN }}
+      DEPLOY_TZ: ${{ vars.DEPLOY_TZ }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - runner: kitchen
-            airplay_name: "Kitchen HomeSpeaker"
-          - runner: upstairs
-            airplay_name: "Upstairs HomeSpeaker"
+        # DEPLOY_TARGETS is a JSON array of {runner, host, airplay_name}. The fallback keeps matrix
+        # expansion valid when the variable is unset; the job-level if then skips the job.
+        include: ${{ fromJSON(vars.DEPLOY_TARGETS || '[{}]') }}
 
     steps:
     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -35,15 +38,21 @@ jobs:
       run: |
         echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
+    - name: Choose docker compose command
+      run: |
+        # Prefer the v2 plugin; fall back to the standalone v1 binary on older runners.
+        if docker compose version >/dev/null 2>&1; then DC="docker compose"; else DC="docker-compose"; fi
+        echo "DC=$DC -f docker-compose.yml -f docker-compose.https.yml" >> "$GITHUB_ENV"
+
     - name: Renew Tailscale certificate
       run: |
         cd ~/cert
         HOSTNAME=$(hostname)
-        sudo tailscale cert ${HOSTNAME}.boston-cloud.ts.net
-        sudo openssl pkcs12 -export -out certificate.pfx -inkey ${HOSTNAME}.boston-cloud.ts.net.key -in ${HOSTNAME}.boston-cloud.ts.net.crt -passout pass:
-        sudo chown piuser. certificate.pfx
-        # The PFX holds the unencrypted private key; only piuser (uid 1000, same as the container's user) reads it.
-        sudo chmod 600 certificate.pfx ${HOSTNAME}.boston-cloud.ts.net.key
+        sudo tailscale cert "${HOSTNAME}.${TAILNET_DOMAIN}"
+        sudo openssl pkcs12 -export -out certificate.pfx -inkey "${HOSTNAME}.${TAILNET_DOMAIN}.key" -in "${HOSTNAME}.${TAILNET_DOMAIN}.crt" -passout pass:
+        sudo chown "${DEPLOY_USER}". certificate.pfx
+        # The PFX holds the unencrypted private key; only the deploy user (uid 1000, same as the container's user) reads it.
+        sudo chmod 600 certificate.pfx "${HOSTNAME}.${TAILNET_DOMAIN}.key"
 
     - name: Write deployment variables to .env file
       env:
@@ -52,33 +61,41 @@ jobs:
         cat > .env << EOF
         AIRPLAY_NAME=${AIRPLAY_NAME}
         HOMESPEAKER_IMAGE=ghcr.io/${{ github.repository_owner }}/homespeaker:latest
+        DEPLOY_USER=${DEPLOY_USER}
+        MUSIC_DIR=/home/${DEPLOY_USER}/music
+        CERT_DIR=/home/${DEPLOY_USER}/cert
+        TZ=${DEPLOY_TZ}
+        COMPOSE_PROFILES=airplay
+        PUID=1000
         EOF
 
     - name: Ensure secrets file exists
-      run: touch /home/piuser/homespeaker-secrets.env
+      run: touch "/home/${DEPLOY_USER}/homespeaker-secrets.env"
 
     - name: Pull latest images
       env:
         COMPOSE_HTTP_TIMEOUT: 200
       run: |
+        # shellcheck disable=SC2086
         # Registry pulls from docker.io/public.ecr.aws are flaky from the Pis;
         # retry, and as a last resort tolerate sidecar pull failures - those
         # images are already cached locally, and the app image comes from ghcr.
         for attempt in 1 2 3; do
           echo "Pull attempt $attempt/3..."
-          docker-compose pull && exit 0
+          $DC pull && exit 0
           [ $attempt -lt 3 ] && echo "Retrying in 10s..." && sleep 10
         done
         echo "Full pull failed; tolerating failed sidecar pulls..."
-        docker-compose pull --ignore-pull-failures
+        $DC pull --ignore-pull-failures
 
     - name: Stop containers
       env:
         COMPOSE_HTTP_TIMEOUT: 200
       run: |
+        # shellcheck disable=SC2086
         for attempt in 1 2 3; do
           echo "Stop attempt $attempt/3..."
-          docker-compose down --timeout 120 --remove-orphans && break
+          $DC down --timeout 120 --remove-orphans && break
           [ $attempt -lt 3 ] && echo "Retrying in 10s..." && sleep 10
         done
 
@@ -86,9 +103,10 @@ jobs:
       env:
         COMPOSE_HTTP_TIMEOUT: 200
       run: |
+        # shellcheck disable=SC2086
         for attempt in 1 2 3; do
           echo "Start attempt $attempt/3..."
-          docker-compose up -d --remove-orphans && break
+          $DC up -d --remove-orphans && break
           [ $attempt -lt 3 ] && echo "Retrying in 10s..." && sleep 10
         done
 
@@ -133,11 +151,11 @@ jobs:
           export DISPLAY=:0
 
           # Find the X authority file
-          XAUTH=$(find /home/piuser -name '.Xauthority' 2>/dev/null | head -1)
+          XAUTH=$(find "/home/${DEPLOY_USER}" -name '.Xauthority' 2>/dev/null | head -1)
           if [ -z "$XAUTH" ]; then
             XAUTH=$(find /run/user -name 'Xauthority' 2>/dev/null | head -1)
           fi
-          [ -z "$XAUTH" ] && XAUTH=/home/piuser/.Xauthority
+          [ -z "$XAUTH" ] && XAUTH="/home/${DEPLOY_USER}/.Xauthority"
           export XAUTHORITY=$XAUTH
           echo "  Using XAUTHORITY=$XAUTH"
 
