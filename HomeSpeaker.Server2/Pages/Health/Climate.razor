@@ -9,6 +9,12 @@
 }
 else
 {
-    <TemperatureMonitor />
-    <ForecastMonitor />
+    @if (FeatureFlags.TemperatureEnabled(config))
+    {
+        <TemperatureMonitor />
+    }
+    @if (FeatureFlags.ForecastEnabled(config))
+    {
+        <ForecastMonitor />
+    }
 }

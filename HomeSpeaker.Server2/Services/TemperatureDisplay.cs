@@ -23,8 +23,19 @@ public static class TemperatureDisplay
         unit == TemperatureUnit.Celsius ? value * 9 / 5 + 32 : value;
 
     /// <summary>Whole degrees with a degree sign and no unit letter ("72°"), or an en dash when there is no reading.</summary>
-    public static string Format(double? fahrenheit, TemperatureUnit unit) =>
-        fahrenheit is { } value
-            ? string.Create(CultureInfo.InvariantCulture, $"{Math.Round(Convert(value, unit), MidpointRounding.AwayFromZero):0}°")
-            : "–";
+    public static string Format(double? fahrenheit, TemperatureUnit unit)
+    {
+        if (fahrenheit is not { } value)
+        {
+            return "–";
+        }
+
+        var rounded = Math.Round(Convert(value, unit), MidpointRounding.AwayFromZero);
+        if (rounded == 0)
+        {
+            rounded = 0; // A small negative rounds to -0, which would print as "-0°".
+        }
+
+        return string.Create(CultureInfo.InvariantCulture, $"{rounded:0}°");
+    }
 }

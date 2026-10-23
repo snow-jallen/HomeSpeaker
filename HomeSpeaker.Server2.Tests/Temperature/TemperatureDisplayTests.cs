@@ -27,6 +27,12 @@ public sealed class TemperatureDisplayTests
     public void Format_Fahrenheit_RoundsAwayFromZero(double value, string expected) =>
         Assert.Equal(expected, TemperatureDisplay.Format(value, TemperatureUnit.Fahrenheit));
 
+    [Theory]
+    [InlineData(31.5, TemperatureUnit.Celsius)]
+    [InlineData(-0.4, TemperatureUnit.Fahrenheit)]
+    public void Format_SmallNegative_IsZeroWithoutSign(double value, TemperatureUnit unit) =>
+        Assert.Equal("0°", TemperatureDisplay.Format(value, unit));
+
     [Fact]
     public void Format_Celsius_ConvertsThenRounds() => Assert.Equal("22°", TemperatureDisplay.Format(72, TemperatureUnit.Celsius));
 
