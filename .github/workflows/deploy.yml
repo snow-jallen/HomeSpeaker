@@ -33,7 +33,7 @@ jobs:
       run: |
         : "${DEPLOY_USER:?DEPLOY_USER repo variable is not set}" "${TAILNET_DOMAIN:?TAILNET_DOMAIN repo variable is not set}" "${DEPLOY_TZ:?DEPLOY_TZ repo variable is not set}"
 
-    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Log in to GitHub Container Registry
       env:
