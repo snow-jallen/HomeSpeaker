@@ -70,7 +70,8 @@ public static class AdminPin
     /// <summary>Only a local absolute path ("/x") is allowed; anything else, including "//host" and "/\host", becomes "/".</summary>
     public static string SafeReturnUrl(string? returnUrl)
     {
-        if (string.IsNullOrEmpty(returnUrl) || returnUrl[0] != '/')
+        // Browsers strip tab/CR/LF inside a URL, so "/	/evil.com" would become "//evil.com".
+        if (string.IsNullOrEmpty(returnUrl) || returnUrl[0] != '/' || returnUrl.Any(char.IsControl))
         {
             return "/";
         }

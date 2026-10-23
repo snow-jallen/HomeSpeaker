@@ -16,11 +16,11 @@
     <script type="module" src="https://unpkg.com/@@fluentui/web-components@2.5.12/dist/web-components.min.js" integrity="sha384-B9ePtmiwD7pJfGUgwxxIjFKBR6071lQqyi/XajCEfCA0lOiSwI6D8OQp02fX16Tv" crossorigin="anonymous"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <HeadOutlet @rendermode="InteractiveServer" />
+    <HeadOutlet @rendermode="PageRenderMode" />
 </head>
 
 <body data-kiosk="@kioskAttribute">
-    <Routes @rendermode="InteractiveServer" />
+    <Routes @rendermode="PageRenderMode" />
 
     <div id="blazor-error-ui" role="alert" aria-live="assertive">
         <div class="blazor-status-panel">
@@ -245,6 +245,9 @@
 @code {
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
+
+    // Pages marked [ExcludeFromInteractiveRouting] (e.g. /unlock) render as static SSR; all others stay interactive.
+    private IComponentRenderMode? PageRenderMode => HttpContext?.AcceptsInteractiveRouting() == false ? null : InteractiveServer;
 
     private string kioskAttribute => (HttpContext is null ? KioskMode.Off : Kiosk.Detect(HttpContext.Request)) switch
     {

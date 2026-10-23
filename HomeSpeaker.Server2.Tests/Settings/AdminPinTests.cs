@@ -61,5 +61,7 @@ public class AdminPinTests
     [InlineData("/\\evil", "/")]
     [InlineData(null, "/")]
     [InlineData("", "/")]
+    [InlineData("/\t/evil.com", "/")]
+    [InlineData("/\r\n/evil.com", "/")]
     public void SafeReturnUrl_OnlyAllowsLocalPaths(string? input, string expected) => Assert.Equal(expected, AdminPin.SafeReturnUrl(input));
 }

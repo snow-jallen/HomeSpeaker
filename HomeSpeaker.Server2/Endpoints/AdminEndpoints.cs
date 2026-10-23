@@ -9,7 +9,8 @@ public static class AdminEndpoints
 {
     public static IEndpointRouteBuilder MapAdminApi(this IEndpointRouteBuilder app)
     {
-        // Antiforgery stays on for both form posts: the Unlock page renders <AntiforgeryToken/>.
+        // Antiforgery stays on for both posts: unlock validates via its [FromForm] binding, lock by binding the form
+        // (the framework only enforces the token for handlers that bind form data). The Unlock page renders <AntiforgeryToken/>.
         app.MapPost("/api/admin/unlock", async (
             HttpContext context,
             IConfiguration configuration,
@@ -38,7 +39,7 @@ public static class AdminEndpoints
             return Results.Redirect(safeUrl);
         });
 
-        app.MapPost("/api/admin/lock", async (HttpContext context) =>
+        app.MapPost("/api/admin/lock", async (HttpContext context, [FromForm] IFormCollection form) =>
         {
             await context.SignOutAsync(AdminPinHandler.SchemeName);
             return Results.Redirect("/");

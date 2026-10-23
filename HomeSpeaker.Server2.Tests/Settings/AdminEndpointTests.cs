@@ -109,6 +109,29 @@ public sealed partial class AdminEndpointTests
     }
 
     [Fact]
+    public async Task Lock_WithoutAntiforgeryToken_IsRejected()
+    {
+        using var factory = withPin();
+        using var client = noRedirectClient(factory);
+        using var form = new FormUrlEncodedContent(new Dictionary<string, string>());
+
+        using var response = await client.PostAsync(new Uri("/api/admin/lock", UriKind.Relative), form);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UnlockPage_IsStaticSsr_NoInteractiveCircuit()
+    {
+        using var factory = withPin();
+        using var client = noRedirectClient(factory);
+
+        var html = await client.GetStringAsync(new Uri("/unlock", UriKind.Relative));
+
+        Assert.DoesNotContain("\"type\":\"server\"", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task SettingsPage_WithPinAndNoCookie_RedirectsToUnlock()
     {
         using var factory = withPin();

@@ -12,6 +12,7 @@ using HomeSpeaker.Server2.Services.MediaSearch;
 using HomeSpeaker.Server2.Services.Photos;
 using HomeSpeaker.Server2.Settings;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
@@ -72,6 +73,10 @@ builder.Services.AddScoped(sp =>
         BaseAddress = new Uri(navigationManager.BaseUri)
     };
 });
+// Persist data-protection keys on the media volume so redeploys keep admin cookies and antiforgery tokens valid.
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Configuration[ConfigKeys.MediaFolder] ?? throw new MissingConfigException(ConfigKeys.MediaFolder), ".keys")))
+    .SetApplicationName("HomeSpeaker");
 builder.Services.AddAuthentication()
     .AddCookie(AdminPinHandler.SchemeName, options =>
     {
