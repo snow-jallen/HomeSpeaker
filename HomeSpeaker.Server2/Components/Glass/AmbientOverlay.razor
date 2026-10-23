@@ -95,11 +95,11 @@
     };
 
     private string? highLow =>
-        Dashboard.Forecast is { Error: null, TodayHigh.Temperature: { } high, TonightLow.Temperature: { } low }
+        Dashboard.ForecastEnabled && Dashboard.Forecast is { Error: null, TodayHigh.Temperature: { } high, TonightLow.Temperature: { } low }
             ? $"H {TemperatureDisplay.Format(high, Dashboard.TemperatureUnit)} · L {TemperatureDisplay.Format(low, Dashboard.TemperatureUnit)}"
             : null;
 
-    private string? conditions => Dashboard.Forecast is { Error: null } ? Dashboard.Forecast.TodayHigh?.Conditions : null;
+    private string? conditions => Dashboard.ForecastEnabled && Dashboard.Forecast is { Error: null } ? Dashboard.Forecast.TodayHigh?.Conditions : null;
 
     protected override void OnInitialized() => Dashboard.Changed += onChanged;
 

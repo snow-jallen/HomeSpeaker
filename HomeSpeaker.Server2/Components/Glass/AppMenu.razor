@@ -1,8 +1,10 @@
+@inject IConfiguration Config
+
 @if (Open)
 {
     <div class="hs-menu-scrim" @onclick="OnClose">
         <nav class="hs-menu glass" aria-label="All pages" @onclick:stopPropagation="true">
-            @foreach (var item in items)
+            @foreach (var item in visibleItems)
             {
                 <NavLink href="@item.Href" Match="@(item.Href.Length == 0 ? NavLinkMatch.All : NavLinkMatch.Prefix)">
                     <i class="@item.Icon" aria-hidden="true"></i><span>@item.Label</span>
@@ -17,6 +19,17 @@
     [Parameter] public EventCallback OnClose { get; set; }
 
     private sealed record MenuItem(string Label, string Href, string Icon);
+
+    private IEnumerable<MenuItem> visibleItems => items.Where(isVisible);
+
+    private bool isVisible(MenuItem item) => item.Href switch
+    {
+        "anchors" => FeatureFlags.AnchorsEnabled(Config),
+        "nightscout" => FeatureFlags.BloodSugarEnabled(Config),
+        "climate" => FeatureFlags.TemperatureEnabled(Config) || FeatureFlags.ForecastEnabled(Config),
+        "aspire" => !string.IsNullOrEmpty(Config["OTEL_EXPORTER_OTLP_ENDPOINT"]),
+        _ => true,
+    };
 
     private static readonly MenuItem[] items =
     [

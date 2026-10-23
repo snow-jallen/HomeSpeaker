@@ -1,6 +1,14 @@
 @page "/climate"
+@inject IConfiguration config
 
 <PageTitle>Climate</PageTitle>
 
-<TemperatureMonitor />
-<ForecastMonitor />
+@if (!(FeatureFlags.TemperatureEnabled(config) || FeatureFlags.ForecastEnabled(config)))
+{
+    <FeatureOffNotice />
+}
+else
+{
+    <TemperatureMonitor />
+    <ForecastMonitor />
+}

@@ -2,142 +2,154 @@
 @inject AnchorService anchorService
 @inject IJSRuntime JsRuntime
 @inject NavigationManager Navigation
+@inject IConfiguration config
 
-<PageTitle>Anchors</PageTitle>
+@if (!(FeatureFlags.AnchorsEnabled(config)))
+{
+    <FeatureOffNotice />
+}
+else
+{
+    <PageTitle>Anchors</PageTitle>
 
-<div class="glass-page glass-page--anchors">
-    <div class="glass-page-header">
-        <h1 class="glass-title">All User Anchors</h1>
-        <div class="glass-page-actions">
-            <button type="button" @onclick="RefreshData" class="glass-btn glass-btn--ghost" title="Refresh data">
-                <i class="fas fa-rotate" aria-hidden="true"></i>Refresh
+    <div class="glass-page glass-page--anchors">
+        <div class="glass-page-header">
+            <h1 class="glass-title">All User Anchors</h1>
+            <div class="glass-page-actions">
+                <button type="button" @onclick="RefreshData" class="glass-btn glass-btn--ghost" title="Refresh data">
+                    <i class="fas fa-rotate" aria-hidden="true"></i>Refresh
+                </button>
+                <button type="button" @onclick="NavigateToEdit" class="glass-btn" title="Edit anchors">
+                    <i class="fas fa-pencil" aria-hidden="true"></i>Edit Anchors
+                </button>
+            </div>
+        </div>
+
+        <div class="glass-toolbar">
+            <label class="glass-field glass-toolbar-field">
+                <span>Days of history</span>
+                <select value="@daysToShow" @onchange="OnDaysToShowChanged" class="glass-input">
+                    <option value="7">Last 7 days</option>
+                    <option value="14">Last 14 days</option>
+                    <option value="30">Last 30 days</option>
+                    <option value="60">Last 60 days</option>
+                </select>
+            </label>
+            <button type="button" @onclick="EnsureTodayAnchorsForAll" class="glass-btn glass-btn--ghost" title="Ensure today's anchors exist for all users">
+                <i class="fas fa-plus" aria-hidden="true"></i>Create Today for All
             </button>
-            <button type="button" @onclick="NavigateToEdit" class="glass-btn" title="Edit anchors">
-                <i class="fas fa-pencil" aria-hidden="true"></i>Edit Anchors
-            </button>
+            <div class="glass-toolbar-end">
+                <span class="glass-hint">Showing @daysToShow days</span>
+            </div>
         </div>
-    </div>
 
-    <div class="glass-toolbar">
-        <label class="glass-field glass-toolbar-field">
-            <span>Days of history</span>
-            <select value="@daysToShow" @onchange="OnDaysToShowChanged" class="glass-input">
-                <option value="7">Last 7 days</option>
-                <option value="14">Last 14 days</option>
-                <option value="30">Last 30 days</option>
-                <option value="60">Last 60 days</option>
-            </select>
-        </label>
-        <button type="button" @onclick="EnsureTodayAnchorsForAll" class="glass-btn glass-btn--ghost" title="Ensure today's anchors exist for all users">
-            <i class="fas fa-plus" aria-hidden="true"></i>Create Today for All
-        </button>
-        <div class="glass-toolbar-end">
-            <span class="glass-hint">Showing @daysToShow days</span>
-        </div>
-    </div>
-
-    @if (isLoading)
-    {
-        <div class="glass-empty" role="status">
-            <div class="glass-spinner" aria-hidden="true"></div>
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    }
-    else if (!allUserAnchors.Any())
-    {
-        <div class="glass-empty">
-            <i class="fas fa-anchor" aria-hidden="true"></i>
-            <div class="glass-row-title">No active anchors found</div>
-            <p class="mb-0">No users have active anchors set up yet.<br />Use "Edit Anchors" to create anchor definitions and assign them to users.</p>
-        </div>
-    }
-    else
-    {
-        @foreach (var userGroup in allUserAnchors.OrderBy(u => u.Key))
+        @if (isLoading)
         {
-            var userId = userGroup.Key;
-            var userDailyAnchors = userGroup.Value;
-            var dates = GetVisibleDates();
-            <section class="glass-card glass-card--flush" aria-label="Anchors for @userId">
-                <header class="glass-card-header">
-                    <div class="glass-card-heading">
-                        <h2 class="glass-card-title">@userId</h2>
-                        <div class="glass-row-sub">@GetCompletionSummary(userDailyAnchors, dates)</div>
-                    </div>
-                    <div class="glass-badges">
-                        <span class="glass-badge">@GetUniqueAnchorCount(userDailyAnchors) anchors</span>
-                        <span class="glass-badge glass-badge--on">@GetTotalCompletions(userDailyAnchors, dates)/@GetTotalPossible(userDailyAnchors, dates) completed</span>
-                    </div>
-                </header>
-                <div class="glass-table-scroll">
-                    <table class="glass-anchor-table">
-                        <thead>
-                            <tr>
-                                <th scope="col" class="anchor-name-col">Anchor</th>
-                                @foreach (var date in dates)
-                                {
-                                    <th scope="col" class="date-col">
-                                        <span class="date-month">@date.ToString("MMM")</span>
-                                        <span class="date-day">@date.Day</span>
-                                        <span class="date-dow">@date.ToString("ddd")</span>
-                                    </th>
-                                }
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @{
-                                var uniqueAnchors = GetUniqueAnchorsForUser(userDailyAnchors);
-                            }
-                            @foreach (var anchorName in uniqueAnchors.OrderBy(a => a))
-                            {
+            <div class="glass-empty" role="status">
+                <div class="glass-spinner" aria-hidden="true"></div>
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        }
+        else if (!allUserAnchors.Any())
+        {
+            <div class="glass-empty">
+                <i class="fas fa-anchor" aria-hidden="true"></i>
+                <div class="glass-row-title">No active anchors found</div>
+                <p class="mb-0">No users have active anchors set up yet.<br />Use "Edit Anchors" to create anchor definitions and assign them to users.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var userGroup in allUserAnchors.OrderBy(u => u.Key))
+            {
+                var userId = userGroup.Key;
+                var userDailyAnchors = userGroup.Value;
+                var dates = GetVisibleDates();
+                <section class="glass-card glass-card--flush" aria-label="Anchors for @userId">
+                    <header class="glass-card-header">
+                        <div class="glass-card-heading">
+                            <h2 class="glass-card-title">@userId</h2>
+                            <div class="glass-row-sub">@GetCompletionSummary(userDailyAnchors, dates)</div>
+                        </div>
+                        <div class="glass-badges">
+                            <span class="glass-badge">@GetUniqueAnchorCount(userDailyAnchors) anchors</span>
+                            <span class="glass-badge glass-badge--on">@GetTotalCompletions(userDailyAnchors, dates)/@GetTotalPossible(userDailyAnchors, dates) completed</span>
+                        </div>
+                    </header>
+                    <div class="glass-table-scroll">
+                        <table class="glass-anchor-table">
+                            <thead>
                                 <tr>
-                                    <th scope="row" class="anchor-name-col">
-                                        <span class="anchor-name">@anchorName</span>
-                                        @{
-                                            var description = GetAnchorDescription(userDailyAnchors, anchorName);
-                                        }
-                                        @if (!string.IsNullOrWhiteSpace(description))
-                                        {
-                                            <span class="anchor-desc">@description</span>
-                                        }
-                                    </th>
+                                    <th scope="col" class="anchor-name-col">Anchor</th>
                                     @foreach (var date in dates)
                                     {
-                                        <td class="date-col">
-                                            @{
-                                                var dailyAnchor = GetDailyAnchor(userDailyAnchors, date, anchorName);
-                                            }
-                                            @if (dailyAnchor != null)
-                                            {
-                                                <input type="checkbox"
-                                                       class="anchor-check"
-                                                       checked="@dailyAnchor.IsCompleted"
-                                                       @onchange="@(async (e) => await ToggleCompletion(dailyAnchor, (bool)e.Value!))"
-                                                       aria-label="@anchorName on @date.ToString("MMM d")"
-                                                       title="@(dailyAnchor.IsCompleted ? $"Completed at {dailyAnchor.CompletedAt:h:mm tt}" : "Click to mark as completed")" />
-                                            }
-                                            else
-                                            {
-                                                <span class="anchor-none" aria-label="No anchor">-</span>
-                                            }
-                                        </td>
+                                        <th scope="col" class="date-col">
+                                            <span class="date-month">@date.ToString("MMM")</span>
+                                            <span class="date-day">@date.Day</span>
+                                            <span class="date-dow">@date.ToString("ddd")</span>
+                                        </th>
                                     }
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+                            </thead>
+                            <tbody>
+                                @{
+                                    var uniqueAnchors = GetUniqueAnchorsForUser(userDailyAnchors);
+                                }
+                                @foreach (var anchorName in uniqueAnchors.OrderBy(a => a))
+                                {
+                                    <tr>
+                                        <th scope="row" class="anchor-name-col">
+                                            <span class="anchor-name">@anchorName</span>
+                                            @{
+                                                var description = GetAnchorDescription(userDailyAnchors, anchorName);
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(description))
+                                            {
+                                                <span class="anchor-desc">@description</span>
+                                            }
+                                        </th>
+                                        @foreach (var date in dates)
+                                        {
+                                            <td class="date-col">
+                                                @{
+                                                    var dailyAnchor = GetDailyAnchor(userDailyAnchors, date, anchorName);
+                                                }
+                                                @if (dailyAnchor != null)
+                                                {
+                                                    <input type="checkbox"
+                                                           class="anchor-check"
+                                                           checked="@dailyAnchor.IsCompleted"
+                                                           @onchange="@(async (e) => await ToggleCompletion(dailyAnchor, (bool)e.Value!))"
+                                                           aria-label="@anchorName on @date.ToString("MMM d")"
+                                                           title="@(dailyAnchor.IsCompleted ? $"Completed at {dailyAnchor.CompletedAt:h:mm tt}" : "Click to mark as completed")" />
+                                                }
+                                                else
+                                                {
+                                                    <span class="anchor-none" aria-label="No anchor">-</span>
+                                                }
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            }
         }
-    }
-</div>
-
+    </div>
+}
 
 @code {    private int daysToShow = 14;
     private bool isLoading = false;
     private Dictionary<string, List<DailyAnchor>> allUserAnchors = new();
     protected override async Task OnInitializedAsync()
     {
+        if (!FeatureFlags.AnchorsEnabled(config))
+        {
+            return;
+        }
+
         await RefreshData();
     }
 

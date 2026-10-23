@@ -187,7 +187,7 @@
             </a>
         }
 
-        @if (Dashboard.TemperatureEnabled || anchors.Count > 0)
+        @if (Dashboard.TemperatureEnabled || anchorsVisible)
         {
             <div class="hs-home-lower">
                 @if (Dashboard.TemperatureEnabled)
@@ -253,7 +253,7 @@
                         }
                     </a>
                 }
-                @if (anchors.Count > 0)
+                @if (anchorsVisible)
                 {
                     <a class="glass hs-info-card hs-anchors" href="anchors">
                         <span class="hs-card-label"><span class="hs-card-label-text">Anchors</span></span>
@@ -295,17 +295,19 @@
 
     private IReadOnlyList<AnchorProgress> anchors => Dashboard.Anchors;
 
+    private bool anchorsVisible => Dashboard.AnchorsEnabled && anchors.Count > 0;
+
     // Chosen at render time from the cached hourly forecast, so the strip moves on with the clock.
-    private IReadOnlyList<HourlyColumn> hourly => HourlyColumn.Select(Dashboard.Forecast, Time.GetUtcNow().UtcDateTime);
+    private IReadOnlyList<HourlyColumn> hourly => !Dashboard.ForecastEnabled ? [] : HourlyColumn.Select(Dashboard.Forecast, Time.GetUtcNow().UtcDateTime);
 
     private IReadOnlyList<ClimateRoom> indoorRooms => ClimateRoom.From(Dashboard.Temperature);
 
     private string? highLow =>
-        Dashboard.Forecast is { Error: null, TodayHigh.Temperature: { } high, TonightLow.Temperature: { } low }
+        Dashboard.ForecastEnabled && Dashboard.Forecast is { Error: null, TodayHigh.Temperature: { } high, TonightLow.Temperature: { } low }
             ? $"H {TemperatureDisplay.Format(high, Dashboard.TemperatureUnit)} · L {TemperatureDisplay.Format(low, Dashboard.TemperatureUnit)}"
             : null;
 
-    private string? conditions => Dashboard.Forecast is { Error: null } ? Dashboard.Forecast.TodayHigh?.Conditions : null;
+    private string? conditions => Dashboard.ForecastEnabled && Dashboard.Forecast is { Error: null } ? Dashboard.Forecast.TodayHigh?.Conditions : null;
 
     // Rain chance today and tomorrow's high, each only when the forecast has it.
     private IReadOnlyList<string> outlook
@@ -313,7 +315,7 @@
         get
         {
             var lines = new List<string>();
-            if (Dashboard.Forecast is { Error: null } forecast)
+            if (Dashboard.ForecastEnabled && Dashboard.Forecast is { Error: null } forecast)
             {
                 if (forecast.TodayHigh?.PrecipitationChance is { } rain)
                 {

@@ -55,6 +55,8 @@ public sealed class DashboardState : IDisposable
         this.logger = logger;
         BloodSugarEnabled = FeatureFlags.BloodSugarEnabled(configuration);
         TemperatureEnabled = FeatureFlags.TemperatureEnabled(configuration);
+        ForecastEnabled = FeatureFlags.ForecastEnabled(configuration);
+        AnchorsEnabled = FeatureFlags.AnchorsEnabled(configuration);
         TemperatureUnit = TemperatureDisplay.UnitFrom(configuration);
     }
 
@@ -84,6 +86,8 @@ public sealed class DashboardState : IDisposable
     public IReadOnlyList<AnchorProgress> Anchors { get; private set; } = [];
     public bool BloodSugarEnabled { get; }
     public bool TemperatureEnabled { get; }
+    public bool ForecastEnabled { get; }
+    public bool AnchorsEnabled { get; }
     public bool PhotosEnabled => photoLibrary.Count > 0;
     public GlucoseTone GlucoseTone => GlucoseToneMap.From(BloodSugar?.CurrentReading?.Sgv);
 
@@ -208,7 +212,11 @@ public sealed class DashboardState : IDisposable
             Temperature = await tryGetAsync(() => temperatureService.GetTemperatureStatusAsync(), "temperature") ?? Temperature;
         }
 
-        Forecast = ForecastMerge.Latest(Forecast, await tryGetAsync(() => forecastService.GetForecastStatusAsync(), "forecast"));
+        if (ForecastEnabled)
+        {
+            Forecast = ForecastMerge.Latest(Forecast, await tryGetAsync(() => forecastService.GetForecastStatusAsync(), "forecast"));
+        }
+
         await refreshAnchorsAsync();
 
         raiseChanged("health refresh");
@@ -216,7 +224,7 @@ public sealed class DashboardState : IDisposable
 
     private async Task refreshAnchorsAsync()
     {
-        if (disposed)
+        if (disposed || !AnchorsEnabled)
         {
             return;
         }

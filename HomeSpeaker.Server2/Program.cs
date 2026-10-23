@@ -10,8 +10,6 @@ using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Server2.Services.LiveActivities;
 using HomeSpeaker.Server2.Services.MediaSearch;
 using HomeSpeaker.Server2.Services.Photos;
-using HomeSpeaker.Shared;
-using HomeSpeaker.Shared.WindowMonitoring;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
@@ -59,7 +57,11 @@ builder.Services.AddScoped(sp =>
     };
 });
 builder.Services.AddHostedService<MigrationApplier>();
-builder.Services.AddHostedService<DailyAnchorWorker>();
+if (FeatureFlags.AnchorsEnabled(builder.Configuration))
+{
+    builder.Services.AddHostedService<DailyAnchorWorker>();
+}
+
 builder.Services.AddHostedService<AirPlayReceiverService>();
 builder.Services.AddScoped<HomeSpeakerService>(); // Scoped for Blazor components
 builder.Services.AddScoped<PlaylistService>();
@@ -163,7 +165,12 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<PlayerStatusBroadc
 builder.Services.AddSingleton<LiveActivityRegistry>();
 builder.Services.AddSingleton<LiveActivityPushDispatcher>();
 builder.Services.AddHostedService<LiveActivityPushWorker>();
-builder.Services.AddHostedService<HealthAlertWorker>();
+if (FeatureFlags.PushEnabled(builder.Configuration) &&
+    (FeatureFlags.TemperatureEnabled(builder.Configuration) || FeatureFlags.BloodSugarEnabled(builder.Configuration)))
+{
+    builder.Services.AddHostedService<HealthAlertWorker>();
+}
+
 builder.Services.AddHostedService<AiMusicAnalysisWorker>();
 builder.Services.AddHostedService<HomeSpeaker.Server2.Services.VolumeMonitorService>();
 builder.Services.AddChatClient(sp =>
@@ -366,382 +373,20 @@ app.Use(async (context, next) =>
 app.UseRouting();
 app.UseCors(LocalCorsPolicy);
 app.UseAntiforgery();
-app.MapHub<HomeSpeaker.Server2.Hubs.AnchorHub>("/anchorHub");
-app.MapGet("/ns", (IConfiguration config) => config["NIGHTSCOUT_URL"] ?? string.Empty);
 app.MapGet("/api/features", (IConfiguration config, PhotoLibrary photos, IChatClient chatClient) => new
 {
     TemperatureEnabled = FeatureFlags.TemperatureEnabled(config),
     BloodSugarEnabled = FeatureFlags.BloodSugarEnabled(config),
+    ForecastEnabled = FeatureFlags.ForecastEnabled(config),
+    AnchorsEnabled = FeatureFlags.AnchorsEnabled(config),
+    PushEnabled = FeatureFlags.PushEnabled(config),
+    TemperatureUnit = TemperatureDisplay.UnitFrom(config) == TemperatureUnit.Celsius ? "C" : "F",
     PhotosEnabled = photos.Count > 0,
     // AddChatClient falls back to NullChatClient when no AI provider is configured.
     AiEnabled = chatClient is not NullChatClient
 });
 
-app.MapPost("/api/push/devices/register", async (PushNotificationService pushNotificationService, PushDeviceRegistrationRequest request, CancellationToken cancellationToken) =>
-{
-    try
-    {
-        var device = await pushNotificationService.RegisterDeviceAsync(request, cancellationToken);
-        return Results.Ok(device);
-    }
-    catch (ArgumentException ex)
-    {
-        return Results.ValidationProblem(new Dictionary<string, string[]>
-        {
-            ["request"] = [ex.Message]
-        });
-    }
-});
-
-app.MapDelete("/api/push/devices/{installationId}", async (PushNotificationService pushNotificationService, string installationId, CancellationToken cancellationToken) =>
-{
-    var removed = await pushNotificationService.UnregisterDeviceAsync(installationId, cancellationToken);
-    return removed
-        ? Results.NoContent()
-        : Results.NotFound();
-});
-
-app.MapGet("/api/homespeaker/push/installations/{installationId}", async (PushNotificationService pushNotificationService, string installationId, CancellationToken cancellationToken) =>
-{
-    try
-    {
-        var status = await pushNotificationService.GetRegistrationStatusAsync(installationId, cancellationToken);
-        return Results.Ok(status);
-    }
-    catch (ArgumentException ex)
-    {
-        return Results.ValidationProblem(new Dictionary<string, string[]>
-        {
-            ["installationId"] = [ex.Message]
-        });
-    }
-});
-
-app.MapPut("/api/homespeaker/push/installations/{installationId}", async (PushNotificationService pushNotificationService, string installationId, UpsertPushInstallationRequest request, CancellationToken cancellationToken) =>
-{
-    try
-    {
-        request.InstallationId = installationId;
-        var status = await pushNotificationService.UpsertInstallationAsync(request, cancellationToken);
-        return Results.Ok(status);
-    }
-    catch (ArgumentException ex)
-    {
-        return Results.ValidationProblem(new Dictionary<string, string[]>
-        {
-            ["request"] = [ex.Message]
-        });
-    }
-});
-
-// Temperature API endpoint
-app.MapGet("/api/temperature", async (ITemperatureService temperatureService, CancellationToken cancellationToken) =>
-{
-    try
-    {
-        var temperatureStatus = await temperatureService.GetTemperatureStatusAsync(cancellationToken);
-        return Results.Ok(temperatureStatus);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to get temperature data: {ex.Message}");
-    }
-});
-
-// Read-only diagnostic: what each matched sensor reports (e.g. whether battery is available at all).
-app.MapGet("/api/temperature/capabilities", async (ITemperatureService temperatureService, CancellationToken cancellationToken) =>
-{
-    try
-    {
-        return Results.Ok(await temperatureService.GetSensorDiagnosticsAsync(cancellationToken));
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to get sensor capabilities: {ex.Message}");
-    }
-});
-
-// Blood Sugar API endpoint
-app.MapGet("/api/bloodsugar", async (IBloodSugarService bloodSugarService, CancellationToken cancellationToken) =>
-{
-    try
-    {
-        var bloodSugarStatus = await bloodSugarService.GetBloodSugarStatusAsync(cancellationToken);
-        return Results.Ok(bloodSugarStatus);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to get blood sugar data: {ex.Message}");
-    }
-});
-
-// Temperature cache management endpoints
-app.MapDelete("/api/temperature/cache", async (ITemperatureService temperatureService) =>
-{
-    try
-    {
-        await temperatureService.ClearCacheAsync();
-        return Results.Ok(new { message = "Temperature cache cleared successfully" });
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to clear temperature cache: {ex.Message}");
-    }
-});
-
-app.MapPost("/api/temperature/refresh", async (ITemperatureService temperatureService, CancellationToken cancellationToken) =>
-{
-    try
-    {
-        var temperatureStatus = await temperatureService.RefreshAsync(cancellationToken);
-        return Results.Ok(temperatureStatus);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to refresh temperature data: {ex.Message}");
-    }
-});
-
-// Blood Sugar cache management endpoints
-app.MapDelete("/api/bloodsugar/cache", async (IBloodSugarService bloodSugarService) =>
-{
-    try
-    {
-        await bloodSugarService.ClearCacheAsync();
-        return Results.Ok(new { message = "Blood sugar cache cleared successfully" });
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to clear blood sugar cache: {ex.Message}");
-    }
-});
-
-app.MapPost("/api/bloodsugar/refresh", async (IBloodSugarService bloodSugarService, CancellationToken cancellationToken) =>
-{
-    try
-    {
-        var bloodSugarStatus = await bloodSugarService.RefreshAsync(cancellationToken);
-        return Results.Ok(bloodSugarStatus);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to refresh blood sugar data: {ex.Message}");
-    }
-});
-
-// Forecast API endpoint
-app.MapGet("/api/forecast", async (IForecastService forecastService, CancellationToken cancellationToken) =>
-{
-    try
-    {
-        var forecastStatus = await forecastService.GetForecastStatusAsync(cancellationToken);
-        return Results.Ok(forecastStatus);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to get forecast data: {ex.Message}");
-    }
-});
-
-// Forecast cache management endpoints
-app.MapDelete("/api/forecast/cache", async (IForecastService forecastService) =>
-{
-    try
-    {
-        await forecastService.ClearCacheAsync();
-        return Results.Ok(new { message = "Forecast cache cleared successfully" });
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to clear forecast cache: {ex.Message}");
-    }
-});
-
-app.MapPost("/api/forecast/refresh", async (IForecastService forecastService, CancellationToken cancellationToken) =>
-{
-    try
-    {
-        var forecastStatus = await forecastService.RefreshAsync(cancellationToken);
-        return Results.Ok(forecastStatus);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to refresh forecast data: {ex.Message}");
-    }
-});
-
-// Anchor API endpoints
-app.MapGet("/api/anchors/definitions", async (AnchorService anchorService) =>
-{
-    try
-    {
-        var definitions = await anchorService.GetActiveAnchorDefinitionsAsync();
-        return Results.Ok(definitions);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to get anchor definitions: {ex.Message}");
-    }
-});
-
-app.MapPost("/api/anchors/definitions", async (AnchorService anchorService, CreateAnchorDefinitionRequest request) =>
-{
-    try
-    {
-        var definition = await anchorService.CreateAnchorDefinitionAsync(request);
-        return Results.Created($"/api/anchors/definitions/{definition.Id}", definition);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to create anchor definition: {ex.Message}");
-    }
-});
-
-app.MapPut("/api/anchors/definitions/{id:int}", async (AnchorService anchorService, int id, CreateAnchorDefinitionRequest request) =>
-{
-    try
-    {
-        var definition = await anchorService.UpdateAnchorDefinitionAsync(id, request);
-        return definition != null ? Results.Ok(definition) : Results.NotFound();
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to update anchor definition: {ex.Message}");
-    }
-});
-
-app.MapDelete("/api/anchors/definitions/{id:int}", async (AnchorService anchorService, int id) =>
-{
-    try
-    {
-        var success = await anchorService.DeactivateAnchorDefinitionAsync(id);
-        return success ? Results.NoContent() : Results.NotFound();
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to deactivate anchor definition: {ex.Message}");
-    }
-});
-
-app.MapGet("/api/anchors/users/{userId}", async (AnchorService anchorService, string userId) =>
-{
-    try
-    {
-        var userAnchors = await anchorService.GetUserAnchorsAsync(userId);
-        return Results.Ok(userAnchors);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to get user anchors: {ex.Message}");
-    }
-});
-
-app.MapPost("/api/anchors/users", async (AnchorService anchorService, AssignAnchorToUserRequest request) =>
-{
-    try
-    {
-        var userAnchor = await anchorService.AssignAnchorToUserAsync(request);
-        return Results.Created($"/api/anchors/users/{userAnchor.UserId}", userAnchor);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to assign anchor to user: {ex.Message}");
-    }
-});
-
-app.MapDelete("/api/anchors/users/{userId}/{anchorDefinitionId:int}", async (AnchorService anchorService, string userId, int anchorDefinitionId) =>
-{
-    try
-    {
-        var success = await anchorService.RemoveAnchorFromUserAsync(userId, anchorDefinitionId);
-        return success ? Results.NoContent() : Results.NotFound();
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to remove anchor from user: {ex.Message}");
-    }
-});
-
-app.MapGet("/api/anchors/daily/{userId}/{date}", async (AnchorService anchorService, string userId, DateOnly date) =>
-{
-    try
-    {
-        var dailyAnchors = await anchorService.GetDailyAnchorsAsync(userId, date);
-        return Results.Ok(dailyAnchors);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to get daily anchors: {ex.Message}");
-    }
-});
-
-app.MapGet("/api/anchors/daily/{userId}", async (AnchorService anchorService, string userId, DateOnly? startDate, DateOnly? endDate) =>
-{
-    try
-    {
-        var start = startDate ?? DateOnly.FromDateTime(DateTime.Today.AddDays(-30));
-        var end = endDate ?? DateOnly.FromDateTime(DateTime.Today);
-        var dailyAnchors = await anchorService.GetDailyAnchorsRangeAsync(userId, start, end);
-        return Results.Ok(dailyAnchors);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to get daily anchors range: {ex.Message}");
-    }
-});
-
-app.MapPost("/api/anchors/daily/create/{userId}/{date}", async (AnchorService anchorService, string userId, DateOnly date) =>
-{
-    try
-    {
-        await anchorService.CreateDailyAnchorsForUserAsync(userId, date);
-        return Results.Ok(new { message = "Daily anchors created successfully" });
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to create daily anchors: {ex.Message}");
-    }
-});
-
-app.MapPut("/api/anchors/daily/completion", async (AnchorService anchorService, UpdateAnchorCompletionRequest request) =>
-{
-    try
-    {
-        var success = await anchorService.UpdateAnchorCompletionAsync(request);
-        return success ? Results.Ok() : Results.NotFound();
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to update anchor completion: {ex.Message}");
-    }
-});
-
-app.MapPost("/api/anchors/daily/ensure-today", async (AnchorService anchorService) =>
-{
-    try
-    {
-        await anchorService.EnsureTodayAnchorsForAllUsersAsync();
-        return Results.Ok(new { message = "Today's anchors ensured for all users" });
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to ensure today's anchors: {ex.Message}");
-    }
-});
-
-// Get all users who have anchors
-app.MapGet("/api/anchors/users", async (AnchorService anchorService) =>
-{
-    try
-    {
-        var users = await anchorService.GetUsersWithAnchorsAsync();
-        return Results.Ok(users);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to get users with anchors: {ex.Message}");
-    }
-});
+app.MapFeatureModules();
 
 // Recently played endpoint
 app.MapGet("/api/music/recently-played", async (MusicContext db, Mp3Library library, int limit = 20) =>
@@ -771,20 +416,6 @@ app.MapGet("/api/music/recently-played", async (MusicContext db, Mp3Library libr
     catch (Exception ex)
     {
         return Results.Problem($"Failed to get recently played: {ex.Message}");
-    }
-});
-
-// Get daily anchors for all users in a date range
-app.MapGet("/api/anchors/daily", async (AnchorService anchorService, DateOnly? startDate, DateOnly? endDate) =>
-{
-    try
-    {
-        var allUserAnchors = await anchorService.GetAllUsersDailyAnchorsAsync(startDate, endDate);
-        return Results.Ok(allUserAnchors);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to get all users' daily anchors: {ex.Message}");
     }
 });
 
