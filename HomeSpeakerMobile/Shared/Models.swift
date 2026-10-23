@@ -19,13 +19,18 @@ struct ServerConnection: Codable, Identifiable, Equatable, Hashable {
         self.remoteURL = remoteURL
     }
 
+    /// The home address. A host that can't form a URL (a typo, or a bad
+    /// discovery record) falls back to `http://localhost` rather than crashing;
+    /// requests to it simply fail.
     var baseURL: URL {
         let cleanHost = host.trimmingCharacters(in: .whitespaces)
         if cleanHost.hasPrefix("http://") || cleanHost.hasPrefix("https://") {
-            return URL(string: cleanHost)!
+            return URL(string: cleanHost) ?? Self.fallbackURL
         }
-        return URL(string: "http://\(cleanHost):\(port)")!
+        return URL(string: "http://\(cleanHost):\(port)") ?? Self.fallbackURL
     }
+
+    private static let fallbackURL = URL(string: "http://localhost")!
 
     var remoteBaseURL: URL? {
         guard let raw = remoteURL?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {

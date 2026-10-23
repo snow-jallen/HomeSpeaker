@@ -4,7 +4,7 @@ struct WatchServerPickerView: View {
     @Environment(ConnectionStore.self) private var store
     @State private var showAdd = false
     @State private var addHost = ""
-    @State private var addPort = "5000"
+    @State private var addPort = "80"
     @State private var addName = ""
 
     var body: some View {
@@ -74,12 +74,12 @@ struct WatchServerPickerView: View {
                     store.add(ServerConnection(
                         name: addName,
                         host: addHost,
-                        port: Int(addPort) ?? 5000
+                        port: Int(addPort) ?? 80
                     ))
                     showAdd = false
                     addName = ""
                     addHost = ""
-                    addPort = "5000"
+                    addPort = "80"
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(addName.isEmpty || addHost.isEmpty)

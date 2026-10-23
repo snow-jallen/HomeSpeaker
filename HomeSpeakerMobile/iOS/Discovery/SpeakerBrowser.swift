@@ -45,10 +45,20 @@ final class SpeakerBrowser: ObservableObject {
             txt = record.dictionary
         }
 
+        // The TXT record is whatever the network sends, so only accept values
+        // that make a valid URL (ServerConnection.baseURL builds one from them).
         let host = nonEmpty(txt["host"]) ?? "\(name).local"
-        let port = nonEmpty(txt["port"]).flatMap { Int($0) } ?? 80
-        let scheme = nonEmpty(txt["scheme"]) ?? "http"
+        guard isValidHost(host) else { return nil }
+        let port = nonEmpty(txt["port"]).flatMap { Int($0) }.flatMap { (1...65535).contains($0) ? $0 : nil } ?? 80
+        let scheme = nonEmpty(txt["scheme"])?.lowercased() == "https" ? "https" : "http"
+        guard let url = URL(string: "\(scheme)://\(host):\(port)"), url.host != nil else { return nil }
         return DiscoveredSpeaker(id: name, name: name, host: host, port: port, scheme: scheme)
+    }
+
+    /// A bare host name or address: no whitespace and none of the characters
+    /// that would end the host part of a URL.
+    nonisolated private static func isValidHost(_ host: String) -> Bool {
+        !host.isEmpty && host.rangeOfCharacter(from: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: "/?#@\\"))) == nil
     }
 
     nonisolated private static func nonEmpty(_ value: String?) -> String? {
