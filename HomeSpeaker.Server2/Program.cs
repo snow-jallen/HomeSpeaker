@@ -10,6 +10,7 @@ using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Server2.Services.LiveActivities;
 using HomeSpeaker.Server2.Services.MediaSearch;
 using HomeSpeaker.Server2.Services.Photos;
+using HomeSpeaker.Server2.Settings;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
@@ -24,6 +25,20 @@ const string LocalCorsPolicy = nameof(LocalCorsPolicy);
 #pragma warning restore IDE1006 // Naming Styles
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Database-backed settings sit between appsettings.json and environment variables.
+builder.Configuration.AddDatabaseSettings(builder.Configuration["SqliteConnectionString"]);
+var settingsSource = builder.Configuration.Sources.OfType<DatabaseSettingsConfigurationSource>().SingleOrDefault();
+builder.Services.AddSingleton<ISettingsWriter>(new SettingsWriter(settingsSource?.Store, settingsSource?.Provider));
+if (settingsSource?.Store is { } settingsStore)
+{
+    builder.Services.AddSingleton(settingsStore);
+}
+
+if (settingsSource?.Provider is { } settingsProvider)
+{
+    builder.Services.AddSingleton(settingsProvider);
+}
 
 // Configure host shutdown timeout
 builder.Host.ConfigureHostOptions(options =>
