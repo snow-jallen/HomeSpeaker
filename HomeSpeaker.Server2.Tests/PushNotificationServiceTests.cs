@@ -5,6 +5,7 @@ using HomeSpeaker.Shared.BloodSugar;
 using HomeSpeaker.Shared.Temperature;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -56,7 +57,8 @@ public sealed class PushNotificationServiceTests
         var openWindows = new TemperatureStatus
         {
             OutsideTemperature = 62,
-            YoungerGirlsRoomTemperature = 71,
+            IndoorRoomName = "Girls",
+            IndoorTemperature = 71,
             TemperatureDifference = 9,
             ShouldWindowsBeClosed = false
         };
@@ -70,7 +72,8 @@ public sealed class PushNotificationServiceTests
         var keepClosed = new TemperatureStatus
         {
             OutsideTemperature = 75,
-            YoungerGirlsRoomTemperature = 71,
+            IndoorRoomName = "Girls",
+            IndoorTemperature = 71,
             TemperatureDifference = 4,
             ShouldWindowsBeClosed = true
         };
@@ -79,6 +82,27 @@ public sealed class PushNotificationServiceTests
 
         Assert.Equal(2, fixture.Sender.SentNotifications.Count);
         Assert.Equal("keep-closed", fixture.Sender.SentNotifications[1].Data["stateKey"]);
+    }
+
+    [Fact]
+    public async Task PushAlert_UsesIndoorRoomName()
+    {
+        await using var fixture = await PushNotificationTestFixture.CreateAsync();
+        var service = fixture.CreateService();
+        await service.RegisterDeviceAsync(new PushDeviceRegistrationRequest { InstallationId = "room-name", DeviceToken = new string('f', 64) });
+
+        await service.NotifyTemperatureStatusAsync(new TemperatureStatus
+        {
+            OutsideTemperature = 62,
+            IndoorRoomName = "Girls",
+            IndoorTemperature = 74,
+            TemperatureDifference = 12,
+            ShouldWindowsBeClosed = false
+        });
+
+        var body = Assert.Single(fixture.Sender.SentNotifications).Body;
+        Assert.Contains("Girls 74°", body, StringComparison.Ordinal);
+        Assert.Contains("Outside 62°", body, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -106,7 +130,8 @@ public sealed class PushNotificationServiceTests
         await service.NotifyTemperatureStatusAsync(new TemperatureStatus
         {
             OutsideTemperature = 62,
-            YoungerGirlsRoomTemperature = 71,
+            IndoorRoomName = "Girls",
+            IndoorTemperature = 71,
             TemperatureDifference = 9,
             ShouldWindowsBeClosed = false
         });
@@ -194,7 +219,10 @@ public sealed class PushNotificationServiceTests
                     RepeatAlertMinutes = 30
                 }),
                 TimeProvider,
-                NullLogger<PushNotificationService>.Instance);
+                NullLogger<PushNotificationService>.Instance,
+                new ConfigurationBuilder().AddInMemoryCollection(Settings).Build());
+
+        public Dictionary<string, string?> Settings { get; } = [];
 
         public async ValueTask DisposeAsync()
         {

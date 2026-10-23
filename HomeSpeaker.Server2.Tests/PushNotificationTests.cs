@@ -118,7 +118,8 @@ public sealed class PushNotificationTests : IAsyncLifetime
         var alertStatus = new TemperatureStatus
         {
             OutsideTemperature = 42,
-            YoungerGirlsRoomTemperature = 73,
+            IndoorRoomName = "Girls",
+            IndoorTemperature = 73,
             ShouldWindowsBeClosed = true,
             TemperatureDifference = -31
         };

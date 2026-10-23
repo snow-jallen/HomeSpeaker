@@ -1,3 +1,4 @@
+using System.Globalization;
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Shared;
 using HomeSpeaker.Shared.BloodSugar;
@@ -18,19 +19,22 @@ public sealed class PushNotificationService
     private readonly PushNotificationOptions options;
     private readonly TimeProvider timeProvider;
     private readonly ILogger<PushNotificationService> logger;
+    private readonly TemperatureUnit temperatureUnit;
 
     public PushNotificationService(
         MusicContext dbContext,
         IPushNotificationSender sender,
         IOptions<PushNotificationOptions> options,
         TimeProvider timeProvider,
-        ILogger<PushNotificationService> logger)
+        ILogger<PushNotificationService> logger,
+        IConfiguration configuration)
     {
         this.dbContext = dbContext;
         this.sender = sender;
         this.options = options.Value;
         this.timeProvider = timeProvider;
         this.logger = logger;
+        temperatureUnit = TemperatureDisplay.UnitFrom(configuration);
     }
 
     public async Task<PushDeviceRegistrationDto> RegisterDeviceAsync(PushDeviceRegistrationRequest request, CancellationToken cancellationToken = default)
@@ -154,7 +158,7 @@ public sealed class PushNotificationService
     }
 
     public Task NotifyTemperatureStatusAsync(TemperatureStatus status, CancellationToken cancellationToken = default)
-        => notifyAsync(buildTemperatureAlert(status), device => device.TemperatureAlertsEnabled, cancellationToken);
+        => notifyAsync(buildTemperatureAlert(status, temperatureUnit), device => device.TemperatureAlertsEnabled, cancellationToken);
 
     public Task NotifyBloodSugarStatusAsync(BloodSugarStatus status, CancellationToken cancellationToken = default)
         => notifyAsync(buildBloodSugarAlert(status), device => device.BloodSugarAlertsEnabled, cancellationToken);
@@ -278,16 +282,19 @@ public sealed class PushNotificationService
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private static PushAlertDefinition? buildTemperatureAlert(TemperatureStatus status)
+    private static PushAlertDefinition? buildTemperatureAlert(TemperatureStatus status, TemperatureUnit unit)
     {
-        if (status.OutsideTemperature is not { } outsideTemp || status.YoungerGirlsRoomTemperature is not { } girlsRoomTemp)
+        if (status.OutsideTemperature is not { } outsideTemp || status.IndoorTemperature is not { } indoorTemp)
         {
             return new PushAlertDefinition(TemperatureAlertKey, string.Empty, string.Empty, string.Empty, IsCleared: true);
         }
 
         var keepClosed = status.ShouldWindowsBeClosed;
         var title = keepClosed ? "Keep the windows closed" : "Open the windows";
-        var body = $"Outside {outsideTemp:F0}°, girl's room {girlsRoomTemp:F0}° (Δ {status.TemperatureDifference:F0}°).";
+        var difference = Math.Round(TemperatureDisplay.ConvertDelta(status.TemperatureDifference, unit), MidpointRounding.AwayFromZero);
+        var body = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Outside {TemperatureDisplay.Format(outsideTemp, unit)}, {status.IndoorRoomName ?? "inside"} {TemperatureDisplay.Format(indoorTemp, unit)} (Δ {difference:0}°).");
         return new PushAlertDefinition(
             TemperatureAlertKey,
             keepClosed ? "keep-closed" : "open-windows",

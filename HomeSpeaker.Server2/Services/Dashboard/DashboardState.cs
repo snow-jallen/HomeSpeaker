@@ -55,7 +55,11 @@ public sealed class DashboardState : IDisposable
         this.logger = logger;
         BloodSugarEnabled = FeatureFlags.BloodSugarEnabled(configuration);
         TemperatureEnabled = FeatureFlags.TemperatureEnabled(configuration);
+        TemperatureUnit = TemperatureDisplay.UnitFrom(configuration);
     }
+
+    /// <summary>The unit temperatures are shown in (readings themselves are Fahrenheit).</summary>
+    public TemperatureUnit TemperatureUnit { get; }
 
     public event Action? Changed;
 

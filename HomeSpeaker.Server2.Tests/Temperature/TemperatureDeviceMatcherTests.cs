@@ -63,4 +63,16 @@ public sealed class TemperatureDeviceMatcherTests
 
         Assert.Equal("1", result["Outside"]?.DeviceId);
     }
+
+    [Fact]
+    public void Match_NoRooms_EachDeviceIsItsOwnRoom()
+    {
+        var devices = new[] { device("1", "Kitchen"), device("2", "Garage") };
+
+        var result = TemperatureDeviceMatcher.Match(devices, []);
+
+        Assert.Equal(["Kitchen", "Garage"], result.Keys);
+        Assert.Equal("1", result["Kitchen"]?.DeviceId);
+        Assert.Equal("2", result["Garage"]?.DeviceId);
+    }
 }

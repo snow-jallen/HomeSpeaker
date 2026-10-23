@@ -3,6 +3,8 @@
 @using HomeSpeaker.Server2.Services
 @inject TemperatureService TemperatureService
 @inject ForecastService ForecastService
+@inject IConfiguration Configuration
+@using HomeSpeaker.Server2.Services.Dashboard
 @inject ILogger<TemperatureMonitor> Logger
 @implements IDisposable
 @attribute [StreamRendering]
@@ -16,7 +18,10 @@
                     Temperature Monitor
                 </h6>
                 <div class="text-center">
-                @if (temperatureStatus != null && temperatureStatus.OutsideTemperature.HasValue && temperatureStatus.YoungerGirlsRoomTemperature.HasValue)
+                @if (!windowAdviceEnabled)
+                {
+                }
+                else if (temperatureStatus != null && temperatureStatus.OutsideTemperature.HasValue && temperatureStatus.IndoorTemperature.HasValue)
                 {
                     @if (temperatureStatus.ShouldWindowsBeClosed)
                     {
@@ -61,29 +66,18 @@
                                 <i class="fas fa-cloud-sun" style="color: @GetTemperatureColor(temperatureStatus.OutsideTemperature)"></i>
                                 <span class="temp-value" style="color: @GetTemperatureColor(temperatureStatus.OutsideTemperature)">@FormatTemperature(temperatureStatus.OutsideTemperature)</span>
                             </div>
-                            <div class="temp-label">Outside</div>
+                            <div class="temp-label">@(temperatureStatus.OutsideRoomName ?? "Outside")</div>
                         </div>
-                        <div class="temp-cell">
-                            <div class="temp-inline">
-                                <i class="fas fa-female" style="color: @GetTemperatureColor(temperatureStatus.YoungerGirlsRoomTemperature)"></i>
-                                <span class="temp-value" style="color: @GetTemperatureColor(temperatureStatus.YoungerGirlsRoomTemperature)">@FormatTemperature(temperatureStatus.YoungerGirlsRoomTemperature)</span>
+                        @foreach (var room in ClimateRoom.From(temperatureStatus))
+                        {
+                            <div class="temp-cell">
+                                <div class="temp-inline">
+                                    <i class="fas fa-home" style="color: @GetTemperatureColor(room.Temperature)"></i>
+                                    <span class="temp-value" style="color: @GetTemperatureColor(room.Temperature)">@FormatTemperature(room.Temperature)</span>
+                                </div>
+                                <div class="temp-label">@room.Label</div>
                             </div>
-                            <div class="temp-label">Girl's Room</div>
-                        </div>
-                        <div class="temp-cell">
-                            <div class="temp-inline">
-                                <i class="fas fa-male" style="color: @GetTemperatureColor(temperatureStatus.BoysRoomTemperature)"></i>
-                                <span class="temp-value" style="color: @GetTemperatureColor(temperatureStatus.BoysRoomTemperature)">@FormatTemperature(temperatureStatus.BoysRoomTemperature)</span>
-                            </div>
-                            <div class="temp-label">Boy's Room</div>
-                        </div>
-                        <div class="temp-cell">
-                            <div class="temp-inline">
-                                <i class="fas fa-seedling" style="color: @GetTemperatureColor(temperatureStatus.GreenhouseTemperature)"></i>
-                                <span class="temp-value" style="color: @GetTemperatureColor(temperatureStatus.GreenhouseTemperature)">@FormatTemperature(temperatureStatus.GreenhouseTemperature)</span>
-                            </div>
-                            <div class="temp-label">Greenhouse</div>
-                        </div>
+                        }
                     </div>
 
                     <!-- Right: stacked forecast -->
@@ -232,14 +226,18 @@
         }
     }
     
+    private TemperatureUnit unit => TemperatureDisplay.UnitFrom(Configuration);
+
+    private bool windowAdviceEnabled => TemperatureRoomConfig.FromConfiguration(Configuration).WindowAdvice;
+
     private string FormatTemperature(double? temperature)
     {
-        return temperature.HasValue ? $"{temperature.Value:F0}°" : "N/A";
+        return TemperatureDisplay.Format(temperature, unit);
     }
 
     private string FormatForecastTemperature(double? temperature)
     {
-        return temperature.HasValue ? $"{temperature.Value:F0}°" : "N/A";
+        return TemperatureDisplay.Format(temperature, unit);
     }
 
     private string GetTemperatureColor(double? temperature)

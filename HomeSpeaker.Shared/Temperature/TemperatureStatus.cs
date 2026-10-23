@@ -5,15 +5,14 @@ namespace HomeSpeaker.Shared.Temperature;
 public sealed class TemperatureStatus
 {
     public double? OutsideTemperature { get; set; }
-    public double? YoungerGirlsRoomTemperature { get; set; }
-    public double? OlderGirlsRoomTemperature { get; set; }
-    public double? BoysRoomTemperature { get; set; }
-    public double? MomAndDadsRoomTemperature { get; set; }
-    public double? GreenhouseTemperature { get; set; }
+    public string? OutsideRoomName { get; set; }
+
+    /// <summary>The room compared against outside for window advice; null (with <see cref="IndoorTemperature"/>) when advice is off or unavailable.</summary>
+    public string? IndoorRoomName { get; set; }
+    public double? IndoorTemperature { get; set; }
 
     /// <summary>
-    /// Every room the service looked for, with its battery level where reported. The single-room properties
-    /// above are kept for existing callers and always agree with these.
+    /// Every configured room (the outside room included), in configuration order, with its battery level where reported.
     /// </summary>
     public List<RoomReading> Rooms { get; set; } = [];
 

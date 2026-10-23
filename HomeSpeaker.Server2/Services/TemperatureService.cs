@@ -18,18 +18,6 @@ public sealed class TemperatureService : ITemperatureService
     private static readonly TimeSpan diagnosticsCacheExpiration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan cacheExpiration = TimeSpan.FromMinutes(2);
 
-    // Order matters: each device is claimed by the first room that matches it, so more specific
-    // patterns come first (Emma before Girl).
-    private static readonly TemperatureDeviceMatcher.RoomPattern[] roomPatterns =
-    [
-        new("Outside", ["Outside"]),
-        new("Greenhouse", ["Greenhouse"]),
-        new("Emma", ["Emma"]),
-        new("Boy", ["Boy"]),
-        new("Downstairs", ["Downstairs", "Mom", "Dad", "Parent"]),
-        new("Girl", ["Girl"]),
-    ];
-
     public TemperatureService(HttpClient httpClient, IConfiguration configuration, ILogger<TemperatureService> logger, IMemoryCache cache, TimeProvider timeProvider)
     {
         this.httpClient = httpClient;
@@ -191,9 +179,10 @@ public sealed class TemperatureService : ITemperatureService
         }
 
         var devices = await GetDevicesAsync(cancellationToken);
-        var deviceMap = TemperatureDeviceMatcher.Match(devices, roomPatterns);
+        var rooms = TemperatureDeviceMatcher.EffectiveRooms(devices, TemperatureRoomConfig.FromConfiguration(configuration).Rooms);
+        var deviceMap = TemperatureDeviceMatcher.Match(devices, rooms);
         var report = new SensorDiagnosticsReport();
-        foreach (var (room, _) in roomPatterns)
+        foreach (var (room, _) in rooms)
         {
             if (deviceMap[room] is not { } device)
             {
@@ -224,7 +213,8 @@ public sealed class TemperatureService : ITemperatureService
     private async Task<TemperatureStatus> getTemperatureStatusInternalAsync(CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Getting temperature status...");
-        var threshold = configuration.GetValue<double>("TemperatureThreshold", 2.0);
+        var settings = TemperatureRoomConfig.FromConfiguration(configuration);
+        var threshold = settings.ThresholdF;
         var devices = await GetDevicesAsync(cancellationToken);
 
         var temperatureStatus = new TemperatureStatus
@@ -233,11 +223,12 @@ public sealed class TemperatureService : ITemperatureService
             Threshold = threshold
         };
 
-        var deviceMap = TemperatureDeviceMatcher.Match(devices, roomPatterns);
+        var rooms = TemperatureDeviceMatcher.EffectiveRooms(devices, settings.Rooms);
+        var deviceMap = TemperatureDeviceMatcher.Match(devices, rooms);
 
         // One state request per matched device gives both the temperature and (when reported) the battery.
-        var readings = new Dictionary<string, RoomReading>(StringComparer.Ordinal);
-        foreach (var (room, _) in roomPatterns)
+        var readings = new List<RoomReading>();
+        foreach (var (room, _) in rooms)
         {
             var device = deviceMap[room];
             var state = device is null ? null : await getDeviceStateAsync(device, cancellationToken);
@@ -246,26 +237,35 @@ public sealed class TemperatureService : ITemperatureService
                 logger.LogWarning("Temperature capability not found in state for device {DeviceName}", device.DeviceName);
             }
 
-            readings[room] = new RoomReading { Name = room, Temperature = state?.SensorTemperature, BatteryPercent = state?.Battery };
+            readings.Add(new RoomReading { Name = room, Temperature = state?.SensorTemperature, BatteryPercent = state?.Battery });
         }
 
-        temperatureStatus.Rooms = [.. roomPatterns.Select(p => readings[p.Room])];
-        temperatureStatus.OutsideTemperature = readings["Outside"].Temperature;
-        temperatureStatus.YoungerGirlsRoomTemperature = readings["Girl"].Temperature;
-        temperatureStatus.OlderGirlsRoomTemperature = readings["Emma"].Temperature;
-        temperatureStatus.BoysRoomTemperature = readings["Boy"].Temperature;
-        temperatureStatus.MomAndDadsRoomTemperature = readings["Downstairs"].Temperature;
-        temperatureStatus.GreenhouseTemperature = readings["Greenhouse"].Temperature;
+        temperatureStatus.Rooms = readings;
+
+        var outside = findRoom(readings, settings.OutsideRoom);
+        temperatureStatus.OutsideRoomName = outside?.Name;
+        temperatureStatus.OutsideTemperature = outside?.Temperature;
+
+        if (settings.WindowAdvice)
+        {
+            // An unconfigured indoor room defaults to the first room that is not the outside one.
+            var indoor = findRoom(readings, settings.IndoorRoom)
+                ?? readings.FirstOrDefault(r => !string.Equals(r.Name, outside?.Name, StringComparison.OrdinalIgnoreCase));
+            temperatureStatus.IndoorRoomName = indoor?.Name;
+            temperatureStatus.IndoorTemperature = indoor?.Temperature;
+        }
 
         // Calculate temperature difference and determine if within threshold
-        if (temperatureStatus.OutsideTemperature is { } outsideTemp &&
-            temperatureStatus.YoungerGirlsRoomTemperature is { } girlsRoomTemp)
+        if (temperatureStatus.OutsideTemperature is { } outsideTemp && temperatureStatus.IndoorTemperature is { } indoorTemp)
         {
-            temperatureStatus.TemperatureDifference = Math.Abs(outsideTemp - girlsRoomTemp);
+            temperatureStatus.TemperatureDifference = Math.Abs(outsideTemp - indoorTemp);
             temperatureStatus.IsWithinThreshold = temperatureStatus.TemperatureDifference <= threshold;
-            temperatureStatus.ShouldWindowsBeClosed = outsideTemp >= girlsRoomTemp || outsideTemp < 50;
+            temperatureStatus.ShouldWindowsBeClosed = outsideTemp >= indoorTemp || outsideTemp < settings.WindowMinOutsideF;
         }
 
         return temperatureStatus;
     }
+
+    private static RoomReading? findRoom(IReadOnlyList<RoomReading> readings, string? name) =>
+        name is null ? null : readings.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase));
 }
