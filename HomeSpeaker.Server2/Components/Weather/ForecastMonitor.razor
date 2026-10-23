@@ -1,6 +1,7 @@
 @using HomeSpeaker.Shared.Forecast
 @using HomeSpeaker.Server2.Services
 @inject ForecastService ForecastService
+@inject IConfiguration Configuration
 @inject ILogger<ForecastMonitor> Logger
 @implements IDisposable
 
@@ -187,9 +188,11 @@
         }
     }
 
+    private TemperatureUnit unit => TemperatureDisplay.UnitFrom(Configuration);
+
     private string FormatTemperature(double? temperature)
     {
-        return temperature.HasValue ? $"{temperature.Value:F0}°" : "N/A";
+        return TemperatureDisplay.Format(temperature, unit);
     }
 
     private string GetTemperatureColor(double? temperature)

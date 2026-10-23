@@ -1,0 +1,144 @@
+@page "/settings"
+@rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "Admin")]
+@using HomeSpeaker.Server2.Components.Settings
+@using HomeSpeaker.Server2.Settings
+@implements IDisposable
+@inject IConfiguration Config
+@inject IServiceProvider Services
+@inject ISettingsWriter SettingsWriter
+@inject IAppRestarter Restarter
+@inject ILogger<Settings> Logger
+
+<PageTitle>Settings</PageTitle>
+
+<div class="glass-page hs-settings">
+    <div class="glass-page-header">
+        <h1 class="glass-title">Settings</h1>
+        <div class="glass-page-actions">
+            <a class="glass-btn glass-btn--ghost" href="/setup"><i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i> Run setup again</a>
+            <button type="button" class="glass-btn" @onclick="save" disabled="@(saving || restarting)">
+                @if (saving)
+                {
+                    <span class="glass-spinner glass-spinner--inline" role="status" aria-label="Saving"></span>
+                }
+                else
+                {
+                    <i class="fas fa-check" aria-hidden="true"></i>
+                }
+                Save
+            </button>
+        </div>
+    </div>
+
+    @if (status is not null)
+    {
+        <div class="glass-alert @(statusIsError ? "glass-alert--danger" : "")" role="status">
+            <i class="fas @(statusIsError ? "fa-triangle-exclamation" : "fa-circle-check")" aria-hidden="true"></i>
+            <span>@status</span>
+        </div>
+    }
+
+    <LocationSettings Editor="editor" />
+    <PhotoSettings Editor="editor" />
+    <FeatureSettings Editor="editor" />
+    <PinSettings />
+
+    <section class="glass-card hs-settings-section" aria-labelledby="settingsRestartTitle">
+        <header class="glass-card-header">
+            <h2 class="glass-card-title" id="settingsRestartTitle">Restart</h2>
+        </header>
+        <p class="glass-hint">Photos, AI and which features appear are read when HomeSpeaker starts. Restart to apply those changes.</p>
+        <div class="hs-settings-buttons">
+            <button type="button" class="glass-btn glass-btn--ghost" @onclick="restart" disabled="@restarting">
+                <i class="fas fa-rotate-right" aria-hidden="true"></i> @(restarting ? "Restarting…" : "Restart HomeSpeaker")
+            </button>
+        </div>
+    </section>
+
+    <div class="hs-settings-footer">
+        <button type="button" class="glass-btn" @onclick="save" disabled="@(saving || restarting)">
+            <i class="fas fa-check" aria-hidden="true"></i> Save
+        </button>
+    </div>
+</div>
+
+@code {
+    private SettingsEditor editor = default!;
+    private bool saving;
+    private bool restarting;
+    private string? status;
+    private bool statusIsError;
+
+    protected override void OnInitialized() => load();
+
+    private void load()
+    {
+        if (editor is not null)
+        {
+            editor.Changed -= onEditorChanged;
+        }
+
+        editor = SettingsEditor.Load(Config, Services.GetService<SqliteSettingsStore>());
+        editor.Changed += onEditorChanged;
+    }
+
+    private void onEditorChanged() => StateHasChanged();
+
+    private void save()
+    {
+        saving = true;
+        try
+        {
+            var changes = editor.ValidChanges();
+            var errors = new Dictionary<string, string>(editor.Errors, StringComparer.OrdinalIgnoreCase);
+            var pending = editor.Values.Where(v => errors.ContainsKey(v.Key)).ToList();
+            if (changes.Count > 0)
+            {
+                SettingsWriter.Save(changes);
+            }
+
+            // Reload from configuration, then put back what couldn't be saved so it can be fixed.
+            load();
+            foreach (var (key, value) in pending)
+            {
+                editor.Values[key] = value;
+            }
+
+            foreach (var (key, message) in errors)
+            {
+                editor.Errors[key] = message;
+            }
+
+            var restartNote = changes.Keys.Any(SettingKeys.RequiresRestart) ? " Restart HomeSpeaker to apply them." : "";
+            (status, statusIsError) = (errors.Count, changes.Count) switch
+            {
+                ( > 0, > 0) => ("Saved, except the fields marked below." + restartNote, true),
+                ( > 0, _) => ("Nothing saved: fix the fields marked below.", true),
+                (_, > 0) => ("Saved." + restartNote, false),
+                _ => ("No changes to save.", false),
+            };
+        }
+        catch (InvalidOperationException ex)
+        {
+            Logger.LogWarning(ex, "Saving settings failed");
+            (status, statusIsError) = ("Couldn't save: " + ex.Message, true);
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private async Task restart()
+    {
+        restarting = true;
+        (status, statusIsError) = ("Restarting… the page reconnects when HomeSpeaker is back.", false);
+        StateHasChanged();
+        // Let the circuit send the "Restarting…" render before the host stops.
+        await Task.Delay(TimeSpan.FromMilliseconds(500));
+        Restarter.Restart();
+    }
+
+    public void Dispose() => editor.Changed -= onEditorChanged;
+}

@@ -35,8 +35,12 @@
     <false/>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_homespeaker._tcp</string>
+    </array>
     <key>NSLocalNetworkUsageDescription</key>
-    <string>HomeSpeaker needs access to your local network to connect to your HomeSpeaker server.</string>
+    <string>HomeSpeaker uses your local network to find the speakers in your home and to connect to them.</string>
     <key>NSSupportsLiveActivities</key>
     <true/>
     <key>NSSupportsLiveActivitiesFrequentUpdates</key>

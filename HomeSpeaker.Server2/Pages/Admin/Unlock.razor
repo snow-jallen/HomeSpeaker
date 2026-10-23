@@ -1,0 +1,37 @@
+@page "/unlock"
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@attribute [ExcludeFromInteractiveRouting]
+
+<PageTitle>Unlock</PageTitle>
+
+<div style="max-width: 22rem; margin: 3rem auto; padding: 0 1rem;">
+    <h1>Admin PIN</h1>
+    <form method="post" action="/api/admin/unlock">
+        <AntiforgeryToken />
+        <input type="hidden" name="returnUrl" value="@SafeReturnUrl" />
+        <p>
+            <input type="password" name="pin" inputmode="numeric" pattern="[0-9]*" minlength="4" maxlength="12"
+                   autocomplete="off" autofocus required placeholder="PIN" style="width: 100%; font-size: 1.5rem; padding: .5rem;" />
+        </p>
+        @if (Error == "locked")
+        {
+            <p role="alert">Too many tries. Wait a minute and try again.</p>
+        }
+        else if (!string.IsNullOrEmpty(Error))
+        {
+            <p role="alert">Wrong PIN.</p>
+        }
+        <button type="submit" style="font-size: 1.1rem; padding: .5rem 1.25rem;">Unlock</button>
+    </form>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "error")]
+    private string? Error { get; set; }
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    private string? ReturnUrl { get; set; }
+
+    // The endpoint re-validates, but never put an off-site URL into the form in the first place.
+    private string SafeReturnUrl => HomeSpeaker.Server2.Settings.AdminPin.SafeReturnUrl(ReturnUrl);
+}

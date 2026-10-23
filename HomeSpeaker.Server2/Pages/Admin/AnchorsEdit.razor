@@ -1,135 +1,68 @@
 @page "/anchors/edit"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "Admin")]
 @inject AnchorService anchorService
 @inject IJSRuntime JsRuntime
 @inject NavigationManager Navigation
+@inject IConfiguration config
 
-<PageTitle>Edit Anchors</PageTitle>
+@if (!(FeatureFlags.AnchorsEnabled(config)))
+{
+    <FeatureOffNotice />
+}
+else
+{
+    <PageTitle>Edit Anchors</PageTitle>
 
-<div class="glass-page glass-page--anchors-edit">
-    <div class="glass-page-header">
-        <h1 class="glass-title">Edit Anchors</h1>
-        <div class="glass-page-actions">
-            <button type="button" @onclick="NavigateToHistory" class="glass-btn glass-btn--ghost" title="View history">
-                <i class="fas fa-calendar-days" aria-hidden="true"></i>View History
-            </button>
-            <button type="button" @onclick="SaveChanges" class="glass-btn" title="Save all changes" disabled="@isSaving">
-                @if (isSaving)
-                {
-                    <span class="glass-spinner glass-spinner--inline" role="status" aria-label="Saving"></span>
-                }
-                else
-                {
-                    <i class="fas fa-check" aria-hidden="true"></i>
-                }
-                Save Changes
-            </button>
+    <div class="glass-page glass-page--anchors-edit">
+        <div class="glass-page-header">
+            <h1 class="glass-title">Edit Anchors</h1>
+            <div class="glass-page-actions">
+                <button type="button" @onclick="NavigateToHistory" class="glass-btn glass-btn--ghost" title="View history">
+                    <i class="fas fa-calendar-days" aria-hidden="true"></i>View History
+                </button>
+                <button type="button" @onclick="SaveChanges" class="glass-btn" title="Save all changes" disabled="@isSaving">
+                    @if (isSaving)
+                    {
+                        <span class="glass-spinner glass-spinner--inline" role="status" aria-label="Saving"></span>
+                    }
+                    else
+                    {
+                        <i class="fas fa-check" aria-hidden="true"></i>
+                    }
+                    Save Changes
+                </button>
+            </div>
         </div>
-    </div>
 
-    @if (isLoading)
-    {
-        <div class="glass-empty" role="status">
-            <div class="glass-spinner" aria-hidden="true"></div>
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    }
-    else
-    {
-        <div class="glass-split">
-            <!-- Anchor Definitions Management -->
-            <section class="glass-card" aria-labelledby="anchorDefinitionsTitle">
-                <header class="glass-card-header">
-                    <h2 class="glass-card-title" id="anchorDefinitionsTitle">Anchor Definitions</h2>
-                    <button type="button" @onclick="ShowCreateDefinitionModal" class="glass-btn">
-                        <i class="fas fa-plus" aria-hidden="true"></i>New Definition
-                    </button>
-                </header>
-                @if (!anchorDefinitions.Any())
-                {
-                    <div class="glass-empty">
-                        No anchor definitions found.<br />
-                        Click "New Definition" to create your first anchor!
-                    </div>
-                }
-                else
-                {
-                    <div class="glass-list">
-                        @foreach (var definition in anchorDefinitions.OrderBy(d => d.Name))
-                        {
-                            <div class="glass-row">
-                                <div class="glass-row-text">
-                                    <div class="glass-row-title" title="@definition.Name">@definition.Name</div>
-                                    @if (!string.IsNullOrWhiteSpace(definition.Description))
-                                    {
-                                        <div class="glass-row-sub" title="@definition.Description">@definition.Description</div>
-                                    }
-                                </div>
-                                <div class="glass-row-actions">
-                                    <button type="button" @onclick="() => EditDefinition(definition)" class="hs-icon-btn hs-icon-btn--filled" title="Edit @definition.Name" aria-label="Edit @definition.Name">
-                                        <i class="fas fa-pencil" aria-hidden="true"></i>
-                                    </button>
-                                    <button type="button" @onclick="() => DeleteDefinition(definition)" class="hs-icon-btn hs-icon-btn--filled" title="Delete @definition.Name" aria-label="Delete @definition.Name">
-                                        <i class="fas fa-trash" aria-hidden="true"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                }
-            </section>
-
-            <!-- User Anchor Assignments -->
-            <section class="glass-card" aria-label="Active anchors for a user">
-                <header class="glass-card-header">
-                    <label class="glass-card-title" for="anchorUserId">Active anchors for</label>
-                    <div class="glass-suggest-host">
-                        <input id="anchorUserId"
-                               @bind="currentUserId"
-                               @onkeypress="OnUserIdKeyPress"
-                               @oninput="OnUserIdInput"
-                               @onfocusin="OnUserInputFocus"
-                               @onfocusout="OnUserInputBlur"
-                               class="glass-input"
-                               autocomplete="off"
-                               placeholder="Enter user ID" />
-                        @if (showUserSuggestions && filteredUsers.Any())
-                        {
-                            <div class="glass-suggest">
-                                @foreach (var user in filteredUsers.Take(10))
-                                {
-                                    <button type="button" class="glass-menu-item" @onclick="() => SelectUser(user)">
-                                        @user
-                                    </button>
-                                }
-                                @if (filteredUsers.Count > 10)
-                                {
-                                    <div class="glass-menu-text">... and @(filteredUsers.Count - 10) more</div>
-                                }
-                            </div>
-                        }
-                    </div>
-                </header>
-
-                @if (string.IsNullOrWhiteSpace(currentUserId))
-                {
-                    <div class="glass-empty">
-                        Enter a User ID above to manage your anchor assignments.
-                    </div>
-                }
-                else if (!userAnchors.Any())
-                {
-                    <div class="glass-empty">
-                        No anchors assigned to this user.<br />
-                        Select anchors from the definitions below to activate them.
-                    </div>
-                }
-                else
-                {
-                    <div class="glass-list">
-                        @foreach (var userAnchor in userAnchors)
-                        {
-                            var definition = anchorDefinitions.FirstOrDefault(d => d.Id == userAnchor.AnchorDefinitionId);
-                            if (definition != null)
+        @if (isLoading)
+        {
+            <div class="glass-empty" role="status">
+                <div class="glass-spinner" aria-hidden="true"></div>
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        }
+        else
+        {
+            <div class="glass-split">
+                <!-- Anchor Definitions Management -->
+                <section class="glass-card" aria-labelledby="anchorDefinitionsTitle">
+                    <header class="glass-card-header">
+                        <h2 class="glass-card-title" id="anchorDefinitionsTitle">Anchor Definitions</h2>
+                        <button type="button" @onclick="ShowCreateDefinitionModal" class="glass-btn">
+                            <i class="fas fa-plus" aria-hidden="true"></i>New Definition
+                        </button>
+                    </header>
+                    @if (!anchorDefinitions.Any())
+                    {
+                        <div class="glass-empty">
+                            No anchor definitions found.<br />
+                            Click "New Definition" to create your first anchor!
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="glass-list">
+                            @foreach (var definition in anchorDefinitions.OrderBy(d => d.Name))
                             {
                                 <div class="glass-row">
                                     <div class="glass-row-text">
@@ -140,73 +73,149 @@
                                         }
                                     </div>
                                     <div class="glass-row-actions">
-                                        <button type="button" @onclick="() => RemoveUserAnchor(userAnchor)" class="hs-icon-btn hs-icon-btn--filled" title="Remove @definition.Name" aria-label="Remove @definition.Name">
+                                        <button type="button" @onclick="() => EditDefinition(definition)" class="hs-icon-btn hs-icon-btn--filled" title="Edit @definition.Name" aria-label="Edit @definition.Name">
+                                            <i class="fas fa-pencil" aria-hidden="true"></i>
+                                        </button>
+                                        <button type="button" @onclick="() => DeleteDefinition(definition)" class="hs-icon-btn hs-icon-btn--filled" title="Delete @definition.Name" aria-label="Delete @definition.Name">
                                             <i class="fas fa-trash" aria-hidden="true"></i>
                                         </button>
                                     </div>
                                 </div>
                             }
-                        }
-                    </div>
-                }
+                        </div>
+                    }
+                </section>
 
-                @if (!string.IsNullOrWhiteSpace(currentUserId) && availableDefinitions.Any())
-                {
-                    <h3 class="glass-section-title">Available anchors to add</h3>
-                    <div class="glass-list">
-                        @foreach (var definition in availableDefinitions.OrderBy(d => d.Name))
-                        {
-                            <div class="glass-row glass-row--sub">
-                                <div class="glass-row-text">
-                                    <div class="glass-row-title" title="@definition.Name">@definition.Name</div>
-                                    @if (!string.IsNullOrWhiteSpace(definition.Description))
+                <!-- User Anchor Assignments -->
+                <section class="glass-card" aria-label="Active anchors for a user">
+                    <header class="glass-card-header">
+                        <label class="glass-card-title" for="anchorUserId">Active anchors for</label>
+                        <div class="glass-suggest-host">
+                            <input id="anchorUserId"
+                                   @bind="currentUserId"
+                                   @onkeypress="OnUserIdKeyPress"
+                                   @oninput="OnUserIdInput"
+                                   @onfocusin="OnUserInputFocus"
+                                   @onfocusout="OnUserInputBlur"
+                                   class="glass-input"
+                                   autocomplete="off"
+                                   placeholder="Enter user ID" />
+                            @if (showUserSuggestions && filteredUsers.Any())
+                            {
+                                <div class="glass-suggest">
+                                    @foreach (var user in filteredUsers.Take(10))
                                     {
-                                        <div class="glass-row-sub" title="@definition.Description">@definition.Description</div>
+                                        <button type="button" class="glass-menu-item" @onclick="() => SelectUser(user)">
+                                            @user
+                                        </button>
+                                    }
+                                    @if (filteredUsers.Count > 10)
+                                    {
+                                        <div class="glass-menu-text">... and @(filteredUsers.Count - 10) more</div>
                                     }
                                 </div>
-                                <div class="glass-row-actions">
-                                    <button type="button" @onclick="() => AddUserAnchor(definition)" class="hs-icon-btn hs-icon-btn--filled" title="Add @definition.Name" aria-label="Add @definition.Name">
-                                        <i class="fas fa-plus" aria-hidden="true"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                }
-            </section>
-        </div>
-    }
-</div>
+                            }
+                        </div>
+                    </header>
 
-<!-- Create/Edit Definition Dialog -->
-@if (showDefinitionModal)
-{
-    @* Native dialog renders in the browser top layer, so it sits above the glass panel's stacking context. *@
-    <dialog id="definitionDialog" class="glass-dialog" aria-labelledby="definitionDialogTitle"
-            @oncancel="CloseDefinitionModal" @oncancel:preventDefault="true" @onclose="CloseDefinitionModal">
-        <h2 class="glass-dialog-title">
-            <span id="definitionDialogTitle">@(editingDefinition == null ? "Create New Anchor Definition" : "Edit Anchor Definition")</span>
-            <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="CloseDefinitionModal" title="Close" aria-label="Close">
-                <i class="fas fa-xmark" aria-hidden="true"></i>
-            </button>
-        </h2>
-        <div class="glass-dialog-body">
-            <label class="glass-field">
-                <span>Name *</span>
-                <input @bind="definitionName" class="glass-input" placeholder="e.g., Drink 8 glasses of water" />
-            </label>
-            <label class="glass-field">
-                <span>Description</span>
-                <textarea @bind="definitionDescription" class="glass-input" rows="3" placeholder="Optional description or notes about this anchor"></textarea>
-            </label>
-        </div>
-        <div class="glass-dialog-actions">
-            <button type="button" class="glass-btn glass-btn--ghost" @onclick="CloseDefinitionModal">Cancel</button>
-            <button type="button" class="glass-btn" @onclick="SaveDefinition" disabled="@(string.IsNullOrWhiteSpace(definitionName))">
-                @(editingDefinition == null ? "Create" : "Update")
-            </button>
-        </div>
-    </dialog>
+                    @if (string.IsNullOrWhiteSpace(currentUserId))
+                    {
+                        <div class="glass-empty">
+                            Enter a User ID above to manage your anchor assignments.
+                        </div>
+                    }
+                    else if (!userAnchors.Any())
+                    {
+                        <div class="glass-empty">
+                            No anchors assigned to this user.<br />
+                            Select anchors from the definitions below to activate them.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="glass-list">
+                            @foreach (var userAnchor in userAnchors)
+                            {
+                                var definition = anchorDefinitions.FirstOrDefault(d => d.Id == userAnchor.AnchorDefinitionId);
+                                if (definition != null)
+                                {
+                                    <div class="glass-row">
+                                        <div class="glass-row-text">
+                                            <div class="glass-row-title" title="@definition.Name">@definition.Name</div>
+                                            @if (!string.IsNullOrWhiteSpace(definition.Description))
+                                            {
+                                                <div class="glass-row-sub" title="@definition.Description">@definition.Description</div>
+                                            }
+                                        </div>
+                                        <div class="glass-row-actions">
+                                            <button type="button" @onclick="() => RemoveUserAnchor(userAnchor)" class="hs-icon-btn hs-icon-btn--filled" title="Remove @definition.Name" aria-label="Remove @definition.Name">
+                                                <i class="fas fa-trash" aria-hidden="true"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(currentUserId) && availableDefinitions.Any())
+                    {
+                        <h3 class="glass-section-title">Available anchors to add</h3>
+                        <div class="glass-list">
+                            @foreach (var definition in availableDefinitions.OrderBy(d => d.Name))
+                            {
+                                <div class="glass-row glass-row--sub">
+                                    <div class="glass-row-text">
+                                        <div class="glass-row-title" title="@definition.Name">@definition.Name</div>
+                                        @if (!string.IsNullOrWhiteSpace(definition.Description))
+                                        {
+                                            <div class="glass-row-sub" title="@definition.Description">@definition.Description</div>
+                                        }
+                                    </div>
+                                    <div class="glass-row-actions">
+                                        <button type="button" @onclick="() => AddUserAnchor(definition)" class="hs-icon-btn hs-icon-btn--filled" title="Add @definition.Name" aria-label="Add @definition.Name">
+                                            <i class="fas fa-plus" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </section>
+            </div>
+        }
+    </div>
+
+    <!-- Create/Edit Definition Dialog -->
+    @if (showDefinitionModal)
+    {
+        @* Native dialog renders in the browser top layer, so it sits above the glass panel's stacking context. *@
+        <dialog id="definitionDialog" class="glass-dialog" aria-labelledby="definitionDialogTitle"
+                @oncancel="CloseDefinitionModal" @oncancel:preventDefault="true" @onclose="CloseDefinitionModal">
+            <h2 class="glass-dialog-title">
+                <span id="definitionDialogTitle">@(editingDefinition == null ? "Create New Anchor Definition" : "Edit Anchor Definition")</span>
+                <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="CloseDefinitionModal" title="Close" aria-label="Close">
+                    <i class="fas fa-xmark" aria-hidden="true"></i>
+                </button>
+            </h2>
+            <div class="glass-dialog-body">
+                <label class="glass-field">
+                    <span>Name *</span>
+                    <input @bind="definitionName" class="glass-input" placeholder="e.g., Drink 8 glasses of water" />
+                </label>
+                <label class="glass-field">
+                    <span>Description</span>
+                    <textarea @bind="definitionDescription" class="glass-input" rows="3" placeholder="Optional description or notes about this anchor"></textarea>
+                </label>
+            </div>
+            <div class="glass-dialog-actions">
+                <button type="button" class="glass-btn glass-btn--ghost" @onclick="CloseDefinitionModal">Cancel</button>
+                <button type="button" class="glass-btn" @onclick="SaveDefinition" disabled="@(string.IsNullOrWhiteSpace(definitionName))">
+                    @(editingDefinition == null ? "Create" : "Update")
+                </button>
+            </div>
+        </dialog>
+    }
 }
 
 @code {
@@ -230,6 +239,11 @@
     private IEnumerable<AnchorDefinition> availableDefinitions =>
         anchorDefinitions.Where(d => !userAnchors.Any(ua => ua.AnchorDefinitionId == d.Id));    protected override async Task OnInitializedAsync()
     {
+        if (!FeatureFlags.AnchorsEnabled(config))
+        {
+            return;
+        }
+
         await RefreshData();
         await LoadExistingUsers();
     }

@@ -13,10 +13,13 @@ permissions:
 jobs:
   refresh:
     runs-on: [self-hosted, "${{ matrix.runner }}"]
+    if: ${{ vars.DEPLOY_TARGETS != '' }}
+    env:
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
     strategy:
       fail-fast: false
       matrix:
-        runner: [kitchen, upstairs]
+        include: ${{ fromJSON(vars.DEPLOY_TARGETS || '[{}]') }}
 
     steps:
     - name: Show kiosk browser process
@@ -26,7 +29,7 @@ jobs:
     - name: Refresh Chromium
       run: |
         export DISPLAY=:0
-        XAUTH=$(find /home/piuser -name '.Xauthority' 2>/dev/null | head -1)
+        XAUTH=$(find "/home/${DEPLOY_USER}" -name '.Xauthority' 2>/dev/null | head -1)
         [ -n "$XAUTH" ] && export XAUTHORITY=$XAUTH
 
         echo "Currently focused window: $(xdotool getactivewindow getwindowname 2>/dev/null || echo unknown)"

@@ -1,0 +1,14 @@
+<?xml version="1.0" standalone='no'?>
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<!-- Advertises HomeSpeaker so the iOS app can discover this speaker. -->
+<service-group>
+  <name replace-wildcards="yes">HomeSpeaker on %h</name>
+  <service>
+    <type>_homespeaker._tcp</type>
+    <port>@HTTP_PORT@</port>
+    <txt-record>host=@HOST@.local</txt-record>
+    <txt-record>port=@HTTP_PORT@</txt-record>
+    <txt-record>scheme=http</txt-record>
+    <txt-record>path=/</txt-record>
+  </service>
+</service-group>

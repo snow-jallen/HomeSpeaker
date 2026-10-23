@@ -103,9 +103,9 @@ public sealed class HealthAlertWorker : BackgroundService
     }
 
     private bool temperatureConfigured() =>
-        !string.IsNullOrWhiteSpace(configuration["Temperature:ApiKey"]) &&
-        !string.IsNullOrWhiteSpace(configuration["Temperature:ApiBaseUrl"]);
+        FeatureFlags.TemperatureEnabled(configuration) &&
+        !string.IsNullOrWhiteSpace(configuration["Temperature:ApiKey"]);
 
     private bool bloodSugarConfigured() =>
-        !string.IsNullOrWhiteSpace(configuration["NIGHTSCOUT_URL"]);
+        FeatureFlags.BloodSugarEnabled(configuration);
 }

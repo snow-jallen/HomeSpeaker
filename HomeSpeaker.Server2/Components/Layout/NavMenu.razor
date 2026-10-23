@@ -8,7 +8,7 @@
         <i class="fas fa-music"></i>
         <span class="brand-text">Home Speaker</span>
     </a>
-    @if (showLogs ?? false)
+    @if (!string.IsNullOrEmpty(config["OTEL_EXPORTER_OTLP_ENDPOINT"]))
     {
         <NavLink href="aspire" class="aspire-link" title="Aspire Dashboard">
             <img src="/aspire-dashboard.png" width="20" alt="aspire" />
@@ -62,17 +62,24 @@
             <i class="fab fa-youtube"></i>
             <span>YouTube</span>
         </NavLink>
-        <NavLink class="nav-item" href="anchors">
-            <i class="fas fa-anchor"></i>
-            <span>Anchors</span>
-        </NavLink>
-        @if (nightscoutUrl?.Length > 0)
+        @if (FeatureFlags.AnchorsEnabled(config))
+        {
+            <NavLink class="nav-item" href="anchors">
+                <i class="fas fa-anchor"></i>
+                <span>Anchors</span>
+            </NavLink>
+        }
+        @if (FeatureFlags.BloodSugarEnabled(config))
         {
             <NavLink class="nav-item" href="nightscout">
                 <i class="fas fa-heartbeat"></i>
                 <span>NightScout</span>
             </NavLink>
         }
+        <NavLink class="nav-item" href="settings">
+            <i class="fas fa-gear"></i>
+            <span>Settings</span>
+        </NavLink>
     </div>
 </nav>
 

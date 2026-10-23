@@ -38,7 +38,7 @@
         {
             <div class="glass hs-chip">
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffd27a" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
-                <span class="hs-chip-value">@outside.ToString("0", CultureInfo.InvariantCulture)°</span>
+                <span class="hs-chip-value">@TemperatureDisplay.Format(outside, Dashboard.TemperatureUnit)</span>
                 <span class="hs-chip-meta">
                     @if (highLow is not null)
                     {
@@ -95,11 +95,11 @@
     };
 
     private string? highLow =>
-        Dashboard.Forecast is { Error: null, TodayHigh.Temperature: { } high, TonightLow.Temperature: { } low }
-            ? string.Create(CultureInfo.InvariantCulture, $"H {high:0}° · L {low:0}°")
+        Dashboard.ForecastEnabled && Dashboard.Forecast is { Error: null, TodayHigh.Temperature: { } high, TonightLow.Temperature: { } low }
+            ? $"H {TemperatureDisplay.Format(high, Dashboard.TemperatureUnit)} · L {TemperatureDisplay.Format(low, Dashboard.TemperatureUnit)}"
             : null;
 
-    private string? conditions => Dashboard.Forecast is { Error: null } ? Dashboard.Forecast.TodayHigh?.Conditions : null;
+    private string? conditions => Dashboard.ForecastEnabled && Dashboard.Forecast is { Error: null } ? Dashboard.Forecast.TodayHigh?.Conditions : null;
 
     protected override void OnInitialized() => Dashboard.Changed += onChanged;
 

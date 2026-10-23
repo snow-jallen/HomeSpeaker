@@ -52,8 +52,10 @@ struct ServerPickerSheet: View {
 
 struct ServerListView: View {
     @Environment(ConnectionStore.self) private var store
+    @StateObject private var browser = SpeakerBrowser()
     @State private var showAdd = false
     @State private var editingConnection: ServerConnection?
+    @State private var addingSpeaker: DiscoveredSpeaker?
 
     var body: some View {
         List {
@@ -62,6 +64,9 @@ struct ServerListView: View {
                     Label("No Servers", systemImage: "wifi.slash")
                 } description: {
                     Text("Add a HomeSpeaker server to get started.")
+                }
+                NearbySpeakersSection(speakers: store.unsavedSpeakers(in: browser.found)) { speaker in
+                    addingSpeaker = speaker
                 }
             } else {
                 ForEach(store.connections, id: \.id) { (connection: ServerConnection) in
@@ -114,6 +119,61 @@ struct ServerListView: View {
         .sheet(item: $editingConnection) { conn in
             AddEditServerView(existing: conn)
         }
+        .sheet(item: $addingSpeaker) { speaker in
+            AddEditServerView(prefill: speaker)
+        }
+        .onAppear { browser.start() }
+        .onDisappear { browser.stop() }
+    }
+}
+
+/// Speakers advertising themselves on the local network (Bonjour) that
+/// aren't saved yet. Tapping one fills in the Add Server form.
+struct NearbySpeakersSection: View {
+    let speakers: [DiscoveredSpeaker]
+    let onSelect: (DiscoveredSpeaker) -> Void
+
+    var body: some View {
+        Section {
+            if speakers.isEmpty {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Looking for speakers on this network…")
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                ForEach(speakers) { speaker in
+                    Button {
+                        onSelect(speaker)
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(speaker.suggestedName)
+                                    .font(.headline)
+                                Text("\(speaker.host):\(speaker.port)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "plus.circle")
+                                .foregroundStyle(Color.accentColor)
+                        }
+                    }
+                    .foregroundStyle(.primary)
+                }
+            }
+        } header: {
+            Text("Nearby speakers")
+        }
+    }
+}
+
+private extension ConnectionStore {
+    /// The discovered speakers that no saved server already points at (same host and port).
+    func unsavedSpeakers(in found: [DiscoveredSpeaker]) -> [DiscoveredSpeaker] {
+        found.filter { speaker in
+            !connections.contains { speaker.matches($0) }
+        }
     }
 }
 
@@ -122,10 +182,13 @@ struct AddEditServerView: View {
     @Environment(\.dismiss) private var dismiss
 
     var existing: ServerConnection?
+    /// A speaker found on the network to fill the form with.
+    var prefill: DiscoveredSpeaker?
 
+    @StateObject private var browser = SpeakerBrowser()
     @State private var name = ""
     @State private var host = ""
-    @State private var port = "5000"
+    @State private var port = "80"
     @State private var remoteURL = ""
     @State private var isVerifying = false
     @State private var pendingConn: ServerConnection?
@@ -142,6 +205,11 @@ struct AddEditServerView: View {
     var body: some View {
         NavigationStack {
             Form {
+                if !isEditing {
+                    NearbySpeakersSection(speakers: store.unsavedSpeakers(in: browser.found)) { speaker in
+                        apply(speaker)
+                    }
+                }
                 Section("Connection Details") {
                     TextField("Name", text: $name)
                         .textInputAutocapitalization(.words)
@@ -189,8 +257,14 @@ struct AddEditServerView: View {
                     host = existing.host
                     port = "\(existing.port)"
                     remoteURL = existing.remoteURL ?? ""
+                } else {
+                    if let prefill {
+                        apply(prefill)
+                    }
+                    browser.start()
                 }
             }
+            .onDisappear { browser.stop() }
             .alert(item: $verifyWarning) { warning in
                 Alert(
                     title: Text(warning.title),
@@ -204,8 +278,14 @@ struct AddEditServerView: View {
         }
     }
 
+    private func apply(_ speaker: DiscoveredSpeaker) {
+        name = speaker.suggestedName
+        host = speaker.hostForConnection
+        port = "\(speaker.port)"
+    }
+
     private func save() {
-        let portNum = Int(port) ?? 5000
+        let portNum = Int(port) ?? 80
         let trimmedRemote = remoteURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let remote = trimmedRemote.isEmpty ? nil : trimmedRemote
         let conn: ServerConnection

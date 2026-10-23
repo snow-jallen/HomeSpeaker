@@ -68,3 +68,10 @@
 .squad/agents/*/history.md merge=union
 .squad/log/** merge=union
 .squad/orchestration-log/** merge=union
+
+# HomeSpeaker installer: must stay LF (run on Linux)
+install/*.sh text eol=lf
+install/*.service text eol=lf
+install/*.timer text eol=lf
+install/*.xml text eol=lf
+scripts/*.sh text eol=lf

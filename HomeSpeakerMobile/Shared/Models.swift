@@ -11,7 +11,7 @@ struct ServerConnection: Codable, Identifiable, Equatable, Hashable {
     /// e.g. "kitchen.boston-cloud.ts.net" over Tailscale. Defaults to https.
     var remoteURL: String?
 
-    init(id: UUID = UUID(), name: String, host: String, port: Int = 5000, remoteURL: String? = nil) {
+    init(id: UUID = UUID(), name: String, host: String, port: Int = 80, remoteURL: String? = nil) {
         self.id = id
         self.name = name
         self.host = host
@@ -19,13 +19,18 @@ struct ServerConnection: Codable, Identifiable, Equatable, Hashable {
         self.remoteURL = remoteURL
     }
 
+    /// The home address. A host that can't form a URL (a typo, or a bad
+    /// discovery record) falls back to `http://localhost` rather than crashing;
+    /// requests to it simply fail.
     var baseURL: URL {
         let cleanHost = host.trimmingCharacters(in: .whitespaces)
         if cleanHost.hasPrefix("http://") || cleanHost.hasPrefix("https://") {
-            return URL(string: cleanHost)!
+            return URL(string: cleanHost) ?? Self.fallbackURL
         }
-        return URL(string: "http://\(cleanHost):\(port)")!
+        return URL(string: "http://\(cleanHost):\(port)") ?? Self.fallbackURL
     }
+
+    private static let fallbackURL = URL(string: "http://localhost")!
 
     var remoteBaseURL: URL? {
         guard let raw = remoteURL?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
@@ -184,6 +189,22 @@ struct Features: Codable {
     let temperatureEnabled: Bool
     let bloodSugarEnabled: Bool
     let aiEnabled: Bool?
+    let forecastEnabled: Bool?
+    let anchorsEnabled: Bool?
+    /// False when the server has no APNs configured (its push and Live
+    /// Activity endpoints then 404). Nil from servers that predate the flag.
+    let pushEnabled: Bool?
+    /// "F" or "C". Temperatures always arrive in °F; this is how to show them.
+    let temperatureUnit: String?
+
+    /// Converts a °F reading from the server into the server's display unit.
+    func displayTemperature(_ fahrenheit: Double) -> Double {
+        temperatureUnit?.uppercased() == "C" ? (fahrenheit - 32) * 5 / 9 : fahrenheit
+    }
+
+    var temperatureUnitSymbol: String {
+        temperatureUnit?.uppercased() == "C" ? "°C" : "°F"
+    }
 }
 
 struct ForecastData: Codable {
@@ -229,13 +250,20 @@ struct BloodSugarStatus: Codable {
     }
 }
 
+/// One room's sensor reading (°F), as the server's `RoomReading`.
+struct RoomReading: Codable, Hashable {
+    let name: String
+    let temperature: Double?
+    let batteryPercent: Double?
+}
+
 struct TemperatureStatus: Codable {
     let outsideTemperature: Double?
-    let youngerGirlsRoomTemperature: Double?
-    let olderGirlsRoomTemperature: Double?
-    let boysRoomTemperature: Double?
-    let momAndDadsRoomTemperature: Double?
-    let greenhouseTemperature: Double?
+    let outsideRoomName: String?
+    let indoorRoomName: String?
+    let indoorTemperature: Double?
+    /// Every configured room (the outside one included), in the server's order.
+    let rooms: [RoomReading]?
     let shouldWindowsBeClosed: Bool?
     let temperatureDifference: Double?
 }

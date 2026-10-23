@@ -1,3 +1,4 @@
+using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Server2.Services.Dashboard;
 using HomeSpeaker.Shared.Temperature;
 
@@ -9,25 +10,26 @@ public sealed class ClimateCardTests
         new() { Name = name, Temperature = temperature, BatteryPercent = battery };
 
     [Fact]
-    public void Rooms_AreInCardOrder_WithShortLabels_AndHideMissingReadings()
+    public void ClimateRoom_From_ListsConfiguredIndoorRoomsInOrder()
     {
         var status = new TemperatureStatus
         {
+            OutsideRoomName = "Outside",
             Rooms =
             [
                 room("Outside", 50),
-                room("Girl", 67),
-                room("Emma", 68),
-                room("Boy", null),
                 room("Greenhouse", 80),
+                room("Emma", 68),
+                room("Boys", null),
                 room("Downstairs", 70),
+                room("Girls", 67),
             ],
         };
 
         var rooms = ClimateRoom.From(status);
 
-        Assert.Equal(["Downstairs", "Greenhouse", "Girls", "Emma"], rooms.Select(r => r.Label));
-        Assert.Equal([70, 80, 67, 68], rooms.Select(r => r.Temperature));
+        Assert.Equal(["Greenhouse", "Emma", "Downstairs", "Girls"], rooms.Select(r => r.Label));
+        Assert.Equal([80, 68, 70, 67], rooms.Select(r => r.Temperature));
     }
 
     [Theory]
@@ -38,7 +40,7 @@ public sealed class ClimateCardTests
     [InlineData(0.0, true)]
     public void LowBattery_OnlyBelowFivePercent(double? battery, bool expectedLow)
     {
-        var rooms = ClimateRoom.From(new TemperatureStatus { Rooms = [room("Boy", 70, battery)] });
+        var rooms = ClimateRoom.From(new TemperatureStatus { Rooms = [room("Boys", 70, battery)] });
 
         Assert.Equal(expectedLow, Assert.Single(rooms).LowBattery);
     }
@@ -46,9 +48,9 @@ public sealed class ClimateCardTests
     [Fact]
     public void AnySensorLow_SeesHiddenAndOutsideSensors()
     {
-        Assert.True(ClimateRoom.AnySensorLow(new TemperatureStatus { Rooms = [room("Boy", null, 2)] }));
+        Assert.True(ClimateRoom.AnySensorLow(new TemperatureStatus { Rooms = [room("Boys", null, 2)] }));
         Assert.True(ClimateRoom.AnySensorLow(new TemperatureStatus { Rooms = [room("Outside", 50, 1)] }));
-        Assert.False(ClimateRoom.AnySensorLow(new TemperatureStatus { Rooms = [room("Boy", 70, 50)] }));
+        Assert.False(ClimateRoom.AnySensorLow(new TemperatureStatus { Rooms = [room("Boys", 70, 50)] }));
         Assert.False(ClimateRoom.AnySensorLow(null));
     }
 
@@ -58,7 +60,8 @@ public sealed class ClimateCardTests
     private static TemperatureStatus advice(double outside, double girls, bool shouldClose) => new()
     {
         OutsideTemperature = outside,
-        YoungerGirlsRoomTemperature = girls,
+        IndoorRoomName = "Girls",
+        IndoorTemperature = girls,
         TemperatureDifference = Math.Abs(outside - girls),
         ShouldWindowsBeClosed = shouldClose,
     };
@@ -110,6 +113,14 @@ public sealed class ClimateCardTests
     {
         Assert.Null(WindowAdvice.From(null));
         Assert.Null(WindowAdvice.From(new TemperatureStatus { OutsideTemperature = 60 }));
-        Assert.Null(WindowAdvice.From(new TemperatureStatus { YoungerGirlsRoomTemperature = 70 }));
+        Assert.Null(WindowAdvice.From(new TemperatureStatus { IndoorTemperature = 70 }));
+    }
+
+    [Fact]
+    public void WindowAdvice_Celsius_ConvertsDifference()
+    {
+        var result = WindowAdvice.From(advice(60, 69, shouldClose: false), TemperatureUnit.Celsius);
+
+        Assert.Equal("Open windows · 5° cooler outside", result!.Text);
     }
 }

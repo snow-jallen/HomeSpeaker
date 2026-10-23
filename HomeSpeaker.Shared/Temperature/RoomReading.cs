@@ -5,7 +5,7 @@ namespace HomeSpeaker.Shared.Temperature;
 /// <summary>One room's sensor: its temperature and, when the device reports it, its battery level.</summary>
 public sealed class RoomReading
 {
-    /// <summary>The room's key, matching the property names on <see cref="TemperatureStatus"/>: Outside, Downstairs, Greenhouse, Boy, Girl or Emma.</summary>
+    /// <summary>The room's configured name (or the device's name when no rooms are configured).</summary>
     public required string Name { get; init; }
 
     /// <summary>Null when the sensor could not be read (or no device matched this room).</summary>

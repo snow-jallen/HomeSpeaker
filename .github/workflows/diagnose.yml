@@ -12,10 +12,13 @@ permissions:
 jobs:
   diagnose:
     runs-on: [self-hosted, "${{ matrix.runner }}"]
+    if: ${{ vars.DEPLOY_TARGETS != '' }}
+    env:
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
     strategy:
       fail-fast: false
       matrix:
-        runner: [kitchen, upstairs]
+        include: ${{ fromJSON(vars.DEPLOY_TARGETS || '[{}]') }}
 
     steps:
     - name: Host clock and timezone
@@ -34,12 +37,6 @@ jobs:
       continue-on-error: true
       run: docker logs --tail 150 homespeaker 2>&1
 
-    - name: Telemetry (lgtm) health and logs
-      continue-on-error: true
-      run: |
-        curl -sf --max-time 10 http://localhost:3000/api/health && echo || echo "Grafana health check failed"
-        docker logs --tail 30 lgtm 2>&1
-
     - name: Player status endpoint
       continue-on-error: true
       run: curl -sk --max-time 10 https://localhost/api/homespeaker/player/status; echo
@@ -52,7 +49,7 @@ jobs:
       continue-on-error: true
       run: |
         export DISPLAY=:0
-        XAUTH=$(find /home/piuser -name '.Xauthority' 2>/dev/null | head -1)
+        XAUTH=$(find "/home/${DEPLOY_USER}" -name '.Xauthority' 2>/dev/null | head -1)
         [ -n "$XAUTH" ] && export XAUTHORITY=$XAUTH
         rm -rf /tmp/pi-diag && mkdir -p /tmp/pi-diag
         # Wayland desktops (labwc/wayfire): X screenshots come out black, so try grim first.

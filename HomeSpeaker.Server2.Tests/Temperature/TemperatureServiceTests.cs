@@ -28,15 +28,28 @@ public sealed class TemperatureServiceTests
 
     private static TemperatureService createService(
         Func<HttpRequestMessage, string?, HttpResponseMessage> respond,
-        bool withApiKey = true) =>
-        createService(respond, out _, withApiKey);
+        bool withApiKey = true,
+        Dictionary<string, string?>? extra = null) =>
+        createService(respond, out _, withApiKey, extra);
 
     private static TemperatureService createService(
         Func<HttpRequestMessage, string?, HttpResponseMessage> respond,
         out FakeHttpMessageHandler handler,
-        bool withApiKey = true)
+        bool withApiKey = true,
+        Dictionary<string, string?>? extra = null)
     {
-        var settings = new Dictionary<string, string?> { ["Temperature:ApiBaseUrl"] = "https://govee.test/" };
+        var settings = new Dictionary<string, string?>
+        {
+            ["Temperature:ApiBaseUrl"] = "https://govee.test/",
+            ["Temperature:Rooms"] = TemperatureRoomConfigTests.OwnerRooms,
+            ["Temperature:OutsideRoom"] = "Outside",
+            ["Temperature:IndoorRoom"] = "Girls",
+        };
+        foreach (var (key, value) in extra ?? [])
+        {
+            settings[key] = value;
+        }
+
         if (withApiKey)
         {
             settings["Temperature:ApiKey"] = "test-key";
@@ -63,6 +76,9 @@ public sealed class TemperatureServiceTests
         return state(body!);
     }
 
+    private static double? roomTemperature(HomeSpeaker.Shared.Temperature.TemperatureStatus status, string room) =>
+        status.Rooms.Single(r => string.Equals(r.Name, room, StringComparison.Ordinal)).Temperature;
+
     [Fact]
     public async Task FailedRead_LeavesThatRoomNull_InsteadOfAFake70()
     {
@@ -74,9 +90,9 @@ public sealed class TemperatureServiceTests
 
         var status = await service.GetTemperatureStatusAsync();
 
-        Assert.Null(status.BoysRoomTemperature);
+        Assert.Null(roomTemperature(status, "Boys"));
         Assert.Equal(55.5, status.OutsideTemperature);
-        Assert.Equal(67.1, status.YoungerGirlsRoomTemperature);
+        Assert.Equal(67.1, status.IndoorTemperature);
     }
 
     [Fact]
@@ -88,7 +104,7 @@ public sealed class TemperatureServiceTests
 
         var status = await service.GetTemperatureStatusAsync();
 
-        Assert.Null(status.BoysRoomTemperature);
+        Assert.Null(roomTemperature(status, "Boys"));
     }
 
     [Fact]
@@ -99,8 +115,8 @@ public sealed class TemperatureServiceTests
         var status = await service.GetTemperatureStatusAsync();
 
         Assert.Null(status.OutsideTemperature);
-        Assert.Null(status.BoysRoomTemperature);
-        Assert.Null(status.YoungerGirlsRoomTemperature);
+        Assert.Null(roomTemperature(status, "Boys"));
+        Assert.Null(status.IndoorTemperature);
     }
 
     [Fact]
@@ -114,11 +130,11 @@ public sealed class TemperatureServiceTests
 
         var status = await service.GetTemperatureStatusAsync();
 
-        Assert.Null(status.BoysRoomTemperature);
+        Assert.Null(roomTemperature(status, "Boys"));
     }
 
     [Fact]
-    public async Task WindowAdvice_StillComputedFromOutsideAndYoungerGirls()
+    public async Task WindowAdvice_StillComputedFromOutsideAndIndoorRoom()
     {
         var devices = devicesJson(("out", "Outside"), ("girls", "Girls Room"));
         var service = createService((request, body) => respondWith(request, body, devices, requestBody =>
@@ -141,8 +157,68 @@ public sealed class TemperatureServiceTests
 
         var status = await service.GetTemperatureStatusAsync();
 
-        Assert.Null(status.YoungerGirlsRoomTemperature);
+        Assert.Null(status.IndoorTemperature);
         Assert.Equal(0, status.TemperatureDifference);
+    }
+
+    [Fact]
+    public async Task WindowAdvice_NamesTheRoomsInTheStatus()
+    {
+        var devices = devicesJson(("out", "Outside"), ("girls", "Girls Room"));
+        var service = createService((request, body) => respondWith(request, body, devices, requestBody =>
+            FakeHttpMessageHandler.Json(stateJson(requestBody.Contains("\"out\"", StringComparison.Ordinal) ? 60 : 70))));
+
+        var status = await service.GetTemperatureStatusAsync();
+
+        Assert.Equal("Outside", status.OutsideRoomName);
+        Assert.Equal("Girls", status.IndoorRoomName);
+        Assert.Equal(70, status.IndoorTemperature);
+    }
+
+    [Theory]
+    [InlineData("40", false)]
+    [InlineData("50", true)]
+    public async Task Status_OutsideBelowMin_ShouldCloseWindows(string min, bool expectedClosed)
+    {
+        var devices = devicesJson(("out", "Outside"), ("girls", "Girls Room"));
+        var service = createService((request, body) => respondWith(request, body, devices, requestBody =>
+            FakeHttpMessageHandler.Json(stateJson(requestBody.Contains("\"out\"", StringComparison.Ordinal) ? 45 : 70))),
+            extra: new() { ["Temperature:WindowMinOutside"] = min });
+
+        var status = await service.GetTemperatureStatusAsync();
+
+        Assert.Equal(expectedClosed, status.ShouldWindowsBeClosed);
+    }
+
+    [Fact]
+    public async Task WindowAdviceDisabled_NoAdviceAndNoPushAlert()
+    {
+        var devices = devicesJson(("out", "Outside"), ("girls", "Girls Room"));
+        var service = createService((request, body) => respondWith(request, body, devices, requestBody =>
+            FakeHttpMessageHandler.Json(stateJson(requestBody.Contains("\"out\"", StringComparison.Ordinal) ? 60 : 70))),
+            extra: new() { ["Temperature:WindowAdvice"] = "false" });
+
+        var status = await service.GetTemperatureStatusAsync();
+
+        Assert.Equal(60, status.OutsideTemperature);
+        Assert.Null(status.IndoorTemperature);
+        Assert.Null(HomeSpeaker.Server2.Services.Dashboard.WindowAdvice.From(status));
+    }
+
+    [Fact]
+    public async Task NoRoomsConfigured_EachDeviceIsItsOwnRoom_AndThereIsNoOutside()
+    {
+        var devices = devicesJson(("a", "Kitchen"), ("b", "Garage"));
+        var service = createService((request, body) => respondWith(request, body, devices, requestBody =>
+            FakeHttpMessageHandler.Json(stateJson(requestBody.Contains("\"a\"", StringComparison.Ordinal) ? 68 : 55))),
+            extra: new() { ["Temperature:Rooms"] = "", ["Temperature:OutsideRoom"] = "", ["Temperature:IndoorRoom"] = "" });
+
+        var status = await service.GetTemperatureStatusAsync();
+
+        Assert.Equal(["Kitchen", "Garage"], status.Rooms.Select(r => r.Name));
+        Assert.Null(status.OutsideRoomName);
+        Assert.Null(status.OutsideTemperature);
+        Assert.Null(status.IndoorTemperature);
     }
 
     private const string BatteryCapability = """
@@ -160,12 +236,12 @@ public sealed class TemperatureServiceTests
 
         var status = await service.GetTemperatureStatusAsync();
 
-        var boys = Assert.Single(status.Rooms, r => string.Equals(r.Name, "Boy", StringComparison.Ordinal));
+        var boys = Assert.Single(status.Rooms, r => string.Equals(r.Name, "Boys", StringComparison.Ordinal));
         Assert.Equal(3, boys.BatteryPercent);
         Assert.Equal(70, boys.Temperature);
         var outside = Assert.Single(status.Rooms, r => string.Equals(r.Name, "Outside", StringComparison.Ordinal));
         Assert.Null(outside.BatteryPercent);
-        Assert.Equal(70, status.BoysRoomTemperature);
+        Assert.Equal(70, roomTemperature(status, "Boys"));
     }
 
     [Theory]
@@ -184,7 +260,7 @@ public sealed class TemperatureServiceTests
 
         var status = await service.GetTemperatureStatusAsync();
 
-        Assert.Equal(expected, status.Rooms.Single(r => string.Equals(r.Name, "Boy", StringComparison.Ordinal)).BatteryPercent);
+        Assert.Equal(expected, status.Rooms.Single(r => string.Equals(r.Name, "Boys", StringComparison.Ordinal)).BatteryPercent);
     }
 
     [Fact]
@@ -206,7 +282,7 @@ public sealed class TemperatureServiceTests
 
         var status = await service.GetTemperatureStatusAsync();
 
-        Assert.Equal(["Outside", "Greenhouse", "Emma", "Boy", "Downstairs", "Girl"], status.Rooms.Select(r => r.Name));
+        Assert.Equal(["Outside", "Greenhouse", "Emma", "Boys", "Downstairs", "Girls"], status.Rooms.Select(r => r.Name));
         Assert.Equal(55, status.Rooms[0].Temperature);
         Assert.All(status.Rooms.Skip(1), r => Assert.Null(r.Temperature));
     }
@@ -221,7 +297,7 @@ public sealed class TemperatureServiceTests
         var report = await service.GetSensorDiagnosticsAsync();
 
         var boys = Assert.Single(report.Sensors);
-        Assert.Equal("Boy", boys.Room);
+        Assert.Equal("Boys", boys.Room);
         Assert.Equal("Boys Room", boys.DeviceName);
         Assert.Equal("H5179", boys.Sku);
         Assert.True(boys.StateAvailable);

@@ -1,0 +1,12 @@
+# HTTPS overlay. Use together with the generic file:
+#   docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
+# Set CERT_DIR in .env to a folder containing certificate.pfx (required).
+services:
+  homespeaker.server2:
+    ports:
+    - "443:443"
+    volumes:
+    - "${CERT_DIR:?Set CERT_DIR in .env}:/certs"
+    environment:
+    - ASPNETCORE_URLS=https://+:443;http://+:80
+    - ASPNETCORE_Kestrel__Certificates__Default__Path=/certs/certificate.pfx

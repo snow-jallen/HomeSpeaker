@@ -118,7 +118,8 @@ public sealed class PushNotificationTests : IAsyncLifetime
         var alertStatus = new TemperatureStatus
         {
             OutsideTemperature = 42,
-            YoungerGirlsRoomTemperature = 73,
+            IndoorRoomName = "Girls",
+            IndoorTemperature = 73,
             ShouldWindowsBeClosed = true,
             TemperatureDifference = -31
         };
@@ -189,7 +190,12 @@ public sealed class PushNotificationTests : IAsyncLifetime
                 {
                     [ConfigKeys.MediaFolder] = mediaFolderPath,
                     ["SqliteConnectionString"] = $"Data Source={dbPath}",
-                    ["PushNotifications:Enabled"] = "true"
+                    ["PushNotifications:Enabled"] = "true",
+                    // The push endpoints are only mapped when APNs is configured (FeatureFlags.PushEnabled).
+                    ["PushNotifications:Apns:Topic"] = "com.example.test",
+                    ["PushNotifications:Apns:TeamId"] = "TESTTEAM",
+                    ["PushNotifications:Apns:KeyId"] = "TESTKEY",
+                    ["PushNotifications:Apns:PrivateKeyBase64"] = "dGVzdA=="
                 });
             });
             builder.ConfigureServices(services =>

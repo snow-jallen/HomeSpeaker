@@ -5,6 +5,8 @@
 @inject IHomeControl HomeControl
 @inject TimeProvider Time
 @inject ILogger<Index> Logger
+@inject IConfiguration Config
+@inject NavigationManager Navigation
 @implements IDisposable
 
 <PageTitle>Home Speaker</PageTitle>
@@ -97,7 +99,7 @@
                     <div class="hs-hour">
                         <span class="hs-hour-label">@hour.Label</span>
                         <WeatherIconSvg Icon="hour.Icon" IsDay="hour.IsDay" Size="36" Label="@hour.Conditions" />
-                        <span class="hs-hour-temp">@(hour.Temperature is { } temp ? temp.ToString("0", CultureInfo.InvariantCulture) + "°" : "--")</span>
+                        <span class="hs-hour-temp">@(TemperatureDisplay.Format(hour.Temperature, Dashboard.TemperatureUnit))</span>
                         <span class="hs-hour-rain" title="@(hour.RainPercent)% chance of rain">
                             <span class="hs-hour-rain-bar">
                                 @if (hour.RainBarPx > 0)
@@ -187,13 +189,13 @@
             </a>
         }
 
-        @if (Dashboard.TemperatureEnabled || anchors.Count > 0)
+        @if (Dashboard.TemperatureEnabled || anchorsVisible)
         {
             <div class="hs-home-lower">
                 @if (Dashboard.TemperatureEnabled)
                 {
-                    var advice = WindowAdvice.From(Dashboard.Temperature);
-                    var outsideLow = Dashboard.Temperature?.Rooms.Any(r => string.Equals(r.Name, "Outside", StringComparison.Ordinal) && ClimateRoom.IsLow(r.BatteryPercent)) == true;
+                    var advice = WindowAdvice.From(Dashboard.Temperature, Dashboard.TemperatureUnit);
+                    var outsideLow = Dashboard.Temperature?.Rooms.Any(r => string.Equals(r.Name, Dashboard.Temperature.OutsideRoomName, StringComparison.OrdinalIgnoreCase) && ClimateRoom.IsLow(r.BatteryPercent)) == true;
                     <a class="glass hs-info-card hs-climate" href="climate">
                         <div class="hs-card-head">
                             <span class="hs-card-label">
@@ -210,7 +212,7 @@
                         </div>
                         <div class="hs-climate-top">
                             <div class="hs-climate-outside">
-                                <span class="hs-climate-big">@(Dashboard.Temperature?.OutsideTemperature is { } t ? t.ToString("0", CultureInfo.InvariantCulture) + "°" : "--")</span>
+                                <span class="hs-climate-big">@(TemperatureDisplay.Format(Dashboard.Temperature?.OutsideTemperature, Dashboard.TemperatureUnit))</span>
                                 @if (outsideLow)
                                 {
                                     <LowBatteryIcon Label="Outside sensor battery is low" />
@@ -241,7 +243,7 @@
                                     <span class="hs-room">
                                         <span class="hs-room-name">@room.Label</span>
                                         <span class="hs-room-temp">
-                                            @(room.Temperature.ToString("0", CultureInfo.InvariantCulture))°
+                                            @TemperatureDisplay.Format(room.Temperature, Dashboard.TemperatureUnit)
                                             @if (room.LowBattery)
                                             {
                                                 <LowBatteryIcon Label="@(room.Label + " sensor battery is low")" />
@@ -253,7 +255,7 @@
                         }
                     </a>
                 }
-                @if (anchors.Count > 0)
+                @if (anchorsVisible)
                 {
                     <a class="glass hs-info-card hs-anchors" href="anchors">
                         <span class="hs-card-label"><span class="hs-card-label-text">Anchors</span></span>
@@ -295,17 +297,19 @@
 
     private IReadOnlyList<AnchorProgress> anchors => Dashboard.Anchors;
 
+    private bool anchorsVisible => Dashboard.AnchorsEnabled && anchors.Count > 0;
+
     // Chosen at render time from the cached hourly forecast, so the strip moves on with the clock.
-    private IReadOnlyList<HourlyColumn> hourly => HourlyColumn.Select(Dashboard.Forecast, Time.GetUtcNow().UtcDateTime);
+    private IReadOnlyList<HourlyColumn> hourly => !Dashboard.ForecastEnabled ? [] : HourlyColumn.Select(Dashboard.Forecast, Time.GetUtcNow().UtcDateTime);
 
     private IReadOnlyList<ClimateRoom> indoorRooms => ClimateRoom.From(Dashboard.Temperature);
 
     private string? highLow =>
-        Dashboard.Forecast is { Error: null, TodayHigh.Temperature: { } high, TonightLow.Temperature: { } low }
-            ? string.Create(CultureInfo.InvariantCulture, $"H {high:0}° · L {low:0}°")
+        Dashboard.ForecastEnabled && Dashboard.Forecast is { Error: null, TodayHigh.Temperature: { } high, TonightLow.Temperature: { } low }
+            ? $"H {TemperatureDisplay.Format(high, Dashboard.TemperatureUnit)} · L {TemperatureDisplay.Format(low, Dashboard.TemperatureUnit)}"
             : null;
 
-    private string? conditions => Dashboard.Forecast is { Error: null } ? Dashboard.Forecast.TodayHigh?.Conditions : null;
+    private string? conditions => Dashboard.ForecastEnabled && Dashboard.Forecast is { Error: null } ? Dashboard.Forecast.TodayHigh?.Conditions : null;
 
     // Rain chance today and tomorrow's high, each only when the forecast has it.
     private IReadOnlyList<string> outlook
@@ -313,7 +317,7 @@
         get
         {
             var lines = new List<string>();
-            if (Dashboard.Forecast is { Error: null } forecast)
+            if (Dashboard.ForecastEnabled && Dashboard.Forecast is { Error: null } forecast)
             {
                 if (forecast.TodayHigh?.PrecipitationChance is { } rain)
                 {
@@ -322,7 +326,7 @@
 
                 if (forecast.TomorrowHigh is { Temperature: { } tomorrow } next)
                 {
-                    lines.Add(string.Create(CultureInfo.InvariantCulture, $"Tomorrow {tomorrow:0}°") + (string.IsNullOrEmpty(next.Conditions) ? "" : " · " + next.Conditions));
+                    lines.Add($"Tomorrow {TemperatureDisplay.Format(tomorrow, Dashboard.TemperatureUnit)}" + (string.IsNullOrEmpty(next.Conditions) ? "" : " · " + next.Conditions));
                 }
             }
 
@@ -334,6 +338,12 @@
 
     protected override void OnInitialized()
     {
+        if (HomeSpeaker.Server2.Settings.SetupState.IsNeeded(Config))
+        {
+            Navigation.NavigateTo("/setup");
+            return;
+        }
+
         volumeValue = Dashboard.Volume;
         Dashboard.Changed += onChanged;
     }

@@ -1,0 +1,19 @@
+@using HomeSpeaker.Server2.Settings
+
+<label class="glass-field">
+    <span>@(Label ?? Editor.Field(Key).Label)</span>
+    <input class="glass-input" type="text" inputmode="@InputMode" placeholder="@Placeholder" autocomplete="off"
+           value="@Editor[Key]" @onchange="onChange" disabled="@Editor.IsOverridden(Key)" />
+    <SettingNote Editor="Editor" Key="@Key" Hint="@Hint" />
+</label>
+
+@code {
+    [Parameter, EditorRequired] public SettingsEditor Editor { get; set; } = default!;
+    [Parameter, EditorRequired] public string Key { get; set; } = "";
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? Hint { get; set; }
+    [Parameter] public string InputMode { get; set; } = "text";
+
+    private void onChange(ChangeEventArgs e) => Editor[Key] = e.Value?.ToString();
+}

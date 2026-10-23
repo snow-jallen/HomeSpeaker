@@ -8,17 +8,10 @@ public sealed record ClimateRoom(string Label, double Temperature, bool LowBatte
     /// <summary>A sensor battery below this percent gets a red battery icon.</summary>
     public const double LowBatteryPercent = 5;
 
-    // Card order and the short labels (keys are the room names TemperatureService uses).
-    private static readonly (string Key, string Label)[] indoor =
-    [
-        ("Downstairs", "Downstairs"),
-        ("Greenhouse", "Greenhouse"),
-        ("Boy", "Boys"),
-        ("Girl", "Girls"),
-        ("Emma", "Emma"),
-    ];
-
-    /// <summary>The indoor rooms that have a reading, in card order; rooms with no reading are left out.</summary>
+    /// <summary>
+    /// Every configured room except the outside one, in configuration order and labelled with the room name;
+    /// rooms with no reading are left out.
+    /// </summary>
     public static IReadOnlyList<ClimateRoom> From(TemperatureStatus? status)
     {
         if (status is null)
@@ -27,12 +20,16 @@ public sealed record ClimateRoom(string Label, double Temperature, bool LowBatte
         }
 
         var rooms = new List<ClimateRoom>();
-        foreach (var (key, label) in indoor)
+        foreach (var reading in status.Rooms)
         {
-            var reading = status.Rooms.FirstOrDefault(r => string.Equals(r.Name, key, StringComparison.Ordinal));
-            if (reading?.Temperature is { } temperature)
+            if (string.Equals(reading.Name, status.OutsideRoomName, StringComparison.OrdinalIgnoreCase))
             {
-                rooms.Add(new ClimateRoom(label, temperature, IsLow(reading.BatteryPercent)));
+                continue;
+            }
+
+            if (reading.Temperature is { } temperature)
+            {
+                rooms.Add(new ClimateRoom(reading.Name, temperature, IsLow(reading.BatteryPercent)));
             }
         }
 

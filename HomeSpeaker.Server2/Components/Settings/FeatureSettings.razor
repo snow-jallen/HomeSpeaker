@@ -1,0 +1,175 @@
+@using System.Globalization
+@using HomeSpeaker.Server2.Settings
+
+<section class="glass-card hs-settings-section" aria-labelledby="settingsGeneralTitle">
+    <header class="glass-card-header">
+        <h2 class="glass-card-title" id="settingsGeneralTitle">General</h2>
+    </header>
+    <div class="glass-form-grid">
+        <label class="glass-field">
+            <span>@Editor.Field(SettingKeys.TemperatureUnit).Label</span>
+            <select class="glass-input" value="@(unit == TemperatureUnit.Celsius ? "C" : "F")" @onchange="e => Editor[SettingKeys.TemperatureUnit] = e.Value?.ToString()"
+                    disabled="@Editor.IsOverridden(SettingKeys.TemperatureUnit)">
+                <option value="F">°F</option>
+                <option value="C">°C</option>
+            </select>
+            <SettingNote Editor="Editor" Key="@SettingKeys.TemperatureUnit" />
+        </label>
+    </div>
+</section>
+
+<section class="glass-card hs-settings-section" aria-labelledby="settingsFeaturesTitle">
+    <header class="glass-card-header">
+        <h2 class="glass-card-title" id="settingsFeaturesTitle">Features</h2>
+    </header>
+
+    <h3 class="glass-section-title">Blood sugar (Nightscout)</h3>
+    <div class="glass-form-grid">
+        <SettingInput Editor="Editor" Key="@SettingKeys.NightscoutUrl" InputMode="url" Placeholder="https://yoursite.herokuapp.com" Hint="Leave blank to turn blood sugar off." />
+    </div>
+
+    <h3 class="glass-section-title">Room temperatures (Govee)</h3>
+    <label class="glass-row glass-check hs-settings-check">
+        <input type="checkbox" checked="@goveeOn" @onchange="e => setFlag(SettingKeys.TemperatureApiBaseUrl, e, SettingKeys.GoveeApiBaseUrl, string.Empty)"
+               disabled="@Editor.IsOverridden(SettingKeys.TemperatureApiBaseUrl)" />
+        <span>Show Govee temperature sensors</span>
+    </label>
+    <SettingNote Editor="Editor" Key="@SettingKeys.TemperatureApiBaseUrl" />
+    @if (goveeOn)
+    {
+        <div class="glass-form-grid">
+            <SecretInput Editor="Editor" Key="@SettingKeys.TemperatureApiKey" />
+        </div>
+        <TemperatureRoomPicker Editor="Editor" />
+
+        @if (hasOutsideRoom)
+        {
+            <h3 class="glass-section-title">Window advice</h3>
+            <label class="glass-row glass-check hs-settings-check">
+                <input type="checkbox" checked="@adviceOn" @onchange="e => setFlag(SettingKeys.TemperatureWindowAdvice, e, OnValue, OffValue)"
+                       disabled="@Editor.IsOverridden(SettingKeys.TemperatureWindowAdvice)" />
+                <span>Suggest opening or closing the windows</span>
+            </label>
+            <SettingNote Editor="Editor" Key="@SettingKeys.TemperatureWindowAdvice" />
+            @if (adviceOn)
+            {
+                <div class="glass-form-grid">
+                    <label class="glass-field">
+                        <span>@Editor.Field(SettingKeys.TemperatureIndoorRoom).Label</span>
+                        @if (indoorRooms.Count > 0)
+                        {
+                            <select class="glass-input" value="@(Editor[SettingKeys.TemperatureIndoorRoom] ?? "")" @onchange="e => Editor[SettingKeys.TemperatureIndoorRoom] = e.Value?.ToString()"
+                                    disabled="@Editor.IsOverridden(SettingKeys.TemperatureIndoorRoom)">
+                                <option value="">First room (@indoorRooms[0])</option>
+                                @foreach (var room in indoorRooms)
+                                {
+                                    <option value="@room">@room</option>
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            <input class="glass-input" type="text" value="@Editor[SettingKeys.TemperatureIndoorRoom]" @onchange="e => Editor[SettingKeys.TemperatureIndoorRoom] = e.Value?.ToString()"
+                                   disabled="@Editor.IsOverridden(SettingKeys.TemperatureIndoorRoom)" />
+                        }
+                        <SettingNote Editor="Editor" Key="@SettingKeys.TemperatureIndoorRoom" />
+                    </label>
+                    <label class="glass-field">
+                        <span>Open windows only above (@unitLabel)</span>
+                        <input class="glass-input" type="text" inputmode="decimal" value="@displayed(SettingKeys.TemperatureWindowMinOutside, 50, delta: false)"
+                               @onchange="e => setFromDisplay(SettingKeys.TemperatureWindowMinOutside, e.Value?.ToString(), delta: false)"
+                               disabled="@Editor.IsOverridden(SettingKeys.TemperatureWindowMinOutside)" />
+                        <SettingNote Editor="Editor" Key="@SettingKeys.TemperatureWindowMinOutside" />
+                    </label>
+                    <label class="glass-field">
+                        <span>Inside/outside difference (@unitLabel)</span>
+                        <input class="glass-input" type="text" inputmode="decimal" value="@displayed(SettingKeys.TemperatureThreshold, 2, delta: true)"
+                               @onchange="e => setFromDisplay(SettingKeys.TemperatureThreshold, e.Value?.ToString(), delta: true)"
+                               disabled="@Editor.IsOverridden(SettingKeys.TemperatureThreshold)" />
+                        <SettingNote Editor="Editor" Key="@SettingKeys.TemperatureThreshold" />
+                    </label>
+                </div>
+            }
+        }
+    }
+
+    <h3 class="glass-section-title">Anchors</h3>
+    <label class="glass-row glass-check hs-settings-check">
+        <input type="checkbox" checked="@anchorsOn" @onchange="e => setFlag(SettingKeys.Anchors, e, OnValue, string.Empty)"
+               disabled="@Editor.IsOverridden(SettingKeys.Anchors)" />
+        <span>Daily habit checklist (Anchors)</span>
+    </label>
+    <SettingNote Editor="Editor" Key="@SettingKeys.Anchors" />
+
+    <h3 class="glass-section-title">AI playlists (OpenAI)</h3>
+    <div class="glass-form-grid">
+        <SecretInput Editor="Editor" Key="@SettingKeys.OpenAiApiKey" />
+        <SettingInput Editor="Editor" Key="@SettingKeys.OpenAiChatModel" Placeholder="gpt-4o-mini" />
+    </div>
+</section>
+
+@code {
+    private const string OnValue = "true";
+    private const string OffValue = "false";
+
+    [Parameter, EditorRequired] public SettingsEditor Editor { get; set; } = default!;
+
+    private TemperatureUnit unit =>
+        string.Equals(Editor[SettingKeys.TemperatureUnit]?.Trim(), "C", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(Editor[SettingKeys.TemperatureUnit]?.Trim(), "Celsius", StringComparison.OrdinalIgnoreCase)
+            ? TemperatureUnit.Celsius
+            : TemperatureUnit.Fahrenheit;
+
+    private string unitLabel => unit == TemperatureUnit.Celsius ? "°C" : "°F";
+
+    private bool goveeOn => !string.IsNullOrEmpty(Editor[SettingKeys.TemperatureApiBaseUrl]);
+
+    private bool anchorsOn => string.Equals(Editor[SettingKeys.Anchors], "true", StringComparison.OrdinalIgnoreCase);
+
+    private bool adviceOn => !string.Equals(Editor[SettingKeys.TemperatureWindowAdvice], "false", StringComparison.OrdinalIgnoreCase);
+
+    private IReadOnlyList<string> rooms => [.. TemperatureRoomConfig.Parse(Editor[SettingKeys.TemperatureRooms]).Select(r => r.Room)];
+
+    private string? outsideRoom => !string.IsNullOrWhiteSpace(Editor[SettingKeys.TemperatureOutsideRoom])
+        ? Editor[SettingKeys.TemperatureOutsideRoom]!.Trim()
+        : rooms.FirstOrDefault(r => string.Equals(r, "Outside", StringComparison.OrdinalIgnoreCase));
+
+    private bool hasOutsideRoom => outsideRoom is not null;
+
+    private IReadOnlyList<string> indoorRooms => [.. rooms.Where(r => !string.Equals(r, outsideRoom, StringComparison.OrdinalIgnoreCase))];
+
+    private void setFlag(string key, ChangeEventArgs e, string on, string off) => Editor[key] = e.Value is true ? on : off;
+
+    // Stored in °F; shown in the chosen unit.
+    private string displayed(string key, double fallback, bool delta)
+    {
+        var raw = Editor[key];
+        if (Editor.Errors.ContainsKey(key))
+        {
+            return raw ?? "";
+        }
+
+        var fahrenheit = double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : fallback;
+        var shown = delta ? TemperatureDisplay.ConvertDelta(fahrenheit, unit) : TemperatureDisplay.Convert(fahrenheit, unit);
+        return Math.Round(shown, 1).ToString(CultureInfo.InvariantCulture);
+    }
+
+    private void setFromDisplay(string key, string? text, bool delta)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            Editor[key] = "";
+            return;
+        }
+
+        if (!double.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var shown))
+        {
+            Editor[key] = text;
+            Editor.Errors[key] = "Enter a number.";
+            return;
+        }
+
+        var fahrenheit = delta ? shown / TemperatureDisplay.ConvertDelta(1, unit) : TemperatureDisplay.ToFahrenheit(shown, unit);
+        Editor[key] = Math.Round(fahrenheit, 2).ToString(CultureInfo.InvariantCulture);
+    }
+}

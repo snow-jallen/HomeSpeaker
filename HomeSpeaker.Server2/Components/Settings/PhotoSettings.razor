@@ -1,0 +1,142 @@
+@using HomeSpeaker.Server2.Settings
+@inject ImmichAlbumBrowser AlbumBrowser
+@inject IConfiguration Config
+@inject ILogger<PhotoSettings> Logger
+
+<section class="glass-card hs-settings-section" aria-labelledby="settingsPhotosTitle">
+    <header class="glass-card-header">
+        <h2 class="glass-card-title" id="settingsPhotosTitle">Photos</h2>
+    </header>
+    <p class="glass-hint">The slideshow shown when the screen is idle. Without Immich, photos come from the <code>photos</code> folder in the media folder.</p>
+
+    <div class="glass-form-grid">
+        <label class="glass-field">
+            <span>@Editor.Field(SettingKeys.PhotoSource).Label</span>
+            <select class="glass-input" value="@(Editor[SettingKeys.PhotoSource] ?? "")" @onchange="e => Editor[SettingKeys.PhotoSource] = e.Value?.ToString()"
+                    disabled="@Editor.IsOverridden(SettingKeys.PhotoSource)">
+                <option value="">Automatic (Immich when set up)</option>
+                <option value="immich">Immich</option>
+                <option value="folder">Photos folder</option>
+            </select>
+            <SettingNote Editor="Editor" Key="@SettingKeys.PhotoSource" />
+        </label>
+        <SettingInput Editor="Editor" Key="@SettingKeys.SlideSeconds" InputMode="numeric" Placeholder="30" />
+        <SettingInput Editor="Editor" Key="@SettingKeys.IdleSeconds" InputMode="numeric" Placeholder="300" />
+    </div>
+
+    @if (!string.Equals(Editor[SettingKeys.PhotoSource], "folder", StringComparison.OrdinalIgnoreCase))
+    {
+        <h3 class="glass-section-title">Immich</h3>
+        <div class="glass-form-grid">
+            <SettingInput Editor="Editor" Key="@SettingKeys.ImmichBaseUrl" InputMode="url" Placeholder="https://immich.example.com" />
+            <SecretInput Editor="Editor" Key="@SettingKeys.ImmichApiKey" />
+        </div>
+
+        <div class="glass-form-grid">
+            <label class="glass-field">
+                <span>@Editor.Field(SettingKeys.ImmichAlbumId).Label</span>
+                @if (albums is { Count: > 0 } && !Editor.IsOverridden(SettingKeys.ImmichAlbumId))
+                {
+                    <select class="glass-input" value="@(Editor[SettingKeys.ImmichAlbumId] ?? "")" @onchange="e => Editor[SettingKeys.ImmichAlbumId] = e.Value?.ToString()">
+                        <option value="">Choose an album</option>
+                        @if (!string.IsNullOrEmpty(Editor[SettingKeys.ImmichAlbumId]) && albums.All(a => a.Id != Editor[SettingKeys.ImmichAlbumId]))
+                        {
+                            <option value="@Editor[SettingKeys.ImmichAlbumId]">@Editor[SettingKeys.ImmichAlbumId] (not in list)</option>
+                        }
+                        @foreach (var album in albums)
+                        {
+                            <option value="@album.Id">@album.Name (@album.AssetCount)</option>
+                        }
+                    </select>
+                }
+                else
+                {
+                    <input class="glass-input" type="text" placeholder="Album id, or Load albums" autocomplete="off"
+                           value="@Editor[SettingKeys.ImmichAlbumId]" @onchange="e => Editor[SettingKeys.ImmichAlbumId] = e.Value?.ToString()"
+                           disabled="@Editor.IsOverridden(SettingKeys.ImmichAlbumId)" />
+                }
+                <SettingNote Editor="Editor" Key="@SettingKeys.ImmichAlbumId" />
+            </label>
+            <div class="glass-field hs-settings-action">
+                <span>&nbsp;</span>
+                <button type="button" class="glass-btn glass-btn--ghost" @onclick="loadAlbums" disabled="@loading">
+                    @if (loading)
+                    {
+                        <span class="glass-spinner glass-spinner--inline" role="status" aria-label="Loading"></span>
+                    }
+                    else
+                    {
+                        <i class="fas fa-images" aria-hidden="true"></i>
+                    }
+                    Load albums
+                </button>
+            </div>
+        </div>
+        @if (albumError is not null)
+        {
+            <small class="hs-settings-error" role="alert">@albumError</small>
+        }
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public SettingsEditor Editor { get; set; } = default!;
+
+    private IReadOnlyList<ImmichAlbum>? albums;
+    private bool loading;
+    private string? albumError;
+
+    private async Task loadAlbums()
+    {
+        albumError = null;
+        var baseUrl = Editor[SettingKeys.ImmichBaseUrl];
+        // A masked key stays on the server: the saved one (or the IMMICH_API_KEY fallback) is only ever sent to
+        // the saved Immich address, never to a newly typed one.
+        var key = Editor[SettingKeys.ImmichApiKey];
+        if (key == SettingsForm.MaskedValue || string.IsNullOrEmpty(key))
+        {
+            if (!ImmichSavedKeyPolicy.Allows(baseUrl, Config[SettingKeys.ImmichBaseUrl]))
+            {
+                albumError = string.IsNullOrWhiteSpace(baseUrl)
+                    ? "Enter the Immich URL and API key first."
+                    : "Type the API key for this address; the saved key is only sent to the saved Immich URL.";
+                return;
+            }
+
+            key = ImmichOptionsFallback.EffectiveApiKey(Config);
+        }
+
+        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(key))
+        {
+            albumError = "Enter the Immich URL and API key first.";
+            return;
+        }
+
+        loading = true;
+        try
+        {
+            albums = await AlbumBrowser.GetAlbumsAsync(baseUrl, key, CancellationToken.None);
+            if (albums.Count == 0)
+            {
+                albumError = "No albums found for this key.";
+            }
+        }
+        catch (ArgumentException ex)
+        {
+            albumError = ex.Message.Split(" (Parameter", StringSplitOptions.None)[0];
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+        {
+            albumError = "Immich refused the API key. Check it has album read permission.";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            Logger.LogWarning(ex, "Loading Immich albums from {BaseUrl} failed", baseUrl);
+            albumError = "Couldn't load albums from that address.";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+}

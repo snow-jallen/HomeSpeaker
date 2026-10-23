@@ -52,12 +52,15 @@ public sealed class VideoPrefetcher : BackgroundService
     /// <summary>Free bytes on the cache drive; null means unknown (no guard). A prefetch must leave 1 GB free.</summary>
     public Func<long?> FreeSpaceBytes { get; init; } = () => null;
 
+    /// <summary>False when the active photo source is not Immich (the folder source has no videos).</summary>
+    public bool SourceIsImmich { get; init; } = true;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var settings = options.Value;
-        if (!settings.IsConfigured || settings.VideoPrefetchAhead <= 0 || settings.VideoPrefetchMaxMB <= 0)
+        if (!SourceIsImmich || !settings.IsConfigured || settings.VideoPrefetchAhead <= 0 || settings.VideoPrefetchMaxMB <= 0)
         {
-            logger.LogInformation("Video prefetch is disabled (Immich not configured, or Immich:VideoPrefetchAhead or Immich:VideoPrefetchMaxMB is 0 or less)");
+            logger.LogInformation("Video prefetch is disabled (Immich not configured or not the photo source, or Immich:VideoPrefetchAhead or Immich:VideoPrefetchMaxMB is 0 or less)");
             return;
         }
 
