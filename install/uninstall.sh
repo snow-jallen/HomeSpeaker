@@ -32,12 +32,12 @@ fi
 if [ -f "$INSTALL_DIR/docker-compose.yml" ] && have docker; then
     echo "==> Stopping the HomeSpeaker stack"
     if [ "$DRY_RUN" = 1 ]; then
-        echo "[dry-run] cd $INSTALL_DIR && docker compose down"
+        echo "[dry-run] cd $INSTALL_DIR && docker compose --profile '*' down"
     else
-        (cd "$INSTALL_DIR" && docker compose down) || echo "WARNING: docker compose down failed" >&2
+        (cd "$INSTALL_DIR" && docker compose --profile '*' down </dev/null) || echo "WARNING: docker compose down failed" >&2
     fi
 elif [ "$DRY_RUN" = 1 ]; then
-    echo "[dry-run] (docker or $INSTALL_DIR/docker-compose.yml not found here; would run: cd $INSTALL_DIR && docker compose down)"
+    echo "[dry-run] (docker or $INSTALL_DIR/docker-compose.yml not found here; would run: cd $INSTALL_DIR && docker compose --profile '*' down)"
 fi
 
 if useSystemd; then
@@ -53,9 +53,26 @@ if useSystemd; then
     run systemctl reload avahi-daemon || true
 fi
 
-echo "==> Removing $INSTALL_DIR (compose file, .env and scripts)"
-run rm -rf "$INSTALL_DIR"
+# Work out where the music (and HomeSpeaker.db) live before removing anything.
+musicDir=""
+if [ -f "$INSTALL_DIR/.env" ]; then
+    musicDir="$(sed -n 's/^MUSIC_DIR=//p' "$INSTALL_DIR/.env" | tail -1)"
+    musicDir="$(printf '%s' "$musicDir" | tr -d "'\"")"
+fi
+musicDir="${musicDir:-./music}"
+case "$musicDir" in
+    /*) ;;
+    *) musicDir="$INSTALL_DIR/${musicDir#./}" ;;
+esac
+
+echo "==> Removing installer-created files from $INSTALL_DIR"
+run rm -f "$INSTALL_DIR/docker-compose.yml" "$INSTALL_DIR/.env" "$INSTALL_DIR/scripts/start-shairport.sh"
+run rmdir --ignore-fail-on-non-empty "$INSTALL_DIR/scripts" "$INSTALL_DIR"
+if [ -e "$INSTALL_DIR/homespeaker.env" ]; then
+    echo "Kept $INSTALL_DIR/homespeaker.env (your settings and secrets)."
+fi
 
 echo
-echo "HomeSpeaker was removed. Your music folder (MUSIC_DIR) and HomeSpeaker.db were left untouched."
+echo "HomeSpeaker was removed. Your music and HomeSpeaker.db were left untouched in: $musicDir"
+if [ -d "$INSTALL_DIR" ]; then echo "$INSTALL_DIR was not empty, so it was kept."; fi
 echo "A kiosk autostart file (~/.config/labwc/autostart), if you created one, was also left in place."

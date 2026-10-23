@@ -2,7 +2,8 @@
 # HomeSpeaker installer for Raspberry Pi OS (Bookworm) and other Debian/Ubuntu systems with systemd.
 #
 #   curl -fsSL https://raw.githubusercontent.com/snow-jallen/homespeaker/master/install/install.sh | sudo bash
-#   ... | sudo bash -s -- --yes --kiosk
+#   curl -fsSL .../install/install.sh | sudo HOMESPEAKER_REF=my-branch HTTP_PORT=8080 bash -s -- --yes --kiosk
+#   (flags go after "bash -s --"; variables go between sudo and bash)
 #
 # Options: --yes  --kiosk  --no-start  --dry-run  --help
 # Environment: HOMESPEAKER_REPO (default snow-jallen/homespeaker), HOMESPEAKER_REF (default master),
@@ -84,7 +85,10 @@ elif [ "$(id -u)" -ne 0 ]; then
 fi
 
 TARGET_USER="${SUDO_USER:-}"
-if [ -z "$TARGET_USER" ] || [ "$TARGET_USER" = root ]; then
+if [ -z "$TARGET_USER" ] && [ "$DRY_RUN" = 1 ]; then
+    TARGET_USER="$(id -un)"
+    warn "SUDO_USER is not set; dry-run is using '$TARGET_USER'. A real run requires sudo from a normal user."
+elif [ -z "$TARGET_USER" ] || [ "$TARGET_USER" = root ]; then
     die "SUDO_USER is not set. Log in as a normal user and run the script with sudo; do not run it from a root login."
 fi
 if ! id "$TARGET_USER" >/dev/null 2>&1; then
@@ -95,8 +99,18 @@ TARGET_UID="$(id -u "$TARGET_USER")"
 TARGET_GROUP="$(id -gn "$TARGET_USER")"
 TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6 || true)"
 TARGET_HOME="${TARGET_HOME:-/home/$TARGET_USER}"
-HOST_NAME="$(hostname)"
+HOST_NAME="$(hostname -s 2>/dev/null || hostname)"
 HTTP_PORT="${HTTP_PORT:-80}"
+
+validatePort() {
+    case "$HTTP_PORT" in
+        ''|*[!0-9]*) die "HTTP_PORT must be a number from 1 to 65535 (got '$HTTP_PORT')." ;;
+    esac
+    if [ "$HTTP_PORT" -lt 1 ] || [ "$HTTP_PORT" -gt 65535 ]; then
+        die "HTTP_PORT must be a number from 1 to 65535 (got '$HTTP_PORT')."
+    fi
+}
+validatePort
 
 # Where this script lives (empty when piped from curl); used to prefer local copies of the assets.
 SCRIPT_DIR=""
@@ -200,7 +214,9 @@ if [ -f "$ENV_FILE" ]; then
     log "$ENV_FILE exists; leaving it unchanged"
     if grep -Eq '^COMPOSE_PROFILES=.*airplay' "$ENV_FILE"; then AIRPLAY=1; fi
     existingPort="$(sed -n 's/^HTTP_PORT=//p' "$ENV_FILE" | tail -1)"
+    existingPort="$(printf '%s' "$existingPort" | tr -d "'\"")"
     HTTP_PORT="${existingPort:-$HTTP_PORT}"
+    validatePort
 else
     if ask "Enable the AirPlay receiver (shows this speaker in AirPlay menus)?" y; then AIRPLAY=1; fi
     MUSIC_DIR="$TARGET_HOME/music"
@@ -230,7 +246,13 @@ fi
 # --- 4. Avahi ----------------------------------------------------------------
 if ! have avahi-daemon; then
     log "Installing avahi-daemon"
-    run apt-get install -y avahi-daemon
+    have apt-get || [ "$DRY_RUN" = 1 ] || die "avahi-daemon is missing and apt-get is not available; install avahi-daemon manually and re-run."
+    run apt-get update
+    if [ "$DRY_RUN" = 1 ]; then
+        echo "[dry-run] DEBIAN_FRONTEND=noninteractive apt-get install -y avahi-daemon"
+    else
+        DEBIAN_FRONTEND=noninteractive apt-get install -y avahi-daemon </dev/null
+    fi
 fi
 log "Writing the Avahi service advertisement"
 if fetch install/homespeaker.service.xml "$TMP_DIR/avahi.tpl"; then
@@ -257,14 +279,20 @@ if [ "$KIOSK" = 1 ]; then
         warn "labwc was not detected. Only labwc autostart (Raspberry Pi OS Bookworm Wayland) is supported; writing it anyway."
     fi
     AUTOSTART="$TARGET_HOME/.config/labwc/autostart"
+    kioskBrowser="chromium"
+    if ! have chromium && have chromium-browser; then kioskBrowser="chromium-browser"; fi
     kioskUrl="http://localhost/?kiosk=1"
     if [ "$HTTP_PORT" != 80 ]; then kioskUrl="http://localhost:$HTTP_PORT/?kiosk=1"; fi
     log "Writing kiosk autostart $AUTOSTART"
-    if [ -f "$AUTOSTART" ]; then
+    echo "$kioskBrowser --kiosk --noerrdialogs --disable-infobars $kioskUrl &" >"$TMP_DIR/autostart"
+    # Keep the original file: back up only once, and never back up our own output.
+    if [ -f "$AUTOSTART" ] && [ ! -e "$AUTOSTART.bak" ] && ! cmp -s "$AUTOSTART" "$TMP_DIR/autostart"; then
         run cp -p "$AUTOSTART" "$AUTOSTART.bak"
     fi
-    echo "chromium-browser --kiosk --noerrdialogs --disable-infobars $kioskUrl &" >"$TMP_DIR/autostart"
-    run install -d -m 755 -o "$TARGET_USER" -g "$TARGET_GROUP" "$(dirname "$AUTOSTART")"
+    # Create each missing directory level owned by the user (not root).
+    for dir in "$TARGET_HOME/.config" "$TARGET_HOME/.config/labwc"; do
+        run install -d -m 755 -o "$TARGET_USER" -g "$TARGET_GROUP" "$dir"
+    done
     put "$TMP_DIR/autostart" "$AUTOSTART" 755 "$TARGET_USER:$TARGET_GROUP"
 fi
 
@@ -285,7 +313,7 @@ elif [ "$DRY_RUN" = 1 ]; then
     echo "[dry-run] wait up to 120 s for curl -fsS http://localhost:$HTTP_PORT/alive"
 else
     log "Starting HomeSpeaker"
-    (cd "$INSTALL_DIR" && docker compose up -d)
+    (cd "$INSTALL_DIR" && docker compose up -d </dev/null)
     log "Waiting for HomeSpeaker to become healthy (up to 120 s)"
     healthy=0
     for _ in $(seq 1 60); do
