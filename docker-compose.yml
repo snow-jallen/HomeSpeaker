@@ -22,7 +22,7 @@ services:
     # Optional settings/secrets file (copy homespeaker.env.example to homespeaker.env).
     # The file may be absent (Compose 2.24 or newer).
     env_file:
-    - path: ./homespeaker.env
+    - path: ${HOMESPEAKER_ENV_FILE:-./homespeaker.env}
       required: false
     environment:
     - TZ=${TZ:-Etc/UTC}

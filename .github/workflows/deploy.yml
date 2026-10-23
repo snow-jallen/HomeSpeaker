@@ -61,7 +61,7 @@ jobs:
         cat > .env << EOF
         AIRPLAY_NAME=${AIRPLAY_NAME}
         HOMESPEAKER_IMAGE=ghcr.io/${{ github.repository_owner }}/homespeaker:latest
-        DEPLOY_USER=${DEPLOY_USER}
+        HOMESPEAKER_ENV_FILE=/home/${DEPLOY_USER}/homespeaker-secrets.env
         MUSIC_DIR=/home/${DEPLOY_USER}/music
         CERT_DIR=/home/${DEPLOY_USER}/cert
         TZ=${DEPLOY_TZ}
