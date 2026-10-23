@@ -110,11 +110,12 @@
                 editor.Errors[key] = message;
             }
 
+            var restartNote = changes.Keys.Any(SettingKeys.RequiresRestart) ? " Restart HomeSpeaker to apply them." : "";
             (status, statusIsError) = (errors.Count, changes.Count) switch
             {
-                ( > 0, > 0) => ("Saved, except the fields marked below. Some changes take effect after a restart.", true),
+                ( > 0, > 0) => ("Saved, except the fields marked below." + restartNote, true),
                 ( > 0, _) => ("Nothing saved: fix the fields marked below.", true),
-                (_, > 0) => ("Saved. Some changes take effect after a restart.", false),
+                (_, > 0) => ("Saved." + restartNote, false),
                 _ => ("No changes to save.", false),
             };
         }

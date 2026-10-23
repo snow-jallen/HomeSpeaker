@@ -63,6 +63,27 @@ public static class SettingKeys
         (OpenAiChatModel, "OpenAI chat model", false),
     ];
 
+    /// <summary>
+    /// True for keys that are only read when HomeSpeaker starts (the photo source and Immich client, the feature
+    /// modules that register endpoints and workers, and the AI client), so a change needs a restart to apply.
+    /// </summary>
+    public static bool RequiresRestart(string key)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        return key.StartsWith("Immich:", StringComparison.OrdinalIgnoreCase)
+            || key.StartsWith("AI:", StringComparison.OrdinalIgnoreCase)
+            || restartKeys.Contains(key);
+    }
+
+    private static readonly HashSet<string> restartKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        PhotoSource,
+        NightscoutUrl,
+        TemperatureApiBaseUrl,
+        TemperatureApiKey,
+        Anchors,
+    };
+
     /// <summary>Keys that must be whole numbers of at least 1.</summary>
     public static IReadOnlySet<string> PositiveIntegers { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {

@@ -7,6 +7,7 @@
 @inject IConfiguration Config
 @inject IServiceProvider Services
 @inject ISettingsWriter SettingsWriter
+@inject IAppRestarter Restarter
 @inject NavigationManager Navigation
 @inject ILogger<Setup> Logger
 
@@ -33,7 +34,7 @@
                 <header class="glass-card-header">
                     <h2 class="glass-card-title">Welcome</h2>
                 </header>
-                <p class="glass-hint">HomeSpeaker plays music, radio and photos on this device. First, tell it where you live so the Home page can show your weather.</p>
+                <p class="glass-hint">HomeSpeaker plays music, radio and photos on this device. First, tell it where you live so the Home page can show your weather. You can skip this and set it later on the settings page.</p>
             </section>
             <LocationSettings Editor="editor" />
             break;
@@ -61,7 +62,7 @@
                 <i class="fas fa-arrow-left" aria-hidden="true"></i> Back
             </button>
         }
-        @if (step is 3 or 4)
+        @if (step != 2)
         {
             <button type="button" class="glass-btn glass-btn--ghost" @onclick="skip" disabled="@busy">Skip</button>
         }
@@ -88,6 +89,9 @@
     private bool busy;
     private string? status;
     private bool statusIsError;
+
+    /// <summary>Keys saved during the wizard that only apply after a restart.</summary>
+    private readonly HashSet<string> savedRestartKeys = new(StringComparer.OrdinalIgnoreCase);
 
     private bool HasLocationValues =>
         !string.IsNullOrWhiteSpace(editor[SettingKeys.ForecastLatitude]) && !string.IsNullOrWhiteSpace(editor[SettingKeys.ForecastLongitude]);
@@ -141,6 +145,7 @@
             if (changes.Count > 0)
             {
                 SettingsWriter.Save(changes);
+                savedRestartKeys.UnionWith(changes.Keys.Where(SettingKeys.RequiresRestart));
             }
 
             // Reload from configuration, then put back what couldn't be saved so it can be fixed.
@@ -202,7 +207,7 @@
         step--;
     }
 
-    private void skip()
+    private async Task skip()
     {
         status = null;
         if (step < LastStep)
@@ -211,24 +216,45 @@
         }
         else
         {
-            finish();
+            await finish();
         }
     }
 
-    private void finish()
+    private async Task finish()
     {
         busy = true;
         try
         {
             SettingsWriter.Save(new Dictionary<string, string?> { [SetupState.CompletedKey] = "true" });
-            Navigation.NavigateTo("/", forceLoad: true);
         }
         catch (InvalidOperationException ex)
         {
             Logger.LogWarning(ex, "Finishing setup failed");
             (status, statusIsError) = ("Couldn't finish: " + ex.Message, true);
             busy = false;
+            return;
         }
+
+        if (savedRestartKeys.Count == 0)
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        // Photos, the feature modules and AI are read at startup. Show the message, move the browser to the Home
+        // page, then restart; the Home page reconnects (and reloads) once HomeSpeaker is back.
+        (status, statusIsError) = ("Restarting HomeSpeaker… it will be back in a few seconds.", false);
+        StateHasChanged();
+        await Task.Delay(TimeSpan.FromSeconds(1));
+
+        // The navigation ends this circuit, so the restart runs on its own after the Home page has had time to load.
+        var restarter = Restarter;
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            restarter.Restart();
+        });
+        Navigation.NavigateTo("/", forceLoad: true);
     }
 
     public void Dispose() => editor.Changed -= onEditorChanged;
