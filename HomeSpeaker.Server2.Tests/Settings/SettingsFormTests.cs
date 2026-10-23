@@ -112,6 +112,40 @@ public sealed class SettingsFormTests : IDisposable
     }
 
     [Fact]
+    public void Read_ImmichApiKeyAliasInEnv_ApiKeyIsOverriddenAndMasked()
+    {
+        setEnv("IMMICH_API_KEY", "env-key");
+        var config = build(new Dictionary<string, string?> { [SettingKeys.ImmichApiKey] = "db-key" });
+
+        var key = field(SettingsForm.Read(config, dbValues()), SettingKeys.ImmichApiKey);
+
+        Assert.True(key.IsOverridden);
+        Assert.Equal(SettingsForm.MaskedValue, key.Value);
+    }
+
+    [Fact]
+    public void Read_ImmichApiKeyAliasInEnv_NoSavedKey_IsMaskedAsSet()
+    {
+        setEnv("IMMICH_API_KEY", "env-key");
+        var config = build();
+
+        var key = field(SettingsForm.Read(config, dbValues()), SettingKeys.ImmichApiKey);
+
+        Assert.True(key.IsOverridden);
+        Assert.Equal(SettingsForm.MaskedValue, key.Value);
+    }
+
+    [Fact]
+    public void Read_ImmichApiKeyAliasOnlyInAppsettings_IsNotOverridden()
+    {
+        var config = build(json: new Dictionary<string, string?> { ["IMMICH_API_KEY"] = "json-key" });
+
+        var key = field(SettingsForm.Read(config, dbValues()), SettingKeys.ImmichApiKey);
+
+        Assert.False(key.IsOverridden);
+    }
+
+    [Fact]
     public void Changes_DropsOverriddenAndUnknownKeys()
     {
         IReadOnlyList<SettingField> current =

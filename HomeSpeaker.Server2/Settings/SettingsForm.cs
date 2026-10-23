@@ -1,4 +1,5 @@
 using System.Globalization;
+using HomeSpeaker.Server2.Services.Photos;
 
 namespace HomeSpeaker.Server2.Settings;
 
@@ -13,15 +14,19 @@ public static class SettingsForm
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(dbValues);
 
+        // IMMICH_API_KEY from the environment acts as an environment override of Immich:ApiKey.
+        var immichAlias = ImmichOptionsFallback.AliasIsSetAboveDatabase(configuration);
         return [.. SettingKeys.All.Select(definition =>
         {
+            var aliased = immichAlias && string.Equals(definition.Key, SettingKeys.ImmichApiKey, StringComparison.OrdinalIgnoreCase);
             var value = configuration[definition.Key];
             if (definition.IsSecret)
             {
-                value = string.IsNullOrEmpty(value) ? null : MaskedValue;
+                value = string.IsNullOrEmpty(value) && !aliased ? null : MaskedValue;
             }
 
-            return new SettingField(definition.Key, definition.Label, value, definition.IsSecret, IsOverridden(configuration, dbValues, definition.Key));
+            var overridden = aliased || IsOverridden(configuration, dbValues, definition.Key);
+            return new SettingField(definition.Key, definition.Label, value, definition.IsSecret, overridden);
         })];
     }
 
@@ -35,21 +40,47 @@ public static class SettingsForm
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(dbValues);
 
-        if (configuration is IConfigurationRoot root)
+        if (configuration is IConfigurationRoot)
         {
-            // Sources above the database (environment variables, command line) override it; anything below it,
-            // such as appsettings.json, is a default the database replaces.
-            var providers = root.Providers.ToList();
-            var databaseIndex = providers.FindIndex(p => p is DatabaseSettingsConfigurationProvider);
-            if (databaseIndex < 0)
-            {
-                return false; // No database settings: nothing can be saved, so nothing is "overridden".
-            }
-
-            return providers.Skip(databaseIndex + 1).Any(p => p.TryGet(key, out _));
+            return TryGetAboveDatabase(configuration, key, out _);
         }
 
         return dbValues.TryGetValue(key, out var stored) && !string.Equals(stored, configuration[key], StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// True, with the value, when a source above the database (environment variables, command line) supplies the
+    /// key. False when none does, or when there is no configuration root or database settings to compare with.
+    /// </summary>
+    public static bool TryGetAboveDatabase(IConfiguration configuration, string key, out string? value)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        value = null;
+        if (configuration is not IConfigurationRoot root)
+        {
+            return false;
+        }
+
+        // Sources above the database override it; anything below it, such as appsettings.json, is a default the
+        // database replaces.
+        var providers = root.Providers.ToList();
+        var databaseIndex = providers.FindIndex(p => p is DatabaseSettingsConfigurationProvider);
+        if (databaseIndex < 0)
+        {
+            return false; // No database settings: nothing can be saved, so nothing is "overridden".
+        }
+
+        // The last provider that has the key wins, as in IConfiguration's indexer.
+        foreach (var provider in providers.Skip(databaseIndex + 1).Reverse())
+        {
+            if (provider.TryGet(key, out value))
+            {
+                return true;
+            }
+        }
+
+        value = null;
+        return false;
     }
 
     /// <summary>

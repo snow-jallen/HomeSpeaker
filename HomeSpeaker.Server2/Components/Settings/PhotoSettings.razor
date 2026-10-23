@@ -103,7 +103,7 @@
                 return;
             }
 
-            key = Config[SettingKeys.ImmichApiKey] is { Length: > 0 } saved ? saved : Config[ImmichOptionsFallback.ApiKeyConfigKey];
+            key = ImmichOptionsFallback.EffectiveApiKey(Config);
         }
 
         if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(key))
