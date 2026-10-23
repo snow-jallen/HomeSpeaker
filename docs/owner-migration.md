@@ -1,6 +1,6 @@
 # Owner migration checklist
 
-Do these once, in order, before merging `feature/shareable` into `master` and pushing. This is a checklist for the maintainer; no agent runs it. The deploy workflow reads its owner-specific values from repository variables now, so without step 1 the first deploy refuses to run (nothing is stopped).
+Do these once, in order, before merging `feature/shareable` into `master` and pushing. This is a checklist for the maintainer; no agent runs it. The deploy workflow reads its owner-specific values from repository variables now, so without step 3 the first deploy refuses to run (nothing is stopped).
 
 ## 1. Before you merge
 
@@ -11,9 +11,26 @@ Do these once, in order, before merging `feature/shareable` into `master` and pu
    ssh rpi42 docker compose version
    ```
 
-   Update the `docker-compose-plugin` package if either is older than 2.24.
+   If either is missing or older than 2.24, install the plugin. Leave the old `docker-compose` v1 binary installed; it doesn't conflict, and a revert (section 5) needs it.
+   - Docker from Docker's apt repo (`docker-ce`): `sudo apt-get install -y docker-compose-plugin`.
+   - Docker from Debian's `docker.io` package: bookworm has no plugin package, so install the binary. Use `aarch64` if `dpkg --print-architecture` prints `arm64`, or `armv7` for `armhf`:
 
-2. **Set the repository variables.**
+     ```bash
+     sudo mkdir -p /usr/local/lib/docker/cli-plugins
+     sudo curl -fsSL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-aarch64 \
+       -o /usr/local/lib/docker/cli-plugins/docker-compose
+     sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+     ```
+
+2. **Tag the image that's running now**, so you have a pre-change image to roll back to (section 5). Master builds before this branch were only ever tagged `latest`, and the next build overwrites it. From any machine logged in to GHCR with a token that has `write:packages`:
+
+   ```bash
+   docker buildx imagetools create -t ghcr.io/snow-jallen/homespeaker:pre-shareable ghcr.io/snow-jallen/homespeaker:latest
+   ```
+
+   Without such a token, write down the digest instead. On a Pi, `docker image inspect --format '{{index .RepoDigests 0}}' ghcr.io/snow-jallen/homespeaker:latest` prints `ghcr.io/snow-jallen/homespeaker@sha256:…`, which can be used as an image reference.
+
+3. **Set the repository variables.**
 
    ```bash
    gh variable set DEPLOY_TARGETS --body '[{"runner":"kitchen","host":"kitchen","airplay_name":"Kitchen HomeSpeaker"},{"runner":"upstairs","host":"rpi42","airplay_name":"Upstairs HomeSpeaker"}]'
@@ -22,7 +39,7 @@ Do these once, in order, before merging `feature/shareable` into `master` and pu
    gh variable set DEPLOY_USER --body 'piuser'
    ```
 
-3. **Update the secrets file on each Pi.** Append to `/home/piuser/homespeaker-secrets.env` (the file already holds the Nightscout, Govee, APNs and Immich key values, and they stay):
+4. **Update the secrets file on each Pi.** Append to `/home/piuser/homespeaker-secrets.env` (the file already holds the Nightscout, Govee, APNs and Immich key values, and they stay):
 
    ```
    Immich__BaseUrl=https://immich.boston-cloud.ts.net
@@ -42,14 +59,14 @@ Do these once, in order, before merging `feature/shareable` into `master` and pu
    - If the file does not have `Immich__ApiKey` or `IMMICH_API_KEY`, add it.
    - These values lock the matching settings on the `/settings` page. Remove a line if you would rather edit that setting in the app.
 
-4. **Build the base image first.** The first multi-architecture app build needs `homespeaker-base` to exist for amd64 and arm64 under the lowercase owner name. Dispatch it and wait until it is green:
+5. **Build the base image first.** The first multi-architecture app build needs `homespeaker-base` to exist for amd64 and arm64 under the lowercase owner name. Dispatch it and wait until it is green:
 
    ```bash
    gh workflow run build-base-image.yml
    gh run watch
    ```
 
-5. **Remove the old Aspire dashboard container from before this change, if it is still running.** Telemetry is now an opt-in compose profile, so a dashboard container left from the old compose file is no longer managed. On each Pi:
+6. **Remove the old Aspire dashboard container from before this change, if it is still running.** Telemetry is now an opt-in compose profile, so a dashboard container left from the old compose file is no longer managed. On each Pi:
 
    ```bash
    docker ps -a --filter name=aspire
@@ -90,4 +107,6 @@ Check that the output reports the modules as on, and then confirm each in the UI
 If a Pi misbehaves, either:
 
 - **Revert the merge** on `master` and push; the pipeline redeploys the previous code. The reverted `deploy.yml` is the old one, which calls the standalone `docker-compose` (v1) binary, so keep that binary installed on both Pis until a deploy with the new workflow has succeeded.
-- **Or redeploy an older image** through the new workflow: in `deploy.yml`, change the `HOMESPEAKER_IMAGE=...:latest` line to an earlier tag of `ghcr.io/snow-jallen/homespeaker` (the package page lists them, such as `2026.10.1-<sha>`), push, and run the deploy (`gh workflow run deploy.yml`). This keeps the new deploy steps and Compose v2. Change the line back to `latest` once the fix is in.
+- **Or redeploy an older image** through the new workflow. In `deploy.yml`, change the `HOMESPEAKER_IMAGE=...:latest` line to the image to run, push, and run the deploy (`gh workflow run deploy.yml`). This keeps the new deploy steps and Compose v2. Change the line back to `latest` once the fix is in.
+  - To get the code from before this change, use the `pre-shareable` tag (or the digest) from step 2 of section 1. It's the only pre-change image; master builds before this branch were tagged `latest` only, and dated `YYYY.M.D-<sha>` tags exist only for builds made after the merge. The old image runs fine on the new compose files and ignores the new settings, and this change adds no database migrations, so the database needs nothing.
+  - To roll back between post-merge builds, use a dated tag from the package page (`https://github.com/snow-jallen/homespeaker/pkgs/container/homespeaker`).
