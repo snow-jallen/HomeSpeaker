@@ -47,7 +47,7 @@ curl -fsSL https://raw.githubusercontent.com/snow-jallen/homespeaker/master/inst
 
 ## First run
 
-Open `http://<pi-name>.local/` (or the Pi's IP address). Until you set a location, the app offers a short setup at `/setup`: your location (for the forecast), photos, optional features and an optional PIN. Every step has a Skip button, the location included. Once you finish (or skip past the last step) the setup is marked done (`Setup:Completed`) and the Home page stops sending you there; it also never appears once a location is saved or `Setup__Completed=true` is set. If the setup changed something HomeSpeaker only reads at startup (photos, Nightscout, Govee, anchors), it restarts itself, which takes a few seconds.
+Open `http://<pi-name>.local/` (or the Pi's IP address). Until you set a location, the app offers a short setup at `/setup`: your location (for the forecast), photos, optional features and an optional PIN. Every step has a Skip button, the location included. Once you finish (or skip past the last step) the setup is marked done (`Setup:Completed`) and the Home page stops sending you there; it also never appears once a location is saved or `Setup__Completed=true` is set. If the setup changed something HomeSpeaker only reads at startup (photos, Nightscout, Govee, anchors, AI), it restarts itself, which takes a few seconds.
 
 Everything else is configured on the `/settings` page, which saves to the database in your music folder. Settings can also come from files and environment variables. Later sources win:
 
