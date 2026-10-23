@@ -5,6 +5,8 @@
 @inject IHomeControl HomeControl
 @inject TimeProvider Time
 @inject ILogger<Index> Logger
+@inject IConfiguration Config
+@inject NavigationManager Navigation
 @implements IDisposable
 
 <PageTitle>Home Speaker</PageTitle>
@@ -336,6 +338,12 @@
 
     protected override void OnInitialized()
     {
+        if (HomeSpeaker.Server2.Settings.SetupState.IsNeeded(Config))
+        {
+            Navigation.NavigateTo("/setup");
+            return;
+        }
+
         volumeValue = Dashboard.Volume;
         Dashboard.Changed += onChanged;
     }

@@ -1,0 +1,235 @@
+@page "/setup"
+@rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "Admin")]
+@using HomeSpeaker.Server2.Components.Settings
+@using HomeSpeaker.Server2.Settings
+@implements IDisposable
+@inject IConfiguration Config
+@inject IServiceProvider Services
+@inject ISettingsWriter SettingsWriter
+@inject NavigationManager Navigation
+@inject ILogger<Setup> Logger
+
+<PageTitle>Set up HomeSpeaker</PageTitle>
+
+<div class="glass-page hs-settings hs-setup">
+    <div class="glass-page-header">
+        <h1 class="glass-title">Set up HomeSpeaker</h1>
+        <span class="glass-hint">Step @(step) of @LastStep</span>
+    </div>
+
+    @if (status is not null)
+    {
+        <div class="glass-alert @(statusIsError ? "glass-alert--danger" : "")" role="status">
+            <i class="fas @(statusIsError ? "fa-triangle-exclamation" : "fa-circle-check")" aria-hidden="true"></i>
+            <span>@status</span>
+        </div>
+    }
+
+    @switch (step)
+    {
+        case 1:
+            <section class="glass-card hs-settings-section">
+                <header class="glass-card-header">
+                    <h2 class="glass-card-title">Welcome</h2>
+                </header>
+                <p class="glass-hint">HomeSpeaker plays music, radio and photos on this device. First, tell it where you live so the Home page can show your weather.</p>
+            </section>
+            <LocationSettings Editor="editor" />
+            break;
+        case 2:
+            <section class="glass-card hs-settings-section">
+                <header class="glass-card-header">
+                    <h2 class="glass-card-title">Photos</h2>
+                </header>
+                <p class="glass-hint">By default, drop .jpg files into the <code>photos</code> folder of your music share and they appear as the slideshow. Or connect an Immich album below.</p>
+            </section>
+            <PhotoSettings Editor="editor" />
+            break;
+        case 3:
+            <FeatureSettings Editor="editor" />
+            break;
+        default:
+            <PinSettings />
+            break;
+    }
+
+    <div class="hs-settings-footer hs-settings-buttons">
+        @if (step > 1)
+        {
+            <button type="button" class="glass-btn glass-btn--ghost" @onclick="back" disabled="@busy">
+                <i class="fas fa-arrow-left" aria-hidden="true"></i> Back
+            </button>
+        }
+        @if (step is 3 or 4)
+        {
+            <button type="button" class="glass-btn glass-btn--ghost" @onclick="skip" disabled="@busy">Skip</button>
+        }
+        @if (step < LastStep)
+        {
+            <button type="button" class="glass-btn" @onclick="next" disabled="@(busy || (step == 1 && !FeatureFlags.ForecastEnabled(Config) && !HasLocationValues))">
+                Next <i class="fas fa-arrow-right" aria-hidden="true"></i>
+            </button>
+        }
+        else
+        {
+            <button type="button" class="glass-btn" @onclick="finish" disabled="@busy">
+                <i class="fas fa-check" aria-hidden="true"></i> Finish
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    private const int LastStep = 4;
+
+    private SettingsEditor editor = default!;
+    private int step = 1;
+    private bool busy;
+    private string? status;
+    private bool statusIsError;
+
+    private bool HasLocationValues =>
+        !string.IsNullOrWhiteSpace(editor[SettingKeys.ForecastLatitude]) && !string.IsNullOrWhiteSpace(editor[SettingKeys.ForecastLongitude]);
+
+    protected override void OnInitialized() => load();
+
+    private void load()
+    {
+        if (editor is not null)
+        {
+            editor.Changed -= onEditorChanged;
+        }
+
+        editor = SettingsEditor.Load(Config, Services.GetService<SqliteSettingsStore>());
+        editor.Changed += onEditorChanged;
+    }
+
+    private void onEditorChanged() => StateHasChanged();
+
+    private static readonly HashSet<string> locationKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        SettingKeys.ForecastLatitude,
+        SettingKeys.ForecastLongitude,
+    };
+
+    private static readonly HashSet<string> photoKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        SettingKeys.PhotoSource,
+        SettingKeys.ImmichBaseUrl,
+        SettingKeys.ImmichApiKey,
+        SettingKeys.ImmichAlbumId,
+        SettingKeys.SlideSeconds,
+        SettingKeys.IdleSeconds,
+    };
+
+    private bool inStep(string key, int forStep) => forStep switch
+    {
+        1 => locationKeys.Contains(key),
+        2 => photoKeys.Contains(key),
+        _ => !locationKeys.Contains(key) && !photoKeys.Contains(key),
+    };
+
+    /// <summary>Saves the valid changes for this step's fields; false when a field of this step is invalid.</summary>
+    private bool saveStep()
+    {
+        try
+        {
+            var changes = editor.ValidChanges().Where(c => inStep(c.Key, step)).ToDictionary(c => c.Key, c => c.Value, StringComparer.OrdinalIgnoreCase);
+            var errors = editor.Errors.Where(e => inStep(e.Key, step)).ToDictionary(e => e.Key, e => e.Value, StringComparer.OrdinalIgnoreCase);
+            var pending = editor.Values.Where(v => errors.ContainsKey(v.Key)).ToList();
+            if (changes.Count > 0)
+            {
+                SettingsWriter.Save(changes);
+            }
+
+            // Reload from configuration, then put back what couldn't be saved so it can be fixed.
+            load();
+            foreach (var (key, value) in pending)
+            {
+                editor.Values[key] = value;
+            }
+
+            foreach (var (key, message) in errors)
+            {
+                editor.Errors[key] = message;
+            }
+
+            if (errors.Count > 0)
+            {
+                (status, statusIsError) = ("Fix the fields marked below to continue.", true);
+                return false;
+            }
+
+            status = null;
+            return true;
+        }
+        catch (InvalidOperationException ex)
+        {
+            Logger.LogWarning(ex, "Saving setup step {Step} failed", step);
+            (status, statusIsError) = ("Couldn't save: " + ex.Message, true);
+            return false;
+        }
+    }
+
+    private void next()
+    {
+        busy = true;
+        try
+        {
+            if (!saveStep())
+            {
+                return;
+            }
+
+            if (step == 1 && !FeatureFlags.ForecastEnabled(Config))
+            {
+                (status, statusIsError) = ("Choose your town (or enter latitude and longitude) to continue.", true);
+                return;
+            }
+
+            step++;
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private void back()
+    {
+        status = null;
+        step--;
+    }
+
+    private void skip()
+    {
+        status = null;
+        if (step < LastStep)
+        {
+            step++;
+        }
+        else
+        {
+            finish();
+        }
+    }
+
+    private void finish()
+    {
+        busy = true;
+        try
+        {
+            SettingsWriter.Save(new Dictionary<string, string?> { [SetupState.CompletedKey] = "true" });
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Logger.LogWarning(ex, "Finishing setup failed");
+            (status, statusIsError) = ("Couldn't finish: " + ex.Message, true);
+            busy = false;
+        }
+    }
+
+    public void Dispose() => editor.Changed -= onEditorChanged;
+}

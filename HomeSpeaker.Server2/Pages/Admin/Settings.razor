@@ -16,6 +16,7 @@
     <div class="glass-page-header">
         <h1 class="glass-title">Settings</h1>
         <div class="glass-page-actions">
+            <a class="glass-btn glass-btn--ghost" href="/setup"><i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i> Run setup again</a>
             <button type="button" class="glass-btn" @onclick="save" disabled="@(saving || restarting)">
                 @if (saving)
                 {
