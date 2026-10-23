@@ -239,6 +239,11 @@ if [ "$AIRPLAY" = 1 ]; then
     download scripts/start-shairport.sh "$INSTALL_DIR/scripts/start-shairport.sh" 755
 fi
 
+# The app image runs as its built-in user, uid 1000 (the Pi's first user).
+if [ "$TARGET_UID" != 1000 ]; then
+    warn "$TARGET_USER has uid $TARGET_UID, but the HomeSpeaker container runs as uid 1000. It may not be able to write the music folder ($TARGET_HOME/music or MUSIC_DIR) or use the PulseAudio socket. Installing for the Pi's first user (uid 1000) avoids this; otherwise make the music folder writable by uid 1000."
+fi
+
 if [ ! -S "/run/user/$TARGET_UID/pulse/native" ]; then
     warn "No PulseAudio socket at /run/user/$TARGET_UID/pulse/native. Audio needs a running user audio session (log in on the desktop, or run: sudo loginctl enable-linger $TARGET_USER)."
 fi

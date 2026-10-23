@@ -17,6 +17,7 @@ HomeSpeaker is licensed under the MIT license (see `LICENSE`).
 - Docker with the Compose plugin, version 2.24 or newer (`docker compose version`)
 - Speakers: a USB DAC, or the 3.5 mm headphone jack. HomeSpeaker picks the output automatically: USB audio first, then the headphone jack, then built-in or HDMI. Override it with `ALSA_CARD` (uncomment it in the compose file).
 - Optional: a 1024x600 touchscreen. It is detected as a kiosk automatically.
+- Install for the Pi's first user (uid 1000, the user you made when setting up the Pi). The container runs as uid 1000, so with another user it may not be able to write the music folder or play through that user's PulseAudio; the installer warns when the uid differs.
 
 Only one HomeSpeaker can run per host (the containers have fixed names).
 
