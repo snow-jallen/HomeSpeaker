@@ -1,4 +1,5 @@
 @page "/autoplay"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "Admin")]
 @using HomeSpeaker.Server2.Models
 @inject AutoPlayService autoPlayService
 @inject HomeSpeakerService svc

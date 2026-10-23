@@ -144,6 +144,36 @@ public sealed partial class AdminEndpointTests
         Assert.Contains("/unlock?ReturnUrl=", location, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("/settings")]
+    [InlineData("/setup")]
+    [InlineData("/anchors/edit")]
+    [InlineData("/autoplay")]
+    public async Task AdminPage_WithPinAndNoCookie_RedirectsToUnlock(string path)
+    {
+        using var factory = withPin();
+        using var client = noRedirectClient(factory);
+
+        using var response = await client.GetAsync(new Uri(path, UriKind.Relative));
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        var location = response.Headers.Location?.OriginalString ?? "";
+        Assert.Contains("/unlock?ReturnUrl=", location, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("/anchors")]
+    [InlineData("/aspire")]
+    public async Task OpenPage_WithPinAndNoCookie_IsNotRedirected(string path)
+    {
+        using var factory = withPin();
+        using var client = noRedirectClient(factory);
+
+        using var response = await client.GetAsync(new Uri(path, UriKind.Relative));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     [Fact]
     public async Task AdminCheck_NoPinSet_Returns204()
     {
