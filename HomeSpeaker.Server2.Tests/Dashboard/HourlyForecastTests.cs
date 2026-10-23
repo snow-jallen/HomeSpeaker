@@ -215,7 +215,7 @@ public sealed class HourlyForecastTests
               "is_day":[0,0,1]}}
             """;
         var handler = new FakeHttpMessageHandler((_, _) => FakeHttpMessageHandler.Json(json));
-        var service = new ForecastService(new HttpClient(handler), new ConfigurationBuilder().Build(), NullLogger<ForecastService>.Instance, new MemoryCache(new MemoryCacheOptions()), new FixedTimeProvider(new DateTimeOffset(utcNow)));
+        var service = new ForecastService(new HttpClient(handler), new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Forecast:Latitude"] = "40.0", ["Forecast:Longitude"] = "-100.0" }).Build(), NullLogger<ForecastService>.Instance, new MemoryCache(new MemoryCacheOptions()), new FixedTimeProvider(new DateTimeOffset(utcNow)));
 
         var status = await service.GetForecastStatusAsync();
 

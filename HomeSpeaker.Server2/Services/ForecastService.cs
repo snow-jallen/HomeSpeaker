@@ -14,6 +14,7 @@ public sealed class ForecastService : IForecastService
     private readonly IMemoryCache cache;
     private readonly TimeProvider timeProvider;
 
+    private static int missingCoordinatesLogged;
     private const string CacheKey = "forecast-status";
     private static readonly TimeSpan cacheExpiration = TimeSpan.FromMinutes(30);
     private static readonly JsonSerializerOptions jsonOptions = new() { PropertyNameCaseInsensitive = true };
@@ -109,15 +110,24 @@ public sealed class ForecastService : IForecastService
     {
         logger.LogInformation("Getting forecast status...");
 
-        // Get location from configuration (default to a reasonable location)
-        var latitude = configuration.GetValue<double>("Forecast:Latitude", 39.2683); // Default to NYC
-        var longitude = configuration.GetValue<double>("Forecast:Longitude", -111.63686);
+        // No default location: without configured coordinates there is nothing to forecast.
+        var latitude = configuration.GetValue<double?>("Forecast:Latitude");
+        var longitude = configuration.GetValue<double?>("Forecast:Longitude");
+        if (latitude is null || longitude is null)
+        {
+            if (Interlocked.Exchange(ref missingCoordinatesLogged, 1) == 0)
+            {
+                logger.LogInformation("Forecast is disabled: set Forecast:Latitude and Forecast:Longitude to enable it");
+            }
+
+            return new ForecastStatus { LastUpdated = timeProvider.GetUtcNow().UtcDateTime };
+        }
 
         logger.LogInformation("Fetching forecast for configured location");
 
         // Use Open-Meteo API (free, no API key required). Exceptions propagate to
         // GetForecastStatusAsync, which reports the failure rather than caching placeholder data.
-        var url = $"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,weather_code,is_day&temperature_unit=fahrenheit&timezone=auto&forecast_days=2";
+        var url = $"https://api.open-meteo.com/v1/forecast?latitude={latitude.Value.ToString(CultureInfo.InvariantCulture)}&longitude={longitude.Value.ToString(CultureInfo.InvariantCulture)}&hourly=temperature_2m,precipitation_probability,weather_code,is_day&temperature_unit=fahrenheit&timezone=auto&forecast_days=2";
 
         var response = await httpClient.GetAsync(url, cancellationToken);
         response.EnsureSuccessStatusCode();
