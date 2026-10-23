@@ -106,7 +106,7 @@ validatePort() {
     case "$HTTP_PORT" in
         ''|*[!0-9]*) die "HTTP_PORT must be a number from 1 to 65535 (got '$HTTP_PORT')." ;;
     esac
-    if [ "$HTTP_PORT" -lt 1 ] || [ "$HTTP_PORT" -gt 65535 ]; then
+    if [ "${#HTTP_PORT}" -gt 5 ] || [ "$HTTP_PORT" -lt 1 ] || [ "$HTTP_PORT" -gt 65535 ]; then
         die "HTTP_PORT must be a number from 1 to 65535 (got '$HTTP_PORT')."
     fi
 }
@@ -291,7 +291,7 @@ if [ "$KIOSK" = 1 ]; then
     fi
     # Create each missing directory level owned by the user (not root).
     for dir in "$TARGET_HOME/.config" "$TARGET_HOME/.config/labwc"; do
-        run install -d -m 755 -o "$TARGET_USER" -g "$TARGET_GROUP" "$dir"
+        if [ ! -d "$dir" ] || [ "$DRY_RUN" = 1 ]; then run install -d -m 755 -o "$TARGET_USER" -g "$TARGET_GROUP" "$dir"; fi
     done
     put "$TMP_DIR/autostart" "$AUTOSTART" 755 "$TARGET_USER:$TARGET_GROUP"
 fi

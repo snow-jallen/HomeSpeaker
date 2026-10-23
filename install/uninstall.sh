@@ -67,7 +67,9 @@ esac
 
 echo "==> Removing installer-created files from $INSTALL_DIR"
 run rm -f "$INSTALL_DIR/docker-compose.yml" "$INSTALL_DIR/.env" "$INSTALL_DIR/scripts/start-shairport.sh"
-run rmdir --ignore-fail-on-non-empty "$INSTALL_DIR/scripts" "$INSTALL_DIR"
+for d in "$INSTALL_DIR/scripts" "$INSTALL_DIR"; do
+    if [ -d "$d" ] || [ "$DRY_RUN" = 1 ]; then run rmdir --ignore-fail-on-non-empty "$d"; fi
+done
 if [ -e "$INSTALL_DIR/homespeaker.env" ]; then
     echo "Kept $INSTALL_DIR/homespeaker.env (your settings and secrets)."
 fi
