@@ -6,14 +6,15 @@ public sealed class PhotoSyncWorker(
     IServiceScopeFactory scopeFactory,
     PhotoSyncTrigger trigger,
     IOptions<ImmichOptions> options,
+    IPhotoSource source,
     ILogger<PhotoSyncWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var immich = options.Value;
-        if (!immich.IsConfigured)
+        if (!source.IsConfigured)
         {
-            logger.LogInformation("Immich is not configured; the photo slideshow is disabled");
+            logger.LogInformation("No photo source is configured (Immich settings, or a photos folder); the photo slideshow is disabled");
             return;
         }
 

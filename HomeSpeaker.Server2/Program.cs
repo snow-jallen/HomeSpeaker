@@ -165,8 +165,21 @@ builder.Services.AddSingleton(sp => new PhotoCacheStore(
     sp.GetRequiredService<ILogger<PhotoCacheStore>>()));
 builder.Services.AddSingleton(sp => new PhotoLibrary(sp.GetRequiredService<PhotoCacheStore>(), sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<IOptions<ImmichOptions>>()));
 builder.Services.AddSingleton<PhotoSyncTrigger>();
+PhotoSourceKind photoSourceKind(IServiceProvider sp) =>
+    PhotoSourceSelector.Resolve(sp.GetRequiredService<IConfiguration>(), sp.GetRequiredService<IOptions<ImmichOptions>>().Value);
+builder.Services.AddSingleton<IPhotoSource>(sp =>
+{
+    if (photoSourceKind(sp) == PhotoSourceKind.Immich)
+    {
+        return new ImmichPhotoSource(sp.GetRequiredService<IImmichClient>(), sp.GetRequiredService<IOptions<ImmichOptions>>());
+    }
+
+    var photosFolder = Path.Combine(builder.Configuration[ConfigKeys.MediaFolder] ?? throw new MissingConfigException(ConfigKeys.MediaFolder), "photos");
+    Directory.CreateDirectory(photosFolder);
+    return new FolderPhotoSource(photosFolder);
+});
 builder.Services.AddScoped(sp => new PhotoSyncer(
-    sp.GetRequiredService<IImmichClient>(),
+    sp.GetRequiredService<IPhotoSource>(),
     sp.GetRequiredService<PhotoCacheStore>(),
     sp.GetRequiredService<PhotoLibrary>(),
     sp.GetRequiredService<IOptions<ImmichOptions>>(),
@@ -184,6 +197,7 @@ builder.Services.AddHostedService(sp => new VideoPrefetcher(
     sp.GetRequiredService<ILogger<VideoPrefetcher>>())
 {
     FreeSpaceBytes = sp.GetRequiredService<PhotoCacheStore>().GetAvailableFreeSpace,
+    SourceIsImmich = photoSourceKind(sp) == PhotoSourceKind.Immich,
 });
 builder.Services.AddSingleton<AiProcessingSignal>();
 builder.Services.AddSingleton<AiMusicAnalyzer>();

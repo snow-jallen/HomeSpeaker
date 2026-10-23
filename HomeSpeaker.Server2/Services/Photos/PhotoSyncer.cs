@@ -2,24 +2,24 @@ using Microsoft.Extensions.Options;
 
 namespace HomeSpeaker.Server2.Services.Photos;
 
-/// <summary>One pass of mirroring the configured Immich album into the local photo cache.</summary>
+/// <summary>One pass of mirroring the configured photo source (Immich album or local folder) into the local photo cache.</summary>
 public sealed class PhotoSyncer
 {
-    private readonly IImmichClient immich;
+    private readonly IPhotoSource source;
     private readonly PhotoCacheStore store;
     private readonly PhotoLibrary library;
     private readonly IOptions<ImmichOptions> options;
     private readonly ILogger<PhotoSyncer> logger;
     private readonly Random random;
 
-    public PhotoSyncer(IImmichClient immich, PhotoCacheStore store, PhotoLibrary library, IOptions<ImmichOptions> options, ILogger<PhotoSyncer> logger)
-        : this(immich, store, library, options, logger, Random.Shared)
+    public PhotoSyncer(IPhotoSource source, PhotoCacheStore store, PhotoLibrary library, IOptions<ImmichOptions> options, ILogger<PhotoSyncer> logger)
+        : this(source, store, library, options, logger, Random.Shared)
     {
     }
 
-    public PhotoSyncer(IImmichClient immich, PhotoCacheStore store, PhotoLibrary library, IOptions<ImmichOptions> options, ILogger<PhotoSyncer> logger, Random random)
+    public PhotoSyncer(IPhotoSource source, PhotoCacheStore store, PhotoLibrary library, IOptions<ImmichOptions> options, ILogger<PhotoSyncer> logger, Random random)
     {
-        this.immich = immich;
+        this.source = source;
         this.store = store;
         this.library = library;
         this.options = options;
@@ -35,17 +35,17 @@ public sealed class PhotoSyncer
         IReadOnlyList<ImmichAsset> assets;
         try
         {
-            assets = await immich.GetAlbumAssetsAsync(options.Value.AlbumId!, cancellationToken);
+            assets = await source.ListAssetsAsync(cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             if (ex is HttpRequestException { StatusCode: { } status })
             {
-                logger.LogWarning(ex, "Immich album fetch failed (HTTP {StatusCode}); keeping the existing photo cache", status);
+                logger.LogWarning(ex, "Photo source listing failed (HTTP {StatusCode}); keeping the existing photo cache", status);
             }
             else
             {
-                logger.LogWarning(ex, "Immich album fetch failed; keeping the existing photo cache");
+                logger.LogWarning(ex, "Photo source listing failed; keeping the existing photo cache");
             }
 
             return false;
@@ -156,7 +156,7 @@ public sealed class PhotoSyncer
             assetCts.CancelAfter(TimeSpan.FromSeconds(AssetTimeoutSeconds));
             try
             {
-                await store.SaveImageAsync(asset.Id, stream => immich.DownloadPreviewAsync(asset.Id, stream, assetCts.Token));
+                await store.SaveImageAsync(asset.Id, stream => source.DownloadPreviewAsync(asset.Id, stream, assetCts.Token));
                 entries[asset.Id] = await buildEntryAsync(asset, cancellationToken, assetCts.Token);
                 cached.Add(asset);
                 added++;
@@ -167,11 +167,11 @@ public sealed class PhotoSyncer
                 failed++;
                 if (ex is HttpRequestException { StatusCode: { } status })
                 {
-                    logger.LogWarning(ex, "Skipping Immich asset {AssetId}: HTTP {StatusCode}", asset.Id, status);
+                    logger.LogWarning(ex, "Skipping photo asset {AssetId}: HTTP {StatusCode}", asset.Id, status);
                 }
                 else
                 {
-                    logger.LogWarning(ex, "Skipping Immich asset {AssetId}", asset.Id);
+                    logger.LogWarning(ex, "Skipping photo asset {AssetId}", asset.Id);
                 }
             }
         }
@@ -205,7 +205,7 @@ public sealed class PhotoSyncer
         IReadOnlyList<ImmichFace> faces;
         try
         {
-            faces = await immich.GetFacesAsync(asset.Id, assetToken);
+            faces = await source.GetFacesAsync(asset.Id, assetToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {

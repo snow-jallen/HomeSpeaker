@@ -23,13 +23,40 @@ public sealed class PhotoSyncerTests : IDisposable
 
     public void Dispose() => temp.Dispose();
 
-    private PhotoSyncer createSyncer(ILogger<PhotoSyncer>? logger = null, int cacheSize = 40, int rotatePercent = 25) => new(
-        immich,
-        store,
-        library,
-        Options.Create(new ImmichOptions { BaseUrl = "https://immich.test", ApiKey = "key", AlbumId = "album", CacheSize = cacheSize, RotatePercent = rotatePercent }),
-        logger ?? NullLogger<PhotoSyncer>.Instance,
-        new Random(42));
+    private PhotoSyncer createSyncer(ILogger<PhotoSyncer>? logger = null, int cacheSize = 40, int rotatePercent = 25)
+    {
+        var options = Options.Create(new ImmichOptions { BaseUrl = "https://immich.test", ApiKey = "key", AlbumId = "album", CacheSize = cacheSize, RotatePercent = rotatePercent });
+        return new(
+            new ImmichPhotoSource(immich, options),
+            store,
+            library,
+            options,
+            logger ?? NullLogger<PhotoSyncer>.Instance,
+            new Random(42));
+    }
+
+    [Fact]
+    public async Task Sync_FolderSource_CachesPhotosAndLibraryCountsThem()
+    {
+        using var photos = new TempDirectory();
+        for (var i = 0; i < 3; i++)
+        {
+            File.WriteAllBytes(Path.Combine(photos.Path, $"p{i}.jpg"), TestJpeg.Header(8, 6));
+        }
+
+        var syncer = new PhotoSyncer(
+            new FolderPhotoSource(photos.Path),
+            store,
+            library,
+            Options.Create(new ImmichOptions()),
+            NullLogger<PhotoSyncer>.Instance,
+            new Random(42));
+
+        Assert.True(await syncer.SyncAsync(CancellationToken.None));
+
+        Assert.Equal(3, store.ListCachedImageIds().Count());
+        Assert.Equal(3, library.Count);
+    }
 
     private static string idFor(int n) => new Guid(n, 0, 0, new byte[8]).ToString();
 
