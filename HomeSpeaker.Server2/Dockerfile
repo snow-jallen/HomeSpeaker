@@ -3,7 +3,8 @@
 # which contains all system packages (sox, ffmpeg, vlc, etc.).
 # Rebuild the base image via the build-base-image.yml workflow when packages change.
 
-FROM ghcr.io/snow-jallen/homespeaker-base:latest AS base
+ARG BASE_IMAGE=ghcr.io/snow-jallen/homespeaker-base:latest
+FROM ${BASE_IMAGE} AS base
 
 # --max-time/--connect-timeout ensure the probe curl can never hang and leak
 # orphaned processes (dotnet is PID 1 and does not reap children). /alive is a
@@ -15,8 +16,9 @@ WORKDIR /app
 EXPOSE 80
 EXPOSE 443
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
 ARG BUILD_CONFIGURATION=Release
+ARG TARGETARCH
 WORKDIR /src
 
 COPY ["HomeSpeaker.Server2/HomeSpeaker.Server2.csproj", "HomeSpeaker.Server2/"]
@@ -29,8 +31,10 @@ COPY . .
 WORKDIR "/src/HomeSpeaker.Server2"
 
 RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet restore "./HomeSpeaker.Server2.csproj" && \
+    RID_ARCH="${TARGETARCH:-amd64}"; [ "$RID_ARCH" = "amd64" ] && RID_ARCH=x64; \
+    dotnet restore "./HomeSpeaker.Server2.csproj" -a "$RID_ARCH" && \
     dotnet publish "./HomeSpeaker.Server2.csproj" \
+    -a "$RID_ARCH" \
     -c $BUILD_CONFIGURATION \
     -o /app/publish \
     /p:UseAppHost=false \
