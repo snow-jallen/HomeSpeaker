@@ -49,12 +49,14 @@ Do these once, in order, before merging `feature/shareable` into `master` and pu
    gh run watch
    ```
 
-5. **Remove the old Aspire dashboard container, if one is still running.** Telemetry is now an opt-in compose profile, so a container left from the old compose file is no longer managed. On each Pi:
+5. **Remove the old Aspire dashboard container from before this change, if it is still running.** Telemetry is now an opt-in compose profile, so a dashboard container left from the old compose file is no longer managed. On each Pi:
 
    ```bash
    docker ps -a --filter name=aspire
-   docker rm -f <name>      # only if it is listed
+   docker rm -f <name>      # only the old one, if listed
    ```
+
+   Leave the new `homespeaker-aspire` container (telemetry profile) alone if you enable it.
 
 ## 2. Merge
 

@@ -348,6 +348,8 @@ builder.Services.AddMudServices();
 
 var app = builder.Build();
 
+AdminPinReset.Apply(app.Configuration, settingsSource?.Store, settingsSource?.Provider, app.Logger);
+
 // Configure SQLite for optimal performance
 using (var scope = app.Services.CreateScope())
 {

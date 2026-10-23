@@ -65,13 +65,7 @@ Set an optional PIN on the settings page (4 to 12 digits). With a PIN, `/setting
 
 ### Forgot the admin PIN
 
-Put an empty `Admin__PinHash=` in `/opt/homespeaker/homespeaker.env` and run `cd /opt/homespeaker && sudo docker compose up -d`. The PIN is now off. The old PIN is still saved, and returns if you remove that line. To pick a new one, delete the saved PIN first (install `sqlite3` if needed), then remove the line and restart:
-
-```bash
-sudo sqlite3 ~/music/HomeSpeaker.db "DELETE FROM AppSettings WHERE Key='Admin:PinHash';"
-```
-
-Use the path of your music folder (`MUSIC_DIR` in `/opt/homespeaker/.env`). Then set a new PIN on the settings page.
+Add `Admin__ResetPin=true` to `/opt/homespeaker/homespeaker.env` and run `cd /opt/homespeaker && sudo docker compose up -d`. On startup HomeSpeaker deletes the saved PIN, so settings are open again. Then remove that line (it would clear the PIN on every start), run `sudo docker compose up -d` again, and choose a new PIN on the settings page.
 
 ## Music and photos
 
@@ -146,7 +140,7 @@ systemctl list-timers homespeaker-update.timer
 sudo systemctl start homespeaker-update.service
 ```
 
-To stay on a fixed version, set `HOMESPEAKER_IMAGE` in `/opt/homespeaker/.env` to a tag, for example `ghcr.io/snow-jallen/homespeaker:2026.10.22`. To turn automatic updates off, run `sudo systemctl disable --now homespeaker-update.timer`. To update by hand: `cd /opt/homespeaker && sudo docker compose pull && sudo docker compose up -d`.
+To stay on a fixed version, set `HOMESPEAKER_IMAGE` in `/opt/homespeaker/.env` to a tag, for example `ghcr.io/snow-jallen/homespeaker:2026.10.22`. Builds from `master` are tagged `YYYY.M.D-<sha>` (see the repository's GitHub Packages page for the available tags); plain date tags like `2026.10.22` exist only for pushed release tags. To turn automatic updates off, run `sudo systemctl disable --now homespeaker-update.timer`. To update by hand: `cd /opt/homespeaker && sudo docker compose pull && sudo docker compose up -d`.
 
 ## HTTPS (optional)
 

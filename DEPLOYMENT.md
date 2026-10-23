@@ -16,7 +16,7 @@ Set these under Settings, Secrets and variables, Actions, Variables (or with `gh
 
 | Variable | Meaning | Example |
 | --- | --- | --- |
-| `DEPLOY_TARGETS` | JSON array of `{runner, host, airplay_name}`: the self-hosted runner label, the Pi's host name, and the AirPlay name | `[{"runner":"kitchen","host":"kitchen","airplay_name":"Kitchen HomeSpeaker"}]` |
+| `DEPLOY_TARGETS` | JSON array of `{runner, host, airplay_name}`: the self-hosted runner label, the Pi's host name (used by `enable-kiosk.yml` for the kiosk URL), and the AirPlay name | `[{"runner":"kitchen","host":"kitchen","airplay_name":"Kitchen HomeSpeaker"}]` |
 | `TAILNET_DOMAIN` | Tailscale domain, used for the certificate (`<host>.<domain>`) | `example.ts.net` |
 | `DEPLOY_TZ` | Time zone for the containers | `America/Denver` |
 | `DEPLOY_USER` | Linux user on the Pis; home of `music`, `cert` and the secrets file | `pi` |
@@ -33,6 +33,8 @@ gh variable set DEPLOY_USER --body 'pi'
 - A self-hosted GitHub Actions runner labelled with the `runner` name from `DEPLOY_TARGETS`, with Docker and the Docker Compose plugin 2.24 or newer, and passwordless `sudo` for `tailscale cert`, `openssl` and `chown`.
 - `/home/<DEPLOY_USER>/music` (the media folder) and `/home/<DEPLOY_USER>/cert` (the certificate is written there as `certificate.pfx`).
 - Optionally `/home/<DEPLOY_USER>/homespeaker-secrets.env`, which holds settings and secrets. The deploy only touches it to create it empty if missing; it never overwrites it. The template is `homespeaker-secrets.env.example`.
+
+The certificate is issued for the Pi's real hostname (`$(hostname)` on the runner), not for `host`, so `host` should match it. Only `enable-kiosk.yml` reads `matrix.host` (to build the kiosk URL `https://<host>.<TAILNET_DOMAIN>/?kiosk=1`); `deploy.yml` reads `runner` and `airplay_name`.
 
 The deploy writes `.env` in the runner's workspace with `AIRPLAY_NAME`, `HOMESPEAKER_IMAGE`, `HOMESPEAKER_ENV_FILE`, `MUSIC_DIR`, `CERT_DIR`, `TZ`, `COMPOSE_PROFILES=airplay` and `PUID=1000`, and runs `docker compose -f docker-compose.yml -f docker-compose.https.yml`. Containers have fixed names, so each Pi runs one stack. The telemetry profile is not enabled by deploy.
 
@@ -52,7 +54,7 @@ The deploy writes `.env` in the runner's workspace with `AIRPLAY_NAME`, `HOMESPE
 
 ## Push Notifications
 
-HomeSpeaker supports APNs-backed push notifications for registered iOS devices. Pushes are off until all four values below are set.
+HomeSpeaker supports APNs-backed push notifications for registered iOS devices. Pushes are off until Topic, TeamId, KeyId and one of PrivateKeyBase64 or PrivateKeyPath are set. `UseSandbox` is separate: it only chooses the APNs environment.
 
 ### APNs configuration
 
