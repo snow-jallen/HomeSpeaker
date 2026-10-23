@@ -11,6 +11,7 @@ using HomeSpeaker.Server2.Services.LiveActivities;
 using HomeSpeaker.Server2.Services.MediaSearch;
 using HomeSpeaker.Server2.Services.Photos;
 using HomeSpeaker.Server2.Settings;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
@@ -71,6 +72,26 @@ builder.Services.AddScoped(sp =>
         BaseAddress = new Uri(navigationManager.BaseUri)
     };
 });
+builder.Services.AddAuthentication()
+    .AddCookie(AdminPinHandler.SchemeName, options =>
+    {
+        options.Cookie.Name = "hs-admin";
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.None; // must work over plain HTTP on the LAN
+        options.Cookie.HttpOnly = true;
+        options.ExpireTimeSpan = TimeSpan.FromDays(30);
+        options.SlidingExpiration = true;
+        options.LoginPath = "/unlock";
+    });
+builder.Services.AddAuthorization(options =>
+    options.AddPolicy("Admin", policy =>
+    {
+        policy.AddAuthenticationSchemes(AdminPinHandler.SchemeName);
+        policy.AddRequirements(new AdminPinRequirement());
+    }));
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddSingleton<IAuthorizationHandler, AdminPinHandler>();
+builder.Services.AddSingleton(sp => new PinAttemptLimiter(TimeProvider.System));
 builder.Services.AddHostedService<MigrationApplier>();
 if (FeatureFlags.AnchorsEnabled(builder.Configuration))
 {
@@ -387,6 +408,8 @@ app.Use(async (context, next) =>
 });
 app.UseRouting();
 app.UseCors(LocalCorsPolicy);
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 app.MapGet("/api/features", (IConfiguration config, PhotoLibrary photos, IChatClient chatClient) => new
 {
@@ -470,6 +493,7 @@ app.MapGet("/api/music/{songId:int}", (int songId, Mp3Library library, ILogger<P
 app.MapHomeSpeakerApi();
 app.MapMediaSearchApi();
 app.MapPhotoApi();
+app.MapAdminApi();
 app.MapAiApi();
 
 // Stream image search endpoint
