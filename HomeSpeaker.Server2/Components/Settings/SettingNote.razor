@@ -1,0 +1,20 @@
+@using HomeSpeaker.Server2.Settings
+
+@if (Editor.Errors.TryGetValue(Key, out var error))
+{
+    <small class="hs-settings-error" role="alert">@error</small>
+}
+else if (Editor.IsOverridden(Key))
+{
+    <small class="hs-settings-note"><i class="fas fa-lock" aria-hidden="true"></i> Set by an environment variable; change it there.</small>
+}
+else if (!string.IsNullOrEmpty(Hint))
+{
+    <small class="hs-settings-note">@Hint</small>
+}
+
+@code {
+    [Parameter, EditorRequired] public SettingsEditor Editor { get; set; } = default!;
+    [Parameter, EditorRequired] public string Key { get; set; } = "";
+    [Parameter] public string? Hint { get; set; }
+}

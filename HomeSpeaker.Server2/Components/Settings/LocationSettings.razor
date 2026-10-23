@@ -1,0 +1,102 @@
+@using System.Globalization
+@using HomeSpeaker.Server2.Settings
+@inject LocationSearchService LocationSearch
+@inject ILogger<LocationSettings> Logger
+
+<section class="glass-card hs-settings-section" aria-labelledby="settingsLocationTitle">
+    <header class="glass-card-header">
+        <h2 class="glass-card-title" id="settingsLocationTitle">Location</h2>
+    </header>
+    <p class="glass-hint">Used for the weather forecast on the Home page.</p>
+
+    @if (!locked)
+    {
+        <form class="glass-input-group hs-settings-search" @onsubmit="search" @onsubmit:preventDefault="true">
+            <input class="glass-input" type="search" placeholder="Find my town (e.g. Ephraim, Utah)" aria-label="Find my town" @bind="query" />
+            <button type="submit" class="glass-btn" disabled="@searching">
+                @if (searching)
+                {
+                    <span class="glass-spinner glass-spinner--inline" role="status" aria-label="Searching"></span>
+                }
+                else
+                {
+                    <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+                }
+                Find
+            </button>
+        </form>
+        @if (searchError is not null)
+        {
+            <small class="hs-settings-error" role="alert">@searchError</small>
+        }
+        @if (matches is { Count: 0 })
+        {
+            <p class="glass-hint">No places found.</p>
+        }
+        else if (matches is not null)
+        {
+            <ul class="hs-settings-choices">
+                @foreach (var match in matches)
+                {
+                    <li>
+                        <button type="button" class="glass-btn glass-btn--ghost" @onclick="() => choose(match)">
+                            @describe(match)
+                        </button>
+                    </li>
+                }
+            </ul>
+        }
+        @if (chosen is not null)
+        {
+            <p class="glass-hint">Chose @chosen. Save to keep it.</p>
+        }
+    }
+
+    <div class="glass-form-grid">
+        <SettingInput Editor="Editor" Key="@SettingKeys.ForecastLatitude" InputMode="decimal" Placeholder="39.3597" />
+        <SettingInput Editor="Editor" Key="@SettingKeys.ForecastLongitude" InputMode="decimal" Placeholder="-111.5863" />
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public SettingsEditor Editor { get; set; } = default!;
+
+    private string query = "";
+    private bool searching;
+    private string? searchError;
+    private string? chosen;
+    private IReadOnlyList<LocationMatch>? matches;
+
+    private bool locked => Editor.IsOverridden(SettingKeys.ForecastLatitude) || Editor.IsOverridden(SettingKeys.ForecastLongitude);
+
+    private async Task search()
+    {
+        searching = true;
+        searchError = null;
+        try
+        {
+            matches = await LocationSearch.SearchAsync(query, CancellationToken.None);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            Logger.LogWarning(ex, "Location search failed for {Query}", query);
+            matches = null;
+            searchError = "Couldn't reach the place search. Check the internet connection, or type the latitude and longitude.";
+        }
+        finally
+        {
+            searching = false;
+        }
+    }
+
+    private void choose(LocationMatch match)
+    {
+        Editor[SettingKeys.ForecastLatitude] = Math.Round(match.Latitude, 4).ToString(CultureInfo.InvariantCulture);
+        Editor[SettingKeys.ForecastLongitude] = Math.Round(match.Longitude, 4).ToString(CultureInfo.InvariantCulture);
+        chosen = describe(match);
+        matches = null;
+    }
+
+    private static string describe(LocationMatch match) =>
+        string.Join(", ", new[] { match.Name, match.Region, match.Country }.Where(p => !string.IsNullOrEmpty(p)));
+}

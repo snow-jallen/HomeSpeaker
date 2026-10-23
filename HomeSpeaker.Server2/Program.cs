@@ -97,6 +97,15 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddSingleton<IAuthorizationHandler, AdminPinHandler>();
 builder.Services.AddSingleton(sp => new PinAttemptLimiter(TimeProvider.System));
+builder.Services.AddSingleton<IAppRestarter, AppRestarter>();
+builder.Services.AddHttpClient<LocationSearchService>(client =>
+{
+    client.BaseAddress = new Uri("https://geocoding-api.open-meteo.com/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+// No base address: the settings page passes the Immich URL the user typed.
+builder.Services.AddHttpClient(ImmichAlbumBrowser.ClientName, client => client.Timeout = TimeSpan.FromSeconds(15));
+builder.Services.AddSingleton<ImmichAlbumBrowser>();
 builder.Services.AddHostedService<MigrationApplier>();
 if (FeatureFlags.AnchorsEnabled(builder.Configuration))
 {
@@ -513,6 +522,7 @@ app.MapHomeSpeakerApi();
 app.MapMediaSearchApi();
 app.MapPhotoApi();
 app.MapAdminApi();
+app.MapSettingsApi();
 app.MapAiApi();
 
 // Stream image search endpoint

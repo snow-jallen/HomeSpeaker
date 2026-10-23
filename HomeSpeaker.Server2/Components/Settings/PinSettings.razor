@@ -1,0 +1,150 @@
+@using HomeSpeaker.Server2.Settings
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ISettingsWriter SettingsWriter
+@inject IConfiguration Config
+@inject IServiceProvider Services
+@inject ILogger<PinSettings> Logger
+
+<section class="glass-card hs-settings-section" aria-labelledby="settingsPinTitle">
+    <header class="glass-card-header">
+        <h2 class="glass-card-title" id="settingsPinTitle">Admin PIN</h2>
+    </header>
+    <p class="glass-hint">
+        @(pinSet
+            ? "A PIN protects these settings."
+            : "No PIN: anyone on your network can change these settings. Set a 4 to 12 digit PIN to lock them.")
+    </p>
+
+    @if (overridden)
+    {
+        <p class="hs-settings-note"><i class="fas fa-lock" aria-hidden="true"></i> The PIN is set by an environment variable; change it there.</p>
+    }
+    else
+    {
+        <div class="glass-form-grid">
+            <label class="glass-field">
+                <span>@(pinSet ? "New PIN" : "PIN")</span>
+                <input class="glass-input" type="password" inputmode="numeric" autocomplete="new-password" maxlength="12" @bind="pin" />
+            </label>
+            <label class="glass-field">
+                <span>Type it again</span>
+                <input class="glass-input" type="password" inputmode="numeric" autocomplete="new-password" maxlength="12" @bind="confirm" />
+            </label>
+        </div>
+        <div class="hs-settings-buttons">
+            <button type="button" class="glass-btn" @onclick="setPin">
+                <i class="fas fa-key" aria-hidden="true"></i> @(pinSet ? "Change PIN" : "Set PIN")
+            </button>
+            @if (pinSet)
+            {
+                <button type="button" class="glass-btn glass-btn--danger" @onclick="clearPin" disabled="@(!unlocked)"
+                        title="@(unlocked ? "Remove the PIN" : "Unlock with the PIN first")">
+                    <i class="fas fa-lock-open" aria-hidden="true"></i> Remove PIN
+                </button>
+            }
+        </div>
+    }
+
+    @if (message is not null)
+    {
+        <p class="@(isError ? "hs-settings-error" : "glass-hint")" role="status">@message</p>
+    }
+
+    @if (pinSet && unlocked)
+    {
+        @* A real form post: /api/admin/lock signs out the cookie and redirects home. *@
+        <form method="post" action="/api/admin/lock" class="hs-settings-buttons">
+            <AntiforgeryToken />
+            <button type="submit" class="glass-btn glass-btn--ghost"><i class="fas fa-lock" aria-hidden="true"></i> Lock</button>
+        </form>
+    }
+</section>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private string? pin;
+    private string? confirm;
+    private string? message;
+    private bool isError;
+    private bool unlocked;
+    private bool overridden;
+    private bool setHere;
+
+    private bool pinSet => AdminPin.IsSet(Config);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var db = Services.GetService<SqliteSettingsStore>()?.LoadAll() ?? new Dictionary<string, string>();
+        overridden = SettingsForm.IsOverridden(Config, db, AdminPin.ConfigKey);
+        if (AuthState is not null)
+        {
+            var user = (await AuthState).User;
+            unlocked = user.Identities.Any(i => i.IsAuthenticated && i.AuthenticationType == AdminPinHandler.SchemeName);
+        }
+    }
+
+    private void setPin()
+    {
+        // Changing someone else's PIN needs the unlock; this circuit may predate it being set.
+        if (pinSet && !unlocked && !setHere)
+        {
+            show("Unlock with the current PIN before changing it.", error: true);
+            return;
+        }
+
+        if (!AdminPin.IsValidFormat(pin))
+        {
+            show("The PIN must be 4 to 12 digits.", error: true);
+            return;
+        }
+
+        if (!string.Equals(pin, confirm, StringComparison.Ordinal))
+        {
+            show("The two PINs don't match.", error: true);
+            return;
+        }
+
+        if (save(AdminPin.Hash(pin!)))
+        {
+            setHere = true;
+            show(unlocked ? "PIN saved." : "PIN saved. You'll need it the next time you open Settings.", error: false);
+        }
+    }
+
+    private void clearPin()
+    {
+        if (!unlocked)
+        {
+            show("Unlock with the current PIN before removing it.", error: true);
+            return;
+        }
+
+        if (save(null))
+        {
+            show("PIN removed. Settings are open to everyone on your network.", error: false);
+        }
+    }
+
+    private bool save(string? hash)
+    {
+        try
+        {
+            SettingsWriter.Save(new Dictionary<string, string?> { [AdminPin.ConfigKey] = hash });
+            pin = confirm = null;
+            return true;
+        }
+        catch (InvalidOperationException ex)
+        {
+            Logger.LogWarning(ex, "Saving the admin PIN failed");
+            show("Couldn't save: " + ex.Message, error: true);
+            return false;
+        }
+    }
+
+    private void show(string text, bool error)
+    {
+        message = text;
+        isError = error;
+    }
+}

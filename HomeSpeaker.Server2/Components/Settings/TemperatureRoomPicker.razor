@@ -1,0 +1,132 @@
+@using HomeSpeaker.Server2.Settings
+@inject IServiceScopeFactory ScopeFactory
+@inject IConfiguration Config
+
+<div class="hs-settings-rooms">
+    <h3 class="glass-section-title">Rooms</h3>
+    @if (string.IsNullOrEmpty(Config[SettingKeys.TemperatureApiKey]))
+    {
+        <p class="glass-hint">Save a Govee API key, then come back to name the rooms.</p>
+    }
+    else if (loading)
+    {
+        <div class="glass-spinner glass-spinner--inline" role="status" aria-label="Loading sensors"></div>
+    }
+    else if (rows.Count == 0)
+    {
+        <p class="glass-hint">No Govee sensors found. Check the API key, save, and restart.</p>
+    }
+    else
+    {
+        @if (readOnly)
+        {
+            <p class="hs-settings-note"><i class="fas fa-lock" aria-hidden="true"></i> Rooms are set by an environment variable; change them there.</p>
+        }
+        else if (!representable)
+        {
+            <p class="glass-alert glass-alert--warning" role="note">Rooms are set with matching rules; editing here replaces them</p>
+        }
+        <p class="glass-hint">Name a room to show it; leave it blank to hide the sensor. Pick the one outside for window advice.</p>
+        <ol class="hs-settings-room-list">
+            @for (var i = 0; i < rows.Count; i++)
+            {
+                var index = i;
+                var row = rows[index];
+                <li class="hs-settings-room">
+                    <span class="hs-settings-room-device" title="Govee device">@row.DeviceName</span>
+                    <input class="glass-input" type="text" placeholder="Hidden" aria-label="@($"Room for {row.DeviceName}")"
+                           value="@row.Room" @onchange="e => setRoom(index, e.Value?.ToString())" disabled="@readOnly" />
+                    <label class="hs-settings-radio">
+                        <input type="radio" name="hs-outside-room" checked="@row.IsOutside" @onchange="() => setOutside(index)"
+                               disabled="@(readOnly || string.IsNullOrWhiteSpace(row.Room))" />
+                        Outside
+                    </label>
+                    <span class="hs-settings-order">
+                        <button type="button" class="hs-icon-btn" aria-label="@($"Move {row.DeviceName} up")" @onclick="() => move(index, -1)" disabled="@(readOnly || index == 0)">
+                            <i class="fas fa-chevron-up" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" class="hs-icon-btn" aria-label="@($"Move {row.DeviceName} down")" @onclick="() => move(index, 1)" disabled="@(readOnly || index == rows.Count - 1)">
+                            <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                        </button>
+                    </span>
+                </li>
+            }
+        </ol>
+        <SettingNote Editor="Editor" Key="@SettingKeys.TemperatureRooms" />
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public SettingsEditor Editor { get; set; } = default!;
+
+    private List<RoomAssignment> rows = [];
+    private bool loading = true;
+    private bool representable = true;
+
+    private bool readOnly => Editor.IsOverridden(SettingKeys.TemperatureRooms) || Editor.IsOverridden(SettingKeys.TemperatureOutsideRoom);
+
+    private bool loaded;
+
+    // Loads once a key is saved, which may happen while the page is open.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (loaded || string.IsNullOrEmpty(Config[SettingKeys.TemperatureApiKey]))
+        {
+            loading = false;
+            return;
+        }
+
+        loaded = true;
+        loading = true;
+        // A fresh scope builds a TemperatureService from the current (possibly just saved) key.
+        await using var scope = ScopeFactory.CreateAsyncScope();
+        var devices = await scope.ServiceProvider.GetRequiredService<ITemperatureService>().GetDevicesAsync();
+        var names = devices.Select(d => d.DeviceName).ToList();
+        representable = RoomAssignments.IsRepresentable(Editor[SettingKeys.TemperatureRooms], names);
+        rows = [.. RoomAssignments.FromRules(names, Editor[SettingKeys.TemperatureRooms], Editor[SettingKeys.TemperatureOutsideRoom])];
+        loading = false;
+    }
+
+    private void setRoom(int index, string? room)
+    {
+        var row = rows[index];
+        var blank = string.IsNullOrWhiteSpace(room);
+        rows[index] = row with { Room = blank ? null : room!.Trim(), IsOutside = !blank && row.IsOutside };
+        write();
+    }
+
+    private void setOutside(int index)
+    {
+        rows = [.. rows.Select((row, i) => row with { IsOutside = i == index })];
+        write();
+    }
+
+    private void move(int index, int delta)
+    {
+        var target = index + delta;
+        (rows[index], rows[target]) = (rows[target], rows[index]);
+        write();
+    }
+
+    // Only an edit writes the rooms, so opening the page never replaces rules it can't show.
+    private void write()
+    {
+        var named = rows.Where(r => r.Room is not null).Select(r => r.Room!).ToList();
+        if (named.Any(r => r.IndexOfAny([';', ':', ',']) >= 0))
+        {
+            Editor.Errors[SettingKeys.TemperatureRooms] = "Room names can't contain ; : or ,";
+            return;
+        }
+
+        if (named.Count != named.Distinct(StringComparer.OrdinalIgnoreCase).Count())
+        {
+            Editor.Errors[SettingKeys.TemperatureRooms] = "Each room needs a different name.";
+            return;
+        }
+
+        var (roomsSetting, outside) = RoomAssignments.ToSettings(rows);
+        Editor[SettingKeys.TemperatureRooms] = roomsSetting;
+        Editor[SettingKeys.TemperatureOutsideRoom] = outside ?? "";
+        representable = true;
+    }
+}
