@@ -29,6 +29,10 @@ jobs:
         include: ${{ fromJSON(vars.DEPLOY_TARGETS || '[{}]') }}
 
     steps:
+    - name: Check deploy configuration
+      run: |
+        : "${DEPLOY_USER:?DEPLOY_USER repo variable is not set}" "${TAILNET_DOMAIN:?TAILNET_DOMAIN repo variable is not set}" "${DEPLOY_TZ:?DEPLOY_TZ repo variable is not set}"
+
     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
     - name: Log in to GitHub Container Registry
@@ -42,11 +46,19 @@ jobs:
       run: |
         # Prefer the v2 plugin; fall back to the standalone v1 binary on older runners.
         if docker compose version >/dev/null 2>&1; then DC="docker compose"; else DC="docker-compose"; fi
+        # env_file with `required: false` needs Compose v2.24+; fail before anything is stopped.
+        VER=$($DC version --short 2>/dev/null | head -1 | sed 's/^v//')
+        MIN=2.24
+        OLDEST=$(echo "$MIN $VER" | tr ' ' '\n' | sort -V | head -1)
+        if [ -z "$VER" ] || [ "$DC" != "docker compose" ] || [ "$OLDEST" != "$MIN" ]; then
+          echo "::error::Docker Compose 2.24+ is required (found ${VER:-none}); install the docker-compose-plugin"
+          exit 1
+        fi
         echo "DC=$DC -f docker-compose.yml -f docker-compose.https.yml" >> "$GITHUB_ENV"
 
     - name: Renew Tailscale certificate
       run: |
-        cd ~/cert
+        cd "/home/${DEPLOY_USER}/cert"
         HOSTNAME=$(hostname)
         sudo tailscale cert "${HOSTNAME}.${TAILNET_DOMAIN}"
         sudo openssl pkcs12 -export -out certificate.pfx -inkey "${HOSTNAME}.${TAILNET_DOMAIN}.key" -in "${HOSTNAME}.${TAILNET_DOMAIN}.crt" -passout pass:

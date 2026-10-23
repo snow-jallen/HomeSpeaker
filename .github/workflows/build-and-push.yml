@@ -18,6 +18,9 @@ jobs:
     steps:
     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+    - name: Lowercase repository owner
+      run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
     - name: Set up QEMU
       uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
 
@@ -49,7 +52,7 @@ jobs:
         context: .
         file: ./HomeSpeaker.Server2/Dockerfile
         platforms: linux/arm64,linux/amd64
-        build-args: BASE_IMAGE=ghcr.io/${{ github.repository_owner }}/homespeaker-base:latest
+        build-args: BASE_IMAGE=ghcr.io/${{ env.OWNER_LC }}/homespeaker-base:latest
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
