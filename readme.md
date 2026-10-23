@@ -86,7 +86,7 @@ A feature is off, and its widgets hidden, until you configure it. Configure each
 | Feature | Turn it on with |
 | --- | --- |
 | Blood sugar (Nightscout) | `NIGHTSCOUT_URL` |
-| Room temperatures (Govee) | `Temperature:ApiBaseUrl` and `Temperature:ApiKey` |
+| Room temperatures (Govee) | `Temperature:ApiBaseUrl` (also set `Temperature:ApiKey`, without it there are no readings) |
 | Weather forecast | `Forecast:Latitude` and `Forecast:Longitude` |
 | Anchors (daily habits) | `Features:Anchors=true` |
 | Immich slideshow | `Immich:BaseUrl`, `Immich:AlbumId` and `Immich:ApiKey` |

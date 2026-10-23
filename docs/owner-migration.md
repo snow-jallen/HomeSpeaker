@@ -80,4 +80,14 @@ Check that the output reports the modules as on, and then confirm each in the UI
 - [ ] Push is on (`/api/features` shows it) and a test notification reaches your phone
 - [ ] `/setup` does not appear (`Setup__Completed=true`)
 
-If a Pi misbehaves, revert the merge on `master` and push; the pipeline redeploys the previous code.
+## 4. Transition notes
+
+- **iOS app.** The TestFlight build installed today does not show room temperatures against the new server until the new iOS build ships. Everything else in it keeps working.
+- **Climate card order.** Rooms now appear in the order of `Temperature__Rooms`, not a fixed order. Keep `Emma` before `Girls` in that line: the first matching room wins, and Emma's sensor name would otherwise match the `Girl` pattern.
+
+## 5. Rolling back
+
+If a Pi misbehaves, either:
+
+- **Revert the merge** on `master` and push; the pipeline redeploys the previous code. The reverted `deploy.yml` is the old one, which calls the standalone `docker-compose` (v1) binary, so keep that binary installed on both Pis until a deploy with the new workflow has succeeded.
+- **Or redeploy an older image** through the new workflow: in `deploy.yml`, change the `HOMESPEAKER_IMAGE=...:latest` line to an earlier tag of `ghcr.io/snow-jallen/homespeaker` (the package page lists them, such as `2026.10.1-<sha>`), push, and run the deploy (`gh workflow run deploy.yml`). This keeps the new deploy steps and Compose v2. Change the line back to `latest` once the fix is in.
