@@ -82,7 +82,7 @@ final class PushNotificationStore {
 
     var registrationDetail: String {
         if !serverSupportsPush {
-            return "This server does not expose push registration yet."
+            return "This server doesn't have push notifications set up."
         }
 
         guard currentConnection != nil else {
@@ -142,6 +142,17 @@ final class PushNotificationStore {
         defer { isRefreshing = false }
 
         let api = APIClient.client(for: connection)
+
+        // A server without APNs configured says so in its features and doesn't
+        // map the push endpoints. Servers too old to report the flag (nil)
+        // fall through to the 404 handling below.
+        if let features = try? await api.getFeatures(), features.pushEnabled == false {
+            serverSupportsPush = false
+            registrationStatus = nil
+            lastError = nil
+            return
+        }
+
         do {
             if authorizationState.isAuthorized, let token = lastRegisteredToken {
                 _ = try await api.upsertPushInstallation(

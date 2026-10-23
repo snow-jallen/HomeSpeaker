@@ -390,7 +390,9 @@ struct NowPlayingView: View {
             message = "Couldn't reach \(connection.name)."
             return
         }
-        await activities.start(for: connection, status: status)
+        // Nil (a server that predates the flag) keeps push-token activities.
+        let serverPushEnabled = features?.pushEnabled != false
+        await activities.start(for: connection, status: status, serverPushEnabled: serverPushEnabled)
     }
 
     private func formatTime(_ seconds: Double) -> String {

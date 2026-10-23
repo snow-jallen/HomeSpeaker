@@ -146,25 +146,21 @@ struct MoreView: View {
 
     @ViewBuilder
     private func temperatureRows(_ temp: TemperatureStatus) -> some View {
-        if let outside = temp.outsideTemperature {
-            tempRow("Outside", value: outside)
+        let outsideName = temp.outsideRoomName
+        let rooms = temp.rooms ?? []
+        // Outside first: the room the server names as outside, else the bare
+        // outside reading. Then every other room in the server's order.
+        if let outsideName, let outsideRoom = rooms.first(where: { $0.name == outsideName }) {
+            tempRow(outsideRoom.name, value: outsideRoom.temperature)
+        } else if outsideName != nil || temp.outsideTemperature != nil {
+            tempRow(outsideName ?? "Outside", value: temp.outsideTemperature)
         }
-        if let greenhouse = temp.greenhouseTemperature {
-            tempRow("Greenhouse", value: greenhouse)
+        ForEach(Array(rooms.enumerated()), id: \.offset) { _, room in
+            if room.name != outsideName {
+                tempRow(room.name, value: room.temperature)
+            }
         }
-        if let momDad = temp.momAndDadsRoomTemperature {
-            tempRow("Primary Bedroom", value: momDad)
-        }
-        if let boys = temp.boysRoomTemperature {
-            tempRow("Boys Room", value: boys)
-        }
-        if let older = temp.olderGirlsRoomTemperature {
-            tempRow("Older Girls Room", value: older)
-        }
-        if let younger = temp.youngerGirlsRoomTemperature {
-            tempRow("Younger Girls Room", value: younger)
-        }
-        if let close = temp.shouldWindowsBeClosed {
+        if let close = temp.shouldWindowsBeClosed, temp.indoorTemperature != nil || temp.rooms == nil {
             HStack {
                 Image(systemName: close ? "window.closed" : "window.open.slash")
                     .foregroundStyle(close ? .orange : .green)
@@ -173,14 +169,22 @@ struct MoreView: View {
         }
     }
 
-    private func tempRow(_ label: String, value: Double) -> some View {
+    /// `value` is °F from the server; shown in the server's unit, or "–" when unread.
+    private func tempRow(_ label: String, value: Double?) -> some View {
         HStack {
             Text(label)
             Spacer()
-            Text(String(format: "%.1f°F", value))
+            Text(formattedTemperature(value))
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
         }
+    }
+
+    private func formattedTemperature(_ fahrenheit: Double?) -> String {
+        guard let fahrenheit else { return "–" }
+        let value = features?.displayTemperature(fahrenheit) ?? fahrenheit
+        let symbol = features?.temperatureUnitSymbol ?? "°F"
+        return String(format: "%.1f", value) + symbol
     }
 
     private var bloodSugarSection: some View {

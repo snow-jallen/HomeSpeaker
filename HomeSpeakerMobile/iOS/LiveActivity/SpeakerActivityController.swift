@@ -47,7 +47,10 @@ final class SpeakerActivityController {
         }
     }
 
-    func start(for connection: ServerConnection, status: PlayerStatus) async {
+    /// `serverPushEnabled` is false when the speaker has no APNs configured:
+    /// the activity is then started without a push token (it updates only
+    /// while the app runs) and nothing is registered with the speaker.
+    func start(for connection: ServerConnection, status: PlayerStatus, serverPushEnabled: Bool = true) async {
         lastError = nil
         if isActive(for: connection) {
             await update(for: connection, status: status)
@@ -61,9 +64,10 @@ final class SpeakerActivityController {
                                                    serverName: connection.name)
         let content = ActivityContent(state: SpeakerActivityAttributes.ContentState(status: status),
                                       staleDate: .now.addingTimeInterval(30 * 60))
+        let pushType: PushType? = serverPushEnabled ? .token : nil
         do {
-            let activity = try Activity.request(attributes: attributes, content: content, pushType: .token)
-            observe(activity)
+            let activity = try Activity.request(attributes: attributes, content: content, pushType: pushType)
+            observe(activity, registersWithServer: pushType != nil)
             refreshActiveIds()
         } catch {
             lastError = error.localizedDescription
@@ -95,15 +99,22 @@ final class SpeakerActivityController {
             .map(\.attributes.serverId))
     }
 
-    private func observe(_ activity: Activity<SpeakerActivityAttributes>) {
+    /// `registersWithServer` is false for an activity started without a push
+    /// type: it never gets a token, and the speaker has no registration to drop.
+    private func observe(_ activity: Activity<SpeakerActivityAttributes>, registersWithServer: Bool = true) {
         guard observedActivityIds.insert(activity.id).inserted else { return }
         let activityId = activity.id
         let serverId = activity.attributes.serverId
 
-        let tokenTask = Task { [weak self] in
-            for await tokenData in activity.pushTokenUpdates {
-                self?.register(tokenData, activityId: activityId, serverId: serverId)
+        let tokenTask: Task<Void, Never>?
+        if registersWithServer {
+            tokenTask = Task { [weak self] in
+                for await tokenData in activity.pushTokenUpdates {
+                    self?.register(tokenData, activityId: activityId, serverId: serverId)
+                }
             }
+        } else {
+            tokenTask = nil
         }
 
         Task { [weak self] in
@@ -112,8 +123,9 @@ final class SpeakerActivityController {
                     break
                 }
             }
-            tokenTask.cancel()
-            if let connection = UUID(uuidString: serverId).flatMap(SharedConnections.connection(id:)) {
+            tokenTask?.cancel()
+            if registersWithServer,
+               let connection = UUID(uuidString: serverId).flatMap(SharedConnections.connection(id:)) {
                 try? await APIClient.client(for: connection).unregisterLiveActivity(id: activityId)
             }
             self?.observedActivityIds.remove(activityId)

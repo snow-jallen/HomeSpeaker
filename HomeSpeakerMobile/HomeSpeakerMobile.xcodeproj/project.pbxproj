@@ -83,6 +83,8 @@
 		E4E397D8772241E63BA6FABE /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 348CD51028183AD1583AC3BC /* AppIntents.framework */; };
 		E67C1946D2602902FAEF6B24 /* PlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1ED18F91C6D18A84AC2CE2D /* PlaylistsView.swift */; };
 		E9CFA7C6C54884491EE42B74 /* ServerListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAA123689971EE3504312BBE /* ServerListView.swift */; };
+		15C7B9C33EC217A90F971A77 /* DiscoveredSpeaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 921AB752B28D9A6D64D04D89 /* DiscoveredSpeaker.swift */; };
+		76ADF43039B7F3856E11FB52 /* SpeakerBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A0B2DD8EB4781764453D8D /* SpeakerBrowser.swift */; };
 		EAB640BDD8902A1A419A7E6C /* SharedConnections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0C0CB4EB4E1C479E92F5FF /* SharedConnections.swift */; };
 		EC64348371F34B3ABFB8174A /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1859B12913E4087DC6C8AE6D /* APIClient.swift */; };
 		ED6AA397244C91B925E949AF /* PlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B0125C146E59A5A2A1943C /* PlaylistsView.swift */; };
@@ -211,6 +213,8 @@
 		CA0CBE3E6C41E061FCD5B6D5 /* SpeakerLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerLiveActivityWidget.swift; sourceTree = "<group>"; };
 		CA6A2857E5D9A42720AB5CCB /* PlaybackMover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackMover.swift; sourceTree = "<group>"; };
 		CAA123689971EE3504312BBE /* ServerListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerListView.swift; sourceTree = "<group>"; };
+		921AB752B28D9A6D64D04D89 /* DiscoveredSpeaker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoveredSpeaker.swift; sourceTree = "<group>"; };
+		E1A0B2DD8EB4781764453D8D /* SpeakerBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerBrowser.swift; sourceTree = "<group>"; };
 		CAF6F1D2EC5D2112E6D5AECA /* MediaPlayer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MediaPlayer.framework; path = System/Library/Frameworks/MediaPlayer.framework; sourceTree = SDKROOT; };
 		CE5E33A6DF228F089492D54D /* HomeSpeakerWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HomeSpeakerWatch.entitlements; sourceTree = "<group>"; };
 		D1C3B78E7383B49C16C349A3 /* HomeSpeakerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeakerApp.swift; sourceTree = "<group>"; };
@@ -384,6 +388,7 @@
 				CA6A2857E5D9A42720AB5CCB /* PlaybackMover.swift */,
 				21B3D000BF32658D2DB982D7 /* PushNotificationStore.swift */,
 				049164FA7410622C07AE424F /* SpeakerStatusStore.swift */,
+				F2CE0F6F231423F981B319CE /* Discovery */,
 				74812DE8131DA7912599C09A /* Intents */,
 				78D352825FDC7B76456F8FFC /* LiveActivity */,
 				6AA690D5044B747696D6E870 /* Resources */,
@@ -391,6 +396,15 @@
 				84A08AE108A37670A8B8DB64 /* Widget */,
 			);
 			path = iOS;
+			sourceTree = "<group>";
+		};
+		F2CE0F6F231423F981B319CE /* Discovery */ = {
+			isa = PBXGroup;
+			children = (
+				921AB752B28D9A6D64D04D89 /* DiscoveredSpeaker.swift */,
+				E1A0B2DD8EB4781764453D8D /* SpeakerBrowser.swift */,
+			);
+			path = Discovery;
 			sourceTree = "<group>";
 		};
 		78D352825FDC7B76456F8FFC /* LiveActivity */ = {
@@ -625,6 +639,7 @@
 				687EB1F65D3FD4831CF9D102 /* APIClient.swift in Sources */,
 				BC18B967C3D72E4E311A3A36 /* ConnectionStore.swift in Sources */,
 				5DBB028FCF8D559EA3178DC6 /* ContentView.swift in Sources */,
+				15C7B9C33EC217A90F971A77 /* DiscoveredSpeaker.swift in Sources */,
 				292C764312EA87DCAE62E163 /* HomeSpeakerApp.swift in Sources */,
 				C4836BE207096383CD1E652A /* HomeSpeakerIntents.swift in Sources */,
 				EFE57C1AEABFFD95F81531ED /* HomeSpeakerShortcuts.swift in Sources */,
@@ -654,6 +669,7 @@
 				5B89CF04187AB42F9978969D /* SharedConnections.swift in Sources */,
 				7CAF0538B8EB0C783A40F27B /* SpeakerActivityAttributes.swift in Sources */,
 				78F566C45A648E16FB61B2BB /* SpeakerActivityController.swift in Sources */,
+				76ADF43039B7F3856E11FB52 /* SpeakerBrowser.swift in Sources */,
 				8C1C25D55C151ACEEA3B359E /* SpeakerStatusStore.swift in Sources */,
 				D03D1C8F483822096AD105C4 /* WatchSync.swift in Sources */,
 				7AB23637168FDA6113A1E116 /* YouTubeView.swift in Sources */,
