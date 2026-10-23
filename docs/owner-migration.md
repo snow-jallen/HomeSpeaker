@@ -30,7 +30,7 @@ Do these once, in order, before merging `feature/shareable` into `master` and pu
 
    Without such a token, write down the digest instead. On a Pi, `docker image inspect --format '{{index .RepoDigests 0}}' ghcr.io/snow-jallen/homespeaker:latest` prints `ghcr.io/snow-jallen/homespeaker@sha256:…`, which can be used as an image reference.
 
-3. **Set the repository variables.**
+3. **Set the repository variables.** Run these from bash (Git Bash on Windows). PowerShell strips the inner double quotes from the `DEPLOY_TARGETS` JSON, which leaves an invalid value; check it afterwards with `gh api repos/snow-jallen/HomeSpeaker/actions/variables/DEPLOY_TARGETS --jq .value`.
 
    ```bash
    gh variable set DEPLOY_TARGETS --body '[{"runner":"kitchen","host":"kitchen","airplay_name":"Kitchen HomeSpeaker"},{"runner":"upstairs","host":"rpi42","airplay_name":"Upstairs HomeSpeaker"}]'
