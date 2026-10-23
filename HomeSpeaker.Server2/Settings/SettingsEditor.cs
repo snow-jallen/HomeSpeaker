@@ -54,6 +54,16 @@ public sealed class SettingsEditor
             Errors[key] = message;
         }
 
+        // The outside and indoor rooms name rooms from Temperature:Rooms; while the rooms can't be saved, neither
+        // can they, or they could point at a room the saved rules don't have.
+        if (Errors.ContainsKey(SettingKeys.TemperatureRooms))
+        {
+            foreach (var key in (string[])[SettingKeys.TemperatureOutsideRoom, SettingKeys.TemperatureIndoorRoom])
+            {
+                Errors.TryAdd(key, "Fix the room names first.");
+            }
+        }
+
         var valid = Values.Where(v => !Errors.ContainsKey(v.Key)).ToDictionary(v => v.Key, v => v.Value, StringComparer.OrdinalIgnoreCase);
         return SettingsForm.Changes(Fields, valid);
     }

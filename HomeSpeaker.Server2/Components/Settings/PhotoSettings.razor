@@ -90,11 +90,20 @@
     {
         albumError = null;
         var baseUrl = Editor[SettingKeys.ImmichBaseUrl];
-        // A masked key stays on the server: use the saved one (or the IMMICH_API_KEY fallback).
+        // A masked key stays on the server: the saved one (or the IMMICH_API_KEY fallback) is only ever sent to
+        // the saved Immich address, never to a newly typed one.
         var key = Editor[SettingKeys.ImmichApiKey];
         if (key == SettingsForm.MaskedValue || string.IsNullOrEmpty(key))
         {
-            key = Config[SettingKeys.ImmichApiKey] is { Length: > 0 } saved ? saved : Config["IMMICH_API_KEY"];
+            if (!ImmichSavedKeyPolicy.Allows(baseUrl, Config[SettingKeys.ImmichBaseUrl]))
+            {
+                albumError = string.IsNullOrWhiteSpace(baseUrl)
+                    ? "Enter the Immich URL and API key first."
+                    : "Type the API key for this address; the saved key is only sent to the saved Immich URL.";
+                return;
+            }
+
+            key = Config[SettingKeys.ImmichApiKey] is { Length: > 0 } saved ? saved : Config[ImmichOptionsFallback.ApiKeyConfigKey];
         }
 
         if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(key))

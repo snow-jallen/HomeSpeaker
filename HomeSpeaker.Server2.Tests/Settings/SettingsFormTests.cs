@@ -29,7 +29,10 @@ public sealed class SettingsFormTests : IDisposable
         envVars.Add(name);
     }
 
-    /// <summary>appsettings (in memory) → database → environment variables, like the app.</summary>
+    /// <summary>
+    /// The app's real order: appsettings JSON file, then environment variables, with the database inserted
+    /// between them by <see cref="SettingsConfigurationExtensions.AddDatabaseSettings"/>.
+    /// </summary>
     private IConfigurationRoot build(IDictionary<string, string?>? db = null, IDictionary<string, string?>? json = null)
     {
         if (db is not null)
@@ -37,10 +40,12 @@ public sealed class SettingsFormTests : IDisposable
             new SqliteSettingsStore(ConnectionString).Save(db.ToDictionary(p => p.Key, p => p.Value));
         }
 
+        var jsonPath = Path.Combine(dir.Path, "appsettings.json");
+        File.WriteAllText(jsonPath, System.Text.Json.JsonSerializer.Serialize(json ?? new Dictionary<string, string?>()));
         return new ConfigurationBuilder()
-            .AddInMemoryCollection(json ?? new Dictionary<string, string?>())
-            .AddDatabaseSettings(ConnectionString)
+            .AddJsonFile(jsonPath)
             .AddEnvironmentVariables(EnvPrefix)
+            .AddDatabaseSettings(ConnectionString)
             .Build();
     }
 
@@ -76,6 +81,19 @@ public sealed class SettingsFormTests : IDisposable
 
         Assert.False(threshold.IsOverridden);
         Assert.Equal("2", threshold.Value);
+    }
+
+    [Fact]
+    public void Read_DatabaseValueOverAppsettings_IsNotOverriddenAndWins()
+    {
+        var config = build(
+            db: new Dictionary<string, string?> { [SettingKeys.NightscoutUrl] = "https://db.example" },
+            json: new Dictionary<string, string?> { [SettingKeys.NightscoutUrl] = "" });
+
+        var nightscout = field(SettingsForm.Read(config, dbValues()), SettingKeys.NightscoutUrl);
+
+        Assert.False(nightscout.IsOverridden);
+        Assert.Equal("https://db.example", nightscout.Value);
     }
 
     [Fact]

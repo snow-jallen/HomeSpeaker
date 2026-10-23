@@ -127,6 +127,7 @@
         var (roomsSetting, outside) = RoomAssignments.ToSettings(rows);
         Editor[SettingKeys.TemperatureRooms] = roomsSetting;
         Editor[SettingKeys.TemperatureOutsideRoom] = outside ?? "";
+        Editor.Errors.Remove(SettingKeys.TemperatureIndoorRoom);
         representable = true;
     }
 }

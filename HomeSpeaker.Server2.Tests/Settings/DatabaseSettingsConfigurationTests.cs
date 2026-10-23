@@ -34,12 +34,73 @@ public sealed class DatabaseSettingsConfigurationTests : IDisposable
         new SqliteSettingsStore(ConnectionString).Save(new Dictionary<string, string?> { ["Immich:BaseUrl"] = "db" });
 
         var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["Immich:BaseUrl"] = "json", ["Other"] = "keep" })
+            .AddJsonFile(jsonFile("""{"Immich":{"BaseUrl":"json"},"Other":"keep"}"""))
             .AddDatabaseSettings(ConnectionString)
             .Build();
 
         Assert.Equal("db", config["immich:baseurl"]);
         Assert.Equal("keep", config["Other"]);
+    }
+
+    private string jsonFile(string json)
+    {
+        var path = Path.Combine(dir.Path, "appsettings-" + Guid.NewGuid().ToString("N") + ".json");
+        File.WriteAllText(path, json);
+        return path;
+    }
+
+    [Fact]
+    public void AddDatabaseSettings_GoesAfterLastJsonSource_BelowUnprefixedEnv()
+    {
+        var builder = new ConfigurationBuilder()
+            .AddInMemoryCollection()
+            .AddEnvironmentVariables("ASPNETCORE_")
+            .AddJsonFile(jsonFile("{}"))
+            .AddJsonFile(jsonFile("{}"))
+            .AddEnvironmentVariables()
+            .AddCommandLine([]);
+
+        builder.AddDatabaseSettings(ConnectionString);
+
+        var sources = builder.Sources.ToList();
+        Assert.IsType<DatabaseSettingsConfigurationSource>(sources[4]);
+        Assert.IsType<Microsoft.Extensions.Configuration.EnvironmentVariables.EnvironmentVariablesConfigurationSource>(sources[5]);
+    }
+
+    [Fact]
+    public void AddDatabaseSettings_NoJson_GoesBeforeLastUnprefixedEnv()
+    {
+        var builder = new ConfigurationBuilder()
+            .AddEnvironmentVariables("DOTNET_")
+            .AddEnvironmentVariables()
+            .AddCommandLine([]);
+
+        builder.AddDatabaseSettings(ConnectionString);
+
+        Assert.IsType<DatabaseSettingsConfigurationSource>(builder.Sources[1]);
+    }
+
+    [Fact]
+    public void Configuration_RealWebApplicationBuilder_AppsettingsBelowDatabaseBelowEnv()
+    {
+        // A temp content root with its own appsettings.json and unique keys, so the process env var touches nothing else.
+        var suffix = Guid.NewGuid().ToString("N");
+        var dbWins = "HsDbWins" + suffix;
+        var envWins = "HsEnvWins" + suffix;
+        var root = Path.Combine(dir.Path, "root");
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, "appsettings.json"), $$"""{"{{dbWins}}":"","{{envWins}}":"json"}""");
+        SetEnv(envWins, "env");
+        new SqliteSettingsStore(ConnectionString).Save(new Dictionary<string, string?> { [dbWins] = "db", [envWins] = "db" });
+
+        var builder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder(new Microsoft.AspNetCore.Builder.WebApplicationOptions { ContentRootPath = root });
+        builder.Configuration.AddDatabaseSettings(ConnectionString);
+        var db = new SqliteSettingsStore(ConnectionString).LoadAll();
+
+        Assert.Equal("db", builder.Configuration[dbWins]);
+        Assert.Equal("env", builder.Configuration[envWins]);
+        Assert.False(SettingsForm.IsOverridden(builder.Configuration, db, dbWins));
+        Assert.True(SettingsForm.IsOverridden(builder.Configuration, db, envWins));
     }
 
     [Fact]
@@ -50,7 +111,7 @@ public sealed class DatabaseSettingsConfigurationTests : IDisposable
         new SqliteSettingsStore(ConnectionString).Save(new Dictionary<string, string?> { ["Immich:BaseUrl"] = "db" });
 
         var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["Immich:BaseUrl"] = "json" })
+            .AddJsonFile(jsonFile("""{"Immich":{"BaseUrl":"json"}}"""))
             .AddEnvironmentVariables(prefix)
             .AddDatabaseSettings(ConnectionString)
             .Build();
@@ -66,6 +127,7 @@ public sealed class DatabaseSettingsConfigurationTests : IDisposable
         new SqliteSettingsStore(ConnectionString).Save(new Dictionary<string, string?> { ["Admin:PinHash"] = "abc" });
 
         var config = new ConfigurationBuilder()
+            .AddJsonFile(jsonFile("{}"))
             .AddEnvironmentVariables(prefix)
             .AddDatabaseSettings(ConnectionString)
             .Build();

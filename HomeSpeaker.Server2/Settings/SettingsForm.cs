@@ -1,5 +1,4 @@
 using System.Globalization;
-using Microsoft.Extensions.Configuration.Json;
 
 namespace HomeSpeaker.Server2.Settings;
 
@@ -38,18 +37,16 @@ public static class SettingsForm
 
         if (configuration is IConfigurationRoot root)
         {
-            // Only sources above the database can override it; anything below is a default the database replaces.
+            // Sources above the database (environment variables, command line) override it; anything below it,
+            // such as appsettings.json, is a default the database replaces.
             var providers = root.Providers.ToList();
             var databaseIndex = providers.FindIndex(p => p is DatabaseSettingsConfigurationProvider);
-            for (var i = providers.Count - 1; i > databaseIndex; i--)
+            if (databaseIndex < 0)
             {
-                if (providers[i].TryGet(key, out _))
-                {
-                    return providers[i] is not (JsonConfigurationProvider or JsonStreamConfigurationProvider);
-                }
+                return false; // No database settings: nothing can be saved, so nothing is "overridden".
             }
 
-            return false;
+            return providers.Skip(databaseIndex + 1).Any(p => p.TryGet(key, out _));
         }
 
         return dbValues.TryGetValue(key, out var stored) && !string.Equals(stored, configuration[key], StringComparison.Ordinal);
