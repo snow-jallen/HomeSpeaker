@@ -30,7 +30,9 @@ COPY ["HomeSpeaker.Shared/HomeSpeaker.Shared.csproj", "HomeSpeaker.Shared/"]
 COPY . .
 WORKDIR "/src/HomeSpeaker.Server2"
 
-RUN --mount=type=cache,target=/root/.nuget/packages \
+# sharing=locked: the arm64 and amd64 builds run this stage in parallel on the same
+# build platform, and two restores extracting into one shared cache collide.
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages,sharing=locked \
     RID_ARCH="${TARGETARCH:-amd64}"; [ "$RID_ARCH" = "amd64" ] && RID_ARCH=x64; \
     dotnet restore "./HomeSpeaker.Server2.csproj" -a "$RID_ARCH" && \
     dotnet publish "./HomeSpeaker.Server2.csproj" \
