@@ -140,17 +140,6 @@ window.idleController = (function () {
         arm();
     }
 
-    // A mouse moving or a wheel scrolling is activity too (desktops), but only a real mouse: touchscreens
-    // also report pointermove while a finger slides, and ambient mode reads that as a swipe.
-    function onMouseActivity(e) {
-        if (e.type === 'pointermove' && e.pointerType !== 'mouse') return;
-        if (mode === 'active') {
-            arm();
-            return;
-        }
-        onActivity(e);
-    }
-
     function onPointerCancel() {
         gesture = null;
         clearSwallow();
@@ -168,7 +157,6 @@ window.idleController = (function () {
     document.addEventListener('pointerup', onPointerUp, true);
     document.addEventListener('pointercancel', onPointerCancel, true);
     document.addEventListener('keydown', onActivity, true);
-    document.addEventListener('pointermove', onMouseActivity, true);
     // A background tab (phone, desktop) must not sit cycling and downloading photos nobody sees: leave the
     // idle screen while hidden and start counting again when the tab comes back. The kiosk is never hidden.
     document.addEventListener('visibilitychange', function () {
@@ -179,7 +167,6 @@ window.idleController = (function () {
             arm();
         }
     });
-    document.addEventListener('wheel', onMouseActivity, { capture: true, passive: false });
     document.addEventListener('click', onClick, true);
 
     return {
