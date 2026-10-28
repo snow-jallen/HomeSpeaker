@@ -45,6 +45,15 @@ public sealed class KioskTests
         Assert.False(Kiosk.IsKiosk(context("localhost", "?kiosk=0").Request));
     }
 
+    [Theory]
+    [InlineData("phone.ts.net", null, null, true)]
+    [InlineData("localhost", null, null, true)]
+    [InlineData("phone.ts.net", "?kiosk=1", null, true)]
+    [InlineData("phone.ts.net", null, "hs-kiosk=0", false)]
+    [InlineData("localhost", "?kiosk=0", null, false)]
+    public void ShowsAmbient_EveryBrowserUnlessOptedOut(string host, string? query, string? cookie, bool expected) =>
+        Assert.Equal(expected, Kiosk.ShowsAmbient(context(host, query, cookie).Request));
+
     [Fact]
     public void ApplyQueryOverride_SetsCookie()
     {

@@ -19,7 +19,7 @@
     <HeadOutlet @rendermode="PageRenderMode" />
 </head>
 
-<body data-kiosk="@kioskAttribute">
+<body data-kiosk="@kioskAttribute" data-ambient="@ambientAttribute">
     <Routes @rendermode="PageRenderMode" />
 
     <div id="blazor-error-ui" role="alert" aria-live="assertive">
@@ -255,4 +255,6 @@
         KioskMode.Auto => "auto",
         _ => "false",
     };
+
+    private string ambientAttribute => HttpContext is not null && Kiosk.ShowsAmbient(HttpContext.Request) ? "true" : "false";
 }

@@ -134,6 +134,10 @@ body[data-kiosk="true"] .not-kiosk {
   display: none !important;
 }
 
+body:not([data-ambient="true"]) .ambient-only {
+  display: none !important;
+}
+
 /* ---------- Shell ---------- */
 
 .hs-backdrop {
@@ -682,6 +686,72 @@ html.hs-mode-night .hs-backdrop {
   color: #c0392b;
 }
 
+/* Phones: the overlay is laid out for the 1024x600 touchscreen, so shrink the clock and chips to share the top
+   edge, and stretch the now-playing card across the bottom with the caption above it. */
+@media (max-width: 700px) {
+  .hs-ov-clock {
+    left: 20px;
+    top: 20px;
+  }
+
+  .hs-ov-time {
+    font-size: 56px;
+    letter-spacing: -2px;
+  }
+
+  .hs-ov-date {
+    font-size: 15px;
+  }
+
+  .hs-ov-chips {
+    right: 16px;
+    top: 20px;
+    gap: 8px;
+    transform: scale(0.65);
+    transform-origin: top right;
+  }
+
+  .hs-ov-playing,
+  .hs-ambient-overlay[data-layout="mirrored"] .hs-ov-playing {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    width: auto;
+    max-width: none;
+  }
+
+  .hs-ov-caption {
+    right: 16px;
+    bottom: 20px;
+  }
+
+  .hs-ambient-overlay:has(.hs-ov-playing) .hs-ov-caption {
+    bottom: 124px;
+  }
+
+  .hs-ambient-overlay[data-layout="mirrored"] .hs-ov-clock {
+    right: 20px;
+  }
+
+  .hs-ambient-overlay[data-layout="mirrored"] .hs-ov-chips {
+    left: 16px;
+    transform-origin: top left;
+  }
+
+  .hs-ambient-overlay[data-layout="mirrored"] .hs-ov-caption {
+    left: 16px;
+  }
+
+  .hs-night-time {
+    font-size: 96px;
+    letter-spacing: -3px;
+  }
+
+  .hs-night-glucose {
+    font-size: 40px;
+  }
+}
+
 /* ---------- Home page ---------- */
 
 .hs-home {
@@ -1042,7 +1112,7 @@ html.hs-mode-night .hs-backdrop {
 .hs-source-tiles {
   flex: none;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -1316,10 +1386,15 @@ html.hs-mode-night .hs-backdrop {
   border-radius: 5px;
 }
 
-/* Nothing else on the right: the music sources become a 2x2 grid of large tiles. */
+/* Nothing else on the right: the music sources become a 2-column grid of large tiles. */
 .hs-source-tiles:last-child {
   flex: 1;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* In a 2-column grid an odd last tile takes the whole row instead of leaving a hole beside it. */
+.hs-source-tiles:last-child .hs-tile:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
 }
 
 .hs-source-tiles:last-child .hs-tile {
@@ -1565,6 +1640,10 @@ html.hs-mode-night .hs-backdrop {
 
   .hs-source-tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hs-source-tiles .hs-tile:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 
   .hs-glucose,

@@ -3,9 +3,10 @@ using System.Net;
 namespace HomeSpeaker.Server2;
 
 /// <summary>
-/// Decides whether the browser is a wall-mounted kiosk (gets the ambient and night screens).
+/// Decides whether the browser is a wall-mounted kiosk (server-only Play button, Pi-sized controls).
 /// Order of precedence: ?kiosk=1/0 query, then the hs-kiosk cookie, then "is the host loopback".
 /// Otherwise the answer is <see cref="KioskMode.Auto"/> and idleController.js decides from the screen size (1024x600).
+/// The idle photo slideshow and night clock are separate: every browser gets them (<see cref="ShowsAmbient"/>).
 /// </summary>
 public static class Kiosk
 {
@@ -13,6 +14,9 @@ public static class Kiosk
     private const string QueryKey = "kiosk";
 
     public static bool IsKiosk(HttpRequest request) => Detect(request) == KioskMode.On;
+
+    /// <summary>Whether the browser drops to the photo slideshow (or night clock) when idle: yes unless opted out with ?kiosk=0.</summary>
+    public static bool ShowsAmbient(HttpRequest request) => Detect(request) != KioskMode.Off;
 
     public static KioskMode Detect(HttpRequest request)
     {
