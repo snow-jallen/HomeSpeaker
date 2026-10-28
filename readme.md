@@ -151,7 +151,7 @@ Setting `COMPOSE_FILE` in `.env` matters: the nightly update runs plain `docker 
 
 ## Telemetry (optional)
 
-An Aspire Dashboard container can show logs, traces and metrics. Add `telemetry` to `COMPOSE_PROFILES` in `.env` (for example `COMPOSE_PROFILES=airplay,telemetry`), set `OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire-dashboard:18889`, and run `docker compose up -d`. The dashboard is on port 18888. It has no login, so only use it on a trusted network.
+An Aspire Dashboard container can show logs, traces and metrics. Add `telemetry` to `COMPOSE_PROFILES` in `.env` (for example `COMPOSE_PROFILES=airplay,telemetry`), set `OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire-dashboard:18889` in `homespeaker.env` (the env file, not `.env`), and run `docker compose up -d`. The dashboard is on port 18888. It has no login, so only use it on a trusted network.
 
 ## Developer quick start
 

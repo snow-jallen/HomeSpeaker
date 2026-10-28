@@ -38,7 +38,8 @@ services:
     - ASPNETCORE_URLS=http://+:80
     - FFMpegLocation=/usr/bin/ffmpeg
     - PULSE_SERVER=unix:/run/user/${PUID:-1000}/pulse/native
-    - OTEL_EXPORTER_OTLP_ENDPOINT
+    # OTEL_EXPORTER_OTLP_* come from the env_file above. Don't list them here: a bare name that isn't set
+    # in .env replaces the env_file's value with an empty one.
     networks:
       speakernet:
 
