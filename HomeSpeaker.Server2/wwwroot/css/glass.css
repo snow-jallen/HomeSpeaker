@@ -1042,7 +1042,7 @@ html.hs-mode-night .hs-backdrop {
 .hs-source-tiles {
   flex: none;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -1316,10 +1316,15 @@ html.hs-mode-night .hs-backdrop {
   border-radius: 5px;
 }
 
-/* Nothing else on the right: the music sources become a 2x2 grid of large tiles. */
+/* Nothing else on the right: the music sources become a 2-column grid of large tiles. */
 .hs-source-tiles:last-child {
   flex: 1;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* In a 2-column grid an odd last tile takes the whole row instead of leaving a hole beside it. */
+.hs-source-tiles:last-child .hs-tile:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
 }
 
 .hs-source-tiles:last-child .hs-tile {
@@ -1565,6 +1570,10 @@ html.hs-mode-night .hs-backdrop {
 
   .hs-source-tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hs-source-tiles .hs-tile:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 
   .hs-glucose,
