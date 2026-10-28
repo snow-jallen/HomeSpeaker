@@ -63,6 +63,9 @@ Example: `https://localhost:7072/api/homespeaker/songs`
 - `POST /api/ai/autoplay/from-current` - Start AI autoplay from current track
 - `POST /api/ai/feedback` - Submit thumbs up/down feedback
 
+### Diagnostics
+- `GET /api/diagnostics` - CPU, memory, disk I/O and container memory pressure sampled every 15 s for the last hour, recent library rescans (with what triggered each and how much they read) and warning/error counts by category. Open from the machine itself (`docker exec homespeaker curl -s localhost/api/diagnostics`); other callers need the admin PIN cookie when a PIN is set.
+
 ### Play by Name
 Used by Siri's "Play King's Singers on Home Speaker". `query` is what was said; optional `kind` (`Playlist`, `Stream`, `Mix`, `Artist`, `Album`, `Song`) is a hint; optional `artist` narrows songs and albums. Both return `{ kind, name, artist }`, or 404 when nothing matches.
 - `GET /media/match?query=&kind=&artist=` - Find the playlist, radio stream, AI mix, artist, album or song a spoken name means

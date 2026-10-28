@@ -11,6 +11,7 @@ using HomeSpeaker.Server2.Services.LiveActivities;
 using HomeSpeaker.Server2.Services.MediaSearch;
 using HomeSpeaker.Server2.Services.Photos;
 using HomeSpeaker.Server2.Settings;
+using HomeSpeaker.Server2.Telemetry;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -49,6 +50,9 @@ builder.Host.ConfigureHostOptions(options =>
 });
 
 builder.AddServiceDefaults();
+var logEventCounter = new LogEventCounter(TimeProvider.System);
+builder.Logging.AddProvider(logEventCounter);
+builder.Services.AddSingleton(logEventCounter);
 
 builder.Services.AddResponseCompression(o => o.EnableForHttps = true);
 builder.Services.AddCors(options =>
@@ -144,6 +148,8 @@ builder.Services.AddSingleton<IMusicPlayer>(services =>
     return new ChattyMusicPlayer(actualPlayer);
 });
 builder.Services.AddSingleton<Mp3Library>();
+builder.Services.AddSingleton<ResourceSampler>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<ResourceSampler>());
 builder.Services.AddHostedService<LifecycleEvents>();
 builder.Services.AddHostedService<AutoPlayMonitorService>();
 
@@ -524,6 +530,7 @@ app.MapHomeSpeakerApi();
 app.MapMediaSearchApi();
 app.MapPhotoApi();
 app.MapAdminApi();
+app.MapDiagnosticsApi();
 app.MapSettingsApi();
 app.MapAiApi();
 

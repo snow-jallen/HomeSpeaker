@@ -59,7 +59,7 @@ Both are wrapped in **`ChattyMusicPlayer`** (a decorator that adds logging/event
 
 ### Music library
 
-**`Mp3Library`** (singleton) is the in-memory catalog. It scans the media folder via `IFileSource`, parses tags via `ITagParser` (TagLibSharp), persists derived data through `IDataStore` (`OnDiskDataStore`), and keeps itself fresh with a debounced `FileSystemWatcher` on `*.mp3`. `Song.SongId` values are assigned here and used throughout the REST/streaming endpoints.
+**`Mp3Library`** (singleton) is the in-memory catalog. It scans the media folder via `IFileSource`, parses tags via `ITagParser` (TagLibSharp), persists derived data through `IDataStore` (`OnDiskDataStore`), and keeps itself fresh with a debounced `FileSystemWatcher` on `*.mp3`. `Song.SongId` values are assigned here and used throughout the REST/streaming endpoints. A change calls `MarkDirty(reason)`; the next read of `Songs` rescans every file (~20 s on a Pi). Only one reader rescans — others get the previous list rather than waiting — and `OnDiskDataStore` swaps in the new list whole, so readers never see a half-built library.
 
 ### UI and the service facade
 
@@ -77,9 +77,13 @@ Minimal APIs. The bulk are mapped in `Endpoints/HomeSpeakerRestEndpoints.cs` via
 
 ### Background hosted services
 
-Registered in `Program.cs` and run for the process lifetime: `MigrationApplier`, `DailyAnchorWorker`, `AirPlayReceiverService`, `LifecycleEvents`, `AutoPlayMonitorService`, `PhotoSyncWorker`, `VideoPrefetcher`, `PlayerStatusBroadcaster`, `LiveActivityPushWorker`, `HealthAlertWorker`, `AiMusicAnalysisWorker`, and `VolumeMonitorService`. AI playlist analysis is gated by config and signalled through `AiProcessingSignal`.
+Registered in `Program.cs` and run for the process lifetime: `MigrationApplier`, `DailyAnchorWorker`, `AirPlayReceiverService`, `LifecycleEvents`, `AutoPlayMonitorService`, `PhotoSyncWorker`, `VideoPrefetcher`, `PlayerStatusBroadcaster`, `LiveActivityPushWorker`, `HealthAlertWorker`, `AiMusicAnalysisWorker`, `ResourceSampler`, and `VolumeMonitorService`. AI playlist analysis is gated by config and signalled through `AiProcessingSignal`.
 
 `PlayerStatusBroadcaster` polls the player (only while something is subscribed) and publishes *material* status changes (song, play state, volume, repeat, sleep timer; not elapsed time). It feeds `GET /api/homespeaker/player/events`, a server-sent-events stream with a 10 s heartbeat, and `LiveActivityPushWorker`, which sends APNs `liveactivity` pushes to iOS Live Activities registered via `PUT/DELETE /api/homespeaker/live-activities/{activityId}` (in memory, 12 h; the app re-registers on foreground). The push `content-state` keys are a contract with `SpeakerActivityAttributes.ContentState` in the iOS app.
+
+### Telemetry and diagnostics
+
+OpenTelemetry (`Extensions.cs`) covers ASP.NET Core, HttpClient, EF Core, runtime and process metrics, plus the app's own `ActivitySource`/`Meter` in `Telemetry/HomeSpeakerTelemetry.cs` (name `HomeSpeaker.Server2`; metrics prefixed `homespeaker.`). Nothing is exported unless `OTEL_EXPORTER_OTLP_ENDPOINT` is set. Without a backend, `GET /api/diagnostics` (`Endpoints/DiagnosticsEndpoints.cs`) answers "what is the server doing": `ResourceSampler` keeps an hour of 15 s samples (CPU, memory, disk I/O from `/proc/self/io`, container memory pressure from the cgroup via `LinuxProcStats`), `Mp3Library.SyncHistory` the last 20 rescans with their trigger and bytes read, and `LogEventCounter` (a logger provider) counts warnings/errors by category and exception type. It is open to loopback (`docker exec homespeaker curl -s localhost/api/diagnostics`) and admin-only otherwise.
 
 ### AI integration
 
