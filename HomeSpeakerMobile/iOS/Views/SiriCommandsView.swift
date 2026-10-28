@@ -91,7 +91,6 @@ struct SiriCommandsView: View {
         ("Play Artist", "music.mic"),
         ("Play Album", "square.stack"),
         ("Play Playlist", "music.note.list"),
-        ("Play AI Playlist", "sparkles"),
         ("Stream Radio", "radio"),
     ]
 
@@ -120,7 +119,7 @@ struct SiriCommandsView: View {
             } header: {
                 Label("Play Anything", systemImage: "play.circle")
             } footer: {
-                Text("Name a playlist, radio stream, AI mix, artist, album or song. \u{201C}Play Home Speaker\u{201D} picks up where it left off.")
+                Text("Name a playlist, radio stream, artist, album or song. \u{201C}Play Home Speaker\u{201D} picks up where it left off.")
             }
 
             ForEach(Self.commands) { command in

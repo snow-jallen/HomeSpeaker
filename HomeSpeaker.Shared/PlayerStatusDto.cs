@@ -20,7 +20,6 @@ public record PlayerStatusDto
     public bool SleepTimerActive { get; init; }
     public double? SleepTimerRemainingMinutes { get; init; }
     public bool RepeatMode { get; init; }
-    public AiPlayerContextDto? AiContext { get; init; }
     public bool IsStream { get; init; }
 
     /// <summary>The radio station name the stream was started with (or its URL when unnamed).</summary>

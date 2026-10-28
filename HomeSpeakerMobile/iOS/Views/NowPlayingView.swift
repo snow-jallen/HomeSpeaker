@@ -312,19 +312,6 @@ struct NowPlayingView: View {
             .buttonStyle(.bordered)
             .tint(repeatOn ? Color.accentColor : .secondary)
             .accessibilityValue(repeatOn ? "On" : "Off")
-
-            if features?.aiEnabled == true, status?.librarySong != nil {
-                Button {
-                    Task {
-                        await run { try await api.startAiAutoplayFromCurrent() }
-                        message = "Playing more like this."
-                    }
-                } label: {
-                    Label("More Like This", systemImage: "sparkles")
-                        .font(.subheadline)
-                }
-                .buttonStyle(.bordered)
-            }
         }
     }
 

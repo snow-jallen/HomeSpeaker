@@ -11,8 +11,6 @@ public sealed class MediaMatcherTests
         new(MediaKind.Playlist, "King's Singers", "King's Singers"),
         new(MediaKind.Stream, "Classical Kids", "3"),
         new(MediaKind.Stream, "KBAQ", "4"),
-        new(MediaKind.Mix, "Hymns", "hymns"),
-        new(MediaKind.Mix, "Quiet Classical", "quiet-classical"),
         new(MediaKind.Artist, "The King's Singers", "The King's Singers"),
         new(MediaKind.Album, "Gold", "Gold", "The King's Singers"),
         new(MediaKind.Song, "1039 - Because", "4069", "Hymns for Home and Church"),
@@ -26,8 +24,6 @@ public sealed class MediaMatcherTests
     [Theory]
     [InlineData("Kings Singers", MediaKind.Playlist)]
     [InlineData("classical kids", MediaKind.Stream)]
-    [InlineData("quiet classical", MediaKind.Mix)]
-    [InlineData("Hymns", MediaKind.Mix)]
     public void ExactNamesWin(string text, MediaKind expected) => Assert.Equal(expected, match(text)!.Kind);
 
     [Fact]
@@ -57,11 +53,11 @@ public sealed class MediaMatcherTests
     {
         MediaCandidate[] christmas =
         [
-            new(MediaKind.Mix, "Christmas", "christmas"),
-            new(MediaKind.Playlist, "Christmas Mix", "Christmas Mix"),
+            new(MediaKind.Stream, "Christmas", "7"),
+            new(MediaKind.Playlist, "Christmas Radio", "Christmas Radio"),
         ];
 
-        Assert.Equal(MediaKind.Playlist, MediaMatcher.Match(christmas, new MediaQuery("christmas mix"))!.Kind);
+        Assert.Equal(MediaKind.Playlist, MediaMatcher.Match(christmas, new MediaQuery("christmas radio"))!.Kind);
     }
 
     [Fact]
@@ -74,7 +70,6 @@ public sealed class MediaMatcherTests
             new(MediaKind.Stream, "Classical 89", "18"),
             new(MediaKind.Stream, "Classical Kids", "16"),
             new(MediaKind.Stream, "Your Classical Radio", "5"),
-            new(MediaKind.Mix, "Quiet Classical", "quiet-classical"),
         ];
 
         Assert.Equal("16", MediaMatcher.Match(streams, new MediaQuery("classical kidsfamily"))!.Key);

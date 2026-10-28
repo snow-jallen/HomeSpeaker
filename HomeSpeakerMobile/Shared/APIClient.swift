@@ -536,7 +536,7 @@ final class APIClient: @unchecked Sendable {
     
     // MARK: - Play by Name
 
-    /// The playlist, stream, AI mix, artist, album or song a spoken name means, or nil when nothing matches.
+    /// The playlist, stream, artist, album or song a spoken name means, or nil when nothing matches.
     func findMedia(query: String, kind: String? = nil, artist: String? = nil) async throws -> MediaMatch? {
         try await mediaRequest("api/homespeaker/media/match", method: "GET", query: query, kind: kind, artist: artist)
     }
@@ -561,38 +561,5 @@ final class APIClient: @unchecked Sendable {
         } catch APIError.serverError(404, _) {
             return nil
         }
-    }
-
-    // MARK: - AI Playlists
-
-    func getAiPlaylists() async throws -> [AiPlaylistSummaryDto] {
-        try await request("api/ai/playlists")
-    }
-    
-    func getAiPlaylist(genreKey: String) async throws -> AiPlaylistDto {
-        let enc = genreKey.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? genreKey
-        return try await request("api/ai/playlists/\(enc)")
-    }
-    
-    func playAiPlaylist(genreKey: String) async throws {
-        let enc = genreKey.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? genreKey
-        try await requestVoid("api/ai/playlists/\(enc)/play", method: "POST")
-    }
-    
-    func getAiStatus() async throws -> AiLibraryStatusDto {
-        try await request("api/ai/status")
-    }
-    
-    func resumeAiProcessing() async throws {
-        try await requestVoid("api/ai/process/resume", method: "POST")
-    }
-    
-    func sendAiFeedback(songId: Int, feedback: String, sessionId: String?) async throws {
-        try await requestVoid("api/ai/feedback", method: "POST",
-            body: AiFeedbackRequest(songId: songId, feedback: feedback, sessionId: sessionId))
-    }
-    
-    func startAiAutoplayFromCurrent() async throws {
-        try await requestVoid("api/ai/autoplay/from-current", method: "POST")
     }
 }

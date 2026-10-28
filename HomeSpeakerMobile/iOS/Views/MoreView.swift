@@ -22,8 +22,6 @@ struct MoreView: View {
 
                 youtubeSection
 
-                aiSection
-
                 offlineSection
 
                 notificationsSection
@@ -83,21 +81,6 @@ struct MoreView: View {
                 YouTubeView()
             } label: {
                 Label("YouTube", systemImage: "play.rectangle")
-            }
-        }
-    }
-
-    private var aiSection: some View {
-        Section("AI") {
-            NavigationLink {
-                AIPlaylistsView()
-            } label: {
-                Label("AI Playlists", systemImage: "sparkles")
-            }
-            NavigationLink {
-                AIStatusView()
-            } label: {
-                Label("AI Status", systemImage: "cpu")
             }
         }
     }

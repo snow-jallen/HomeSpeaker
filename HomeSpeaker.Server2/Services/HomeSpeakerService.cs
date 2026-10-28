@@ -1,6 +1,5 @@
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Models;
-using HomeSpeaker.Shared;
 using Microsoft.EntityFrameworkCore;
 using SharedPlayerStatus = HomeSpeaker.Shared.PlayerStatus;
 using SharedSong = HomeSpeaker.Shared.Song;
@@ -19,9 +18,6 @@ public class HomeSpeakerService
     private readonly PlaylistService playlistService;
     private readonly RadioStreamService radioStreamService;
     private readonly IServiceProvider serviceProvider;
-    private readonly AiMusicCatalogService aiCatalogService;
-    private readonly AiPlaybackService aiPlaybackService;
-    private readonly AiProcessingSignal aiProcessingSignal;
     private readonly PlayerStateService playerStateService;
 
     public event EventHandler? QueueChanged;
@@ -36,9 +32,6 @@ public class HomeSpeakerService
         PlaylistService playlistService,
         RadioStreamService radioStreamService,
         IServiceProvider serviceProvider,
-        AiMusicCatalogService aiCatalogService,
-        AiPlaybackService aiPlaybackService,
-        AiProcessingSignal aiProcessingSignal,
         PlayerStateService playerStateService)
     {
         this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -48,9 +41,6 @@ public class HomeSpeakerService
         this.playlistService = playlistService;
         this.radioStreamService = radioStreamService;
         this.serviceProvider = serviceProvider;
-        this.aiCatalogService = aiCatalogService;
-        this.aiPlaybackService = aiPlaybackService;
-        this.aiProcessingSignal = aiProcessingSignal;
         this.playerStateService = playerStateService;
 
         // Forward player events
@@ -83,7 +73,6 @@ public class HomeSpeakerService
     {
         var status = musicPlayer.Status;
         var currentSong = status?.CurrentSong;
-        var aiContext = await aiPlaybackService.GetCurrentContextAsync(CancellationToken.None);
 
         return await Task.FromResult(new SharedPlayerStatus
         {
@@ -101,8 +90,7 @@ public class HomeSpeakerService
                 Name = currentSong.Name,
                 Artist = currentSong.Artist ?? string.Empty,
                 Album = currentSong.Album ?? string.Empty
-            } : null,
-            AiContext = aiContext
+            } : null
         });
     }
 
@@ -491,7 +479,7 @@ public class HomeSpeakerService
     public async Task CacheVideoAsync(VideoDto video, IProgress<double> progress, CancellationToken cancellationToken = default)
     {
         await youtubeService.CacheVideoAsync(video.Id, video.Title, video.Author, progress);
-        library.IsDirty = true;
+        library.MarkDirty("youtube-cached");
     }
 
     public async Task DeleteRadioStreamAsync(int streamId)
@@ -563,160 +551,5 @@ public class HomeSpeakerService
     {
         logger.LogWarning("ToggleBrightness called but not implemented in SSR mode");
         await Task.CompletedTask;
-    }
-
-    // AI Playlists
-    public async Task<List<AiPlaylistSummary>> GetAiPlaylistsAsync()
-    {
-        try
-        {
-            var summaries = await aiCatalogService.GetGenreSummariesAsync(CancellationToken.None);
-            return summaries
-                .Select(summary => new AiPlaylistSummary
-                {
-                    GenreKey = summary.GenreKey,
-                    DisplayName = summary.DisplayName,
-                    Description = summary.Description,
-                    TrackCount = summary.TrackCount,
-                    LastUpdated = summary.LastUpdatedUtc
-                })
-                .ToList();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error fetching AI playlists");
-            return new List<AiPlaylistSummary>();
-        }
-    }
-
-    public async Task<AiPlaylist?> GetAiPlaylistAsync(string genreKey)
-    {
-        try
-        {
-            var playlist = await aiCatalogService.GetGenrePlaylistAsync(genreKey, 200, CancellationToken.None);
-            if (playlist == null)
-            {
-                return null;
-            }
-
-            return new AiPlaylist
-            {
-                GenreKey = playlist.GenreKey,
-                DisplayName = playlist.DisplayName,
-                Description = playlist.Description,
-                Tracks = playlist.Tracks.Select(track => new AiPlaylistTrack
-                {
-                    Song = track.Song.ToSongViewModel(),
-                    GenreScore = track.GenreScore,
-                    GenreRank = track.GenreRank,
-                    Why = track.Why,
-                    Markers = track.Markers.Select(marker => new AiPlaylistTrackMarker
-                    {
-                        Key = marker.Key,
-                        Value = marker.Value,
-                        Confidence = marker.Confidence
-                    }).ToList()
-                }).ToList(),
-                Songs = playlist.Songs.Select(song => song.ToSongViewModel()).ToList()
-            };
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error fetching AI playlist {GenreKey}", genreKey);
-            return null;
-        }
-    }
-
-    public async Task PlayAiPlaylistAsync(string genreKey)
-    {
-        try
-        {
-            await aiPlaybackService.StartGenreSessionAsync(genreKey, CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error starting AI playlist {GenreKey}", genreKey);
-        }
-    }
-
-    public async Task PlayAiPlaylistTrackAsync(string genreKey, int songId)
-    {
-        try
-        {
-            await aiPlaybackService.StartGenreSessionAsync(genreKey, songId, CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error starting AI playlist {GenreKey} from song {SongId}", genreKey, songId);
-        }
-    }
-
-    public async Task<AiLibraryStatus> GetAiStatusAsync()
-    {
-        try
-        {
-            var status = await aiCatalogService.GetStatusAsync(CancellationToken.None);
-            return new AiLibraryStatus
-            {
-                State = status.State,
-                TotalTracks = status.TotalTracks,
-                QueuedTracks = status.QueuedTracks,
-                ProcessingTracks = status.ProcessingTracks,
-                CompletedTracks = status.CompletedTracks,
-                FailedTracks = status.FailedTracks,
-                PercentComplete = status.PercentComplete,
-                LastScanUtc = status.LastScanUtc,
-                LastHeartbeatUtc = status.LastHeartbeatUtc,
-                CurrentBatchId = status.CurrentBatchId,
-                DegradedReason = status.DegradedReason,
-                LastErrorMessage = status.LastErrorMessage,
-                LastFailureUtc = status.LastFailureUtc,
-                ErrorDetails = status.ErrorDetails,
-                RecentActivity = status.RecentActivity
-                    .Select(activity => new AiStatusActivity
-                    {
-                        TimestampUtc = activity.TimestampUtc,
-                        Kind = activity.Kind,
-                        Message = activity.Message,
-                        BatchId = activity.BatchId
-                    })
-                    .ToArray()
-            };
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error fetching AI status");
-            return new AiLibraryStatus();
-        }
-    }
-
-    public async Task ResumeAiProcessingAsync()
-    {
-        try
-        {
-            await aiProcessingSignal.SignalAsync(CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error resuming AI processing");
-        }
-    }
-
-    public async Task SubmitAiFeedbackAsync(string sessionId, int songId, string feedback)
-    {
-        try
-        {
-            var request = new AiFeedbackRequest
-            {
-                SessionId = sessionId,
-                SongId = songId,
-                Feedback = feedback
-            };
-            await aiPlaybackService.SubmitFeedbackAsync(request, CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error submitting AI feedback");
-        }
     }
 }

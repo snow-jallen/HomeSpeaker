@@ -348,7 +348,7 @@ public static class HomeSpeakerRestEndpoints
                 songId, song.Path, request.Name, request.Artist, request.Album);
 
             tagParser.UpdateSongTags(song.Path, request.Name, request.Artist, request.Album);
-            library.IsDirty = true;
+            library.MarkDirty("song-tags-updated");
 
             logger.LogInformation("Song {SongId} updated successfully", songId);
             return Results.Ok();
@@ -1293,7 +1293,7 @@ public static class HomeSpeakerRestEndpoints
                         logger.LogDebug("Caching progress for {Title}: {Percent:P}", request.Video.Title, percent);
                     });
                     await youtubeService.CacheVideoAsync(request.Video.Id, request.Video.Title, request.Video.Author, progress);
-                    library.IsDirty = true;
+                    library.MarkDirty("youtube-cached");
                     logger.LogInformation("Successfully cached video: {Title}", request.Video.Title);
                 }
                 catch (Exception ex)
@@ -1650,7 +1650,7 @@ public static class HomeSpeakerRestEndpoints
             }
         }
 
-        library.IsDirty = true;
+        library.MarkDirty("album-art-updated");
         logger.LogInformation("Updated album art for {Updated}/{Total} songs in album {Album}", updated, songs.Count, album);
         return Results.Ok(new { Success = true, SongsUpdated = updated, Album = album });
     }

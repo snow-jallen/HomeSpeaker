@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-HomeSpeaker is a self-hosted music player that runs on Raspberry Pis around a house (kitchen, upstairs, etc.). It serves a Blazor web UI, plays local MP3s through the Pi's audio hardware, streams internet radio and YouTube audio, generates AI playlists, and doubles as an AirPlay receiver. Each Pi runs an independent instance — there is no central server.
+HomeSpeaker is a self-hosted music player that runs on Raspberry Pis around a house (kitchen, upstairs, etc.). It serves a Blazor web UI, plays local MP3s through the Pi's audio hardware, streams internet radio and YouTube audio, and doubles as an AirPlay receiver. Each Pi runs an independent instance — there is no central server.
 
 ## Solution layout
 
 Three projects (`HomeSpeaker.sln`), all `net10.0`:
 
 - **HomeSpeaker.Server2** — the ASP.NET Core app. Blazor Server (interactive + SSR) UI, minimal-API REST endpoints, SignalR hubs, EF Core/SQLite persistence, and all the hosted background services.
-- **HomeSpeaker.Shared** — DTOs and domain records (`Song`, `PlayerStatus`, anchor/offline/AI DTOs) shared between server and (historically) clients. No logic, just contracts.
+- **HomeSpeaker.Shared** — DTOs and domain records (`Song`, `PlayerStatus`, anchor/offline DTOs) shared between server and (historically) clients. No logic, just contracts.
 - **HomeSpeaker.Server2.Tests** — xUnit tests for Server2.
 
 Other top-level pieces: `install/` (the one-command `install.sh`/`uninstall.sh` for Pis, the Avahi `_homespeaker._tcp` template and the nightly-update systemd units), `docker-compose.yml` (generic HTTP stack with optional `airplay` and `telemetry` profiles), `docker-compose.https.yml` (HTTPS overlay), `homespeaker.env.example` (household settings template), `docs/owner-migration.md` (maintainer's one-time checklist) and `LICENSE` (MIT). `readme.md` is for a new household, `DEPLOYMENT.md` for the maintainer pipeline.
@@ -59,13 +59,13 @@ Both are wrapped in **`ChattyMusicPlayer`** (a decorator that adds logging/event
 
 ### Music library
 
-**`Mp3Library`** (singleton) is the in-memory catalog. It scans the media folder via `IFileSource`, parses tags via `ITagParser` (TagLibSharp), persists derived data through `IDataStore` (`OnDiskDataStore`), and keeps itself fresh with a debounced `FileSystemWatcher` on `*.mp3`. `Song.SongId` values are assigned here and used throughout the REST/streaming endpoints.
+**`Mp3Library`** (singleton) is the in-memory catalog. It scans the media folder via `IFileSource`, parses tags via `ITagParser` (TagLibSharp), persists derived data through `IDataStore` (`OnDiskDataStore`), and keeps itself fresh with a debounced `FileSystemWatcher` on `*.mp3`. `Song.SongId` values are assigned here and used throughout the REST/streaming endpoints. A change calls `MarkDirty(reason)`; the next read of `Songs` rescans every file (~20 s on a Pi). Only one reader rescans — others get the previous list rather than waiting — and `OnDiskDataStore` swaps in the new list whole, so readers never see a half-built library.
 
 ### UI and the service facade
 
 Blazor components live under `HomeSpeaker.Server2/Components` (layout, music, health/weather widgets) and routable pages under `HomeSpeaker.Server2/Pages` (`@page` directives; e.g. `Pages/Music/*`, `Pages/Admin/*`, `Pages/Health/*`). Uses both **MudBlazor** and **FluentUI** component libraries.
 
-**`HomeSpeakerService`** (scoped) is the facade Blazor components call into — it composes `Mp3Library`, `IMusicPlayer`, YouTube, playlist, radio, and AI services and raises `QueueChanged` / `StatusChanged` / `LibraryChanged` events for the UI to subscribe to. New UI-facing functionality usually belongs here rather than in a component.
+**`HomeSpeakerService`** (scoped) is the facade Blazor components call into — it composes `Mp3Library`, `IMusicPlayer`, YouTube, playlist and radio services and raises `QueueChanged` / `StatusChanged` / `LibraryChanged` events for the UI to subscribe to. New UI-facing functionality usually belongs here rather than in a component.
 
 ### Ambient shell and photos
 
@@ -73,17 +73,17 @@ Blazor components live under `HomeSpeaker.Server2/Components` (layout, music, he
 
 ### REST API
 
-Minimal APIs. The bulk are mapped in `Endpoints/HomeSpeakerRestEndpoints.cs` via `MapHomeSpeakerApi()` (route group `/api/homespeaker`, split into song/player/playlist/queue/youtube/radio/offline-download groups) `Endpoints/AiRestEndpoints.cs` via `MapAiApi()`, the ambient-photo endpoints (`/api/photos/*`) in `Endpoints/PhotoEndpoints.cs` via `MapPhotoApi()`, and play-by-name (`/api/homespeaker/media/match` and `/play`, what Siri's "Play X on Home Speaker" calls; `MediaSearchService` gathers playlists, streams, non-empty AI mixes, artists, albums and songs and `MediaMatcher` scores them) in `Endpoints/MediaSearchEndpoints.cs` via `MapMediaSearchApi()`. A number of standalone endpoints (temperature, blood sugar, forecast, anchors, recently-played, the `/api/music/{songId}` range-aware streaming endpoint, image search/upload) are defined inline in `Program.cs`.
+Minimal APIs. The bulk are mapped in `Endpoints/HomeSpeakerRestEndpoints.cs` via `MapHomeSpeakerApi()` (route group `/api/homespeaker`, split into song/player/playlist/queue/youtube/radio/offline-download groups), the ambient-photo endpoints (`/api/photos/*`) in `Endpoints/PhotoEndpoints.cs` via `MapPhotoApi()`, and play-by-name (`/api/homespeaker/media/match` and `/play`, what Siri's "Play X on Home Speaker" calls; `MediaSearchService` gathers playlists, streams, artists, albums and songs and `MediaMatcher` scores them) in `Endpoints/MediaSearchEndpoints.cs` via `MapMediaSearchApi()`. A number of standalone endpoints (temperature, blood sugar, forecast, anchors, recently-played, the `/api/music/{songId}` range-aware streaming endpoint, image search/upload) are defined inline in `Program.cs`.
 
 ### Background hosted services
 
-Registered in `Program.cs` and run for the process lifetime: `MigrationApplier`, `DailyAnchorWorker`, `AirPlayReceiverService`, `LifecycleEvents`, `AutoPlayMonitorService`, `PhotoSyncWorker`, `VideoPrefetcher`, `PlayerStatusBroadcaster`, `LiveActivityPushWorker`, `HealthAlertWorker`, `AiMusicAnalysisWorker`, and `VolumeMonitorService`. AI playlist analysis is gated by config and signalled through `AiProcessingSignal`.
+Registered in `Program.cs` and run for the process lifetime: `MigrationApplier`, `DailyAnchorWorker`, `AirPlayReceiverService`, `LifecycleEvents`, `AutoPlayMonitorService`, `PhotoSyncWorker`, `VideoPrefetcher`, `PlayerStatusBroadcaster`, `LiveActivityPushWorker`, `HealthAlertWorker`, `ResourceSampler`, and `VolumeMonitorService`.
 
 `PlayerStatusBroadcaster` polls the player (only while something is subscribed) and publishes *material* status changes (song, play state, volume, repeat, sleep timer; not elapsed time). It feeds `GET /api/homespeaker/player/events`, a server-sent-events stream with a 10 s heartbeat, and `LiveActivityPushWorker`, which sends APNs `liveactivity` pushes to iOS Live Activities registered via `PUT/DELETE /api/homespeaker/live-activities/{activityId}` (in memory, 12 h; the app re-registers on foreground). The push `content-state` keys are a contract with `SpeakerActivityAttributes.ContentState` in the iOS app.
 
-### AI integration
+### Telemetry and diagnostics
 
-`AddChatClient` in `Program.cs` builds an `IChatClient` (Microsoft.Extensions.AI) from the `AI` config section — Azure OpenAI or OpenAI, wrapped with logging + OpenTelemetry decorators. When neither is configured it falls back to `NullChatClient` and AI features quietly disable. AI playlist code lives in `Services/AiMusic*` and `Services/AiPlayback*`.
+OpenTelemetry (`Extensions.cs`) covers ASP.NET Core, HttpClient, EF Core, runtime and process metrics, plus the app's own `ActivitySource`/`Meter` in `Telemetry/HomeSpeakerTelemetry.cs` (name `HomeSpeaker.Server2`; metrics prefixed `homespeaker.`). Nothing is exported unless `OTEL_EXPORTER_OTLP_ENDPOINT` is set. Without a backend, `GET /api/diagnostics` (`Endpoints/DiagnosticsEndpoints.cs`) answers "what is the server doing": `ResourceSampler` keeps an hour of 15 s samples (CPU, memory, disk I/O from `/proc/self/io`, container memory pressure from the cgroup via `LinuxProcStats`), `Mp3Library.SyncHistory` the last 20 rescans with their trigger and bytes read, and `LogEventCounter` (a logger provider) counts warnings/errors by category and exception type. It is open to loopback (`docker exec homespeaker curl -s localhost/api/diagnostics`) and admin-only otherwise.
 
 ### Auxiliary widgets
 
@@ -97,7 +97,7 @@ Precedence, lowest to highest: `appsettings.json` -> database settings -> enviro
 
 **Feature modules** are off unless configured (`FeatureFlags.cs`, surfaced by `GET /api/features`; the Swift client decodes new fields as optionals): Nightscout (`NIGHTSCOUT_URL`), Govee temperature (`Temperature:ApiBaseUrl` + `ApiKey`; rooms from `Temperature:Rooms`, parsed by `TemperatureRoomConfig`, or the settings device picker; `Units:Temperature` F|C), forecast (`Forecast:Latitude/Longitude`), Anchors (`Features:Anchors=true`), iOS push (all four `PushNotifications:Apns:*`). Govee's base URL is `https://openapi.api.govee.com/router/api/v1/`.
 
-Use the constants in `ConfigKeys.cs` (`MediaFolder`, `FFMpegLocation`). Required: `MediaFolder`, `SqliteConnectionString` (set by compose). Other keys: `AI:*`, `Admin:PinHash`, `Admin:ResetPin`, `Photos:Source`, `Immich:*` (BaseUrl, AlbumId, ApiKey also as `IMMICH_API_KEY`, SyncIntervalMinutes, SlideSeconds, VideoPrefetchAhead/MaxMB, ...), `Ambient:IdleSeconds`, `ALSA_CARD`, OTEL exporter vars. In compose, optional settings come from `${HOMESPEAKER_ENV_FILE:-./homespeaker.env}` (needs Compose 2.24+); the maintainer's Pis use `/home/piuser/homespeaker-secrets.env` (never committed; template `homespeaker-secrets.env.example`).
+Use the constants in `ConfigKeys.cs` (`MediaFolder`, `FFMpegLocation`). Required: `MediaFolder`, `SqliteConnectionString` (set by compose). Other keys: `Admin:PinHash`, `Admin:ResetPin`, `Photos:Source`, `Immich:*` (BaseUrl, AlbumId, ApiKey also as `IMMICH_API_KEY`, SyncIntervalMinutes, SlideSeconds, VideoPrefetchAhead/MaxMB, ...), `Ambient:IdleSeconds`, `ALSA_CARD`, OTEL exporter vars. In compose, optional settings come from `${HOMESPEAKER_ENV_FILE:-./homespeaker.env}` (needs Compose 2.24+); the maintainer's Pis use `/home/piuser/homespeaker-secrets.env` (never committed; template `homespeaker-secrets.env.example`).
 
 ## Deployment
 

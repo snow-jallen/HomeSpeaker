@@ -27,20 +27,6 @@ The REST endpoints are integrated into the existing `Program.cs` with a single l
 app.MapHomeSpeakerApi();
 ```
 
-### 🤖 AI Endpoints Added
-
-AI playlist endpoints are now exposed under `/api/ai` and integrated via:
-```csharp
-app.MapAiApi();
-```
-
-Key additions:
-- AI processing status + resume
-- AI genre playlists + play-by-genre
-- Similar-song lookups
-- AI autoplay from current track
-- Thumbs feedback capture
-
 ### 📊 Endpoint Summary
 
 | Category | Endpoints | Functionality |
@@ -51,7 +37,6 @@ Key additions:
 | **Queue Management** | 4 | Get, update, shuffle, clear queue |
 | **YouTube Integration** | 2 | Search and cache videos |
 | **Hardware** | 1 | Backlight control |
-| **AI Playlists** | 7 | Status, playlists, similar, autoplay, feedback |
 
 ### 🎯 gRPC to REST Mapping
 

@@ -6,7 +6,7 @@ A self-hosted music player for a Raspberry Pi. Put one in the kitchen, one upsta
 - playback through the Pi's own audio output
 - an AirPlay receiver, so the Pi shows up as a speaker in the iOS and macOS audio menus
 - an ambient photo slideshow and clock for a wall-mounted touchscreen
-- optional extras: blood sugar (Nightscout), room temperatures (Govee), a weather forecast, daily habit "anchors" and AI-made playlists
+- optional extras: blood sugar (Nightscout), room temperatures (Govee), a weather forecast and daily habit "anchors"
 - an iPhone and Apple Watch app (`HomeSpeakerMobile/`) that can discover speakers on your network
 
 HomeSpeaker is licensed under the MIT license (see `LICENSE`).
@@ -90,7 +90,6 @@ A feature is off, and its widgets hidden, until you configure it. Configure each
 | Weather forecast | `Forecast:Latitude` and `Forecast:Longitude` |
 | Anchors (daily habits) | `Features:Anchors=true` |
 | Immich slideshow | `Immich:BaseUrl`, `Immich:AlbumId` and `Immich:ApiKey` |
-| AI playlists | `AI:OpenAI:ApiKey` (and optionally `AI:OpenAI:ChatModel`) |
 | iOS push notifications | the four `PushNotifications:Apns:*` values, see below |
 
 `GET /api/features` reports which features a server has on.
@@ -119,10 +118,6 @@ Set `Features:Anchors` to `true` for a daily-habit checklist.
 ### Immich
 
 Set `Immich:BaseUrl`, `Immich:AlbumId` and `Immich:ApiKey` (the key is also accepted as `IMMICH_API_KEY`). The key needs the `asset.read`, `asset.view`, `album.read` and `face.read` permissions (or "all"). Only a small rotating set of photos is kept on the Pi. Tuning options: `Immich:SyncIntervalMinutes` (15), `Immich:SlideSeconds` (30), `Immich:MaxVideoSeconds` (60), `Immich:CacheSize` (40), `Immich:RotatePercent` (25), `Immich:VideoPrefetchAhead` (5; 0 turns video prefetch off) and `Immich:VideoPrefetchMaxMB` (300).
-
-### AI playlists
-
-Set `AI:OpenAI:ApiKey` and optionally `AI:OpenAI:ChatModel`. Without a key, AI features switch off quietly. Azure OpenAI is configured through the other `AI:*` keys (see `Program.cs`).
 
 ### iOS push notifications
 

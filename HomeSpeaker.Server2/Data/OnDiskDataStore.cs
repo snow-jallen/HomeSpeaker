@@ -5,17 +5,27 @@ namespace HomeSpeaker.Server2.Data;
 
 public class OnDiskDataStore : IDataStore
 {
-    public OnDiskDataStore()
-    {
-        songs = new();
-    }
-
-    private readonly List<Song> songs;
+    // Readers enumerate whatever list is current; rescans build a new list and swap it in, so nobody
+    // ever enumerates a list that is being cleared or filled.
+    private volatile List<Song> songs = new();
 
     public void Add(Song song)
     {
-        song.SongId = songs.Count;
-        songs.Add(song);
+        var next = new List<Song>(songs);
+        song.SongId = next.Count;
+        next.Add(song);
+        songs = next;
+    }
+
+    public void ReplaceAll(IEnumerable<Song> songs)
+    {
+        var next = songs.ToList();
+        for (var i = 0; i < next.Count; i++)
+        {
+            next[i].SongId = i;
+        }
+
+        this.songs = next;
     }
 
     public void UpdateSong(int songId, string name, string artist, string album)
@@ -67,7 +77,7 @@ public class OnDiskDataStore : IDataStore
         }
     }
 
-    public IEnumerable<Song> GetSongs() => songs.AsEnumerable();
+    public IEnumerable<Song> GetSongs() => songs;
 
-    public void Clear() => songs.Clear();
+    public void Clear() => songs = new();
 }

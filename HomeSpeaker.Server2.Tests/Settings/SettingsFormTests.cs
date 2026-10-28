@@ -208,10 +208,10 @@ public sealed class SettingsFormTests : IDisposable
     {
         IReadOnlyList<SettingField> current =
         [
-            new(SettingKeys.OpenAiChatModel, "Chat model", "gpt-4o-mini", IsSecret: false, IsOverridden: false),
+            new(SettingKeys.TemperatureUnit, "Temperature unit", "C", IsSecret: false, IsOverridden: false),
         ];
 
-        var changes = SettingsForm.Changes(current, new Dictionary<string, string?> { [SettingKeys.OpenAiChatModel] = "gpt-4o-mini" });
+        var changes = SettingsForm.Changes(current, new Dictionary<string, string?> { [SettingKeys.TemperatureUnit] = "C" });
 
         Assert.Empty(changes);
     }

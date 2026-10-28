@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace HomeSpeaker.Server2.Services.MediaSearch;
 
 /// <summary>
-/// Turns a spoken "play ..." into the playlist, radio stream, AI mix, artist, album or song it
+/// Turns a spoken "play ..." into the playlist, radio stream, artist, album or song it
 /// most likely means, and plays it in place of whatever is playing.
 /// </summary>
 public sealed class MediaSearchService
@@ -13,8 +13,6 @@ public sealed class MediaSearchService
     private readonly MusicContext dbContext;
     private readonly Mp3Library library;
     private readonly RadioStreamService radioStreams;
-    private readonly AiMusicCatalogService aiCatalog;
-    private readonly AiPlaybackService aiPlayback;
     private readonly PlaylistService playlists;
     private readonly IMusicPlayer player;
     private readonly ILogger<MediaSearchService> logger;
@@ -23,8 +21,6 @@ public sealed class MediaSearchService
         MusicContext dbContext,
         Mp3Library library,
         RadioStreamService radioStreams,
-        AiMusicCatalogService aiCatalog,
-        AiPlaybackService aiPlayback,
         PlaylistService playlists,
         IMusicPlayer player,
         ILogger<MediaSearchService> logger)
@@ -32,8 +28,6 @@ public sealed class MediaSearchService
         this.dbContext = dbContext;
         this.library = library;
         this.radioStreams = radioStreams;
-        this.aiCatalog = aiCatalog;
-        this.aiPlayback = aiPlayback;
         this.playlists = playlists;
         this.player = player;
         this.logger = logger;
@@ -79,9 +73,6 @@ public sealed class MediaSearchService
                 await radioStreams.IncrementPlayCountAsync(stream.Id);
                 player.PlayStream(stream.Url, stream.Name);
                 return true;
-
-            case MediaKind.Mix:
-                return await aiPlayback.StartGenreSessionAsync(match.Key, cancellationToken) != null;
 
             case MediaKind.Artist:
                 return playSongs(library.Songs
@@ -130,11 +121,6 @@ public sealed class MediaSearchService
         var streams = await radioStreams.GetAllStreamsAsync();
         candidates.AddRange(streams.Select(s => new MediaCandidate(
             MediaKind.Stream, s.Name, s.Id.ToString(System.Globalization.CultureInfo.InvariantCulture))));
-
-        // Servers without AI list every mix with no tracks; those can't play.
-        var mixes = await aiCatalog.GetGenreSummariesAsync(cancellationToken);
-        candidates.AddRange(mixes.Where(m => m.TrackCount > 0)
-            .Select(m => new MediaCandidate(MediaKind.Mix, m.DisplayName, m.GenreKey)));
 
         var songs = library.Songs.ToList();
         candidates.AddRange(songs

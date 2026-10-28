@@ -17,7 +17,6 @@ struct WatchContentView: View {
                     WatchNowPlayingView()
                     WatchLibraryView()
                     WatchPlaylistsView()
-                    WatchAIPlaylistsView()
                     WatchRadioStreamsView()
                     WatchQueueView()
                     WatchServerPickerView()
