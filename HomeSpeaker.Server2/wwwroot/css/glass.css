@@ -134,6 +134,10 @@ body[data-kiosk="true"] .not-kiosk {
   display: none !important;
 }
 
+body:not([data-ambient="true"]) .ambient-only {
+  display: none !important;
+}
+
 /* ---------- Shell ---------- */
 
 .hs-backdrop {
@@ -680,6 +684,72 @@ html.hs-mode-night .hs-backdrop {
 
 .hs-night-tone-urgent {
   color: #c0392b;
+}
+
+/* Phones: the overlay is laid out for the 1024x600 touchscreen, so shrink the clock and chips to share the top
+   edge, and stretch the now-playing card across the bottom with the caption above it. */
+@media (max-width: 700px) {
+  .hs-ov-clock {
+    left: 20px;
+    top: 20px;
+  }
+
+  .hs-ov-time {
+    font-size: 56px;
+    letter-spacing: -2px;
+  }
+
+  .hs-ov-date {
+    font-size: 15px;
+  }
+
+  .hs-ov-chips {
+    right: 16px;
+    top: 20px;
+    gap: 8px;
+    transform: scale(0.65);
+    transform-origin: top right;
+  }
+
+  .hs-ov-playing,
+  .hs-ambient-overlay[data-layout="mirrored"] .hs-ov-playing {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    width: auto;
+    max-width: none;
+  }
+
+  .hs-ov-caption {
+    right: 16px;
+    bottom: 20px;
+  }
+
+  .hs-ambient-overlay:has(.hs-ov-playing) .hs-ov-caption {
+    bottom: 124px;
+  }
+
+  .hs-ambient-overlay[data-layout="mirrored"] .hs-ov-clock {
+    right: 20px;
+  }
+
+  .hs-ambient-overlay[data-layout="mirrored"] .hs-ov-chips {
+    left: 16px;
+    transform-origin: top left;
+  }
+
+  .hs-ambient-overlay[data-layout="mirrored"] .hs-ov-caption {
+    left: 16px;
+  }
+
+  .hs-night-time {
+    font-size: 96px;
+    letter-spacing: -3px;
+  }
+
+  .hs-night-glucose {
+    font-size: 40px;
+  }
 }
 
 /* ---------- Home page ---------- */

@@ -1,7 +1,7 @@
-// idleController.js - kiosk screen modes: 'active' (normal UI), 'ambient' (photo slideshow),
+// idleController.js - idle screen modes: 'active' (normal UI), 'ambient' (photo slideshow),
 // 'night' (dim clock). Pure DOM, so it keeps working even if the Blazor circuit drops.
-// Only browsers marked <body data-kiosk="true"> ever leave 'active' on their own
-// (data-kiosk="auto" resolves to true on a 1024x600 screen).
+// Every browser goes idle unless the server marked it <body data-ambient="false"> (opted out with ?kiosk=0).
+// data-kiosk is separate: it picks the Pi's controls (data-kiosk="auto" resolves to true on a 1024x600 screen).
 window.idleController = (function () {
     // The server answers data-kiosk="auto" when it cannot tell (a remote hostname, no cookie).
     // The Pi touchscreens are exactly 1024x600 (either orientation), so resolve it here, before
@@ -28,6 +28,10 @@ window.idleController = (function () {
 
     function isKiosk() {
         return !!document.body && document.body.dataset.kiosk === 'true';
+    }
+
+    function ambientEnabled() {
+        return !!document.body && document.body.dataset.ambient === 'true';
     }
 
     function clearSwallow() {
@@ -67,11 +71,12 @@ window.idleController = (function () {
 
     function arm() {
         clearTimeout(timer);
-        if (!isKiosk()) return;
+        if (!ambientEnabled() || document.hidden) return;
         timer = setTimeout(function () {
-            // NoTopLayout pages (/nightscout, /aspire) have no ambient or night layers: go home so the kiosk can dim.
+            // NoTopLayout pages (/nightscout, /aspire) have no ambient or night layers. The kiosk goes home so it
+            // can dim; any other browser stays on the page its user chose.
             if (!document.querySelector('.hs-ambient')) {
-                location.href = '/';
+                if (isKiosk()) location.href = '/';
                 return;
             }
             setMode(quiet ? 'night' : 'ambient');
@@ -135,6 +140,17 @@ window.idleController = (function () {
         arm();
     }
 
+    // A mouse moving or a wheel scrolling is activity too (desktops), but only a real mouse: touchscreens
+    // also report pointermove while a finger slides, and ambient mode reads that as a swipe.
+    function onMouseActivity(e) {
+        if (e.type === 'pointermove' && e.pointerType !== 'mouse') return;
+        if (mode === 'active') {
+            arm();
+            return;
+        }
+        onActivity(e);
+    }
+
     function onPointerCancel() {
         gesture = null;
         clearSwallow();
@@ -152,6 +168,18 @@ window.idleController = (function () {
     document.addEventListener('pointerup', onPointerUp, true);
     document.addEventListener('pointercancel', onPointerCancel, true);
     document.addEventListener('keydown', onActivity, true);
+    document.addEventListener('pointermove', onMouseActivity, true);
+    // A background tab (phone, desktop) must not sit cycling and downloading photos nobody sees: leave the
+    // idle screen while hidden and start counting again when the tab comes back. The kiosk is never hidden.
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+            clearTimeout(timer);
+            setMode('active');
+        } else {
+            arm();
+        }
+    });
+    document.addEventListener('wheel', onMouseActivity, { capture: true, passive: false });
     document.addEventListener('click', onClick, true);
 
     return {
@@ -171,6 +199,7 @@ window.idleController = (function () {
         },
         mode: function () { return mode; },
         isKiosk: isKiosk,
+        ambientEnabled: ambientEnabled,
         onModeChange: function (callback) { listeners.push(callback); },
         onSwipe: function (callback) { swipeListeners.push(callback); }
     };
