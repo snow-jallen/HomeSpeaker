@@ -11,6 +11,11 @@ services:
     # Run an init (tini) as PID 1 so orphaned child processes (e.g. timed-out
     # healthcheck curls) are reaped instead of accumulating against dotnet.
     init: true
+    # The app needs ~320 MB (heap, runtime, SQLite); the rest is page cache for the database and the song playing.
+    # The cap counts that cache, so it keeps a 4 GB Pi responsive without starving the app. Swap is off for it:
+    # a paged-out .NET heap stalls playback worse than reclaiming cache does.
+    mem_limit: 768m
+    memswap_limit: 768m
     devices:
     - /dev/snd:/dev/snd
     ports:
