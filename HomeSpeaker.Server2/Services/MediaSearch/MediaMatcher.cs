@@ -11,7 +11,7 @@ namespace HomeSpeaker.Server2.Services.MediaSearch;
 public static partial class MediaMatcher
 {
     private const double MinimumScore = 0.5;
-    // Enough for "hymns playlist" to pick "Hymns for Home and Church" over an exact "Hymns" mix.
+    // Enough for "hymns playlist" to pick "Hymns for Home and Church" over an exact "Hymns" stream.
     private const double KindHintBonus = 0.2;
 
     private static readonly (string Word, MediaKind Kind)[] kindWords =
@@ -21,7 +21,6 @@ public static partial class MediaMatcher
         ("station", MediaKind.Stream),
         ("radio", MediaKind.Stream),
         ("stream", MediaKind.Stream),
-        ("mix", MediaKind.Mix),
         ("album", MediaKind.Album),
         ("song", MediaKind.Song),
     ];
@@ -144,7 +143,7 @@ public static partial class MediaMatcher
 
     /// <summary>
     /// Adds the hint bonus. An exact match on everything said also beats any reading with the
-    /// kind word dropped, so a playlist named "Christmas Mix" wins "christmas mix" over a "Christmas" mix.
+    /// kind word dropped, so a playlist named "Christmas Radio" wins "christmas radio" over a "Christmas" stream.
     /// </summary>
     private static double scoreWithHint(string text, MediaKind? hint, MediaKind kind, string name, bool wholeRequest)
     {

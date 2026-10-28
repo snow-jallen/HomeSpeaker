@@ -8,7 +8,6 @@ public enum MediaKind
 {
     Playlist,
     Stream,
-    Mix,
     Artist,
     Album,
     Song,

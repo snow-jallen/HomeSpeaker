@@ -15,7 +15,7 @@ public static class MediaSearchEndpoints
         // GET /api/homespeaker/media/match?query=kings%20singers&kind=Artist&artist=
         group.MapGet("/match", findMedia)
             .WithName("FindMedia")
-            .WithSummary("Find the playlist, stream, AI mix, artist, album or song a spoken name means");
+            .WithSummary("Find the playlist, stream, artist, album or song a spoken name means");
 
         // POST /api/homespeaker/media/play?query=kings%20singers&kind=Artist&artist=
         group.MapPost("/play", playMedia)

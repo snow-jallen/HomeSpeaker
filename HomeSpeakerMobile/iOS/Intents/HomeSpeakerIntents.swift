@@ -18,49 +18,25 @@ private func matchesShortcutAlias(_ value: String, aliases: [String]) -> Bool {
     return aliases.map(normalizedShortcutPhrase).contains(normalizedValue)
 }
 
-private func matchedAiPlaylist(
-    from playlists: [AiPlaylistSummaryDto],
-    aliases: [String]
-) -> AiPlaylistSummaryDto? {
-    playlists.first { playlist in
-        aliases.contains { alias in
-            matchesShortcutAlias(playlist.displayName, aliases: [alias]) ||
-            matchesShortcutAlias(playlist.genreKey, aliases: [alias])
-        }
-    }
-}
-
 private func matchedPlaylist(from playlists: [Playlist], aliases: [String]) -> Playlist? {
     playlists.first { playlist in
         aliases.contains { alias in matchesShortcutAlias(playlist.name, aliases: [alias]) }
     }
 }
 
-/// Plays the AI mix matching `aliases`, else a regular playlist that does.
-/// Servers without AI configured list every AI mix with no tracks, and playing
-/// an empty mix is a 404, so empty mixes are skipped.
-private func playNamedMix(
+/// Plays the playlist matching `aliases`.
+private func playNamedPlaylist(
     userFacingName: String,
     aliases: [String],
     connection: ServerConnection,
     api: APIClient
 ) async throws -> String {
-    let aiPlaylists = ((try? await api.getAiPlaylists()) ?? []).filter { $0.trackCount > 0 }
-    if let match = matchedAiPlaylist(from: aiPlaylists, aliases: aliases) {
-        do {
-            try await api.playAiPlaylist(genreKey: match.genreKey)
-            return match.displayName
-        } catch APIError.serverError(404, _) {
-            // The mix emptied since it was listed; try a regular playlist.
-        }
-    }
-
     if let match = matchedPlaylist(from: (try? await api.getPlaylists()) ?? [], aliases: aliases) {
         try await api.playPlaylist(name: match.name)
         return match.name
     }
 
-    throw HomeSpeakerIntentError.mixUnavailable(userFacingName, server: connection.name)
+    throw HomeSpeakerIntentError.playlistUnavailable(userFacingName, server: connection.name)
 }
 
 // MARK: - Siri Command History
@@ -142,7 +118,7 @@ struct NextSongOnHomeSpeakerIntent: AppIntent {
 
 struct PlayFunMusicOnHomeSpeakerIntent: AppIntent {
     static var title: LocalizedStringResource = "Play Fun Music on HomeSpeaker"
-    static var description = IntentDescription("Start the Fun Music mix on a HomeSpeaker server.")
+    static var description = IntentDescription("Start the Fun Music playlist on a HomeSpeaker server.")
     static var openAppWhenRun: Bool = false
 
     @Parameter(title: "Server")
@@ -150,8 +126,8 @@ struct PlayFunMusicOnHomeSpeakerIntent: AppIntent {
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let said = try await runCommand("Fun Music", server: server,
-                                        request: "play the Fun Music mix, else a fun playlist") { connection, api in
-            let playlistName = try await playNamedMix(
+                                        request: "play a fun playlist") { connection, api in
+            let playlistName = try await playNamedPlaylist(
                 userFacingName: "Fun Music",
                 aliases: ["family-singalong", "fun music", "fun"],
                 connection: connection,
@@ -166,7 +142,7 @@ struct PlayFunMusicOnHomeSpeakerIntent: AppIntent {
 
 struct PlayHymnsOnHomeSpeakerIntent: AppIntent {
     static var title: LocalizedStringResource = "Play Hymns on HomeSpeaker"
-    static var description = IntentDescription("Start the Hymns mix on a HomeSpeaker server.")
+    static var description = IntentDescription("Start the Hymns playlist on a HomeSpeaker server.")
     static var openAppWhenRun: Bool = false
 
     @Parameter(title: "Server")
@@ -174,8 +150,8 @@ struct PlayHymnsOnHomeSpeakerIntent: AppIntent {
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let said = try await runCommand("Hymns", server: server,
-                                        request: "play the Hymns mix, else a hymns playlist") { connection, api in
-            let playlistName = try await playNamedMix(
+                                        request: "play a hymns playlist") { connection, api in
+            let playlistName = try await playNamedPlaylist(
                 userFacingName: "Hymns",
                 aliases: ["hymns", "hymn", "Hymns for Home and Church"],
                 connection: connection,
@@ -420,40 +396,6 @@ struct PlayPlaylistOnHomeSpeakerIntent: AppIntent {
             }
             try await api.playPlaylist(name: match.name)
             return "Playing \(match.name) on \(conn.name)."
-        }
-        return .result(dialog: "\(said)")
-    }
-}
-
-// MARK: - Play AI Playlist
-
-struct PlayAiPlaylistOnHomeSpeakerIntent: AppIntent {
-    static var title: LocalizedStringResource = "Play AI Playlist on HomeSpeaker"
-    static var description = IntentDescription("Play an AI-generated playlist on a HomeSpeaker server.")
-    static var openAppWhenRun: Bool = true
-    static var isDiscoverable: Bool = false
-
-    @Parameter(title: "Genre or Style")
-    var genre: MediaQueryEntity
-
-    @Parameter(title: "Server")
-    var server: ServerEntity?
-
-    func perform() async throws -> some IntentResult & ProvidesDialog {
-        let (contentName, extractedServer) = parseContentAndServer(genre.id)
-        let said = try await runCommand("Play AI Playlist",
-                                        captured: "genre: \(genre.id); \(serverCaptured(server))",
-                                        request: "play the AI mix closest to \"\(contentName)\"",
-                                        connection: { try legacyConnection(server, extracted: extractedServer) }) { conn, _ in
-            let api = selectAndConnect(conn)
-            let playlists = try await api.getAiPlaylists()
-            let match = bestMatch(from: playlists, query: contentName, key: { $0.displayName })
-                ?? bestMatch(from: playlists, query: contentName, key: { $0.genreKey })
-            guard let match else {
-                throw HomeSpeakerIntentError.contentNotFound(contentName)
-            }
-            try await api.playAiPlaylist(genreKey: match.genreKey)
-            return "Playing \(match.displayName) on \(conn.name)."
         }
         return .result(dialog: "\(said)")
     }

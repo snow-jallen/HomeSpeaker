@@ -2,7 +2,7 @@ import Foundation
 import Intents
 
 /// Handles Siri's own "play" command: "Play King's Singers on Home Speaker". Siri hears any
-/// name, so the server's media search decides whether it's a playlist, stream, AI mix,
+/// name, so the server's media search decides whether it's a playlist, stream,
 /// artist, album or song. The app handles it in-process (see the app delegate), with no
 /// Intents extension.
 final class PlayMediaIntentHandler: NSObject, INPlayMediaIntentHandling {

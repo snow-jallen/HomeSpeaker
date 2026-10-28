@@ -14,8 +14,6 @@ public sealed class SettingKeysTests
     [InlineData(SettingKeys.TemperatureApiBaseUrl)]
     [InlineData(SettingKeys.TemperatureApiKey)]
     [InlineData(SettingKeys.Anchors)]
-    [InlineData(SettingKeys.OpenAiApiKey)]
-    [InlineData(SettingKeys.OpenAiChatModel)]
     [InlineData("immich:baseurl")]
     public void RequiresRestart_StartupKeys_True(string key) => Assert.True(SettingKeys.RequiresRestart(key));
 

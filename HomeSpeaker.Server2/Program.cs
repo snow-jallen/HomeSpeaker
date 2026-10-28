@@ -1,8 +1,5 @@
-using System.ClientModel;
-using System.ClientModel.Primitives;
 using System.Net;
 using System.Runtime.InteropServices;
-using Azure.AI.OpenAI;
 using HomeSpeaker.Server2;
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Endpoints;
@@ -16,12 +13,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using Microsoft.Fast.Components.FluentUI;
 using MudBlazor.Services;
-using OpenAI;
-using OpenAI.Chat;
 
 #pragma warning disable IDE1006 // Naming Styles
 const string LocalCorsPolicy = nameof(LocalCorsPolicy);
@@ -157,7 +151,6 @@ builder.Services.AddHostedService<AutoPlayMonitorService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton(TimeProvider.System);
 
-builder.Services.Configure<AiMusicOptions>(builder.Configuration.GetSection("AI"));
 builder.Services.Configure<PushNotificationOptions>(builder.Configuration.GetSection("PushNotifications"));
 builder.Services.Configure<ImmichOptions>(builder.Configuration.GetSection("Immich"));
 builder.Services.PostConfigure<ImmichOptions>(options => ImmichOptionsFallback.Apply(options, builder.Configuration));
@@ -214,10 +207,6 @@ builder.Services.AddHostedService(sp => new VideoPrefetcher(
     FreeSpaceBytes = sp.GetRequiredService<PhotoCacheStore>().GetAvailableFreeSpace,
     SourceIsImmich = photoSourceKind(sp) == PhotoSourceKind.Immich,
 });
-builder.Services.AddSingleton<AiProcessingSignal>();
-builder.Services.AddSingleton<AiMusicAnalyzer>();
-builder.Services.AddScoped<AiMusicCatalogService>();
-builder.Services.AddScoped<AiPlaybackService>();
 builder.Services.AddScoped<MediaSearchService>();
 builder.Services.AddScoped<PushNotificationService>();
 builder.Services.AddHttpClient("ApnsClient", client =>
@@ -241,73 +230,7 @@ if (FeatureFlags.PushEnabled(builder.Configuration) &&
     builder.Services.AddHostedService<HealthAlertWorker>();
 }
 
-builder.Services.AddHostedService<AiMusicAnalysisWorker>();
 builder.Services.AddHostedService<HomeSpeaker.Server2.Services.VolumeMonitorService>();
-builder.Services.AddChatClient(sp =>
-{
-    var aiOptions = sp.GetRequiredService<IOptions<AiMusicOptions>>().Value;
-    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-    var logger = loggerFactory.CreateLogger("AiChatClient");
-    var requestTimeout = getAiModelRequestTimeout(aiOptions);
-    IChatClient chatClient;
-
-    if (aiOptions.UseAzureOpenAI)
-    {
-        aiOptions.AzureOpenAI.TryGetEndpointUri(out var endpointUri);
-        var azureOpenAiClient = new AzureOpenAIClient(
-            endpointUri!,
-            new ApiKeyCredential(aiOptions.AzureOpenAI.ApiKey!),
-            createAzureOpenAiClientOptions(requestTimeout));
-        chatClient = azureOpenAiClient
-            .GetChatClient(aiOptions.AzureOpenAI.DeploymentName!)
-            .AsIChatClient();
-    }
-    else if (aiOptions.HasOpenAIConfiguration)
-    {
-        var openAiClient = new ChatClient(
-            aiOptions.OpenAI.ChatModel,
-            new ApiKeyCredential(aiOptions.OpenAI.ApiKey!),
-            createOpenAiClientOptions(requestTimeout));
-        chatClient = openAiClient.AsIChatClient();
-    }
-    else
-    {
-        logger.LogWarning("AI analysis is disabled: {Reason}", aiOptions.ConfigurationIssue);
-        return new NullChatClient();
-    }
-
-    chatClient = new LoggingChatClient(chatClient, logger);
-    chatClient = new OpenTelemetryChatClient(chatClient, logger, "HomeSpeaker.AI");
-    return chatClient;
-}, ServiceLifetime.Singleton);
-
-TimeSpan getAiModelRequestTimeout(AiMusicOptions options) =>
-    TimeSpan.FromSeconds(Math.Max(30, options.ModelRequestTimeoutSeconds));
-
-AzureOpenAIClientOptions createAzureOpenAiClientOptions(TimeSpan requestTimeout)
-{
-    var options = new AzureOpenAIClientOptions();
-    applyAiTransportTimeouts(options, requestTimeout);
-    return options;
-}
-
-OpenAIClientOptions createOpenAiClientOptions(TimeSpan requestTimeout)
-{
-    var options = new OpenAIClientOptions();
-    applyAiTransportTimeouts(options, requestTimeout);
-    return options;
-}
-
-void applyAiTransportTimeouts(ClientPipelineOptions options, TimeSpan requestTimeout)
-{
-    var transportTimeout = requestTimeout + TimeSpan.FromSeconds(15);
-    options.NetworkTimeout = transportTimeout;
-    options.Transport = new HttpClientPipelineTransport(new HttpClient
-    {
-        Timeout = transportTimeout
-    });
-}
-
 // Add temperature and health-monitor services with caching
 builder.Services.AddHttpClient<TemperatureService>();
 builder.Services.AddScoped<ITemperatureService>(sp => sp.GetRequiredService<TemperatureService>());
@@ -447,7 +370,7 @@ app.UseCors(LocalCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
-app.MapGet("/api/features", (IConfiguration config, PhotoLibrary photos, IChatClient chatClient) => new
+app.MapGet("/api/features", (IConfiguration config, PhotoLibrary photos) => new
 {
     TemperatureEnabled = FeatureFlags.TemperatureEnabled(config),
     BloodSugarEnabled = FeatureFlags.BloodSugarEnabled(config),
@@ -455,9 +378,7 @@ app.MapGet("/api/features", (IConfiguration config, PhotoLibrary photos, IChatCl
     AnchorsEnabled = FeatureFlags.AnchorsEnabled(config),
     PushEnabled = FeatureFlags.PushEnabled(config),
     TemperatureUnit = TemperatureDisplay.UnitFrom(config) == TemperatureUnit.Celsius ? "C" : "F",
-    PhotosEnabled = photos.Count > 0,
-    // AddChatClient falls back to NullChatClient when no AI provider is configured.
-    AiEnabled = chatClient is not NullChatClient
+    PhotosEnabled = photos.Count > 0
 });
 
 app.MapFeatureModules();
@@ -532,7 +453,6 @@ app.MapPhotoApi();
 app.MapAdminApi();
 app.MapDiagnosticsApi();
 app.MapSettingsApi();
-app.MapAiApi();
 
 // Stream image search endpoint
 app.MapGet("/api/streams/image-search", async (string q, ImageSearchService imageSearch) =>

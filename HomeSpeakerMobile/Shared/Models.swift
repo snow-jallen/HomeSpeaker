@@ -83,7 +83,7 @@ struct RadioStream: Codable, Identifiable, Hashable {
     let displayOrder: Int
 }
 
-/// What the server's "play ..." search picked. Kind is Playlist, Stream, Mix, Artist, Album or Song.
+/// What the server's "play ..." search picked. Kind is Playlist, Stream, Artist, Album or Song.
 struct MediaMatch: Codable, Hashable {
     let kind: String
     let name: String
@@ -111,7 +111,6 @@ struct PlayerStatus: Codable {
     let sleepTimerActive: Bool?
     let sleepTimerRemainingMinutes: Double?
     let repeatMode: Bool?
-    let aiContext: AiPlayerContextDto?
     let isStream: Bool?
     let streamName: String?
 
@@ -188,7 +187,6 @@ struct PlayerStatus: Codable {
 struct Features: Codable {
     let temperatureEnabled: Bool
     let bloodSugarEnabled: Bool
-    let aiEnabled: Bool?
     let forecastEnabled: Bool?
     let anchorsEnabled: Bool?
     /// False when the server has no APNs configured (its push and Live
@@ -363,97 +361,4 @@ struct UpsertPushInstallationRequest: Codable {
     let deviceToken: String
     let deviceName: String?
     let bundleId: String?
-}
-
-// MARK: - AI Playlists Models
-
-struct AiPlayerContextDto: Codable {
-    let mode: String?
-    let sessionId: String?
-    let genreKey: String?
-    let seedSongId: Int?
-    let allowFeedback: Bool
-}
-
-struct AiPlaylistSummaryDto: Codable, Identifiable {
-    let genreKey: String
-    let displayName: String
-    let description: String
-    let trackCount: Int
-    let sortOrder: Int
-    
-    var id: String { genreKey }
-    var songCount: Int { trackCount }
-    
-    enum CodingKeys: String, CodingKey {
-        case genreKey, displayName, description, trackCount, legacyTrackCount = "TrackCount", sortOrder
-    }
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        genreKey = try container.decode(String.self, forKey: .genreKey)
-        displayName = try container.decode(String.self, forKey: .displayName)
-        description = try container.decode(String.self, forKey: .description)
-        if let trackCountValue = (try? container.decodeIfPresent(Int.self, forKey: .trackCount))
-            ?? (try? container.decodeIfPresent(Int.self, forKey: .legacyTrackCount))
-        {
-            trackCount = trackCountValue
-        } else {
-            throw DecodingError.keyNotFound(
-                CodingKeys.trackCount,
-                .init(
-                    codingPath: container.codingPath,
-                    debugDescription: "Missing both 'trackCount' and legacy 'TrackCount' in AI playlist summary payload."
-                )
-            )
-        }
-        sortOrder = (try? container.decode(Int.self, forKey: .sortOrder)) ?? 0
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(genreKey, forKey: .genreKey)
-        try container.encode(displayName, forKey: .displayName)
-        try container.encode(description, forKey: .description)
-        try container.encode(trackCount, forKey: .trackCount)
-    }
-}
-
-struct AiPlaylistDto: Codable {
-    let genreKey: String
-    let displayName: String
-    let description: String
-    let songs: [Song]
-}
-
-struct AiLibraryStatusDto: Codable {
-    let state: String
-    let totalTracks: Int
-    let queuedTracks: Int
-    let processingTracks: Int
-    let completedTracks: Int
-    let failedTracks: Int
-    let percentComplete: Double
-    let lastScanUtc: String?
-    let currentBatchId: String?
-    
-    var stateDisplay: String {
-        switch state.lowercased() {
-        case "idle": return "Idle"
-        case "scanning": return "Scanning library"
-        case "processing": return "Processing tracks"
-        case "degraded": return "Degraded"
-        default: return state
-        }
-    }
-    
-    var isProcessing: Bool {
-        ["scanning", "processing"].contains(state.lowercased())
-    }
-}
-
-struct AiFeedbackRequest: Codable {
-    let songId: Int
-    let feedback: String
-    let sessionId: String?
 }

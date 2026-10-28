@@ -34,9 +34,6 @@ public static class SettingKeys
 
     public const string Anchors = "Features:Anchors";
 
-    public const string OpenAiApiKey = "AI:OpenAI:ApiKey";
-    public const string OpenAiChatModel = "AI:OpenAI:ChatModel";
-
     /// <summary>Every editable key, its label and whether it is a write-only secret, in page order.</summary>
     public static IReadOnlyList<(string Key, string Label, bool IsSecret)> All { get; } =
     [
@@ -59,19 +56,16 @@ public static class SettingKeys
         (TemperatureWindowMinOutside, "Minimum outside temperature", false),
         (TemperatureThreshold, "Window threshold", false),
         (Anchors, "Anchors", false),
-        (OpenAiApiKey, "OpenAI API key", true),
-        (OpenAiChatModel, "OpenAI chat model", false),
     ];
 
     /// <summary>
     /// True for keys that are only read when HomeSpeaker starts (the photo source and Immich client, the feature
-    /// modules that register endpoints and workers, and the AI client), so a change needs a restart to apply.
+    /// modules that register endpoints and workers), so a change needs a restart to apply.
     /// </summary>
     public static bool RequiresRestart(string key)
     {
         ArgumentNullException.ThrowIfNull(key);
         return key.StartsWith("Immich:", StringComparison.OrdinalIgnoreCase)
-            || key.StartsWith("AI:", StringComparison.OrdinalIgnoreCase)
             || restartKeys.Contains(key);
     }
 

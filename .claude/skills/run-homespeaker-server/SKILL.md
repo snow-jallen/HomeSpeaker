@@ -102,9 +102,6 @@ http://localhost:5280 in a browser. Ctrl-C to stop.
   because ffmpeg isn't installed.
 - **OTEL/Seq exporter errors in the log are noise** — appsettings points at
   `localhost:4317`; no collector runs locally. The app is unaffected.
-- **AI features are dormant locally** (no OpenAI/Azure key configured) —
-  the app logs "AI analysis is disabled" and uses a NullChatClient. AI
-  endpoints still respond.
 
 ## Troubleshooting
 
