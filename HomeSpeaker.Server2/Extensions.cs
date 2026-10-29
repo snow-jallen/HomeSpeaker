@@ -43,7 +43,8 @@ public static class Extensions
             })
             .WithTracing(tracing =>
             {
-                tracing.AddSource(builder.Environment.ApplicationName)
+                tracing.SetSampler(new BlazorNoiseSampler(new ParentBasedSampler(new AlwaysOnSampler())))
+                    .AddSource(builder.Environment.ApplicationName)
                     .AddSource(HomeSpeakerTelemetry.Name)
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
