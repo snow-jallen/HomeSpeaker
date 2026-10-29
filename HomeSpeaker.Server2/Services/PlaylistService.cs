@@ -109,12 +109,23 @@ public class PlaylistService
             songsToPlay = playlist!.Songs.OrderBy(s => s.Order);
         }
 
-        foreach (var playlistItem in songsToPlay)
+        var songs = songsToPlay
+            .Select(item => songsByPath.GetValueOrDefault(item.SongPath))
+            .OfType<Shared.Song>()
+            .ToList();
+        if (songs.Count == 0)
         {
-            if (songsByPath.TryGetValue(playlistItem.SongPath, out var song))
-            {
-                player.EnqueueSong(song);
-            }
+            logger.LogWarning("Playlist {PlaylistName} has no songs in the library, leaving playback alone.", playlistName);
+            return;
+        }
+
+        // Playing a playlist replaces whatever is playing and queued, rather than adding to it.
+        player.Stop();
+        player.ClearQueue();
+        player.PlaySong(songs[0]);
+        foreach (var song in songs.Skip(1))
+        {
+            player.EnqueueSong(song);
         }
     }
 

@@ -8,6 +8,8 @@ internal sealed class RecordingMusicPlayer : IMusicPlayer
 
     public List<Song> Enqueued { get; } = [];
 
+    public int StopCount { get; private set; }
+
     public bool StillPlaying => Played.Count > 0;
 
     public PlayerStatus Status => new() { StillPlaying = StillPlaying, CurrentSong = Played.LastOrDefault() };
@@ -38,7 +40,7 @@ internal sealed class RecordingMusicPlayer : IMusicPlayer
 
     public void SkipToNext() => throw new NotSupportedException();
 
-    public void Stop() => throw new NotSupportedException();
+    public void Stop() => StopCount++;
 
     public void SetVolume(int level0to100) => throw new NotSupportedException();
 

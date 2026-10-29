@@ -58,8 +58,6 @@ public sealed class MediaSearchService
         switch (match.Kind)
         {
             case MediaKind.Playlist:
-                player.Stop();
-                player.ClearQueue();
                 await playlists.PlayPlaylistAsync(match.Key);
                 return true;
 
