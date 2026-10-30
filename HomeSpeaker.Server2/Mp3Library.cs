@@ -32,6 +32,7 @@ public sealed class Mp3Library : IDisposable
     private string? dirtyReason;
     private string? lastFileSystemChange;
     private bool disposed;
+    private long generation;
 
     public event EventHandler? LibraryChanged;
 
@@ -98,6 +99,9 @@ public sealed class Mp3Library : IDisposable
 
     /// <summary>Songs in the current list, without triggering a rescan when dirty.</summary>
     public int SongCount => dataStore.GetSongs().Count();
+
+    /// <summary>Goes up by one each time a rescan swaps in a new song list, so caches built from <see cref="Songs"/> know when to rebuild.</summary>
+    public long Generation => Interlocked.Read(ref generation);
 
     /// <summary>True while a rescan is running.</summary>
     public bool IsSyncing { get; private set; }
@@ -189,6 +193,7 @@ public sealed class Mp3Library : IDisposable
             }
 
             dataStore.ReplaceAll(songs);
+            Interlocked.Increment(ref generation);
         }
         finally
         {

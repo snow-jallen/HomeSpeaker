@@ -62,7 +62,7 @@ For environment variables, copy `homespeaker.env.example` to `/opt/homespeaker/h
 
 ### Admin PIN
 
-Set an optional PIN on the settings page (4 to 12 digits). With a PIN, these pages need it: `/settings`, `/setup`, `/anchors/edit` and `/autoplay`. Everything else stays open, including the daily `/anchors` checklist and `/aspire`. After 5 wrong tries in a minute from one address, that address is locked out for 60 seconds. That slows guessing but does not stop it: a 4-digit PIN can still be brute-forced over the network in a day or two, so use 6 or more digits if your network is not just family. Without a PIN, anyone on your network can change settings.
+Set an optional PIN on the settings page (4 to 12 digits). With a PIN, these pages need it: `/settings`, `/setup`, `/anchors/edit`, `/autoplay` and `/album-art`. Everything else stays open, including the daily `/anchors` checklist and `/aspire`. After 5 wrong tries in a minute from one address, that address is locked out for 60 seconds. That slows guessing but does not stop it: a 4-digit PIN can still be brute-forced over the network in a day or two, so use 6 or more digits if your network is not just family. Without a PIN, anyone on your network can change settings.
 
 ### Forgot the admin PIN
 
@@ -70,7 +70,7 @@ Add `Admin__ResetPin=true` to `/opt/homespeaker/homespeaker.env` and run `cd /op
 
 ## Music and photos
 
-**Music.** Copy MP3s into the `music` folder (`MUSIC_DIR` in `/opt/homespeaker/.env`, `~/music` by default). The library rescans by itself when files change. To use a network share, mount it (for example with `/etc/fstab`) and point `MUSIC_DIR` at the mount. The folder also holds the database, the photo cache and `.keys` (which keeps sign-ins valid across restarts), so it must be writable and is worth backing up.
+**Music.** Copy MP3s into the `music` folder (`MUSIC_DIR` in `/opt/homespeaker/.env`, `~/music` by default). The library rescans by itself when files change. Songs without embedded cover art show up on the `/album-art` page (also in the menu), grouped by album: it looks up covers on iTunes, MusicBrainz and Deezer, and embeds one in the MP3s only after you pick it and press Apply. Hide a group you don't want to fix, and it stays hidden. To use a network share, mount it (for example with `/etc/fstab`) and point `MUSIC_DIR` at the mount. The folder also holds the database, the photo cache and `.keys` (which keeps sign-ins valid across restarts), so it must be writable and is worth backing up.
 
 **Photos.** The ambient slideshow starts on a kiosk after `Ambient:IdleSeconds` without a touch. `Photos:Source` chooses where pictures come from:
 

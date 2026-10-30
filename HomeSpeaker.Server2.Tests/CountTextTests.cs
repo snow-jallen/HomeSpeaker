@@ -11,4 +11,12 @@ public sealed class CountTextTests
     {
         Assert.Equal(expected, CountText.Songs(count));
     }
+
+    [Theory]
+    [InlineData(1, "1 group")]
+    [InlineData(290, "290 groups")]
+    public void Of_PluralisesAnyNoun(int count, string expected)
+    {
+        Assert.Equal(expected, CountText.Of(count, "group"));
+    }
 }

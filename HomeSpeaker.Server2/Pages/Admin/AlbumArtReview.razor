@@ -1,0 +1,520 @@
+@page "/album-art"
+@page "/admin/album-art"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "Admin")]
+@using HomeSpeaker.Server2.Services.AlbumArt
+@implements IDisposable
+@inject MissingAlbumArtFinder Finder
+@inject AlbumArtSearchService ArtSearch
+@inject AlbumArtApplier Applier
+@inject AlbumArtDismissalStore Dismissals
+@inject ILogger<AlbumArtReview> Logger
+
+<PageTitle>Album art</PageTitle>
+
+<div class="glass-page glass-page--album-art">
+    <div class="glass-page-header">
+        <h1 class="glass-title">Album art</h1>
+        <div class="glass-page-actions">
+            @if (searchAllRunning)
+            {
+                <button type="button" class="glass-btn glass-btn--ghost" @onclick="StopSearchAll">
+                    <span class="glass-spinner glass-spinner--inline" role="status" aria-label="Searching"></span>
+                    <span>Stop (@searchAllDone of @searchAllTotal)</span>
+                </button>
+            }
+            else
+            {
+                <button type="button" class="glass-btn glass-btn--ghost" @onclick="SearchAll" disabled="@(groups is null || isScanning)"
+                        title="Look up every listed group that hasn't been searched yet, one at a time">
+                    <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+                    <span class="glass-btn-label">Search all</span>
+                </button>
+            }
+            <button type="button" class="glass-btn glass-btn--ghost" @onclick="() => LoadAsync(rescan: true)" disabled="@isScanning"
+                    title="Check every song's tags again">
+                <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                <span class="glass-btn-label">Rescan</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="glass-hint">
+        Songs with no embedded picture, grouped by album. Search finds covers on iTunes, MusicBrainz and Deezer;
+        pick one (or paste a link) and press Apply to embed it. Nothing is written to your files until you press Apply.
+    </div>
+
+    @if (pageMessage is not null)
+    {
+        <div class="glass-alert @(pageMessageIsError ? "glass-alert--danger" : "glass-alert--success")" role="status">
+            <i class="fas @(pageMessageIsError ? "fa-triangle-exclamation" : "fa-check")" aria-hidden="true"></i>
+            <div>@pageMessage</div>
+        </div>
+    }
+
+    @if (groups is null || isScanning)
+    {
+        <div class="glass-empty" role="status">
+            <div class="glass-spinner" aria-hidden="true"></div>
+            Checking every song for album art. The first check can take a minute on a Raspberry Pi.
+        </div>
+    }
+    else
+    {
+        <div class="glass-toolbar">
+            <input class="glass-input album-art-filter" placeholder="Filter by artist, album or song" aria-label="Filter"
+                   @bind="filter" @bind:event="oninput" />
+            <button type="button" class="glass-chip @(showHidden ? "is-on" : "")" aria-pressed="@(showHidden ? "true" : "false")"
+                    @onclick="() => showHidden = !showHidden">
+                Show hidden (@hiddenCount)
+            </button>
+            <span class="glass-hint glass-toolbar-end">
+                @CountText.Of(visibleGroups.Count, "group") · @CountText.Of(visibleGroups.Sum(g => g.Group.Songs.Count), "song") missing art, of @Finder.LastScanSongCount checked
+            </span>
+        </div>
+
+        @if (visibleGroups.Count == 0)
+        {
+            <div class="glass-empty">
+                <i class="fas fa-image" aria-hidden="true"></i>
+                <div><strong>Nothing to review</strong></div>
+                <div>@(groups.Count == 0 ? "Every song has album art." : "No groups match.")</div>
+            </div>
+        }
+        else
+        {
+            <div class="album-art-groups">
+                @foreach (var state in visibleGroups.Take(shownCount))
+                {
+                    <section class="glass-card album-art-group" @key="state.Group.Key" aria-label="@state.Group.Artist, @state.Group.DisplayName">
+                        <header class="glass-card-header">
+                            <div class="glass-card-heading">
+                                <h2 class="glass-card-title">@state.Group.DisplayName</h2>
+                                <div class="glass-hint">
+                                    @state.Group.Artist · @(state.Group.IsAlbum ? CountText.Of(state.Group.Songs.Count, "song") : "song without an album")
+                                </div>
+                            </div>
+                            <div class="glass-row-actions">
+                                @if (state.IsHidden)
+                                {
+                                    <span class="glass-badge">Hidden</span>
+                                }
+                                <button type="button" class="glass-btn glass-btn--ghost" @onclick="() => SearchOneAsync(state)" disabled="@(state.Searching || state.Applying)">
+                                    @if (state.Searching)
+                                    {
+                                        <span class="glass-spinner glass-spinner--inline" role="status" aria-label="Searching"></span>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+                                    }
+                                    <span>@(state.Searched ? "Search again" : "Search")</span>
+                                </button>
+                                <button type="button" class="glass-btn glass-btn--ghost" @onclick="() => ToggleHiddenAsync(state)" disabled="@state.Applying"
+                                        title="@(state.IsHidden ? "Show this group in the list again" : "Hide this group from the list; it stays hidden after rescans")">
+                                    <i class="fas @(state.IsHidden ? "fa-eye" : "fa-eye-slash")" aria-hidden="true"></i>
+                                    <span>@(state.IsHidden ? "Unhide" : "Hide")</span>
+                                </button>
+                            </div>
+                        </header>
+
+                        @if (state.Group.IsAlbum)
+                        {
+                            <details class="album-art-songs">
+                                <summary>@CountText.Of(state.Group.Songs.Count, "song")</summary>
+                                <ul>
+                                    @foreach (var song in state.Group.Songs)
+                                    {
+                                        <li title="@song.Path">@song.Name</li>
+                                    }
+                                </ul>
+                            </details>
+                        }
+                        else
+                        {
+                            <div class="glass-hint album-art-path" title="@state.Group.Songs[0].Path">@state.Group.Songs[0].Path</div>
+                        }
+
+                        @if (state.Searched)
+                        {
+                            @if (state.FailedSources.Count > 0)
+                            {
+                                <div class="glass-alert glass-alert--warning" role="status">
+                                    <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+                                    <div>@string.Join(", ", state.FailedSources) didn't answer.</div>
+                                </div>
+                            }
+
+                            @if (state.Candidates.Count == 0)
+                            {
+                                <div class="glass-hint">No covers found. Try pasting a link below.</div>
+                            }
+                            else
+                            {
+                                <div class="album-art-candidates">
+                                    @foreach (var candidate in state.Candidates)
+                                    {
+                                        var isSelected = ReferenceEquals(state.Selected, candidate);
+                                        <button type="button" class="album-art-candidate @(isSelected ? "is-selected" : "")"
+                                                aria-pressed="@(isSelected ? "true" : "false")"
+                                                title="@describe(candidate)"
+                                                @onclick="() => Select(state, candidate)">
+                                            <img src="@candidate.ThumbnailUrl" alt="@describe(candidate)" loading="lazy" referrerpolicy="no-referrer"
+                                                 onerror="this.parentElement.hidden = true" />
+                                            <span class="album-art-candidate-meta">
+                                                <span>@candidate.Source</span>
+                                                <span class="album-art-score">@percent(candidate.Score)</span>
+                                            </span>
+                                            <span class="album-art-candidate-name">@(candidate.Album ?? candidate.Title)</span>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        }
+
+                        <div class="glass-input-group">
+                            <input class="glass-input" placeholder="Or paste an image link (https://…)" aria-label="Image link for @state.Group.DisplayName"
+                                   @bind="state.ManualUrl" @bind:event="oninput" />
+                            <button type="button" class="glass-btn glass-btn--ghost" @onclick="() => UseManualUrl(state)"
+                                    disabled="@string.IsNullOrWhiteSpace(state.ManualUrl)">
+                                Preview
+                            </button>
+                        </div>
+
+                        @if (state.Selected is { } selected)
+                        {
+                            <div class="album-art-preview">
+                                <img src="@selected.ImageUrl" alt="Selected cover" referrerpolicy="no-referrer" />
+                                <div class="album-art-preview-details">
+                                    <div><strong>@selected.Source</strong>@(selected.Source == ManualSource ? "" : $" · {percent(selected.Score)} match")</div>
+                                    @if (selected.Artist is not null)
+                                    {
+                                        <div>@selected.Artist</div>
+                                    }
+                                    @if (selected.Album is not null)
+                                    {
+                                        <div>@selected.Album</div>
+                                    }
+                                    @if (selected.Title is not null)
+                                    {
+                                        <div>@selected.Title</div>
+                                    }
+                                    <div class="glass-hint album-art-path" title="@selected.ImageUrl">@selected.ImageUrl</div>
+                                    <div class="glass-row-actions">
+                                        <button type="button" class="glass-btn" @onclick="() => ApplyAsync(state)" disabled="@state.Applying">
+                                            @if (state.Applying)
+                                            {
+                                                <span class="glass-spinner glass-spinner--inline" role="status" aria-label="Applying"></span>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-check" aria-hidden="true"></i>
+                                            }
+                                            Apply to @CountText.Of(state.Group.Songs.Count, "song")
+                                        </button>
+                                        <button type="button" class="glass-btn glass-btn--ghost" @onclick="() => state.Selected = null" disabled="@state.Applying">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @if (state.Error is not null)
+                        {
+                            <div class="glass-alert glass-alert--danger" role="alert">
+                                <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+                                <div>@state.Error</div>
+                            </div>
+                        }
+                    </section>
+                }
+            </div>
+
+            @if (visibleGroups.Count > shownCount)
+            {
+                <button type="button" class="glass-btn glass-btn--ghost album-art-more" @onclick="() => shownCount += PageSize">
+                    Show more (@(visibleGroups.Count - shownCount) left)
+                </button>
+            }
+        }
+    }
+</div>
+
+@code {
+    private const int PageSize = 40;
+    private const string ManualSource = "Pasted link";
+
+    private readonly CancellationTokenSource disposed = new();
+    private List<GroupState>? groups;
+    private bool isScanning;
+    private string filter = string.Empty;
+    private bool showHidden;
+    private int shownCount = PageSize;
+    private string? pageMessage;
+    private bool pageMessageIsError;
+    private CancellationTokenSource? searchAll;
+    private bool searchAllRunning;
+    private int searchAllDone;
+    private int searchAllTotal;
+
+    private int hiddenCount => groups?.Count(g => g.IsHidden) ?? 0;
+
+    private List<GroupState> visibleGroups => groups is null ? [] : groups
+        .Where(g => showHidden || !g.IsHidden)
+        .Where(g => matchesFilter(g.Group))
+        .ToList();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Load after the first interactive render, not during prerendering: the first check can take a while on a Pi.
+        if (firstRender)
+        {
+            await LoadAsync(rescan: false);
+        }
+    }
+
+    private async Task LoadAsync(bool rescan)
+    {
+        StopSearchAll();
+        isScanning = true;
+        StateHasChanged();
+        try
+        {
+            var found = await Finder.GetGroupsAsync(rescan, disposed.Token);
+            var hidden = await Dismissals.GetHiddenKeysAsync(disposed.Token);
+            var previous = groups?.ToDictionary(g => g.Group.Key, StringComparer.Ordinal) ?? [];
+            // Keep search results for groups that are still listed, so a rescan doesn't throw them away.
+            groups = found.Select(group => previous.TryGetValue(group.Key, out var old)
+                    ? old.WithGroup(group, hidden.Contains(group.Key))
+                    : new GroupState(group) { IsHidden = hidden.Contains(group.Key) })
+                .ToList();
+        }
+        catch (OperationCanceledException) when (disposed.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Album art check failed");
+            setMessage("Couldn't check the library for album art: " + ex.Message, isError: true);
+            groups ??= [];
+        }
+        finally
+        {
+            isScanning = false;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task SearchOneAsync(GroupState state) => await searchAsync(state, disposed.Token);
+
+    private async Task searchAsync(GroupState state, CancellationToken cancellationToken)
+    {
+        state.Searching = true;
+        state.Error = null;
+        StateHasChanged();
+        try
+        {
+            var result = await ArtSearch.SearchAsync(state.Group.Query, cancellationToken);
+            state.Candidates = result.Candidates;
+            state.FailedSources = result.FailedSources;
+            state.Searched = true;
+        }
+        catch (OperationCanceledException)
+        {
+            // Stopped or page closed.
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Album art search failed for {Key}", state.Group.Key);
+            state.Error = "Search failed: " + ex.Message;
+        }
+        finally
+        {
+            state.Searching = false;
+        }
+
+        if (!disposed.IsCancellationRequested)
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task SearchAll()
+    {
+        var pending = visibleGroups.Where(g => !g.Searched && !g.Searching).ToList();
+        if (pending.Count == 0)
+        {
+            return;
+        }
+
+        searchAll = CancellationTokenSource.CreateLinkedTokenSource(disposed.Token);
+        var token = searchAll.Token;
+        searchAllRunning = true;
+        searchAllDone = 0;
+        searchAllTotal = pending.Count;
+        try
+        {
+            // One group at a time: the sources' throttles (MusicBrainz 1/s, iTunes ~20/min) set the pace.
+            foreach (var state in pending)
+            {
+                if (token.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                await searchAsync(state, token);
+                searchAllDone++;
+            }
+        }
+        finally
+        {
+            searchAllRunning = false;
+            searchAll.Dispose();
+            searchAll = null;
+        }
+
+        if (!disposed.IsCancellationRequested)
+        {
+            StateHasChanged();
+        }
+    }
+
+    private void StopSearchAll()
+    {
+        searchAll?.Cancel();
+    }
+
+    private static void Select(GroupState state, AlbumArtCandidate candidate)
+    {
+        state.Selected = candidate;
+        state.Error = null;
+    }
+
+    private static void UseManualUrl(GroupState state)
+    {
+        var url = state.ManualUrl?.Trim();
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            state.Error = "Paste a link that starts with http:// or https://.";
+            return;
+        }
+
+        Select(state, new AlbumArtCandidate(ManualSource, uri.AbsoluteUri, uri.AbsoluteUri, null, null, null));
+    }
+
+    private async Task ApplyAsync(GroupState state)
+    {
+        if (state.Selected is not { } selected || groups is null)
+        {
+            return;
+        }
+
+        state.Applying = true;
+        state.Error = null;
+        StateHasChanged();
+        try
+        {
+            var result = await Applier.ApplyAsync(state.Group, selected.ImageUrl, disposed.Token);
+            groups.Remove(state);
+            var name = $"{state.Group.Artist}, {state.Group.DisplayName}";
+            if (result.Failures.Count == 0)
+            {
+                var skipped = result.AlreadyHadArt.Count > 0 ? $" ({CountText.Of(result.AlreadyHadArt.Count, "song")} already had art.)" : "";
+                setMessage($"Embedded the cover in {CountText.Of(result.Updated.Count, "song")} of {name}.{skipped}", isError: false);
+            }
+            else
+            {
+                var failed = string.Join("; ", result.Failures.Select(f => $"{Path.GetFileName(f.Path)}: {f.Error}"));
+                setMessage($"Embedded the cover in {CountText.Of(result.Updated.Count, "song")} of {name}, but {CountText.Of(result.Failures.Count, "song")} failed: {failed}", isError: true);
+            }
+        }
+        catch (AlbumArtDownloadException ex)
+        {
+            state.Error = ex.Message;
+        }
+        catch (OperationCanceledException) when (disposed.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Applying album art failed for {Key}", state.Group.Key);
+            state.Error = "Apply failed: " + ex.Message;
+        }
+        finally
+        {
+            state.Applying = false;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ToggleHiddenAsync(GroupState state)
+    {
+        try
+        {
+            if (state.IsHidden)
+            {
+                await Dismissals.UnhideAsync(state.Group.Key, disposed.Token);
+            }
+            else
+            {
+                await Dismissals.HideAsync(state.Group, disposed.Token);
+            }
+
+            state.IsHidden = !state.IsHidden;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError(ex, "Couldn't change hidden state of {Key}", state.Group.Key);
+            state.Error = "Couldn't save that: " + ex.Message;
+        }
+    }
+
+    private bool matchesFilter(AlbumArtGroup group)
+    {
+        var text = filter.Trim();
+        return text.Length == 0
+            || group.Artist.Contains(text, StringComparison.OrdinalIgnoreCase)
+            || (group.Album?.Contains(text, StringComparison.OrdinalIgnoreCase) ?? false)
+            || group.Songs.Any(song => song.Name.Contains(text, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void setMessage(string message, bool isError)
+    {
+        pageMessage = message;
+        pageMessageIsError = isError;
+    }
+
+    private static string percent(double score) => $"{Math.Round(score * 100):0}%";
+
+    private static string describe(AlbumArtCandidate candidate) =>
+        string.Join(" · ", new[] { candidate.Source, candidate.Artist, candidate.Album, candidate.Title }.Where(part => !string.IsNullOrWhiteSpace(part)));
+
+    public void Dispose()
+    {
+        disposed.Cancel();
+        disposed.Dispose();
+    }
+
+    private sealed class GroupState(AlbumArtGroup group)
+    {
+        public AlbumArtGroup Group { get; private set; } = group;
+        public bool IsHidden { get; set; }
+        public bool Searching { get; set; }
+        public bool Searched { get; set; }
+        public bool Applying { get; set; }
+        public IReadOnlyList<AlbumArtCandidate> Candidates { get; set; } = [];
+        public IReadOnlyList<string> FailedSources { get; set; } = [];
+        public AlbumArtCandidate? Selected { get; set; }
+        public string? ManualUrl { get; set; }
+        public string? Error { get; set; }
+
+        public GroupState WithGroup(AlbumArtGroup updated, bool isHidden)
+        {
+            Group = updated;
+            IsHidden = isHidden;
+            return this;
+        }
+    }
+}

@@ -149,6 +149,8 @@ public sealed partial class AdminEndpointTests
     [InlineData("/setup")]
     [InlineData("/anchors/edit")]
     [InlineData("/autoplay")]
+    [InlineData("/album-art")]
+    [InlineData("/admin/album-art")]
     public async Task AdminPage_WithPinAndNoCookie_RedirectsToUnlock(string path)
     {
         using var factory = withPin();

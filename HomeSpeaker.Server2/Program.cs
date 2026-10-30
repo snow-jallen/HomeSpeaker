@@ -4,6 +4,7 @@ using HomeSpeaker.Server2;
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Endpoints;
 using HomeSpeaker.Server2.Services;
+using HomeSpeaker.Server2.Services.AlbumArt;
 using HomeSpeaker.Server2.Services.LiveActivities;
 using HomeSpeaker.Server2.Services.MediaSearch;
 using HomeSpeaker.Server2.Services.Photos;
@@ -253,6 +254,26 @@ builder.Services.AddHttpClient<ImageSearchService>(client =>
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
     client.Timeout = TimeSpan.FromSeconds(10);
 });
+
+// Album art review (/album-art): find songs without embedded art, suggest covers, embed the ones an admin approves.
+builder.Services.AddHttpClient(AlbumArtHttp.LookupClientName, client =>
+{
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(AlbumArtHttp.UserAgent);
+    client.Timeout = TimeSpan.FromSeconds(8);
+});
+builder.Services.AddHttpClient(AlbumArtHttp.DownloadClientName, client =>
+{
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(AlbumArtHttp.UserAgent);
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
+builder.Services.AddSingleton<IAlbumArtSource, ITunesAlbumArtSource>();
+builder.Services.AddSingleton<IAlbumArtSource, MusicBrainzAlbumArtSource>();
+builder.Services.AddSingleton<IAlbumArtSource, DeezerAlbumArtSource>();
+builder.Services.AddSingleton<AlbumArtSearchService>();
+builder.Services.AddSingleton<MissingAlbumArtFinder>();
+builder.Services.AddSingleton<AlbumArtDownloader>();
+builder.Services.AddSingleton<AlbumArtApplier>();
+builder.Services.AddSingleton<AlbumArtDismissalStore>();
 
 // A "self" check tagged "live" is already registered by AddServiceDefaults()
 // (Extensions.cs AddDefaultHealthChecks) — the Docker HEALTHCHECK hits /alive, which

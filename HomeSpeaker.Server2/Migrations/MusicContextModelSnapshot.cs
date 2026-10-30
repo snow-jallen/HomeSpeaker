@@ -17,6 +17,35 @@ namespace HomeSpeaker.Server2.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.13");
 
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.AlbumArtDismissal", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Artist")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DismissedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GroupKey")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupKey")
+                        .IsUnique();
+
+                    b.ToTable("AlbumArtDismissals");
+                });
+
             modelBuilder.Entity("HomeSpeaker.Server2.Data.AnchorDefinitionEntity", b =>
                 {
                     b.Property<int>("Id")

@@ -95,6 +95,10 @@ public class MusicContext : DbContext
 
         modelBuilder.Entity<PushNotificationAlertState>()
             .HasKey(state => state.AlertKey);
+
+        modelBuilder.Entity<AlbumArtDismissal>()
+            .HasIndex(dismissal => dismissal.GroupKey)
+            .IsUnique();
     }
     public DbSet<Thumbnail> Thumbnails { get; set; }
     public DbSet<Playlist> Playlists { get; set; }
@@ -108,6 +112,7 @@ public class MusicContext : DbContext
     public DbSet<PushNotificationAlertState> PushNotificationAlertStates { get; set; }
     public DbSet<AutoPlaySettingsEntity> AutoPlaySettings { get; set; }
     public DbSet<AutoPlaySourceEntity> AutoPlaySources { get; set; }
+    public DbSet<AlbumArtDismissal> AlbumArtDismissals { get; set; }
 }
 
 public class Thumbnail
