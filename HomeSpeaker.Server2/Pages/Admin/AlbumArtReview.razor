@@ -2,12 +2,13 @@
 @page "/admin/album-art"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "Admin")]
 @using HomeSpeaker.Server2.Services.AlbumArt
-@implements IDisposable
+@implements IAsyncDisposable
 @inject MissingAlbumArtFinder Finder
 @inject AlbumArtSearchService ArtSearch
 @inject AlbumArtApplier Applier
 @inject AlbumArtDismissalStore Dismissals
 @inject ILogger<AlbumArtReview> Logger
+@inject IJSRuntime JS
 
 <PageTitle>Album art</PageTitle>
 
@@ -40,7 +41,8 @@
 
     <div class="glass-hint">
         Songs with no embedded picture, grouped by album. Search finds covers on iTunes, MusicBrainz and Deezer;
-        pick one (or paste a link) and press Apply to embed it. Nothing is written to your files until you press Apply.
+        pick one, paste a link, or paste, drop or choose an image of your own (any format; it becomes a JPEG), and press Apply to
+        embed it. Nothing is written to your files until you press Apply.
     </div>
 
     @if (pageMessage is not null)
@@ -85,7 +87,7 @@
             <div class="album-art-groups">
                 @foreach (var state in visibleGroups.Take(shownCount))
                 {
-                    <section class="glass-card album-art-group" @key="state.Group.Key" aria-label="@state.Group.Artist, @state.Group.DisplayName">
+                    <section class="glass-card album-art-group" @key="state.Group.Key" data-album-art-key="@state.Group.Key" aria-label="@state.Group.Artist, @state.Group.DisplayName">
                         <header class="glass-card-header">
                             <div class="glass-card-heading">
                                 <h2 class="glass-card-title">@state.Group.DisplayName</h2>
@@ -134,8 +136,24 @@
                             <div class="glass-hint album-art-path" title="@state.Group.Songs[0].Path">@state.Group.Songs[0].Path</div>
                         }
 
+                        <form class="glass-input-group" @onsubmit="() => SearchTextAsync(state)">
+                            <input class="glass-input" placeholder="Search your own words (artist, album…)" aria-label="Search words for @state.Group.DisplayName"
+                                   @bind="state.SearchText" @bind:event="oninput" />
+                            <button type="submit" class="glass-btn glass-btn--ghost"
+                                    disabled="@(state.Searching || state.Applying || string.IsNullOrWhiteSpace(state.SearchText))"
+                                    title="Look up covers for these words instead of the song's tags">
+                                <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+                                <span>Search these words</span>
+                            </button>
+                        </form>
+
                         @if (state.Searched)
                         {
+                            @if (state.SearchedFor is { } searchedFor)
+                            {
+                                <div class="glass-hint">Results for “@searchedFor”</div>
+                            }
+
                             @if (state.FailedSources.Count > 0)
                             {
                                 <div class="glass-alert glass-alert--warning" role="status">
@@ -146,7 +164,7 @@
 
                             @if (state.Candidates.Count == 0)
                             {
-                                <div class="glass-hint">No covers found. Try pasting a link below.</div>
+                                <div class="glass-hint">No covers found. Try different words above, or paste a link below.</div>
                             }
                             else
                             {
@@ -180,12 +198,26 @@
                             </button>
                         </div>
 
+                        <div class="album-art-drop" tabindex="0" aria-label="Paste or drop an image for @state.Group.DisplayName">
+                            @if (state.Converting)
+                            {
+                                <span class="glass-spinner glass-spinner--inline" role="status" aria-label="Reading image"></span>
+                                <span>Reading the image…</span>
+                            }
+                            else
+                            {
+                                <i class="fas fa-image" aria-hidden="true"></i>
+                                <span>Click here and paste an image (Ctrl+V), drop one on this card, or</span>
+                                <button type="button" class="glass-btn glass-btn--ghost" data-album-art-choose="true" disabled="@state.Applying">Choose a file…</button>
+                            }
+                        </div>
+
                         @if (state.Selected is { } selected)
                         {
                             <div class="album-art-preview">
                                 <img src="@selected.ImageUrl" alt="Selected cover" referrerpolicy="no-referrer" />
                                 <div class="album-art-preview-details">
-                                    <div><strong>@selected.Source</strong>@(selected.Source == ManualSource ? "" : $" · {percent(selected.Score)} match")</div>
+                                    <div><strong>@selected.Source</strong>@(selected.Source is ManualSource or UploadSource ? "" : $" · {percent(selected.Score)} match")</div>
                                     @if (selected.Artist is not null)
                                     {
                                         <div>@selected.Artist</div>
@@ -198,7 +230,10 @@
                                     {
                                         <div>@selected.Title</div>
                                     }
-                                    <div class="glass-hint album-art-path" title="@selected.ImageUrl">@selected.ImageUrl</div>
+                                    @if (selected.Source != UploadSource)
+                                    {
+                                        <div class="glass-hint album-art-path" title="@selected.ImageUrl">@selected.ImageUrl</div>
+                                    }
                                     <div class="glass-row-actions">
                                         <button type="button" class="glass-btn" @onclick="() => ApplyAsync(state)" disabled="@state.Applying">
                                             @if (state.Applying)
@@ -241,8 +276,10 @@
 @code {
     private const int PageSize = 40;
     private const string ManualSource = "Pasted link";
+    private const string UploadSource = "Your image";
 
     private readonly CancellationTokenSource disposed = new();
+    private DotNetObjectReference<AlbumArtReview>? dotNetRef;
     private List<GroupState>? groups;
     private bool isScanning;
     private string filter = string.Empty;
@@ -267,6 +304,8 @@
         // Load after the first interactive render, not during prerendering: the first check can take a while on a Pi.
         if (firstRender)
         {
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("albumArtDrop.attach", dotNetRef);
             await LoadAsync(rescan: false);
         }
     }
@@ -305,18 +344,31 @@
         StateHasChanged();
     }
 
-    private async Task SearchOneAsync(GroupState state) => await searchAsync(state, disposed.Token);
+    private async Task SearchOneAsync(GroupState state) => await searchAsync(state, state.Group.Query, disposed.Token);
 
-    private async Task searchAsync(GroupState state, CancellationToken cancellationToken)
+    private async Task SearchTextAsync(GroupState state)
+    {
+        if (string.IsNullOrWhiteSpace(state.SearchText) || state.Searching || state.Applying)
+        {
+            return;
+        }
+
+        await searchAsync(state, AlbumArtQuery.FreeText(state.SearchText), disposed.Token);
+    }
+
+    private Task searchAsync(GroupState state, CancellationToken cancellationToken) => searchAsync(state, state.Group.Query, cancellationToken);
+
+    private async Task searchAsync(GroupState state, AlbumArtQuery query, CancellationToken cancellationToken)
     {
         state.Searching = true;
         state.Error = null;
         StateHasChanged();
         try
         {
-            var result = await ArtSearch.SearchAsync(state.Group.Query, cancellationToken);
+            var result = await ArtSearch.SearchAsync(query, cancellationToken);
             state.Candidates = result.Candidates;
             state.FailedSources = result.FailedSources;
+            state.SearchedFor = query.IsFreeText ? query.Name : null;
             state.Searched = true;
         }
         catch (OperationCanceledException)
@@ -414,7 +466,9 @@
         StateHasChanged();
         try
         {
-            var result = await Applier.ApplyAsync(state.Group, selected.ImageUrl, disposed.Token);
+            var result = selected.Source == UploadSource && state.UploadedImage is { } uploaded
+                ? await Applier.ApplyAsync(state.Group, uploaded, disposed.Token)
+                : await Applier.ApplyAsync(state.Group, selected.ImageUrl, disposed.Token);
             groups.Remove(state);
             var name = $"{state.Group.Artist}, {state.Group.DisplayName}";
             if (result.Failures.Count == 0)
@@ -491,10 +545,94 @@
     private static string describe(AlbumArtCandidate candidate) =>
         string.Join(" · ", new[] { candidate.Source, candidate.Artist, candidate.Album, candidate.Title }.Where(part => !string.IsNullOrWhiteSpace(part)));
 
-    public void Dispose()
+    /// <summary>albumArtDrop.js calls this as soon as it has an image, before converting it, so the card can show it's busy.</summary>
+    [JSInvokable]
+    public Task ImageConvertingAsync(string key)
+    {
+        if (findGroup(key) is { } state)
+        {
+            state.Converting = true;
+            state.Error = null;
+        }
+
+        return InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>An image pasted, dropped or chosen in the browser, already redrawn there as a JPEG.</summary>
+    [JSInvokable]
+    public async Task ReceiveImageAsync(string key, IJSStreamReference image, string name)
+    {
+        var state = findGroup(key);
+        try
+        {
+            await using (image)
+            {
+                await using var stream = await image.OpenReadStreamAsync(AlbumArtDownloader.MaxBytes, disposed.Token);
+                var uploaded = await AlbumArtImage.FromUploadAsync(stream, disposed.Token);
+                if (state is not null)
+                {
+                    state.UploadedImage = uploaded;
+                    Select(state, new AlbumArtCandidate(UploadSource, uploaded.ToDataUrl(), uploaded.ToDataUrl(), null, null, string.IsNullOrWhiteSpace(name) ? null : name));
+                }
+            }
+        }
+        catch (OperationCanceledException) when (disposed.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Couldn't take an uploaded album art image for {Key}", key);
+            if (state is not null)
+            {
+                state.Error = ex is AlbumArtDownloadException ? ex.Message : "Couldn't read that image: " + ex.Message;
+            }
+        }
+        finally
+        {
+            if (state is not null)
+            {
+                state.Converting = false;
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task ImageFailedAsync(string key, string message)
+    {
+        if (findGroup(key) is { } state)
+        {
+            state.Converting = false;
+            state.Error = message;
+        }
+
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private GroupState? findGroup(string key) => groups?.FirstOrDefault(g => string.Equals(g.Group.Key, key, StringComparison.Ordinal));
+
+    public async ValueTask DisposeAsync()
     {
         disposed.Cancel();
         disposed.Dispose();
+        // Only an interactive render attached the script; a prerender has no JS to call.
+        if (dotNetRef is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("albumArtDrop.detach");
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit is gone, and the page's listeners with it.
+        }
+
+        dotNetRef.Dispose();
     }
 
     private sealed class GroupState(AlbumArtGroup group)
@@ -508,6 +646,18 @@
         public IReadOnlyList<string> FailedSources { get; set; } = [];
         public AlbumArtCandidate? Selected { get; set; }
         public string? ManualUrl { get; set; }
+
+        /// <summary>The image behind an <see cref="UploadSource"/> candidate, ready to embed.</summary>
+        public AlbumArtImage? UploadedImage { get; set; }
+
+        public bool Converting { get; set; }
+
+        /// <summary>Starts as the group's own artist and album (or title), ready to be edited.</summary>
+        public string? SearchText { get; set; } = string.Join(' ', new[] { group.Query.Artist, group.Query.Name }.Where(part => !string.IsNullOrWhiteSpace(part)));
+
+        /// <summary>The typed words the current candidates came from; null when they came from the tags.</summary>
+        public string? SearchedFor { get; set; }
+
         public string? Error { get; set; }
 
         public GroupState WithGroup(AlbumArtGroup updated, bool isHidden)

@@ -5,13 +5,22 @@ using HomeSpeaker.Server2.Services.MediaSearch;
 
 namespace HomeSpeaker.Server2.Services.AlbumArt;
 
-/// <summary>How closely a source's names match a group, from 0 to 1: the average of the artist and album (or title) similarities.</summary>
+/// <summary>
+/// How closely a source's names match a group, from 0 to 1: the average of the artist and album (or title) similarities.
+/// Typed text has no artist/album split, so it is compared with "artist album" as a whole.
+/// </summary>
 public static partial class AlbumArtScore
 {
     private const double EditionNotePenalty = 0.95;
 
     public static double Score(AlbumArtQuery query, string? artist, string? album, string? title)
     {
+        if (query.IsFreeText)
+        {
+            var found = string.Join(' ', new[] { artist, album ?? title }.Where(part => !string.IsNullOrWhiteSpace(part)));
+            return Math.Round(similarity(query.Name, found), 2);
+        }
+
         var parts = new List<double>(2);
         if (!string.IsNullOrWhiteSpace(query.Artist))
         {

@@ -28,6 +28,13 @@ public sealed class AlbumArtApplier
         return await Task.Run(() => Embed(group, image), cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Embeds an image the admin uploaded or pasted (converted to JPEG in the browser, checked by <see cref="AlbumArtImage.FromUploadAsync"/>).</summary>
+    public async Task<AlbumArtApplyResult> ApplyAsync(AlbumArtGroup group, AlbumArtImage image, CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Applying uploaded album art ({Bytes} bytes, {MimeType}) to {Artist} / {Name}", image.Bytes.Length, image.MimeType, group.Artist, group.DisplayName);
+        return await Task.Run(() => Embed(group, image), cancellationToken).ConfigureAwait(false);
+    }
+
     public AlbumArtApplyResult Embed(AlbumArtGroup group, AlbumArtImage image)
     {
         var updated = new List<string>();

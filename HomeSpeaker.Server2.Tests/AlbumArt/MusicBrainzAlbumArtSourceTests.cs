@@ -66,6 +66,26 @@ public class MusicBrainzAlbumArtSourceTests
     }
 
     [Fact]
+    public void BuildUri_FreeText_SearchesReleasesWithDismax()
+    {
+        var uri = MusicBrainzAlbumArtSource.BuildUri(AlbumArtQuery.FreeText("queen \"night\" opera"));
+
+        Assert.Equal("https://musicbrainz.org/ws/2/release/?query=" + Uri.EscapeDataString("queen \"night\" opera") + "&dismax=true&fmt=json&limit=10", uri.AbsoluteUri);
+    }
+
+    [Fact]
+    public async Task SearchAsync_FreeText_ReadsReleases()
+    {
+        var (factory, _) = AlbumArtTestHttp.Json(ReleaseJson);
+        using var source = new MusicBrainzAlbumArtSource(factory, TimeProvider.System);
+
+        var candidates = await source.SearchAsync(AlbumArtQuery.FreeText("queen night at the opera"), CancellationToken.None);
+
+        Assert.NotEmpty(candidates);
+        Assert.All(candidates, candidate => Assert.Null(candidate.Title));
+    }
+
+    [Fact]
     public async Task SearchAsync_Releases_OneCandidatePerReleaseGroupFromCoverArtArchive()
     {
         var (factory, _) = AlbumArtTestHttp.Json(ReleaseJson);

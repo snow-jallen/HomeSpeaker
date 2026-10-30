@@ -43,6 +43,27 @@ public class AlbumArtScoreTests
     }
 
     [Fact]
+    public void Score_FreeText_ComparesWithArtistAndAlbumTogether()
+    {
+        var query = AlbumArtQuery.FreeText("Queen A Night at the Opera");
+
+        Assert.Equal(1.0, AlbumArtScore.Score(query, "Queen", "A Night at the Opera", null));
+        Assert.True(AlbumArtScore.Score(query, "ABBA", "Arrival", null) < 0.3);
+    }
+
+    [Fact]
+    public void FreeText_IsAnAlbumLookupNamedByTheTrimmedWords()
+    {
+        var query = AlbumArtQuery.FreeText("  night opera ");
+
+        Assert.True(query.IsFreeText);
+        Assert.True(query.IsAlbum);
+        Assert.Equal("night opera", query.Name);
+        Assert.Null(query.Artist);
+        Assert.False(new AlbumArtQuery("Queen", "A Night at the Opera", null).IsFreeText);
+    }
+
+    [Fact]
     public void Clean_StripsAccentsAndEditionNotes()
     {
         Assert.Equal("bjork debut", AlbumArtScore.Clean("Björk - Début (Remastered)"));

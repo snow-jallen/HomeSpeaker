@@ -45,6 +45,29 @@ public class AlbumArtApplierTests
     }
 
     [Fact]
+    public async Task ApplyAsync_UploadedImage_EmbedsWithoutDownloading()
+    {
+        using var fixture = new AlbumArtLibraryFixture();
+        var path = fixture.Add("a.mp3", "A", "Artist", "Album");
+        var group = Assert.Single(await fixture.Finder.GetGroupsAsync(false, CancellationToken.None));
+        var downloads = 0;
+        var applier = createApplier(fixture, () =>
+        {
+            downloads++;
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        var cover = TestJpeg.Header(400, 400);
+        using var upload = new MemoryStream(cover);
+
+        var result = await applier.ApplyAsync(group, await AlbumArtImage.FromUploadAsync(upload, CancellationToken.None), CancellationToken.None);
+
+        Assert.Equal([path], result.Updated);
+        Assert.Equal(cover, Assert.Single(TestMp3.Pictures(path)).Data.Data);
+        Assert.Equal(0, downloads);
+        Assert.True(fixture.Library.IsDirty);
+    }
+
+    [Fact]
     public async Task ApplyAsync_Png_IsEmbeddedAsPng()
     {
         using var fixture = new AlbumArtLibraryFixture();

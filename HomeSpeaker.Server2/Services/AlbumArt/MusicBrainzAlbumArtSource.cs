@@ -32,6 +32,13 @@ public sealed class MusicBrainzAlbumArtSource : IAlbumArtSource, IDisposable
 
     public static Uri BuildUri(AlbumArtQuery query)
     {
+        // dismax matches the words against release title and artist together; plain Lucene looks only at the title, so
+        // "queen night at the opera" found other bands' "Night at the Opera" and none of Queen's (October 2026).
+        if (query.IsFreeText)
+        {
+            return new Uri($"https://musicbrainz.org/ws/2/release/?query={Uri.EscapeDataString(query.Name)}&dismax=true&fmt=json&limit={ResultLimit}");
+        }
+
         var parts = new List<string>(2)
         {
             query.IsAlbum ? $"release:\"{luceneQuoted(query.Album!)}\"" : $"recording:\"{luceneQuoted(query.Title ?? string.Empty)}\"",

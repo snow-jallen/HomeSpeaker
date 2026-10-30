@@ -55,6 +55,14 @@ public class DeezerAlbumArtSourceTests
     }
 
     [Fact]
+    public void BuildUri_FreeText_SearchesAlbumsForTheWords()
+    {
+        var uri = DeezerAlbumArtSource.BuildUri(AlbumArtQuery.FreeText("queen night opera"));
+
+        Assert.Equal("https://api.deezer.com/search/album?q=queen%20night%20opera&limit=10", uri.AbsoluteUri);
+    }
+
+    [Fact]
     public async Task SearchAsync_Albums_UseCoverXl()
     {
         var (factory, _) = AlbumArtTestHttp.Json(AlbumJson);

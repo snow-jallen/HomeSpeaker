@@ -3355,6 +3355,24 @@ input.glass-input[type="file"]::file-selector-button {
   white-space: nowrap;
 }
 
+.album-art-drop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--glass-border);
+  border-radius: 10px;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.album-art-drop:focus,
+.album-art-drop:focus-within {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
 .album-art-candidates {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));

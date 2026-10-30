@@ -50,6 +50,14 @@ public class ITunesAlbumArtSourceTests
         Assert.Equal("https://itunes.apple.com/search?term=Bohemian%20Rhapsody&media=music&entity=song&limit=10", uri.AbsoluteUri);
     }
 
+    [Fact]
+    public void BuildUri_FreeText_SearchesAlbumEntityForTheWords()
+    {
+        var uri = ITunesAlbumArtSource.BuildUri(AlbumArtQuery.FreeText("  queen night opera "));
+
+        Assert.Equal("https://itunes.apple.com/search?term=queen%20night%20opera&media=music&entity=album&limit=10", uri.AbsoluteUri);
+    }
+
     [Theory]
     [InlineData("https://is1-ssl.mzstatic.com/image/thumb/a/source/100x100bb.jpg", "https://is1-ssl.mzstatic.com/image/thumb/a/source/600x600bb.jpg")]
     [InlineData("https://is1-ssl.mzstatic.com/image/thumb/a/source/60x60bb.png", "https://is1-ssl.mzstatic.com/image/thumb/a/source/600x600bb.png")]
