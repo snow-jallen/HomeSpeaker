@@ -299,6 +299,49 @@ if [ "$KIOSK" = 1 ]; then
         if [ ! -d "$dir" ] || [ "$DRY_RUN" = 1 ]; then run install -d -m 755 -o "$TARGET_USER" -g "$TARGET_GROUP" "$dir"; fi
     done
     put "$TMP_DIR/autostart" "$AUTOSTART" 755 "$TARGET_USER:$TARGET_GROUP"
+
+    # Raspberry Pi OS sends the volume keys (which a USB speaker's knob produces) and the
+    # menu key to the taskbar, which then pops its volume slider or menu over the browser.
+    # labwc reads the user rc.xml after the system one, and an action of None clears a binding.
+    RCXML="$TARGET_HOME/.config/labwc/rc.xml"
+    cat >"$TMP_DIR/kiosk-keys.xml" <<KEYS
+  <keyboard>
+    <!-- HomeSpeaker kiosk: no volume or menu keys; they would pop the taskbar over the kiosk browser -->
+    <keybind key="XF86AudioRaiseVolume"><action name="None"/></keybind>
+    <keybind key="XF86AudioLowerVolume"><action name="None"/></keybind>
+    <keybind key="XF86AudioMute"><action name="None"/></keybind>
+    <keybind key="Super_L" onRelease="yes"><action name="None"/></keybind>
+  </keyboard>
+KEYS
+    if [ -f "$RCXML" ] && grep -q 'key="XF86AudioRaiseVolume"' "$RCXML"; then
+        log "$RCXML already binds the volume keys; leaving it alone"
+    elif [ -f "$RCXML" ] && grep -qE '</(openbox|labwc)_config>' "$RCXML"; then
+        log "Clearing the volume and menu keys in $RCXML"
+        [ -e "$RCXML.bak" ] || run cp -p "$RCXML" "$RCXML.bak"
+        # perl-base is essential on Debian; the block goes just before the closing root tag,
+        # which may share a line with other elements.
+        KEYS="$(cat "$TMP_DIR/kiosk-keys.xml")" perl -0pe 's{(</(?:openbox|labwc)_config>)}{\n$ENV{KEYS}\n$1}' \
+            "$RCXML" >"$TMP_DIR/rc.xml"
+        put "$TMP_DIR/rc.xml" "$RCXML" 644 "$TARGET_USER:$TARGET_GROUP"
+    elif [ -f "$RCXML" ]; then
+        warn "$RCXML has no closing </labwc_config> or </openbox_config> tag; add these bindings to it by hand:"
+        cat "$TMP_DIR/kiosk-keys.xml" >&2
+    else
+        log "Writing $RCXML to clear the volume and menu keys"
+        { echo '<?xml version="1.0"?>'; echo '<labwc_config>'; cat "$TMP_DIR/kiosk-keys.xml"; echo '</labwc_config>'; } >"$TMP_DIR/rc.xml"
+        put "$TMP_DIR/rc.xml" "$RCXML" 644 "$TARGET_USER:$TARGET_GROUP"
+    fi
+
+    # Raspberry Pi OS runs labwc with --merge-config, so the system autostart (which starts the
+    # taskbar) runs alongside ours and can't be overridden per user. Comment the taskbar out there.
+    SYS_AUTOSTART="/etc/xdg/labwc/autostart"
+    if [ -f "$SYS_AUTOSTART" ] && grep -qE '^[^#]*wf-panel-pi' "$SYS_AUTOSTART"; then
+        log "Turning off the taskbar (wf-panel-pi) in $SYS_AUTOSTART; the original is kept as $SYS_AUTOSTART.homespeaker.bak"
+        [ -e "$SYS_AUTOSTART.homespeaker.bak" ] || run cp -p "$SYS_AUTOSTART" "$SYS_AUTOSTART.homespeaker.bak"
+        sed -E 's|^([^#]*wf-panel-pi.*)$|# HomeSpeaker kiosk: no taskbar\n# \1|' "$SYS_AUTOSTART" >"$TMP_DIR/sys-autostart"
+        put "$TMP_DIR/sys-autostart" "$SYS_AUTOSTART" 644
+    fi
+    log "The kiosk changes take effect at the next login (or reboot)."
 fi
 
 # --- 6. Nightly updates ------------------------------------------------------

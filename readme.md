@@ -36,6 +36,7 @@ The installer asks whether to enable the AirPlay receiver and whether to set up 
 - starts the containers and waits for the health check
 - advertises the speaker on your network over mDNS (Avahi, `_homespeaker._tcp`) so the iOS app can find it
 - installs a nightly update timer
+- for the kiosk: starts Chromium full screen at login (labwc, Raspberry Pi OS Bookworm), turns off the taskbar in `/etc/xdg/labwc/autostart`, and unbinds the volume and menu keys in `~/.config/labwc/rc.xml` so a speaker's volume knob can't pop the taskbar over the browser
 
 Options go after `bash -s --`, variables between `sudo` and `bash`:
 

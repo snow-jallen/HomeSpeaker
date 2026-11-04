@@ -65,6 +65,13 @@ case "$musicDir" in
     *) musicDir="$INSTALL_DIR/${musicDir#./}" ;;
 esac
 
+# The kiosk setup commented the taskbar out of the system labwc autostart; put it back.
+SYS_AUTOSTART="/etc/xdg/labwc/autostart"
+if [ -f "$SYS_AUTOSTART.homespeaker.bak" ]; then
+    echo "==> Restoring the taskbar in $SYS_AUTOSTART"
+    run mv -f "$SYS_AUTOSTART.homespeaker.bak" "$SYS_AUTOSTART"
+fi
+
 echo "==> Removing installer-created files from $INSTALL_DIR"
 run rm -f "$INSTALL_DIR/docker-compose.yml" "$INSTALL_DIR/.env" "$INSTALL_DIR/scripts/start-shairport.sh"
 for d in "$INSTALL_DIR/scripts" "$INSTALL_DIR"; do
@@ -77,4 +84,4 @@ fi
 echo
 echo "HomeSpeaker was removed. Your music and HomeSpeaker.db were left untouched in: $musicDir"
 if [ -d "$INSTALL_DIR" ]; then echo "$INSTALL_DIR was not empty, so it was kept."; fi
-echo "A kiosk autostart file (~/.config/labwc/autostart), if you created one, was also left in place."
+echo "Kiosk files (~/.config/labwc/autostart and the key bindings in ~/.config/labwc/rc.xml), if you created them, were also left in place."
