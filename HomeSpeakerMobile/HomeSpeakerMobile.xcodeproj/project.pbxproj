@@ -7,6 +7,19 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F76C69072C33821743B6238D /* AnchorEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E90DBE2696BA26F2EDAAEB0 /* AnchorEditView.swift */; };
+		F4A4B9CD6D31F6F856E2454A /* AnchorDayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EC9C78FD83B6D588227887E /* AnchorDayView.swift */; };
+		E5E40D3E90B3A5F3668D5B82 /* AnchorModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F4752EC0BBE1A6644920A91 /* AnchorModels.swift */; };
+		B38F39B91507D69E086F98F8 /* AnchorColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9569B62E8287E114BB38DF5F /* AnchorColor.swift */; };
+		B32870C3054C518632302C19 /* AnchorColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9569B62E8287E114BB38DF5F /* AnchorColor.swift */; };
+		964B6F4250AA3C5C53282E20 /* AnchorModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F4752EC0BBE1A6644920A91 /* AnchorModels.swift */; };
+		3FA44FA94646D404353BAE36 /* AnchorsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 480718DBFF03E7B156451859 /* AnchorsView.swift */; };
+		37629A0A5D5B58BA5E56B74A /* AnchorWhoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8871BBA5EA94A82444DEC9DD /* AnchorWhoView.swift */; };
+		375D4B828D898F1280715831 /* AnchorColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9569B62E8287E114BB38DF5F /* AnchorColor.swift */; };
+		183F8DF91D071344C55C7091 /* AnchorModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F4752EC0BBE1A6644920A91 /* AnchorModels.swift */; };
+		09620913C9016BEF47345429 /* AnchorColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9569B62E8287E114BB38DF5F /* AnchorColor.swift */; };
+		02DC22209EDA9F769B38BEB4 /* AnchorModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F4752EC0BBE1A6644920A91 /* AnchorModels.swift */; };
+		028334E87109835E78FC91F0 /* AnchorsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733A89896604A7D775A8AFDE /* AnchorsView.swift */; };
 		02C85889C82A7F6DFA0DA336 /* PushNotificationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21B3D000BF32658D2DB982D7 /* PushNotificationStore.swift */; };
 		0813CD098C05627156CFB242 /* SpeakerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D65DA15C5F8429240F336F95 /* SpeakerWidget.swift */; };
 		095C8D1E44DAD502476EBEB9 /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8192B9DE8753F971AF4FB86A /* ActivityKit.framework */; };
@@ -157,6 +170,13 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		9F4752EC0BBE1A6644920A91 /* AnchorModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnchorModels.swift; sourceTree = "<group>"; };
+		9569B62E8287E114BB38DF5F /* AnchorColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnchorColor.swift; sourceTree = "<group>"; };
+		8871BBA5EA94A82444DEC9DD /* AnchorWhoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnchorWhoView.swift; sourceTree = "<group>"; };
+		733A89896604A7D775A8AFDE /* AnchorsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnchorsView.swift; sourceTree = "<group>"; };
+		480718DBFF03E7B156451859 /* AnchorsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnchorsView.swift; sourceTree = "<group>"; };
+		2EC9C78FD83B6D588227887E /* AnchorDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnchorDayView.swift; sourceTree = "<group>"; };
+		1E90DBE2696BA26F2EDAAEB0 /* AnchorEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnchorEditView.swift; sourceTree = "<group>"; };
 		0387EAEB26350D3D2A73FB79 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		049164FA7410622C07AE424F /* SpeakerStatusStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerStatusStore.swift; sourceTree = "<group>"; };
 		0B23E69272D6BD2AFEE6FB70 /* PlaybackIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackIntents.swift; sourceTree = "<group>"; };
@@ -278,6 +298,17 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		AC95FA1F9565AF4160C12D18 /* Anchors */ = {
+			isa = PBXGroup;
+			children = (
+				2EC9C78FD83B6D588227887E /* AnchorDayView.swift */,
+				1E90DBE2696BA26F2EDAAEB0 /* AnchorEditView.swift */,
+				480718DBFF03E7B156451859 /* AnchorsView.swift */,
+				8871BBA5EA94A82444DEC9DD /* AnchorWhoView.swift */,
+			);
+			path = Anchors;
+			sourceTree = "<group>";
+		};
 		0DBEAC656ECC20E9DCAEC3E9 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -298,6 +329,7 @@
 				FE72379FA5E35A1E24338A72 /* QueueView.swift */,
 				AAE825C6CA30C690E37852BB /* RadioStreamsView.swift */,
 				719AD39AF69258B48ABFB67D /* ServerPickerView.swift */,
+				733A89896604A7D775A8AFDE /* AnchorsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -416,6 +448,8 @@
 				0387EAEB26350D3D2A73FB79 /* Models.swift */,
 				5E0C0CB4EB4E1C479E92F5FF /* SharedConnections.swift */,
 				AA9B6AB8BBD67679356966D6 /* WatchSync.swift */,
+				9569B62E8287E114BB38DF5F /* AnchorColor.swift */,
+				9F4752EC0BBE1A6644920A91 /* AnchorModels.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -449,6 +483,7 @@
 				5C1A7E2D9F3B4C6D8E0A1B2D /* SiriCommandsView.swift */,
 				CAA123689971EE3504312BBE /* ServerListView.swift */,
 				742488CE44FEEA3523C46654 /* YouTubeView.swift */,
+				AC95FA1F9565AF4160C12D18 /* Anchors */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -618,6 +653,8 @@
 				DE6051148FA4909B497ECA63 /* Models.swift in Sources */,
 				F1D672AFC23F09741D2BC3D9 /* SharedConnections.swift in Sources */,
 				CD02ED43DB2AB4DEA6E6D892 /* WidgetIntents.swift in Sources */,
+				B32870C3054C518632302C19 /* AnchorColor.swift in Sources */,
+				964B6F4250AA3C5C53282E20 /* AnchorModels.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -662,6 +699,12 @@
 				8C1C25D55C151ACEEA3B359E /* SpeakerStatusStore.swift in Sources */,
 				D03D1C8F483822096AD105C4 /* WatchSync.swift in Sources */,
 				7AB23637168FDA6113A1E116 /* YouTubeView.swift in Sources */,
+				09620913C9016BEF47345429 /* AnchorColor.swift in Sources */,
+				F4A4B9CD6D31F6F856E2454A /* AnchorDayView.swift in Sources */,
+				F76C69072C33821743B6238D /* AnchorEditView.swift in Sources */,
+				E5E40D3E90B3A5F3668D5B82 /* AnchorModels.swift in Sources */,
+				37629A0A5D5B58BA5E56B74A /* AnchorWhoView.swift in Sources */,
+				3FA44FA94646D404353BAE36 /* AnchorsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -680,6 +723,8 @@
 				E1DF17884CB21EA7F8AA2AA2 /* SpeakerLiveActivityWidget.swift in Sources */,
 				0813CD098C05627156CFB242 /* SpeakerWidget.swift in Sources */,
 				0ADF6B78F5EF3369609411A7 /* SpeakerWidgetView.swift in Sources */,
+				375D4B828D898F1280715831 /* AnchorColor.swift in Sources */,
+				02DC22209EDA9F769B38BEB4 /* AnchorModels.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -700,6 +745,9 @@
 				35E15319F2930366E1238C96 /* ServerPickerView.swift in Sources */,
 				EAB640BDD8902A1A419A7E6C /* SharedConnections.swift in Sources */,
 				D5E9B351F36941F8BD43F65E /* WatchSync.swift in Sources */,
+				B38F39B91507D69E086F98F8 /* AnchorColor.swift in Sources */,
+				183F8DF91D071344C55C7091 /* AnchorModels.swift in Sources */,
+				028334E87109835E78FC91F0 /* AnchorsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
