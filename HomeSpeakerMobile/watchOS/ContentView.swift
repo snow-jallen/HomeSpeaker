@@ -15,6 +15,7 @@ struct WatchContentView: View {
             } else {
                 TabView {
                     WatchNowPlayingView()
+                    WatchAnchorsView()
                     WatchLibraryView()
                     WatchPlaylistsView()
                     WatchRadioStreamsView()

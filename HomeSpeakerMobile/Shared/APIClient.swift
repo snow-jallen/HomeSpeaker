@@ -562,4 +562,58 @@ final class APIClient: @unchecked Sendable {
             return nil
         }
     }
+
+    // MARK: - Anchors
+
+    private func anchorPath(_ id: String) -> String {
+        id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))) ?? id
+    }
+
+    func getAnchorBoard(from: String? = nil, to: String? = nil) async throws -> AnchorBoard {
+        let query = [from.map { "from=\($0)" }, to.map { "to=\($0)" }].compactMap { $0 }.joined(separator: "&")
+        return try await request("api/anchors/board" + (query.isEmpty ? "" : "?\(query)"))
+    }
+
+    /// One person's anchors for a day (default: the server's today), or nil when the person is gone.
+    func getAnchorDay(personId: String, date: String? = nil) async throws -> AnchorPerson? {
+        do {
+            let person: AnchorPerson = try await request("api/anchors/people/\(anchorPath(personId))/day" + (date.map { "?date=\($0)" } ?? ""))
+            return person
+        } catch APIError.serverError(404, _) {
+            return nil
+        }
+    }
+
+    func setAnchorDone(anchorId: String, date: String, done: Bool) async throws {
+        let body = AnchorLogRequest(done: done, clientUpdatedAt: ISO8601DateFormatter().string(from: .now))
+        try await requestVoid("api/anchors/anchors/\(anchorPath(anchorId))/days/\(date)", method: "PUT", body: body)
+    }
+
+    func createAnchorPerson(_ person: AnchorPersonRequest) async throws -> AnchorPerson {
+        try await request("api/anchors/people", method: "POST", body: person)
+    }
+
+    func updateAnchorPerson(id: String, _ person: AnchorPersonRequest) async throws {
+        try await requestVoid("api/anchors/people/\(anchorPath(id))", method: "PUT", body: person)
+    }
+
+    func createAnchor(personId: String, _ anchor: AnchorRequest) async throws -> Anchor {
+        try await request("api/anchors/people/\(anchorPath(personId))/anchors", method: "POST", body: anchor)
+    }
+
+    func updateAnchor(id: String, _ anchor: AnchorRequest) async throws {
+        try await requestVoid("api/anchors/anchors/\(anchorPath(id))", method: "PUT", body: anchor)
+    }
+
+    func orderAnchors(personId: String, ids: [String]) async throws {
+        try await requestVoid("api/anchors/people/\(anchorPath(personId))/anchors/order", method: "PUT", body: AnchorOrderRequest(ids: ids))
+    }
+
+    func retireAnchor(id: String) async throws {
+        try await requestVoid("api/anchors/anchors/\(anchorPath(id))/retire", method: "POST")
+    }
+
+    func restoreAnchor(id: String) async throws {
+        try await requestVoid("api/anchors/anchors/\(anchorPath(id))/restore", method: "POST")
+    }
 }

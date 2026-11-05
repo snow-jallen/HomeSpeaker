@@ -16,6 +16,10 @@ struct MoreView: View {
                     bloodSugarSection
                 }
 
+                if features?.anchorsEnabled == true {
+                    anchorsSection
+                }
+
                 serverSection
 
                 radioSection
@@ -62,6 +66,16 @@ struct MoreView: View {
                 }
             }
             .foregroundStyle(.primary)
+        }
+    }
+
+    private var anchorsSection: some View {
+        Section {
+            NavigationLink {
+                AnchorsView()
+            } label: {
+                Label("Anchors", systemImage: "checklist")
+            }
         }
     }
 
