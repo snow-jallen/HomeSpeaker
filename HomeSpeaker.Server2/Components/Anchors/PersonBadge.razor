@@ -1,0 +1,10 @@
+@* A person's colour dot (or emoji) and name. *@
+<span class="hs-person" data-color="@Person.Color">
+    <span class="hs-person-mark" aria-hidden="true">@Person.Emoji</span>
+    <span class="hs-person-name">@Person.Name</span>
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public AnchorPersonDto Person { get; set; } = default!;
+}

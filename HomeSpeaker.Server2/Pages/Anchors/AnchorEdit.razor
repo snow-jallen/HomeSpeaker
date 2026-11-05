@@ -1,0 +1,287 @@
+@page "/anchors/{PersonId}/edit"
+@implements IDisposable
+@inject IAnchorStore Store
+@inject AnchorChangeNotifier Changes
+@inject IConfiguration Config
+@inject ILogger<AnchorEdit> Logger
+
+<PageTitle>Edit anchors</PageTitle>
+
+@if (!FeatureFlags.AnchorsEnabled(Config))
+{
+    <FeatureOffNotice />
+}
+else
+{
+    <div class="glass-page glass-page--anchor-edit" data-color="@person?.Color">
+        <div class="glass-page-header">
+            <a class="hs-icon-btn hs-icon-btn--filled" href="@($"anchors/{PersonId}")" title="Back to the day" aria-label="Back to the day">
+                <i class="fas fa-arrow-left" aria-hidden="true"></i>
+            </a>
+            <h1 class="glass-title">@(person is null ? "Edit anchors" : $"{person.Name}'s anchors")</h1>
+        </div>
+
+        @if (message is not null)
+        {
+            <div class="hs-error" role="alert">@message</div>
+        }
+
+        @if (!loaded)
+        {
+            <div class="glass-empty" role="status"><div class="glass-spinner" aria-hidden="true"></div></div>
+        }
+        else if (person is null && message is null)
+        {
+            <div class="glass-empty"><p>That person isn't here any more.</p><a class="glass-btn" href="anchors">Everyone's anchors</a></div>
+        }
+        else if (person is not null)
+        {
+            <form class="glass-card" @onsubmit="AddAsync" @onsubmit:preventDefault>
+                <h2 class="glass-card-title">Add an anchor</h2>
+                <div class="hs-edit-fields">
+                    <input class="glass-input hs-edit-title" @bind="newTitle" @bind:event="oninput" maxlength="@AnchorInput.MaxTitleLength"
+                           placeholder="e.g. Read scriptures" aria-label="New anchor" />
+                    <select class="glass-input" @bind="newSlot" aria-label="When">
+                        @foreach (var slot in slots)
+                        {
+                            <option value="@slot">@AnchorView.SlotLabel(slot)</option>
+                        }
+                    </select>
+                    <button type="submit" class="glass-btn" disabled="@string.IsNullOrWhiteSpace(newTitle)">
+                        <i class="fas fa-plus" aria-hidden="true"></i>Add
+                    </button>
+                </div>
+            </form>
+
+            @foreach (var group in AnchorView.BySlot(person.Anchors.Where(a => !a.Retired)))
+            {
+                <section class="glass-card" aria-label="@group.Label">
+                    <h2 class="glass-section-title">@group.Label</h2>
+                    <div class="glass-list">
+                        @foreach (var anchor in group.Anchors)
+                        {
+                            @if (editing?.Id == anchor.Id)
+                            {
+                                <form class="glass-row hs-edit-row" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+                                    <div class="hs-edit-fields">
+                                        <input class="glass-input hs-edit-title" @bind="editing.Title" @bind:event="oninput" maxlength="@AnchorInput.MaxTitleLength" aria-label="Title" />
+                                        <select class="glass-input" @bind="editing.Slot" aria-label="When">
+                                            @foreach (var slot in slots)
+                                            {
+                                                <option value="@slot">@AnchorView.SlotLabel(slot)</option>
+                                            }
+                                        </select>
+                                        <label class="glass-field">
+                                            <span>Target time (optional)</span>
+                                            <input class="glass-input" type="time" @bind="editing.TargetTime" />
+                                        </label>
+                                        <DayPicker @bind-Days="editing.Days" />
+                                    </div>
+                                    <div class="glass-row-actions">
+                                        <button type="submit" class="glass-btn" disabled="@string.IsNullOrWhiteSpace(editing.Title)">Save</button>
+                                        <button type="button" class="glass-btn glass-btn--ghost" @onclick="() => editing = null">Cancel</button>
+                                        <button type="button" class="glass-btn glass-btn--danger" @onclick="() => RetireAsync(anchor)" title="Stop tracking it from today; its history stays">Retire</button>
+                                    </div>
+                                </form>
+                            }
+                            else
+                            {
+                                <div class="glass-row">
+                                    <div class="glass-row-text">
+                                        <div class="glass-row-title">@anchor.Title</div>
+                                        <div class="glass-row-sub">@describe(anchor)</div>
+                                    </div>
+                                    <div class="glass-row-actions">
+                                        @if (anchor.Editable)
+                                        {
+                                            <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="() => MoveAsync(anchor, -1)" disabled="@(group.Anchors[0] == anchor)"
+                                                    aria-label="Move @anchor.Title up" title="Move up"><i class="fas fa-arrow-up" aria-hidden="true"></i></button>
+                                            <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="() => MoveAsync(anchor, 1)" disabled="@(group.Anchors[^1] == anchor)"
+                                                    aria-label="Move @anchor.Title down" title="Move down"><i class="fas fa-arrow-down" aria-hidden="true"></i></button>
+                                            <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="() => StartEdit(anchor)"
+                                                    aria-label="Edit @anchor.Title" title="Edit"><i class="fas fa-pencil" aria-hidden="true"></i></button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </section>
+            }
+
+            var retired = person.Anchors.Where(a => a.Retired && a.Editable).ToList();
+            @if (retired.Count > 0)
+            {
+                <details class="glass-card hs-retired">
+                    <summary class="glass-section-title">Retired (@retired.Count)</summary>
+                    <div class="glass-list">
+                        @foreach (var anchor in retired)
+                        {
+                            <div class="glass-row">
+                                <div class="glass-row-text"><div class="glass-row-title">@anchor.Title</div></div>
+                                <div class="glass-row-actions">
+                                    <button type="button" class="glass-btn glass-btn--ghost" @onclick="() => RestoreAsync(anchor)">Restore</button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </details>
+            }
+        }
+    </div>
+}
+
+@code {
+    private static readonly string[] slots = ["morning", "day", "evening"];
+
+    private AnchorPersonDto? person;
+    private bool loaded;
+    private string? message;
+    private string newTitle = string.Empty;
+    private string newSlot = "day";
+    private Draft? editing;
+
+    private sealed class Draft
+    {
+        public string Id { get; init; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Slot { get; set; } = "day";
+        public TimeOnly? TargetTime { get; set; }
+        public int Days { get; set; } = DayMask.Every;
+    }
+
+    [Parameter]
+    public string PersonId { get; set; } = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        if (FeatureFlags.AnchorsEnabled(Config))
+        {
+            Changes.Changed += onChanged;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (FeatureFlags.AnchorsEnabled(Config))
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            person = await Store.GetDayAsync(PersonId);
+        }
+        catch (Exception ex) when (ex is AnchorSourceUnavailableException or HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            Logger.LogWarning(ex, "Couldn't load anchors for {PersonId}", PersonId);
+            message = "Couldn't load anchors. Try again in a moment.";
+        }
+
+        loaded = true;
+    }
+
+    private static string describe(AnchorDto anchor)
+    {
+        var parts = new List<string> { AnchorView.DaysLabel(anchor.Days) };
+        if (anchor.TargetTime is { } target)
+        {
+            parts.Add("by " + AnchorView.Clock(target));
+        }
+
+        if (!anchor.Editable)
+        {
+            parts.Add("edit it in the app it comes from");
+        }
+
+        return string.Join(" · ", parts);
+    }
+
+    private async Task AddAsync()
+    {
+        var outcome = await Store.CreateAnchorAsync(PersonId, new AnchorRequest(newTitle, newSlot));
+        if (outcome.Succeeded)
+        {
+            newTitle = string.Empty;
+            message = null;
+        }
+        else
+        {
+            message = outcome.Message ?? "Couldn't add that anchor.";
+        }
+
+        await LoadAsync();
+    }
+
+    private void StartEdit(AnchorDto anchor) => editing = new Draft
+    {
+        Id = anchor.Id,
+        Title = anchor.Title,
+        Slot = anchor.Slot,
+        TargetTime = anchor.TargetTime is { } t && AnchorInput.TryTargetTime(t, out var parsed) ? parsed : null,
+        Days = anchor.Days,
+    };
+
+    private async Task SaveAsync()
+    {
+        if (editing is null)
+        {
+            return;
+        }
+
+        var result = await Store.UpdateAnchorAsync(
+            editing.Id,
+            new AnchorRequest(editing.Title, editing.Slot, AnchorInput.FormatTime(editing.TargetTime) ?? string.Empty, editing.Days));
+        message = result == AnchorResult.Ok ? null : "Couldn't save that anchor. Check the title (up to 120 characters).";
+        if (result == AnchorResult.Ok)
+        {
+            editing = null;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task RetireAsync(AnchorDto anchor)
+    {
+        await Store.RetireAnchorAsync(anchor.Id);
+        editing = null;
+        await LoadAsync();
+    }
+
+    private async Task RestoreAsync(AnchorDto anchor)
+    {
+        await Store.RestoreAnchorAsync(anchor.Id);
+        await LoadAsync();
+    }
+
+    private async Task MoveAsync(AnchorDto anchor, int step)
+    {
+        if (person is null)
+        {
+            return;
+        }
+
+        var order = AnchorView.Ordered(person.Anchors.Where(a => a.Editable && !a.Retired)).ToList();
+        var index = order.IndexOf(anchor);
+        var target = index + step;
+        if (index < 0 || target < 0 || target >= order.Count || order[target].Slot != anchor.Slot)
+        {
+            return;
+        }
+
+        (order[index], order[target]) = (order[target], order[index]);
+        await Store.OrderAnchorsAsync(PersonId, new AnchorOrderRequest([.. order.Select(a => a.Id)]));
+        await LoadAsync();
+    }
+
+    private void onChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Changes.Changed -= onChanged;
+}

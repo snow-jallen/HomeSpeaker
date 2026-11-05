@@ -1,6 +1,11 @@
 using System.Diagnostics;
 using HomeSpeaker.Server2.Telemetry;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http.Connections;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.SignalR.Client;
 using OpenTelemetry.Trace;
 
@@ -29,7 +34,7 @@ public class BlazorNoiseSamplerTests
     [Theory]
     [InlineData(BlazorNoiseSampler.ComponentHub, "BeginInvokeDotNetFromJS")]
     [InlineData(BlazorNoiseSampler.ComponentHub, "ConnectCircuit")]
-    [InlineData("HomeSpeaker.Server2.Hubs.AnchorHub", "OnRenderCompleted")]
+    [InlineData("Some.Other.Hub", "OnRenderCompleted")]
     public void Keeps_other_hub_calls(string service, string method) =>
         Assert.Equal(SamplingDecision.RecordAndSample, decide(invocation, service, method));
 
@@ -58,25 +63,36 @@ public class BlazorNoiseSamplerTests
         };
         ActivitySource.AddActivityListener(listener);
 
-        using var factory = new TestServerFactory().WithSettings(new Dictionary<string, string?> { ["Features:Anchors"] = "true" });
-        var server = factory.Server;
+        // The app has no hub of its own any more, so check against a minimal host with a probe hub.
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Services.AddSignalR();
+        await using var app = builder.Build();
+        app.MapHub<ProbeHub>("/probe");
+        await app.StartAsync();
+        var server = app.GetTestServer();
         var connection = new HubConnectionBuilder()
-            .WithUrl(new Uri(server.BaseAddress, "anchorHub"), options =>
+            .WithUrl(new Uri(server.BaseAddress, "probe"), options =>
             {
                 options.HttpMessageHandlerFactory = _ => server.CreateHandler();
                 options.Transports = HttpTransportType.LongPolling;
             })
             .Build();
         await connection.StartAsync();
-        await connection.InvokeAsync("JoinAnchorGroup");
+        await connection.InvokeAsync(nameof(ProbeHub.Ping));
         await connection.StopAsync();
 
         lock (created)
         {
             var call = Assert.Single(created, o => o.Name == invocation);
             var tags = call.Tags!.ToDictionary(t => t.Key, t => t.Value);
-            Assert.Equal("HomeSpeaker.Server2.Hubs.AnchorHub", tags["rpc.service"]);
-            Assert.Equal("JoinAnchorGroup", tags["rpc.method"]);
+            Assert.Equal(typeof(ProbeHub).FullName, tags["rpc.service"]);
+            Assert.Equal(nameof(ProbeHub.Ping), tags["rpc.method"]);
         }
+    }
+
+    public sealed class ProbeHub : Hub
+    {
+        public Task Ping() => Task.CompletedTask;
     }
 }

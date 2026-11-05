@@ -253,19 +253,26 @@
                 }
                 @if (anchorsVisible)
                 {
-                    <a class="glass hs-info-card hs-anchors" href="anchors">
-                        <span class="hs-card-label"><span class="hs-card-label-text">Anchors</span></span>
+                    <div class="glass hs-info-card hs-anchors">
+                        <a class="hs-card-label" href="anchors"><span class="hs-card-label-text">Anchors</span></a>
                         <ul class="hs-anchors-list">
                             @foreach (var person in anchors)
                             {
-                                <li class="hs-anchor-person @(person.IsComplete ? "is-done" : "")">
-                                    <span class="hs-anchor-name">@person.UserId</span>
-                                    <span class="hs-progress"><span style="width:@(pct(person.Fraction * 100))%"></span></span>
-                                    <span class="hs-anchor-count">@person.Done/@person.Total</span>
+                                <li class="hs-anchor-person @(person.TodayTotal > 0 && person.TodayDone >= person.TodayTotal ? "is-done" : "")" data-color="@person.Color">
+                                    <a class="hs-anchor-row" href="@($"anchors/{person.Id}")">
+                                        <PersonBadge Person="person" />
+                                        <span class="hs-anchor-dots" aria-hidden="true">
+                                            @foreach (var cell in AnchorView.TodayCells(person, AnchorClock.Today(Time)))
+                                            {
+                                                <span class="hs-anchor-dot @AnchorView.DotClass(cell)"></span>
+                                            }
+                                        </span>
+                                        <span class="hs-anchor-count">@person.TodayDone/@person.TodayTotal</span>
+                                    </a>
                                 </li>
                             }
                         </ul>
-                    </a>
+                    </div>
                 }
             </div>
         }
@@ -291,7 +298,7 @@
 
     private GlucoseCard? glucoseCard => GlucoseCard.From(Dashboard.BloodSugar, Time.GetUtcNow().UtcDateTime);
 
-    private IReadOnlyList<AnchorProgress> anchors => Dashboard.Anchors;
+    private IReadOnlyList<AnchorPersonDto> anchors => Dashboard.Anchors;
 
     private bool anchorsVisible => Dashboard.AnchorsEnabled && anchors.Count > 0;
 

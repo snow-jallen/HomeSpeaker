@@ -39,7 +39,7 @@ public class FeatureModuleEndpointTests
         using var factory = new TestServerFactory();
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync(new Uri("/api/anchors/definitions", UriKind.Relative));
+        var response = await client.GetAsync(new Uri("/api/anchors/board", UriKind.Relative));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -50,7 +50,7 @@ public class FeatureModuleEndpointTests
         using var factory = new TestServerFactory().WithSettings(settings(("Features:Anchors", "true")));
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync(new Uri("/api/anchors/definitions", UriKind.Relative));
+        var response = await client.GetAsync(new Uri("/api/anchors/board", UriKind.Relative));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }

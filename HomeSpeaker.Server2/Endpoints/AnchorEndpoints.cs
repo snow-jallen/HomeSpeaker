@@ -1,201 +1,80 @@
-using HomeSpeaker.Server2.Services;
-using HomeSpeaker.Shared;
+using HomeSpeaker.Server2.Services.Anchors;
+using HomeSpeaker.Shared.Anchors;
 
 namespace HomeSpeaker.Server2.Endpoints;
 
+/// <summary>
+/// The anchor API used by the iOS and watch apps and by other HomeSpeakers that use this one as their anchor home.
+/// The web pages call <see cref="IAnchorStore"/> directly. No auth, like the rest of the household API.
+/// </summary>
 public static class AnchorEndpoints
 {
     public static IEndpointRouteBuilder MapAnchorApi(this IEndpointRouteBuilder app)
     {
-        app.MapHub<HomeSpeaker.Server2.Hubs.AnchorHub>("/anchorHub");
-
-        // Anchor API endpoints
-        app.MapGet("/api/anchors/definitions", async (AnchorService anchorService) =>
+        var anchors = app.MapGroup("/api/anchors").AddEndpointFilter(async (context, next) =>
         {
             try
             {
-                var definitions = await anchorService.GetActiveAnchorDefinitionsAsync();
-                return Results.Ok(definitions);
+                return await next(context);
             }
-            catch (Exception ex)
+            catch (AnchorSourceUnavailableException)
             {
-                return Results.Problem($"Failed to get anchor definitions: {ex.Message}");
+                return Results.Problem("The anchor home couldn't be reached.", statusCode: StatusCodes.Status503ServiceUnavailable);
             }
         });
 
-        app.MapPost("/api/anchors/definitions", async (AnchorService anchorService, CreateAnchorDefinitionRequest request) =>
-        {
-            try
-            {
-                var definition = await anchorService.CreateAnchorDefinitionAsync(request);
-                return Results.Created($"/api/anchors/definitions/{definition.Id}", definition);
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Failed to create anchor definition: {ex.Message}");
-            }
-        });
+        anchors.MapGet("/board", async (IAnchorStore store, DateOnly? from, DateOnly? to, CancellationToken ct) =>
+            Results.Ok(await store.GetBoardAsync(from, to, ct)));
 
-        app.MapPut("/api/anchors/definitions/{id:int}", async (AnchorService anchorService, int id, CreateAnchorDefinitionRequest request) =>
-        {
-            try
-            {
-                var definition = await anchorService.UpdateAnchorDefinitionAsync(id, request);
-                return definition != null ? Results.Ok(definition) : Results.NotFound();
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Failed to update anchor definition: {ex.Message}");
-            }
-        });
+        anchors.MapGet("/people", async (IAnchorStore store, CancellationToken ct) =>
+            Results.Ok((await store.GetBoardAsync(cancellationToken: ct)).People));
 
-        app.MapDelete("/api/anchors/definitions/{id:int}", async (AnchorService anchorService, int id) =>
-        {
-            try
-            {
-                var success = await anchorService.DeactivateAnchorDefinitionAsync(id);
-                return success ? Results.NoContent() : Results.NotFound();
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Failed to deactivate anchor definition: {ex.Message}");
-            }
-        });
+        anchors.MapGet("/people/{personId}/day", async (IAnchorStore store, string personId, DateOnly? date, CancellationToken ct) =>
+            await store.GetDayAsync(personId, date, ct) is { } person ? Results.Ok(person) : Results.NotFound());
 
-        app.MapGet("/api/anchors/users/{userId}", async (AnchorService anchorService, string userId) =>
-        {
-            try
-            {
-                var userAnchors = await anchorService.GetUserAnchorsAsync(userId);
-                return Results.Ok(userAnchors);
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Failed to get user anchors: {ex.Message}");
-            }
-        });
+        anchors.MapPost("/people", async (IAnchorStore store, AnchorPersonRequest request, CancellationToken ct) =>
+            created(await store.CreatePersonAsync(request, ct), p => $"/api/anchors/people/{p.Id}/day"));
 
-        app.MapPost("/api/anchors/users", async (AnchorService anchorService, AssignAnchorToUserRequest request) =>
-        {
-            try
-            {
-                var userAnchor = await anchorService.AssignAnchorToUserAsync(request);
-                return Results.Created($"/api/anchors/users/{userAnchor.UserId}", userAnchor);
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Failed to assign anchor to user: {ex.Message}");
-            }
-        });
+        anchors.MapPut("/people/order", async (IAnchorStore store, AnchorOrderRequest request, CancellationToken ct) =>
+            toResult(await store.OrderPeopleAsync(request, ct)));
 
-        app.MapDelete("/api/anchors/users/{userId}/{anchorDefinitionId:int}", async (AnchorService anchorService, string userId, int anchorDefinitionId) =>
-        {
-            try
-            {
-                var success = await anchorService.RemoveAnchorFromUserAsync(userId, anchorDefinitionId);
-                return success ? Results.NoContent() : Results.NotFound();
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Failed to remove anchor from user: {ex.Message}");
-            }
-        });
+        anchors.MapPut("/people/{personId}", async (IAnchorStore store, string personId, AnchorPersonRequest request, CancellationToken ct) =>
+            toResult(await store.UpdatePersonAsync(personId, request, ct)));
 
-        app.MapGet("/api/anchors/daily/{userId}/{date}", async (AnchorService anchorService, string userId, DateOnly date) =>
-        {
-            try
-            {
-                var dailyAnchors = await anchorService.GetDailyAnchorsAsync(userId, date);
-                return Results.Ok(dailyAnchors);
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Failed to get daily anchors: {ex.Message}");
-            }
-        });
+        anchors.MapDelete("/people/{personId}", async (IAnchorStore store, string personId, CancellationToken ct) =>
+            toResult(await store.ArchivePersonAsync(personId, ct)));
 
-        app.MapGet("/api/anchors/daily/{userId}", async (AnchorService anchorService, string userId, DateOnly? startDate, DateOnly? endDate) =>
-        {
-            try
-            {
-                var start = startDate ?? DateOnly.FromDateTime(DateTime.Today.AddDays(-30));
-                var end = endDate ?? DateOnly.FromDateTime(DateTime.Today);
-                var dailyAnchors = await anchorService.GetDailyAnchorsRangeAsync(userId, start, end);
-                return Results.Ok(dailyAnchors);
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Failed to get daily anchors range: {ex.Message}");
-            }
-        });
+        anchors.MapPost("/people/{personId}/anchors", async (IAnchorStore store, string personId, AnchorRequest request, CancellationToken ct) =>
+            created(await store.CreateAnchorAsync(personId, request, ct), a => $"/api/anchors/anchors/{a.Id}"));
 
-        app.MapPost("/api/anchors/daily/create/{userId}/{date}", async (AnchorService anchorService, string userId, DateOnly date) =>
-        {
-            try
-            {
-                await anchorService.CreateDailyAnchorsForUserAsync(userId, date);
-                return Results.Ok(new { message = "Daily anchors created successfully" });
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Failed to create daily anchors: {ex.Message}");
-            }
-        });
+        anchors.MapPut("/people/{personId}/anchors/order", async (IAnchorStore store, string personId, AnchorOrderRequest request, CancellationToken ct) =>
+            toResult(await store.OrderAnchorsAsync(personId, request, ct)));
 
-        app.MapPut("/api/anchors/daily/completion", async (AnchorService anchorService, UpdateAnchorCompletionRequest request) =>
-        {
-            try
-            {
-                var success = await anchorService.UpdateAnchorCompletionAsync(request);
-                return success ? Results.Ok() : Results.NotFound();
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Failed to update anchor completion: {ex.Message}");
-            }
-        });
+        anchors.MapPut("/anchors/{anchorId}", async (IAnchorStore store, string anchorId, AnchorRequest request, CancellationToken ct) =>
+            toResult(await store.UpdateAnchorAsync(anchorId, request, ct)));
 
-        app.MapPost("/api/anchors/daily/ensure-today", async (AnchorService anchorService) =>
-        {
-            try
-            {
-                await anchorService.EnsureTodayAnchorsForAllUsersAsync();
-                return Results.Ok(new { message = "Today's anchors ensured for all users" });
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Failed to ensure today's anchors: {ex.Message}");
-            }
-        });
+        anchors.MapPost("/anchors/{anchorId}/retire", async (IAnchorStore store, string anchorId, CancellationToken ct) =>
+            toResult(await store.RetireAnchorAsync(anchorId, ct)));
 
-        // Get all users who have anchors
-        app.MapGet("/api/anchors/users", async (AnchorService anchorService) =>
-        {
-            try
-            {
-                var users = await anchorService.GetUsersWithAnchorsAsync();
-                return Results.Ok(users);
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Failed to get users with anchors: {ex.Message}");
-            }
-        });
+        anchors.MapPost("/anchors/{anchorId}/restore", async (IAnchorStore store, string anchorId, CancellationToken ct) =>
+            toResult(await store.RestoreAnchorAsync(anchorId, ct)));
 
-        // Get daily anchors for all users in a date range
-        app.MapGet("/api/anchors/daily", async (AnchorService anchorService, DateOnly? startDate, DateOnly? endDate) =>
-        {
-            try
-            {
-                var allUserAnchors = await anchorService.GetAllUsersDailyAnchorsAsync(startDate, endDate);
-                return Results.Ok(allUserAnchors);
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Failed to get all users' daily anchors: {ex.Message}");
-            }
-        });
+        anchors.MapPut("/anchors/{anchorId}/days/{date}", async (IAnchorStore store, string anchorId, DateOnly date, AnchorLogRequest request, CancellationToken ct) =>
+            toResult(await store.SetDoneAsync(anchorId, date, request, ct)));
 
         return app;
     }
+
+    private static IResult created<T>(AnchorOutcome<T> outcome, Func<T, string> location)
+        where T : class =>
+        outcome.Succeeded ? Results.Created(location(outcome.Value!), outcome.Value) : toResult(outcome.Result, outcome.Message);
+
+    private static IResult toResult(AnchorResult result, string? message = null) => result switch
+    {
+        AnchorResult.Ok => Results.NoContent(),
+        AnchorResult.NotFound => Results.NotFound(),
+        AnchorResult.Invalid => Results.Problem(message ?? "The request isn't valid.", statusCode: StatusCodes.Status400BadRequest),
+        AnchorResult.ReadOnly => Results.Problem(message ?? "That anchor belongs to another app and can't be changed here.", statusCode: StatusCodes.Status409Conflict),
+        _ => Results.Problem(message ?? "The anchor home couldn't be reached.", statusCode: StatusCodes.Status503ServiceUnavailable),
+    };
 }

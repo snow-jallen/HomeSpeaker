@@ -63,7 +63,7 @@ For environment variables, copy `homespeaker.env.example` to `/opt/homespeaker/h
 
 ### Admin PIN
 
-Set an optional PIN on the settings page (4 to 12 digits). With a PIN, these pages need it: `/settings`, `/setup`, `/anchors/edit`, `/autoplay` and `/album-art`. Everything else stays open, including the daily `/anchors` checklist and `/aspire`. After 5 wrong tries in a minute from one address, that address is locked out for 60 seconds. That slows guessing but does not stop it: a 4-digit PIN can still be brute-forced over the network in a day or two, so use 6 or more digits if your network is not just family. Without a PIN, anyone on your network can change settings.
+Set an optional PIN on the settings page (4 to 12 digits). With a PIN, these pages need it: `/settings`, `/setup`, `/autoplay` and `/album-art`. Everything else stays open, including the daily `/anchors` checklist and `/aspire`. After 5 wrong tries in a minute from one address, that address is locked out for 60 seconds. That slows guessing but does not stop it: a 4-digit PIN can still be brute-forced over the network in a day or two, so use 6 or more digits if your network is not just family. Without a PIN, anyone on your network can change settings.
 
 ### Forgot the admin PIN
 
@@ -114,7 +114,9 @@ Set `Forecast:Latitude` and `Forecast:Longitude`. The forecast comes from Open-M
 
 ### Anchors
 
-Set `Features:Anchors` to `true` for a daily-habit checklist.
+Set `Features:Anchors` to `true` for anchors: the few things that hold down each person's day (up by 6, a walk, lights out). Add the people in your home at `/anchors/people`, give each their anchors (morning, during the day or evening, on chosen weekdays), and tick them off on the kitchen screen, any browser (`/anchors`; "This is me" adds a "My day" button for that browser) or the iPhone and Watch apps. The Home screen shows everyone's day at a glance.
+
+With several speakers, keep anchors on one and point the others at it: Settings > Anchors > Anchor source, "Another HomeSpeaker" (`Anchors:Source=remote`, `Anchors:RemoteUrl`). Anchors can also come from another app that speaks the [anchor feed](docs/anchor-feed.md) (`Anchors:Feed:Name`, `Anchors:Feed:Url`, `Anchors:Feed:Token`), such as Metanoeo: feed URL `https://<metanoeo host>/api/household`, token from Metanoeo's admin portal under House displays.
 
 ### Immich
 

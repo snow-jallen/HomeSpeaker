@@ -1,0 +1,395 @@
+/* Anchors: the Home card dots, the family board, a person's day and the editors. Builds on glass.css. */
+
+[data-color] { --hs-person: #e2e8f0; }
+[data-color="teal"] { --hs-person: #2dd4bf; }
+[data-color="amber"] { --hs-person: #fbbf24; }
+[data-color="rose"] { --hs-person: #fb7185; }
+[data-color="violet"] { --hs-person: #a78bfa; }
+[data-color="sky"] { --hs-person: #38bdf8; }
+[data-color="lime"] { --hs-person: #a3e635; }
+[data-color="orange"] { --hs-person: #fb923c; }
+[data-color="slate"] { --hs-person: #cbd5e1; }
+
+/* ---------- Person badge ---------- */
+
+.hs-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: inherit;
+}
+
+.hs-person-mark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--hs-person);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.hs-person-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+}
+
+.hs-person--lg .hs-person-mark {
+  width: 36px;
+  height: 36px;
+  font-size: 20px;
+}
+
+.hs-person--lg .hs-person-name {
+  font-size: 26px;
+}
+
+/* ---------- Home card ---------- */
+
+.hs-anchor-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.hs-anchor-dots {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.hs-anchor-dot {
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+}
+
+.hs-anchor-dot.is-kept {
+  border-color: var(--hs-person, #fff);
+  background: var(--hs-person, #fff);
+}
+
+.hs-anchor-dot.is-pending {
+  border-style: dashed;
+  border-color: var(--hs-person, #fff);
+}
+
+/* ---------- Check chips (a person's day, the board's today row) ---------- */
+
+.hs-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+  gap: 10px;
+}
+
+.hs-check {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-tile);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--glass-text);
+  font: 700 17px var(--glass-font);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hs-check:hover,
+.hs-check:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.hs-check:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.hs-check:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.hs-check-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.75);
+  color: #111;
+  font-size: 16px;
+}
+
+.hs-check-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hs-check-title {
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.hs-check-meta {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.hs-check.is-kept {
+  border-color: var(--hs-person, #fff);
+  background: color-mix(in srgb, var(--hs-person, #fff) 22%, transparent);
+}
+
+.hs-check.is-kept .hs-check-mark {
+  border-color: var(--hs-person, #fff);
+  background: var(--hs-person, #fff);
+}
+
+.hs-check.is-pending .hs-check-mark {
+  border-style: dashed;
+}
+
+.hs-check.is-off {
+  opacity: 0.7;
+}
+
+.hs-check.is-off .hs-check-mark,
+.hs-check.is-unknown .hs-check-mark {
+  border-style: dotted;
+}
+
+/* ---------- Board ---------- */
+
+.hs-board-person {
+  gap: 14px;
+}
+
+.hs-board-person > .glass-card-header a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.hs-board-streak {
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.hs-feed-note {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+/* ---------- Week grid ---------- */
+
+.hs-grid-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hs-grid {
+  border-collapse: separate;
+  border-spacing: 4px;
+  font-family: var(--glass-font);
+  color: var(--glass-text);
+}
+
+.hs-grid th {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.75;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.hs-grid th.hs-grid-name {
+  min-width: 120px;
+  max-width: 200px;
+  padding-right: 8px;
+  text-align: left;
+  font-size: 14px;
+  opacity: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: rgba(30, 30, 36, 0.85);
+}
+
+.hs-grid-streak {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.hs-cell {
+  display: block;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  margin: 0 auto;
+}
+
+.hs-cell.is-kept { background: var(--hs-person, #fff); }
+.hs-cell.is-missed { border: 2px solid rgba(255, 255, 255, 0.45); }
+.hs-cell.is-open { border: 2px dashed rgba(255, 255, 255, 0.7); }
+.hs-cell.is-off { background: rgba(255, 255, 255, 0.06); }
+.hs-cell.is-none { background: transparent; }
+.hs-cell.is-unknown { background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.15) 0 3px, transparent 3px 6px); }
+.hs-cell.is-pending { outline: 2px dashed var(--hs-person, #fff); outline-offset: -2px; }
+
+/* ---------- A person's day ---------- */
+
+.hs-day-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hs-day-label {
+  min-width: 132px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.hs-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hs-undo {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 8px 8px 20px;
+  border-radius: 999px;
+  background: rgba(22, 22, 26, 0.9);
+  border: 1px solid var(--glass-border);
+  color: var(--glass-text);
+  font: 600 15px var(--glass-font);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.hs-error {
+  color: #fecaca;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ---------- Editors ---------- */
+
+.hs-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hs-days .glass-chip {
+  min-width: 40px;
+  justify-content: center;
+}
+
+.hs-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hs-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  background: var(--hs-person);
+  cursor: pointer;
+}
+
+.hs-swatch.is-on {
+  border-color: #fff;
+}
+
+.hs-edit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.hs-edit-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.hs-edit-fields .glass-input {
+  min-width: 0;
+}
+
+.hs-edit-title {
+  flex: 1 1 220px;
+}
+
+.hs-retired .glass-row-title {
+  opacity: 0.6;
+}
+
+@media (max-width: 700px) {
+  .hs-person--lg .hs-person-name {
+    font-size: 22px;
+  }
+
+  .hs-check {
+    min-height: 58px;
+    font-size: 16px;
+  }
+
+  .hs-edit-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hs-check {
+    transition: none;
+  }
+}
+
+.glass-page--anchor-day > .glass-page-header,
+.glass-page--anchor-edit > .glass-page-header,
+.glass-page--anchor-people > .glass-page-header {
+  justify-content: flex-start;
+}

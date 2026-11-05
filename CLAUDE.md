@@ -79,7 +79,7 @@ Minimal APIs. The bulk are mapped in `Endpoints/HomeSpeakerRestEndpoints.cs` via
 
 ### Background hosted services
 
-Registered in `Program.cs` and run for the process lifetime: `MigrationApplier`, `DailyAnchorWorker`, `AirPlayReceiverService`, `LifecycleEvents`, `AutoPlayMonitorService`, `PhotoSyncWorker`, `VideoPrefetcher`, `PlayerStatusBroadcaster`, `LiveActivityPushWorker`, `HealthAlertWorker`, `ResourceSampler`, and `VolumeMonitorService`.
+Registered in `Program.cs` and run for the process lifetime: `MigrationApplier` (which also runs the one-time `LegacyAnchorImporter`), `AirPlayReceiverService`, `LifecycleEvents`, `AutoPlayMonitorService`, `PhotoSyncWorker`, `VideoPrefetcher`, `PlayerStatusBroadcaster`, `LiveActivityPushWorker`, `HealthAlertWorker`, `ResourceSampler`, `VolumeMonitorService`, and with anchors on, `RemoteAnchorPoller` and `AnchorFeedSender`.
 
 `PlayerStatusBroadcaster` polls the player (only while something is subscribed) and publishes *material* status changes (song, play state, volume, repeat, sleep timer; not elapsed time). It feeds `GET /api/homespeaker/player/events`, a server-sent-events stream with a 10 s heartbeat, and `LiveActivityPushWorker`, which sends APNs `liveactivity` pushes to iOS Live Activities registered via `PUT/DELETE /api/homespeaker/live-activities/{activityId}` (in memory, 12 h; the app re-registers on foreground). The push `content-state` keys are a contract with `SpeakerActivityAttributes.ContentState` in the iOS app.
 
@@ -89,7 +89,7 @@ OpenTelemetry (`Extensions.cs`) covers ASP.NET Core, HttpClient, EF Core, runtim
 
 ### Auxiliary widgets
 
-Temperature, blood sugar (Nightscout via `NIGHTSCOUT_URL`), and weather forecast are cached HTTP-backed services with `GET`/refresh/clear-cache endpoints, surfaced as dashboard widgets. "Anchors" are a daily-habit/checklist feature (`AnchorService`, `DailyAnchorWorker`, `AnchorHub` SignalR hub at `/anchorHub`).
+Temperature, blood sugar (Nightscout via `NIGHTSCOUT_URL`), and weather forecast are cached HTTP-backed services with `GET`/refresh/clear-cache endpoints, surfaced as dashboard widgets. "Anchors" (design: `docs/superpowers/specs/2026-11-04-anchors-design.md`) are each family member's few daily habits, in `Services/Anchors/`: people (`AnchorPeople`), anchors with active periods (`Anchors`, `AnchorPeriods`: `[From, To)` + weekday mask; edits apply from today and never rewrite the past) and logs (`AnchorLogs`, newest `clientUpdatedAt` wins). What was expected on a day is computed by the pure `AnchorRules` (cells kept/missed/open/off/none/unknown, streaks), never stored. Pages and the API (`/api/anchors/*`, `Endpoints/AnchorEndpoints.cs`, no auth) go through scoped `IAnchorStore`, chosen per scope from `Anchors:Source`: `LocalAnchorStore` (this DB, merged with an external feed by `FeedAnchorMerge` when `Anchors:Feed:Url` is set; ticks on feed anchors queue in `AnchorFeedOutbox` and `AnchorFeedSender` sends them; contract `docs/anchor-feed.md`) or `RemoteAnchorStore` (another HomeSpeaker's anchor API, last board cached as stale fallback, `RemoteAnchorPoller` notices remote changes). Pages re-render on the singleton `AnchorChangeNotifier`. Pages: `Pages/Anchors/` (`/anchors` board, `/anchors/{id}` a person's day, `/anchors/{id}/edit`, `/anchors/people`).
 
 ### Configuration and settings
 

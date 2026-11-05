@@ -1,5 +1,8 @@
 @using System.Globalization
 @using HomeSpeaker.Server2.Settings
+@using System.Net.Http.Json
+@inject IHttpClientFactory HttpClientFactory
+@inject IConfiguration Config
 
 <section class="glass-card hs-settings-section" aria-labelledby="settingsGeneralTitle">
     <header class="glass-card-header">
@@ -100,6 +103,56 @@
         <span>Daily habit checklist (Anchors)</span>
     </label>
     <SettingNote Editor="Editor" Key="@SettingKeys.Anchors" />
+    @if (anchorsOn)
+    {
+        <div class="glass-form-grid">
+            <label class="glass-field">
+                <span>@Editor.Field(SettingKeys.AnchorsSource).Label</span>
+                <select class="glass-input" value="@(anchorsRemote ? AnchorSourceSettings.Remote : AnchorSourceSettings.Local)"
+                        @onchange="e => Editor[SettingKeys.AnchorsSource] = e.Value?.ToString()" disabled="@Editor.IsOverridden(SettingKeys.AnchorsSource)">
+                    <option value="@AnchorSourceSettings.Local">This HomeSpeaker</option>
+                    <option value="@AnchorSourceSettings.Remote">Another HomeSpeaker</option>
+                </select>
+                <SettingNote Editor="Editor" Key="@SettingKeys.AnchorsSource" Hint="With several speakers, keep anchors on one and point the others at it." />
+            </label>
+            @if (anchorsRemote)
+            {
+                <SettingInput Editor="Editor" Key="@SettingKeys.AnchorsRemoteUrl" InputMode="url" Placeholder="https://kitchen.example.ts.net"
+                              Hint="The address you open that speaker's web page at." />
+            }
+        </div>
+        @if (!anchorsRemote)
+        {
+            <h3 class="glass-section-title">Anchors from another app</h3>
+            <div class="glass-form-grid">
+                <SettingInput Editor="Editor" Key="@SettingKeys.AnchorsFeedName" Placeholder="Metanoeo" Hint="Shown beside the anchors that come from it." />
+                <SettingInput Editor="Editor" Key="@SettingKeys.AnchorsFeedUrl" InputMode="url" Placeholder="https://metanoeo.example.ts.net/api/household/"
+                              Hint="An app that speaks the HomeSpeaker anchor feed. Leave blank for none." />
+                <SecretInput Editor="Editor" Key="@SettingKeys.AnchorsFeedToken" />
+            </div>
+            <div class="glass-toolbar">
+                <button type="button" class="glass-btn glass-btn--ghost" @onclick="TestFeedAsync" disabled="@testingFeed">
+                    <i class="fas fa-plug" aria-hidden="true"></i>Test feed
+                </button>
+                @if (feedResult is not null)
+                {
+                    <span class="glass-hint" role="status">@feedResult</span>
+                }
+            </div>
+        }
+        @if (anchorsRemote)
+        {
+            <div class="glass-toolbar">
+                <button type="button" class="glass-btn glass-btn--ghost" @onclick="TestAnchorHomeAsync" disabled="@testingAnchorHome">
+                    <i class="fas fa-plug" aria-hidden="true"></i>Test connection
+                </button>
+                @if (anchorHomeResult is not null)
+                {
+                    <span class="glass-hint" role="status">@anchorHomeResult</span>
+                }
+            </div>
+        }
+    }
 </section>
 
 @code {
@@ -119,6 +172,86 @@
     private bool goveeOn => !string.IsNullOrEmpty(Editor[SettingKeys.TemperatureApiBaseUrl]);
 
     private bool anchorsOn => string.Equals(Editor[SettingKeys.Anchors], "true", StringComparison.OrdinalIgnoreCase);
+
+    private bool anchorsRemote => string.Equals(Editor[SettingKeys.AnchorsSource]?.Trim(), AnchorSourceSettings.Remote, StringComparison.OrdinalIgnoreCase);
+
+    private bool testingFeed;
+    private string? feedResult;
+
+    // Tries the feed with the values typed on this page; a saved token is used when the field wasn't changed.
+    private async Task TestFeedAsync()
+    {
+        testingFeed = true;
+        feedResult = "Checking...";
+        try
+        {
+            var settings = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    [SettingKeys.AnchorsFeedName] = Editor[SettingKeys.AnchorsFeedName],
+                    [SettingKeys.AnchorsFeedUrl] = Editor[SettingKeys.AnchorsFeedUrl],
+                    [SettingKeys.AnchorsFeedToken] = Editor[SettingKeys.AnchorsFeedToken] is { } typed && typed != SettingsForm.MaskedValue ? typed : Config[SettingKeys.AnchorsFeedToken],
+                })
+                .Build();
+            var probe = new HttpAnchorFeed(HttpClientFactory, settings, TimeProvider.System, Microsoft.Extensions.Logging.Abstractions.NullLogger<HttpAnchorFeed>.Instance);
+            if (!probe.IsConfigured)
+            {
+                feedResult = "Enter the feed's address, starting with http:// or https://.";
+                return;
+            }
+
+            var snapshot = await probe.GetAsync(AnchorClock.Today(TimeProvider.System), CancellationToken.None);
+            feedResult = snapshot?.Payload is { } payload
+                ? $"Connected: {payload.People.Count} {(payload.People.Count == 1 ? "person" : "people")}, {payload.Anchors.Count} shared {(payload.Anchors.Count == 1 ? "anchor" : "anchors")}."
+                : $"Couldn't reach it: {snapshot?.Status.Error}";
+        }
+        finally
+        {
+            testingFeed = false;
+        }
+    }
+
+    private bool testingAnchorHome;
+    private string? anchorHomeResult;
+
+    // Checks the URL typed on this page (saved or not) by asking that speaker for its anchors.
+    private async Task TestAnchorHomeAsync()
+    {
+        testingAnchorHome = true;
+        anchorHomeResult = "Checking...";
+        try
+        {
+            var settings = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?> { [SettingKeys.AnchorsRemoteUrl] = Editor[SettingKeys.AnchorsRemoteUrl] })
+                .Build();
+            if (AnchorSourceSettings.RemoteUrl(settings) is not { } home)
+            {
+                anchorHomeResult = "Enter the other speaker's address, starting with http:// or https://.";
+                return;
+            }
+
+            using var client = HttpClientFactory.CreateClient(RemoteAnchorStore.HttpClientName);
+            using var response = await client.GetAsync(new Uri(home, "api/anchors/board"));
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                anchorHomeResult = "That speaker answered, but Anchors is turned off there.";
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            var board = await response.Content.ReadFromJsonAsync<AnchorBoardDto>();
+            var people = board?.People.Count ?? 0;
+            anchorHomeResult = $"Connected: {people} {(people == 1 ? "person" : "people")} there.";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            anchorHomeResult = $"Couldn't reach it: {ex.Message}";
+        }
+        finally
+        {
+            testingAnchorHome = false;
+        }
+    }
 
     private bool adviceOn => !string.Equals(Editor[SettingKeys.TemperatureWindowAdvice], "false", StringComparison.OrdinalIgnoreCase);
 

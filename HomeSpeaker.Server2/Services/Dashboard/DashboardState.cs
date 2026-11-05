@@ -1,5 +1,7 @@
 using HomeSpeaker.Server2.Models;
+using HomeSpeaker.Server2.Services.Anchors;
 using HomeSpeaker.Server2.Services.Photos;
+using HomeSpeaker.Shared.Anchors;
 using HomeSpeaker.Shared.BloodSugar;
 using HomeSpeaker.Shared.Forecast;
 using HomeSpeaker.Shared.Temperature;
@@ -23,6 +25,7 @@ public sealed class DashboardState : IDisposable
     private readonly IForecastService forecastService;
     private readonly PhotoLibrary photoLibrary;
     private readonly IServiceScopeFactory scopeFactory;
+    private readonly AnchorChangeNotifier anchorChanges;
     private readonly ILogger<DashboardState> logger;
     private readonly SemaphoreSlim statusGate = new(1, 1);
     private readonly Lock lifecycleGate = new();
@@ -43,6 +46,7 @@ public sealed class DashboardState : IDisposable
         IConfiguration configuration,
         PhotoLibrary photoLibrary,
         IServiceScopeFactory scopeFactory,
+        AnchorChangeNotifier anchorChanges,
         ILogger<DashboardState> logger)
     {
         this.homeSpeaker = homeSpeaker;
@@ -52,6 +56,7 @@ public sealed class DashboardState : IDisposable
         this.forecastService = forecastService;
         this.photoLibrary = photoLibrary;
         this.scopeFactory = scopeFactory;
+        this.anchorChanges = anchorChanges;
         this.logger = logger;
         BloodSugarEnabled = FeatureFlags.BloodSugarEnabled(configuration);
         TemperatureEnabled = FeatureFlags.TemperatureEnabled(configuration);
@@ -82,8 +87,8 @@ public sealed class DashboardState : IDisposable
     public TemperatureStatus? Temperature { get; private set; }
     public ForecastStatus? Forecast { get; private set; }
 
-    /// <summary>Today's anchor completion per person; empty when nobody has anchors today.</summary>
-    public IReadOnlyList<AnchorProgress> Anchors { get; private set; } = [];
+    /// <summary>Everyone's anchors for today (one cell each), in board order; empty when there are no people.</summary>
+    public IReadOnlyList<AnchorPersonDto> Anchors { get; private set; } = [];
     public bool BloodSugarEnabled { get; }
     public bool TemperatureEnabled { get; }
     public bool ForecastEnabled { get; }
@@ -108,6 +113,7 @@ public sealed class DashboardState : IDisposable
                 homeSpeaker.StatusChanged += onPlayerEvent;
                 homeSpeaker.QueueChanged += onQueueChanged;
                 playerState.StateChanged += onPlayerStateChanged;
+                anchorChanges.Changed += onAnchorsChanged;
             }
         }
 
@@ -189,6 +195,7 @@ public sealed class DashboardState : IDisposable
             homeSpeaker.StatusChanged -= onPlayerEvent;
             homeSpeaker.QueueChanged -= onQueueChanged;
             playerState.StateChanged -= onPlayerStateChanged;
+            anchorChanges.Changed -= onAnchorsChanged;
             statusTimer?.Dispose();
             healthTimer?.Dispose();
             statusGate.Dispose();
@@ -231,11 +238,23 @@ public sealed class DashboardState : IDisposable
 
         // The circuit's own scoped DbContext may be mid-query for the page, and a DbContext is single-threaded,
         // so this reads through a scope of its own.
-        Anchors = await tryGetAsync(async () =>
+        var board = await tryGetAsync(async () =>
         {
             await using var scope = scopeFactory.CreateAsyncScope();
-            return await scope.ServiceProvider.GetRequiredService<AnchorService>().GetTodayProgressAsync();
-        }, "anchors") ?? Anchors;
+            return await scope.ServiceProvider.GetRequiredService<IAnchorStore>().GetBoardAsync();
+        }, "anchors");
+        if (board is not null)
+        {
+            Anchors = board.People;
+        }
+    }
+
+    private void onAnchorsChanged() => _ = refreshAnchorsAfterChangeAsync();
+
+    private async Task refreshAnchorsAfterChangeAsync()
+    {
+        await refreshAnchorsAsync();
+        raiseChanged("anchors changed");
     }
 
     private void raiseChanged(string after)

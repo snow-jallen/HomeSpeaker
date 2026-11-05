@@ -108,16 +108,26 @@ builder.Services.AddSingleton<ImmichAlbumBrowser>();
 builder.Services.AddHostedService<MigrationApplier>();
 if (FeatureFlags.AnchorsEnabled(builder.Configuration))
 {
-    builder.Services.AddHostedService<DailyAnchorWorker>();
+    builder.Services.AddHostedService<HomeSpeaker.Server2.Services.Anchors.RemoteAnchorPoller>();
+    builder.Services.AddHostedService<HomeSpeaker.Server2.Services.Anchors.AnchorFeedSender>();
 }
 
 builder.Services.AddHostedService<AirPlayReceiverService>();
 builder.Services.AddScoped<HomeSpeakerService>(); // Scoped for Blazor components
 builder.Services.AddScoped<PlaylistService>();
 builder.Services.AddScoped<AutoPlayService>();
-builder.Services.AddScoped<AnchorService>();
 builder.Services.AddScoped<OfflineDownloadService>();
-builder.Services.AddScoped<IAnchorNotificationService, AnchorNotificationService>();
+builder.Services.AddSingleton<HomeSpeaker.Server2.Services.Anchors.AnchorChangeNotifier>();
+builder.Services.AddSingleton<HomeSpeaker.Server2.Services.Anchors.RemoteAnchorCache>();
+builder.Services.AddHttpClient(HomeSpeaker.Server2.Services.Anchors.RemoteAnchorStore.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddHttpClient(HomeSpeaker.Server2.Services.Anchors.HttpAnchorFeed.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddSingleton<HomeSpeaker.Server2.Services.Anchors.HttpAnchorFeed>();
+builder.Services.AddSingleton<HomeSpeaker.Server2.Services.Anchors.AnchorFeedSignal>();
+builder.Services.AddScoped<HomeSpeaker.Server2.Services.Anchors.LocalAnchorStore>();
+builder.Services.AddScoped<HomeSpeaker.Server2.Services.Anchors.RemoteAnchorStore>();
+
+// Reads Anchors:Source on every call, so changing the source in settings reaches pages that are already open.
+builder.Services.AddScoped<HomeSpeaker.Server2.Services.Anchors.IAnchorStore, HomeSpeaker.Server2.Services.Anchors.AnchorStoreSelector>();
 builder.Services.AddSignalR();
 builder.Services.AddDbContext<MusicContext>(options => options.UseSqlite(builder.Configuration["SqliteConnectionString"]));
 builder.Services.AddSingleton<IDataStore, OnDiskDataStore>();

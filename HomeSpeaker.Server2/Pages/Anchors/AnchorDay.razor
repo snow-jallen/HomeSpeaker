@@ -1,0 +1,263 @@
+@page "/anchors/{PersonId}"
+@using System.Globalization
+@implements IDisposable
+@inject IAnchorStore Store
+@inject AnchorChangeNotifier Changes
+@inject IConfiguration Config
+@inject TimeProvider Time
+@inject ILogger<AnchorDay> Logger
+
+<PageTitle>@(person?.Name ?? "Anchors")</PageTitle>
+
+@if (!FeatureFlags.AnchorsEnabled(Config))
+{
+    <FeatureOffNotice />
+}
+else
+{
+    <div class="glass-page glass-page--anchor-day" data-color="@person?.Color">
+        <div class="glass-page-header">
+            <a class="hs-icon-btn hs-icon-btn--filled" href="anchors" title="Everyone's anchors" aria-label="Everyone's anchors">
+                <i class="fas fa-arrow-left" aria-hidden="true"></i>
+            </a>
+            @if (person is not null)
+            {
+                <span class="hs-person hs-person--lg" data-color="@person.Color">
+                    <span class="hs-person-mark" aria-hidden="true">@person.Emoji</span>
+                    <h1 class="hs-person-name glass-title">@person.Name</h1>
+                </span>
+            }
+            <div class="glass-page-actions">
+                <div class="hs-day-nav" role="group" aria-label="Day">
+                    <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="() => MoveAsync(-1)" aria-label="Previous day" title="Previous day">
+                        <i class="fas fa-chevron-left" aria-hidden="true"></i>
+                    </button>
+                    <span class="hs-day-label">@dayLabel</span>
+                    <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="() => MoveAsync(1)" disabled="@(date >= today)" aria-label="Next day" title="Next day">
+                        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                    </button>
+                </div>
+                @if (person is not null)
+                {
+                    <a class="glass-btn glass-btn--ghost" href="@($"anchors/{PersonId}/edit")">
+                        <i class="fas fa-pencil" aria-hidden="true"></i>
+                        <span class="glass-btn-label">Edit</span>
+                    </a>
+                }
+            </div>
+        </div>
+
+        @if (error is not null)
+        {
+            <div class="hs-error" role="alert">@error</div>
+        }
+
+        @if (!loaded)
+        {
+            <div class="glass-empty" role="status">
+                <div class="glass-spinner" aria-hidden="true"></div>
+                <span class="visually-hidden">Loading</span>
+            </div>
+        }
+        else if (person is null && error is null)
+        {
+            <div class="glass-empty">
+                <p>That person isn't here any more.</p>
+                <a class="glass-btn" href="anchors">Everyone's anchors</a>
+            </div>
+        }
+        else if (person is not null)
+        {
+            @if (person.Streak > 0)
+            {
+                <div class="hs-board-streak">@(person.Streak == 1 ? "1 anchored day" : $"{person.Streak} anchored days in a row")</div>
+            }
+
+            var groups = AnchorView.BySlot(person.Anchors.Where(a => AnchorView.CellOn(a, date)?.State is not (null or "none")));
+            @if (groups.Count == 0)
+            {
+                <div class="glass-empty">
+                    <i class="fas fa-anchor" aria-hidden="true"></i>
+                    <p>@(person.Anchors.Count == 0 ? $"{person.Name} has no anchors yet." : "Nothing to do on this day.")</p>
+                    <a class="glass-btn" href="@($"anchors/{PersonId}/edit")"><i class="fas fa-plus" aria-hidden="true"></i>Add anchors</a>
+                </div>
+            }
+
+            @foreach (var group in groups)
+            {
+                <section class="hs-slot" aria-label="@group.Label">
+                    <h2 class="glass-section-title">@group.Label</h2>
+                    <div class="hs-checks">
+                        @foreach (var anchor in group.Anchors)
+                        {
+                            <AnchorCheck Anchor="anchor" Cell="AnchorView.CellOn(anchor, date)" Busy="busy.Contains(anchor.Id)" OnToggle="() => ToggleAsync(anchor)" />
+                        }
+                    </div>
+                </section>
+            }
+        }
+
+        @if (undo is not null)
+        {
+            <div class="hs-undo" role="status">
+                <span>@undo.Message</span>
+                <button type="button" class="glass-btn glass-btn--ghost" @onclick="UndoAsync">Undo</button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private static readonly TimeSpan undoFor = TimeSpan.FromSeconds(5);
+
+    private AnchorPersonDto? person;
+    private bool loaded;
+    private DateOnly date;
+    private string? error;
+    private UndoAction? undo;
+    private CancellationTokenSource? undoTimer;
+    private readonly HashSet<string> busy = new(StringComparer.Ordinal);
+
+    private sealed record UndoAction(string AnchorId, DateOnly Date, bool Done, string Message);
+
+    [Parameter]
+    public string PersonId { get; set; } = string.Empty;
+
+    private DateOnly today => AnchorClock.Today(Time);
+
+    private string dayLabel =>
+        date == today ? "Today"
+        : date == today.AddDays(-1) ? "Yesterday"
+        : date.ToString("ddd, MMM d", CultureInfo.InvariantCulture);
+
+    protected override void OnInitialized()
+    {
+        date = today;
+        if (FeatureFlags.AnchorsEnabled(Config))
+        {
+            Changes.Changed += onChanged;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (FeatureFlags.AnchorsEnabled(Config))
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            person = await Store.GetDayAsync(PersonId, date);
+            error = null;
+        }
+        catch (Exception ex) when (ex is AnchorSourceUnavailableException or HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            Logger.LogWarning(ex, "Couldn't load anchors for {PersonId}", PersonId);
+            error = "Couldn't load anchors. Try again in a moment.";
+        }
+
+        loaded = true;
+    }
+
+    private async Task MoveAsync(int days)
+    {
+        var next = date.AddDays(days);
+        if (next > today)
+        {
+            return;
+        }
+
+        date = next;
+        await LoadAsync();
+    }
+
+    private async Task ToggleAsync(AnchorDto anchor)
+    {
+        if (!busy.Add(anchor.Id))
+        {
+            return;
+        }
+
+        try
+        {
+            var done = AnchorView.CellOn(anchor, date)?.State != "kept";
+            if (await setAsync(anchor.Id, date, done))
+            {
+                showUndo(new UndoAction(anchor.Id, date, !done, done ? $"“{anchor.Title}” done" : $"“{anchor.Title}” not done"));
+            }
+            else
+            {
+                error = $"Couldn't update “{anchor.Title}”.";
+            }
+        }
+        finally
+        {
+            busy.Remove(anchor.Id);
+        }
+    }
+
+    private async Task UndoAsync()
+    {
+        if (undo is not { } action)
+        {
+            return;
+        }
+
+        undo = null;
+        await setAsync(action.AnchorId, action.Date, action.Done);
+    }
+
+    private async Task<bool> setAsync(string anchorId, DateOnly day, bool done)
+    {
+        var result = await Store.SetDoneAsync(anchorId, day, new AnchorLogRequest(done, Time.GetUtcNow()));
+        if (result == AnchorResult.Ok)
+        {
+            error = null;
+        }
+
+        await LoadAsync();
+        return result == AnchorResult.Ok;
+    }
+
+    private void showUndo(UndoAction action)
+    {
+        undo = action;
+        undoTimer?.Cancel();
+        undoTimer?.Dispose();
+        undoTimer = new CancellationTokenSource();
+        var token = undoTimer.Token;
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await Task.Delay(undoFor, Time, token);
+                if (undo == action)
+                {
+                    undo = null;
+                    StateHasChanged();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // A newer tap replaced this undo.
+            }
+        });
+    }
+
+    private void onChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        Changes.Changed -= onChanged;
+        undoTimer?.Cancel();
+        undoTimer?.Dispose();
+    }
+}

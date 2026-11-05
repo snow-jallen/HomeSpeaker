@@ -27,6 +27,8 @@ public sealed class SettingKeysTests
     [InlineData(SettingKeys.TemperatureIndoorRoom)]
     [InlineData(SettingKeys.TemperatureWindowAdvice)]
     [InlineData(SettingKeys.TemperatureThreshold)]
+    [InlineData(SettingKeys.AnchorsSource)]
+    [InlineData(SettingKeys.AnchorsRemoteUrl)]
     [InlineData("Setup:Completed")]
     public void RequiresRestart_LiveKeys_False(string key) => Assert.False(SettingKeys.RequiresRestart(key));
 }

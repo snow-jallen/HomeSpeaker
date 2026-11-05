@@ -1,0 +1,56 @@
+@using System.Globalization
+@* A person's anchors over the board's range: one row per anchor, today in the first column. *@
+<div class="hs-grid-scroll">
+    <table class="hs-grid" data-color="@Person.Color">
+        <thead>
+            <tr>
+                <th scope="col" class="hs-grid-name"><span class="visually-hidden">Anchor</span></th>
+                @foreach (var date in dates)
+                {
+                    <th scope="col" title="@date.ToString("dddd, MMM d", CultureInfo.InvariantCulture)">
+                        @date.ToString("ddd", CultureInfo.InvariantCulture)[..2]<br />@date.Day
+                    </th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var anchor in rows)
+            {
+                <tr>
+                    <th scope="row" class="hs-grid-name" title="@anchor.Title">
+                        @anchor.Title
+                        @if (anchor.Streak >= 2)
+                        {
+                            <span class="hs-grid-streak">@anchor.Streak-day streak</span>
+                        }
+                    </th>
+                    @foreach (var date in dates)
+                    {
+                        var cell = AnchorView.CellOn(anchor, date);
+                        var state = cell?.State ?? "none";
+                        <td>
+                            <span class="hs-cell is-@state @(cell?.Pending == true ? "is-pending" : "")"
+                                  title="@($"{anchor.Title}, {date.ToString("ddd MMM d", CultureInfo.InvariantCulture)}: {state}")"></span>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public AnchorPersonDto Person { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public DateOnly From { get; set; }
+
+    [Parameter, EditorRequired]
+    public DateOnly To { get; set; }
+
+    private IEnumerable<DateOnly> dates => Enumerable.Range(0, To.DayNumber - From.DayNumber + 1).Select(i => To.AddDays(-i));
+
+    // Anchors that were active at some point in the range (a retired one still shows the days it was kept).
+    private IEnumerable<AnchorDto> rows => AnchorView.Ordered(Person.Anchors).Where(a => a.Cells.Any(c => c.State != "none"));
+}

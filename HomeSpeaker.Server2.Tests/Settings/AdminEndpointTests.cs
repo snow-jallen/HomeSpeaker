@@ -147,7 +147,6 @@ public sealed partial class AdminEndpointTests
     [Theory]
     [InlineData("/settings")]
     [InlineData("/setup")]
-    [InlineData("/anchors/edit")]
     [InlineData("/autoplay")]
     [InlineData("/album-art")]
     [InlineData("/admin/album-art")]
@@ -165,6 +164,8 @@ public sealed partial class AdminEndpointTests
 
     [Theory]
     [InlineData("/anchors")]
+    [InlineData("/anchors/people")]
+    [InlineData("/anchors/1/edit")]
     [InlineData("/aspire")]
     public async Task OpenPage_WithPinAndNoCookie_IsNotRedirected(string path)
     {

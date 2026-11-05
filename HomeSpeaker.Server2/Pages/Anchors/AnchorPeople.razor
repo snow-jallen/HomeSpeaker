@@ -1,0 +1,234 @@
+@page "/anchors/people"
+@implements IDisposable
+@inject IAnchorStore Store
+@inject AnchorChangeNotifier Changes
+@inject IConfiguration Config
+@inject ILogger<AnchorPeople> Logger
+
+<PageTitle>People</PageTitle>
+
+@if (!FeatureFlags.AnchorsEnabled(Config))
+{
+    <FeatureOffNotice />
+}
+else
+{
+    <div class="glass-page glass-page--anchor-people">
+        <div class="glass-page-header">
+            <a class="hs-icon-btn hs-icon-btn--filled" href="anchors" title="Everyone's anchors" aria-label="Everyone's anchors">
+                <i class="fas fa-arrow-left" aria-hidden="true"></i>
+            </a>
+            <h1 class="glass-title">People</h1>
+        </div>
+
+        @if (message is not null)
+        {
+            <div class="hs-error" role="alert">@message</div>
+        }
+
+        <form class="glass-card" @onsubmit="AddAsync" @onsubmit:preventDefault>
+            <h2 class="glass-card-title">Add someone</h2>
+            <div class="hs-edit-fields">
+                <input class="glass-input hs-edit-title" @bind="newName" @bind:event="oninput" maxlength="@AnchorInput.MaxNameLength" placeholder="Name" aria-label="Name" />
+                <input class="glass-input" style="width: 5em" @bind="newEmoji" maxlength="@AnchorInput.MaxEmojiLength" placeholder="Emoji" aria-label="Emoji (optional)" />
+                <button type="submit" class="glass-btn" disabled="@string.IsNullOrWhiteSpace(newName)"><i class="fas fa-plus" aria-hidden="true"></i>Add</button>
+            </div>
+        </form>
+
+        @if (people is null)
+        {
+            <div class="glass-empty" role="status"><div class="glass-spinner" aria-hidden="true"></div></div>
+        }
+        else
+        {
+            <div class="glass-list">
+                @foreach (var person in people)
+                {
+                    <div class="glass-card" data-color="@person.Color">
+                        @if (editing?.Id == person.Id)
+                        {
+                            <form class="hs-edit-fields" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+                                <input class="glass-input hs-edit-title" @bind="editing.Name" @bind:event="oninput" maxlength="@AnchorInput.MaxNameLength" aria-label="Name" />
+                                <input class="glass-input" style="width: 5em" @bind="editing.Emoji" maxlength="@AnchorInput.MaxEmojiLength" placeholder="Emoji" aria-label="Emoji" />
+                                <div class="hs-swatches" role="radiogroup" aria-label="Colour">
+                                    @foreach (var color in AnchorColors.Palette)
+                                    {
+                                        <button type="button" class="hs-swatch @(editing.Color == color ? "is-on" : "")" data-color="@color" role="radio"
+                                                aria-checked="@(editing.Color == color ? "true" : "false")" aria-label="@color" @onclick="() => editing.Color = color"></button>
+                                    }
+                                </div>
+                                @if (feed?.People is { Count: > 0 } feedPeople)
+                                {
+                                    <label class="glass-field">
+                                        <span>Also show their @feed.Name anchors</span>
+                                        <select class="glass-input" @bind="editing.FeedPersonId">
+                                            <option value="">No</option>
+                                            @foreach (var feedPerson in feedPeople)
+                                            {
+                                                <option value="@feedPerson.Id">@feedPerson.Name</option>
+                                            }
+                                        </select>
+                                    </label>
+                                }
+                                <button type="submit" class="glass-btn" disabled="@string.IsNullOrWhiteSpace(editing.Name)">Save</button>
+                                <button type="button" class="glass-btn glass-btn--ghost" @onclick="() => editing = null">Cancel</button>
+                                @if (confirmArchive == person.Id)
+                                {
+                                    <button type="button" class="glass-btn glass-btn--danger" @onclick="() => ArchiveAsync(person)">Remove @person.Name</button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="glass-btn glass-btn--ghost" @onclick="() => confirmArchive = person.Id">Remove…</button>
+                                }
+                            </form>
+                        }
+                        else
+                        {
+                            <div class="glass-row">
+                                <div class="glass-row-text">
+                                    <PersonBadge Person="person" />
+                                    <div class="glass-row-sub">@anchorCount(person)@(person.Source != "local" ? $" · from {person.Source}" : string.Empty)</div>
+                                </div>
+                                <div class="glass-row-actions">
+                                    @if (person.Source == "local")
+                                    {
+                                        <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="() => MoveAsync(person, -1)" disabled="@(people[0] == person)"
+                                                aria-label="Move @person.Name up" title="Move up"><i class="fas fa-arrow-up" aria-hidden="true"></i></button>
+                                        <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="() => MoveAsync(person, 1)" disabled="@(people[^1] == person)"
+                                                aria-label="Move @person.Name down" title="Move down"><i class="fas fa-arrow-down" aria-hidden="true"></i></button>
+                                        <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="() => StartEdit(person)"
+                                                aria-label="Edit @person.Name" title="Edit"><i class="fas fa-pencil" aria-hidden="true"></i></button>
+                                    }
+                                    <a class="glass-btn glass-btn--ghost" href="@($"anchors/{person.Id}/edit")">Anchors</a>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<AnchorPersonDto>? people;
+    private AnchorFeedStatusDto? feed;
+    private string? message;
+    private string newName = string.Empty;
+    private string newEmoji = string.Empty;
+    private Draft? editing;
+    private string? confirmArchive;
+
+    private sealed class Draft
+    {
+        public string Id { get; init; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Emoji { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
+        public string FeedPersonId { get; set; } = string.Empty;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!FeatureFlags.AnchorsEnabled(Config))
+        {
+            return;
+        }
+
+        Changes.Changed += onChanged;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var board = await Store.GetBoardAsync();
+            people = board.People;
+            feed = board.Feed;
+        }
+        catch (Exception ex) when (ex is AnchorSourceUnavailableException or HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            Logger.LogWarning(ex, "Couldn't load anchor people");
+            message = "Couldn't load people. Try again in a moment.";
+        }
+    }
+
+    private static string anchorCount(AnchorPersonDto person)
+    {
+        var count = person.Anchors.Count(a => !a.Retired);
+        return count == 1 ? "1 anchor" : $"{count} anchors";
+    }
+
+    private async Task AddAsync()
+    {
+        var outcome = await Store.CreatePersonAsync(new AnchorPersonRequest(newName, Emoji: string.IsNullOrWhiteSpace(newEmoji) ? null : newEmoji));
+        message = outcome.Succeeded ? null : outcome.Message ?? "Couldn't add that person.";
+        if (outcome.Succeeded)
+        {
+            newName = string.Empty;
+            newEmoji = string.Empty;
+        }
+
+        await LoadAsync();
+    }
+
+    private void StartEdit(AnchorPersonDto person)
+    {
+        confirmArchive = null;
+        editing = new Draft { Id = person.Id, Name = person.Name, Emoji = person.Emoji ?? string.Empty, Color = person.Color, FeedPersonId = person.FeedPersonId ?? string.Empty };
+    }
+
+    private async Task SaveAsync()
+    {
+        if (editing is null)
+        {
+            return;
+        }
+
+        var result = await Store.UpdatePersonAsync(editing.Id, new AnchorPersonRequest(editing.Name, editing.Color, editing.Emoji, feed is null ? null : editing.FeedPersonId));
+        message = result == AnchorResult.Ok ? null : "Couldn't save. Names are up to 40 characters.";
+        if (result == AnchorResult.Ok)
+        {
+            editing = null;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task ArchiveAsync(AnchorPersonDto person)
+    {
+        await Store.ArchivePersonAsync(person.Id);
+        editing = null;
+        confirmArchive = null;
+        await LoadAsync();
+    }
+
+    private async Task MoveAsync(AnchorPersonDto person, int step)
+    {
+        if (people is null)
+        {
+            return;
+        }
+
+        var order = people.Where(p => p.Source == "local").ToList();
+        var index = order.IndexOf(person);
+        var target = index + step;
+        if (index < 0 || target < 0 || target >= order.Count)
+        {
+            return;
+        }
+
+        (order[index], order[target]) = (order[target], order[index]);
+        await Store.OrderPeopleAsync(new AnchorOrderRequest([.. order.Select(p => p.Id)]));
+        await LoadAsync();
+    }
+
+    private void onChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Changes.Changed -= onChanged;
+}

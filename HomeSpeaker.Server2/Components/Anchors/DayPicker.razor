@@ -1,0 +1,43 @@
+@* Which weekdays an anchor is scheduled on: one toggle per day (Monday first) plus "Every day". *@
+<div class="hs-days" role="group" aria-label="Days">
+    <button type="button" class="glass-chip @(Days == DayMask.Every ? "is-on" : "")" aria-pressed="@(Days == DayMask.Every ? "true" : "false")"
+            @onclick="() => SetAsync(DayMask.Every)">
+        Every day
+    </button>
+    @foreach (var (day, label) in week)
+    {
+        var on = DayMask.Includes(Days, day);
+        <button type="button" class="glass-chip @(on ? "is-on" : "")" aria-pressed="@(on ? "true" : "false")" aria-label="@day"
+                @onclick="() => ToggleAsync(day)">
+            @label
+        </button>
+    }
+</div>
+
+@code {
+    private static readonly (DayOfWeek Day, string Label)[] week =
+    [
+        (DayOfWeek.Monday, "M"), (DayOfWeek.Tuesday, "T"), (DayOfWeek.Wednesday, "W"), (DayOfWeek.Thursday, "T"),
+        (DayOfWeek.Friday, "F"), (DayOfWeek.Saturday, "S"), (DayOfWeek.Sunday, "S"),
+    ];
+
+    [Parameter]
+    public int Days { get; set; } = DayMask.Every;
+
+    [Parameter]
+    public EventCallback<int> DaysChanged { get; set; }
+
+    private Task ToggleAsync(DayOfWeek day)
+    {
+        var mask = Days ^ DayMask.Of(day);
+
+        // Turning off the last day would leave an anchor that is never expected; keep at least one.
+        return mask == 0 ? Task.CompletedTask : SetAsync(mask);
+    }
+
+    private Task SetAsync(int mask)
+    {
+        Days = mask;
+        return DaysChanged.InvokeAsync(mask);
+    }
+}

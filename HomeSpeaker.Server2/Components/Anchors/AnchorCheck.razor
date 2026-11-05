@@ -1,0 +1,39 @@
+@* One anchor as a big tappable chip: tap to mark it done or not done for the shown day. *@
+<button type="button"
+        class="hs-check is-@state @(Cell?.Pending == true ? "is-pending" : "")"
+        disabled="@(!Anchor.Writable || Busy)"
+        aria-pressed="@(state == "kept" ? "true" : "false")"
+        title="@(Anchor.Writable ? null : "Checked off in the app it comes from")"
+        @onclick="OnToggle">
+    <span class="hs-check-mark" aria-hidden="true">
+        @if (state == "kept")
+        {
+            <i class="fas fa-check"></i>
+        }
+    </span>
+    <span class="hs-check-text">
+        <span class="hs-check-title">@Anchor.Title</span>
+        @if (meta.Length > 0)
+        {
+            <span class="hs-check-meta">@meta</span>
+        }
+    </span>
+</button>
+
+@code {
+    [Parameter, EditorRequired]
+    public AnchorDto Anchor { get; set; } = default!;
+
+    [Parameter]
+    public AnchorCellDto? Cell { get; set; }
+
+    [Parameter]
+    public bool Busy { get; set; }
+
+    [Parameter]
+    public EventCallback OnToggle { get; set; }
+
+    private string state => Cell?.State ?? "none";
+
+    private string meta => AnchorView.CheckMeta(Anchor, Cell);
+}

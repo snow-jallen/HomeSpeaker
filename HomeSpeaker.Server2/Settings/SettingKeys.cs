@@ -34,6 +34,15 @@ public static class SettingKeys
 
     public const string Anchors = "Features:Anchors";
 
+    /// <summary>Where anchors live: <c>local</c> (this device) or <c>remote</c> (another HomeSpeaker at <see cref="AnchorsRemoteUrl"/>).</summary>
+    public const string AnchorsSource = "Anchors:Source";
+    public const string AnchorsRemoteUrl = "Anchors:RemoteUrl";
+
+    /// <summary>An external anchor feed (docs/anchor-feed.md), e.g. Metanoeo, merged into this device's anchors.</summary>
+    public const string AnchorsFeedName = "Anchors:Feed:Name";
+    public const string AnchorsFeedUrl = "Anchors:Feed:Url";
+    public const string AnchorsFeedToken = "Anchors:Feed:Token";
+
     /// <summary>Every editable key, its label and whether it is a write-only secret, in page order.</summary>
     public static IReadOnlyList<(string Key, string Label, bool IsSecret)> All { get; } =
     [
@@ -56,6 +65,11 @@ public static class SettingKeys
         (TemperatureWindowMinOutside, "Minimum outside temperature", false),
         (TemperatureThreshold, "Window threshold", false),
         (Anchors, "Anchors", false),
+        (AnchorsSource, "Anchor source", false),
+        (AnchorsRemoteUrl, "Anchor home URL", false),
+        (AnchorsFeedName, "Feed name", false),
+        (AnchorsFeedUrl, "Feed URL", false),
+        (AnchorsFeedToken, "Feed token", true),
     ];
 
     /// <summary>

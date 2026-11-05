@@ -46,20 +46,154 @@ namespace HomeSpeaker.Server2.Migrations
                     b.ToTable("AlbumArtDismissals");
                 });
 
-            modelBuilder.Entity("HomeSpeaker.Server2.Data.AnchorDefinitionEntity", b =>
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.AnchorEntity", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("DeactivatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<int>("PersonId")
+                        .HasColumnType("INTEGER");
 
-                    b.Property<string>("Description")
+                    b.Property<string>("Slot")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<TimeOnly?>("TargetTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonId", "SortOrder");
+
+                    b.ToTable("Anchors");
+                });
+
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.AnchorFeedOutboxEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("ClientUpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Done")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FeedAnchorId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("NextAttemptAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FeedAnchorId", "Date")
+                        .IsUnique();
+
+                    b.ToTable("AnchorFeedOutbox");
+                });
+
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.AnchorLogEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AnchorId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset?>("ClientUpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Done")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset?>("DoneAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date");
+
+                    b.HasIndex("AnchorId", "Date")
+                        .IsUnique();
+
+                    b.ToTable("AnchorLogs");
+                });
+
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.AnchorPeriodEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AnchorId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Days")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("From")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly?>("To")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnchorId", "From");
+
+                    b.ToTable("AnchorPeriods");
+                });
+
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.AnchorPersonEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Emoji")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FeedPersonId")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsActive")
@@ -69,11 +203,12 @@ namespace HomeSpeaker.Server2.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("IsActive", "Name");
-
-                    b.ToTable("AnchorDefinitions");
+                    b.ToTable("AnchorPeople");
                 });
 
             modelBuilder.Entity("HomeSpeaker.Server2.Data.AutoPlaySettingsEntity", b =>
@@ -120,48 +255,6 @@ namespace HomeSpeaker.Server2.Migrations
                     b.HasIndex("AutoPlaySettingsId", "SortOrder");
 
                     b.ToTable("AutoPlaySources");
-                });
-
-            modelBuilder.Entity("HomeSpeaker.Server2.Data.DailyAnchorEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("AnchorDefinitionId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("AnchorDescription")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("AnchorName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateOnly>("Date")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsCompleted")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Date", "IsCompleted");
-
-                    b.HasIndex("UserId", "Date");
-
-                    b.ToTable("DailyAnchors");
                 });
 
             modelBuilder.Entity("HomeSpeaker.Server2.Data.Impression", b =>
@@ -383,30 +476,33 @@ namespace HomeSpeaker.Server2.Migrations
                     b.ToTable("Thumbnails");
                 });
 
-            modelBuilder.Entity("HomeSpeaker.Server2.Data.UserAnchorEntity", b =>
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.AnchorEntity", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                    b.HasOne("HomeSpeaker.Server2.Data.AnchorPersonEntity", "Person")
+                        .WithMany("Anchors")
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.Property<int>("AnchorDefinitionId")
-                        .HasColumnType("INTEGER");
+                    b.Navigation("Person");
+                });
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.AnchorLogEntity", b =>
+                {
+                    b.HasOne("HomeSpeaker.Server2.Data.AnchorEntity", null)
+                        .WithMany("Logs")
+                        .HasForeignKey("AnchorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AnchorDefinitionId");
-
-                    b.HasIndex("UserId", "AnchorDefinitionId")
-                        .IsUnique();
-
-                    b.ToTable("UserAnchors");
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.AnchorPeriodEntity", b =>
+                {
+                    b.HasOne("HomeSpeaker.Server2.Data.AnchorEntity", null)
+                        .WithMany("Periods")
+                        .HasForeignKey("AnchorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("HomeSpeaker.Server2.Data.AutoPlaySourceEntity", b =>
@@ -427,15 +523,16 @@ namespace HomeSpeaker.Server2.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("HomeSpeaker.Server2.Data.UserAnchorEntity", b =>
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.AnchorEntity", b =>
                 {
-                    b.HasOne("HomeSpeaker.Server2.Data.AnchorDefinitionEntity", "AnchorDefinition")
-                        .WithMany()
-                        .HasForeignKey("AnchorDefinitionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Navigation("Logs");
 
-                    b.Navigation("AnchorDefinition");
+                    b.Navigation("Periods");
+                });
+
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.AnchorPersonEntity", b =>
+                {
+                    b.Navigation("Anchors");
                 });
 
             modelBuilder.Entity("HomeSpeaker.Server2.Data.AutoPlaySettingsEntity", b =>
