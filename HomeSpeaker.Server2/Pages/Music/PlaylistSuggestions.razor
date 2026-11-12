@@ -1,0 +1,533 @@
+@page "/playlist-suggestions"
+@using HomeSpeaker.Server2.Data
+@using HomeSpeaker.Server2.Services.PlaylistSuggestions
+@implements IAsyncDisposable
+@inject PlaylistSuggestionService Suggestions
+@inject HomeSpeakerService Svc
+@inject ILogger<PlaylistSuggestions> Logger
+@inject IJSRuntime JS
+
+<PageTitle>Home Speaker | Playlist suggestions</PageTitle>
+
+<div class="glass-page glass-page--suggestions">
+    <div class="glass-page-header">
+        <h1 class="glass-title">Playlist suggestions</h1>
+    </div>
+
+    <div class="glass-hint">
+        Songs picked out of the library for each playlist. Play a clip, then approve or reject it; approved songs go into
+        the playlist right away. Keys: <kbd>Space</kbd> play or stop, <kbd>Y</kbd> approve, <kbd>N</kbd> reject,
+        <kbd>U</kbd> undo, <kbd>→</kbd> jump ahead in the clip.
+    </div>
+
+    @if (message is not null)
+    {
+        <div class="glass-alert glass-alert--danger" role="status">
+            <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+            <div>@message</div>
+        </div>
+    }
+
+    @if (summaries is null)
+    {
+        <div class="glass-empty" role="status">
+            <div class="glass-spinner" aria-hidden="true"></div>
+            Loading suggestions...
+        </div>
+    }
+    else if (summaries.Count == 0)
+    {
+        <div class="glass-empty">
+            <i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i>
+            <div><strong>No suggestions yet</strong></div>
+            <div>Suggested playlists will show up here to review.</div>
+        </div>
+    }
+    else
+    {
+        <div class="glass-chip-row suggestion-playlists" role="tablist" aria-label="Suggested playlists">
+            @foreach (var summary in summaries)
+            {
+                var selected = summary.Name == selectedName;
+                <button type="button" role="tab" aria-selected="@(selected ? "true" : "false")"
+                        class="glass-chip @(selected ? "is-on" : "")" @onclick="() => SelectAsync(summary.Name)">
+                    @summary.Name
+                    <span class="suggestion-count">@(summary.Pending == 0 ? "✓" : summary.Pending.ToString(System.Globalization.CultureInfo.CurrentCulture))</span>
+                </button>
+            }
+        </div>
+
+        @if (selectedSummary is { } current && songs is not null)
+        {
+            <div class="glass-toolbar">
+                <div class="glass-chip-row" role="tablist" aria-label="Show">
+                    @foreach (var (status, label, count) in tabs(current))
+                    {
+                        <button type="button" role="tab" aria-selected="@(tab == status ? "true" : "false")"
+                                class="glass-chip @(tab == status ? "is-on" : "")" @onclick="() => ShowTab(status)">
+                            @label (@count)
+                        </button>
+                    }
+                </div>
+                <span class="glass-toolbar-end suggestion-toolbar-actions">
+                    <button type="button" class="glass-chip @(autoPlay ? "is-on" : "")" aria-pressed="@(autoPlay ? "true" : "false")"
+                            title="After you decide, play the next song's clip" @onclick="() => autoPlay = !autoPlay">
+                        <i class="fas fa-forward" aria-hidden="true"></i> Auto-play next
+                    </button>
+                    @if (current.Pending > 0)
+                    {
+                        @if (confirmApproveRest)
+                        {
+                            <button type="button" class="glass-btn" @onclick="ApproveRestAsync" disabled="@busy">
+                                Approve all @current.Pending?
+                            </button>
+                            <button type="button" class="glass-btn glass-btn--ghost" @onclick="() => confirmApproveRest = false">Cancel</button>
+                        }
+                        else
+                        {
+                            <button type="button" class="glass-btn glass-btn--ghost" @onclick="() => confirmApproveRest = true"
+                                    title="Approve every song still waiting in this playlist">
+                                <i class="fas fa-check-double" aria-hidden="true"></i>
+                                <span class="glass-btn-label">Approve the rest</span>
+                            </button>
+                        }
+                    }
+                </span>
+            </div>
+
+            @if (lastDecision is { } last)
+            {
+                <div class="glass-hint suggestion-undo" role="status">
+                    @(last.Status == SuggestionStatus.Approved ? "Approved" : "Rejected") “@last.Song.Name”.
+                    <button type="button" class="glass-chip" @onclick="UndoAsync" disabled="@busy">
+                        <i class="fas fa-rotate-left" aria-hidden="true"></i> Undo
+                    </button>
+                </div>
+            }
+
+            @if (tab == SuggestionStatus.Pending)
+            {
+                var pending = songs.Where(s => s.Status == SuggestionStatus.Pending).ToList();
+                var reviewing = pending.FirstOrDefault(s => s.SuggestionId == currentId) ?? pending.FirstOrDefault();
+                if (reviewing is null)
+                {
+                    <div class="glass-empty">
+                        <i class="fas fa-circle-check" aria-hidden="true"></i>
+                        <div><strong>All reviewed</strong></div>
+                        <div>@CountText.Songs(current.Approved) in “@current.Name”.</div>
+                    </div>
+                }
+                else
+                {
+                    <section class="glass-card suggestion-current" aria-label="Now reviewing">
+                        <div class="suggestion-current-text">
+                            <div class="glass-hint">@(pending.IndexOf(reviewing) + 1) of @pending.Count to review</div>
+                            <h2 class="suggestion-current-title">@reviewing.Name</h2>
+                            <div class="glass-row-sub">@details(reviewing)</div>
+                            @if (!string.IsNullOrWhiteSpace(reviewing.Reason))
+                            {
+                                <div class="glass-hint suggestion-reason">@reviewing.Reason</div>
+                            }
+                        </div>
+                        <div class="suggestion-current-actions">
+                            <button type="button" class="glass-btn glass-btn--ghost suggestion-play" @onclick="() => ToggleClipAsync(reviewing)">
+                                <i class="fas @(playingId == reviewing.SuggestionId ? "fa-stop" : "fa-play")" aria-hidden="true"></i>
+                                <span>@(playingId == reviewing.SuggestionId ? "Stop" : "Play clip")</span>
+                            </button>
+                            <button type="button" class="glass-btn suggestion-approve" @onclick="() => DecideAsync(reviewing, SuggestionStatus.Approved)" disabled="@busy">
+                                <i class="fas fa-check" aria-hidden="true"></i><span>Approve</span>
+                            </button>
+                            <button type="button" class="glass-btn glass-btn--danger suggestion-reject" @onclick="() => DecideAsync(reviewing, SuggestionStatus.Rejected)" disabled="@busy">
+                                <i class="fas fa-xmark" aria-hidden="true"></i><span>Reject</span>
+                            </button>
+                            <button type="button" class="hs-icon-btn" title="Play the whole song on the speaker" aria-label="Play the whole song on the speaker"
+                                    @onclick="() => PlayOnSpeakerAsync(reviewing)">
+                                <i class="fas fa-volume-high" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </section>
+
+                    @if (pending.Count > 1)
+                    {
+                        <h2 class="glass-section-title">Up next</h2>
+                        <div class="glass-list">
+                            @foreach (var song in pending.Where(s => s != reviewing))
+                            {
+                                @songRow(song)
+                            }
+                        </div>
+                    }
+                }
+            }
+            else
+            {
+                var shown = songs.Where(s => s.Status == tab).ToList();
+                if (shown.Count == 0)
+                {
+                    <div class="glass-empty">Nothing here yet.</div>
+                }
+                else
+                {
+                    <div class="glass-list">
+                        @foreach (var song in shown)
+                        {
+                            @songRow(song)
+                        }
+                    </div>
+                }
+            }
+        }
+    }
+</div>
+
+@code {
+    private IReadOnlyList<SuggestionPlaylistSummary>? summaries;
+    private List<SuggestedSong>? songs;
+    private string? selectedName;
+    private SuggestionStatus tab = SuggestionStatus.Pending;
+    private int? currentId;
+    private int? playingId;
+    private bool autoPlay = true;
+    private bool busy;
+    private bool confirmApproveRest;
+    private Decision? lastDecision;
+    private string? message;
+    private DotNetObjectReference<PlaylistSuggestions>? dotNetRef;
+
+    private SuggestionPlaylistSummary? selectedSummary => summaries?.FirstOrDefault(s => s.Name == selectedName);
+
+    private RenderFragment songRow(SuggestedSong song) => @<div class="glass-row suggestion-row" @key="song.SuggestionId">
+        <button type="button" class="hs-icon-btn" @onclick="() => ToggleClipAsync(song)"
+                aria-label="@(playingId == song.SuggestionId ? "Stop clip" : "Play clip")" title="@(playingId == song.SuggestionId ? "Stop clip" : "Play clip")">
+            <i class="fas @(playingId == song.SuggestionId ? "fa-stop" : "fa-play")" aria-hidden="true"></i>
+        </button>
+        <div class="glass-row-text">
+            <div class="glass-row-title">@song.Name</div>
+            <div class="glass-row-sub">@details(song)</div>
+            @if (!string.IsNullOrWhiteSpace(song.Reason))
+            {
+                <div class="glass-row-sub suggestion-reason">@song.Reason</div>
+            }
+        </div>
+        <div class="glass-row-actions">
+            @if (song.Status != SuggestionStatus.Approved)
+            {
+                <button type="button" class="hs-icon-btn suggestion-approve" title="Approve" aria-label="Approve @song.Name"
+                        @onclick="() => DecideAsync(song, SuggestionStatus.Approved)" disabled="@busy">
+                    <i class="fas fa-check" aria-hidden="true"></i>
+                </button>
+            }
+            @if (song.Status != SuggestionStatus.Rejected)
+            {
+                <button type="button" class="hs-icon-btn suggestion-reject" title="Reject" aria-label="Reject @song.Name"
+                        @onclick="() => DecideAsync(song, SuggestionStatus.Rejected)" disabled="@busy">
+                    <i class="fas fa-xmark" aria-hidden="true"></i>
+                </button>
+            }
+            @if (song.Status != SuggestionStatus.Pending)
+            {
+                <button type="button" class="hs-icon-btn" title="Back to review" aria-label="Send @song.Name back to review"
+                        @onclick="() => DecideAsync(song, SuggestionStatus.Pending)" disabled="@busy">
+                    <i class="fas fa-rotate-left" aria-hidden="true"></i>
+                </button>
+            }
+        </div>
+    </div>;
+
+    private static string details(SuggestedSong song) =>
+        string.Join(" • ", new[] { song.Artist, song.Album }.Where(x => !string.IsNullOrWhiteSpace(x)));
+
+    private static IEnumerable<(SuggestionStatus Status, string Label, int Count)> tabs(SuggestionPlaylistSummary summary) =>
+    [
+        (SuggestionStatus.Pending, "To review", summary.Pending),
+        (SuggestionStatus.Approved, "Approved", summary.Approved),
+        (SuggestionStatus.Rejected, "Rejected", summary.Rejected),
+    ];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Load once interactive, not while prerendering, so the clip player and shortcuts are ready.
+        if (firstRender)
+        {
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("clipPlayer.attach", dotNetRef);
+            await runAsync(async () =>
+            {
+                summaries = await Suggestions.GetPlaylistsAsync();
+                var first = summaries.FirstOrDefault(s => s.Pending > 0) ?? summaries.FirstOrDefault();
+                if (first is not null)
+                {
+                    await loadSongsAsync(first.Name);
+                }
+            });
+        }
+    }
+
+    private async Task SelectAsync(string name)
+    {
+        if (name == selectedName)
+        {
+            return;
+        }
+
+        await stopClipAsync();
+        lastDecision = null;
+        confirmApproveRest = false;
+        tab = SuggestionStatus.Pending;
+        await runAsync(() => loadSongsAsync(name));
+    }
+
+    private async Task loadSongsAsync(string name)
+    {
+        selectedName = name;
+        songs = (await Suggestions.GetSongsAsync(name)).ToList();
+        currentId = songs.FirstOrDefault(s => s.Status == SuggestionStatus.Pending)?.SuggestionId;
+    }
+
+    private void ShowTab(SuggestionStatus status)
+    {
+        tab = status;
+        confirmApproveRest = false;
+    }
+
+    private async Task DecideAsync(SuggestedSong song, SuggestionStatus status)
+    {
+        if (busy || songs is null || selectedName is null)
+        {
+            return;
+        }
+
+        var wasReviewing = tab == SuggestionStatus.Pending && song.Status == SuggestionStatus.Pending
+            && (currentId is null || currentId == song.SuggestionId);
+        var next = wasReviewing ? nextPendingAfter(song) : null;
+        var clipWasOn = playingId is not null;
+        if (playingId == song.SuggestionId)
+        {
+            await stopClipAsync();
+        }
+
+        var ok = await runAsync(async () =>
+        {
+            await Suggestions.DecideAsync(song.SuggestionId, status);
+            replace(song with { Status = status });
+            summaries = await Suggestions.GetPlaylistsAsync();
+        });
+        if (!ok)
+        {
+            return;
+        }
+
+        lastDecision = status == SuggestionStatus.Pending ? null : new Decision(song, status);
+        if (status == SuggestionStatus.Pending)
+        {
+            currentId = song.SuggestionId;
+        }
+        else if (wasReviewing)
+        {
+            currentId = next?.SuggestionId;
+            if (next is not null && (autoPlay || clipWasOn))
+            {
+                await playClipAsync(next);
+            }
+        }
+    }
+
+    private async Task UndoAsync()
+    {
+        if (lastDecision is not { } last)
+        {
+            return;
+        }
+
+        await stopClipAsync();
+        var song = songs?.FirstOrDefault(s => s.SuggestionId == last.Song.SuggestionId);
+        if (song is null)
+        {
+            lastDecision = null;
+            return;
+        }
+
+        tab = SuggestionStatus.Pending;
+        await DecideAsync(song, SuggestionStatus.Pending);
+    }
+
+    private async Task ApproveRestAsync()
+    {
+        if (selectedName is not { } name)
+        {
+            return;
+        }
+
+        confirmApproveRest = false;
+        await stopClipAsync();
+        await runAsync(async () =>
+        {
+            await Suggestions.ApproveRemainingAsync(name);
+            summaries = await Suggestions.GetPlaylistsAsync();
+            await loadSongsAsync(name);
+        });
+        lastDecision = null;
+    }
+
+    private SuggestedSong? nextPendingAfter(SuggestedSong song)
+    {
+        var pending = songs!.Where(s => s.Status == SuggestionStatus.Pending).ToList();
+        var index = pending.FindIndex(s => s.SuggestionId == song.SuggestionId);
+        return pending.Skip(index + 1).FirstOrDefault() ?? pending.FirstOrDefault(s => s.SuggestionId != song.SuggestionId);
+    }
+
+    private void replace(SuggestedSong updated)
+    {
+        var index = songs!.FindIndex(s => s.SuggestionId == updated.SuggestionId);
+        if (index >= 0)
+        {
+            songs[index] = updated;
+        }
+    }
+
+    private async Task ToggleClipAsync(SuggestedSong song)
+    {
+        if (playingId == song.SuggestionId)
+        {
+            await stopClipAsync();
+            return;
+        }
+
+        if (song.Status == SuggestionStatus.Pending)
+        {
+            currentId = song.SuggestionId;
+        }
+
+        await playClipAsync(song);
+    }
+
+    private async Task playClipAsync(SuggestedSong song)
+    {
+        playingId = song.SuggestionId;
+        StateHasChanged();
+        try
+        {
+            var started = await JS.InvokeAsync<bool>("clipPlayer.play", $"/api/music/{song.SongId}", song.SuggestionId);
+            if (!started && playingId == song.SuggestionId)
+            {
+                playingId = null;
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            playingId = null;
+        }
+    }
+
+    private async Task stopClipAsync()
+    {
+        if (playingId is null)
+        {
+            return;
+        }
+
+        playingId = null;
+        try
+        {
+            await JS.InvokeVoidAsync("clipPlayer.stop");
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    private async Task PlayOnSpeakerAsync(SuggestedSong song)
+    {
+        await stopClipAsync();
+        await runAsync(() => Svc.PlaySongAsync(song.SongId));
+    }
+
+    [JSInvokable]
+    public Task OnClipEnded(int suggestionId)
+    {
+        if (playingId == suggestionId)
+        {
+            playingId = null;
+            return InvokeAsync(StateHasChanged);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task OnShortcut(string key) => InvokeAsync(async () =>
+    {
+        var reviewing = currentReviewing();
+        switch (key)
+        {
+            case "play" when reviewing is not null:
+                await ToggleClipAsync(reviewing);
+                break;
+            case "approve" when reviewing is not null:
+                await DecideAsync(reviewing, SuggestionStatus.Approved);
+                break;
+            case "reject" when reviewing is not null:
+                await DecideAsync(reviewing, SuggestionStatus.Rejected);
+                break;
+            case "undo":
+                await UndoAsync();
+                break;
+        }
+
+        StateHasChanged();
+    });
+
+    private SuggestedSong? currentReviewing()
+    {
+        if (tab != SuggestionStatus.Pending || songs is null)
+        {
+            return null;
+        }
+
+        var pending = songs.Where(s => s.Status == SuggestionStatus.Pending).ToList();
+        return pending.FirstOrDefault(s => s.SuggestionId == currentId) ?? pending.FirstOrDefault();
+    }
+
+    private async Task<bool> runAsync(Func<Task> action)
+    {
+        busy = true;
+        message = null;
+        try
+        {
+            await action();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Playlist suggestions action failed");
+            message = "That didn't work: " + ex.Message;
+            return false;
+        }
+        finally
+        {
+            busy = false;
+            StateHasChanged();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Only an interactive render attached the script; a prerender has no JS to call.
+        if (dotNetRef is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("clipPlayer.detach");
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+
+        dotNetRef.Dispose();
+    }
+
+    private sealed record Decision(SuggestedSong Song, SuggestionStatus Status);
+}

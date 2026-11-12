@@ -119,6 +119,14 @@ public class MusicContext : DbContext
         modelBuilder.Entity<AlbumArtDismissal>()
             .HasIndex(dismissal => dismissal.GroupKey)
             .IsUnique();
+
+        modelBuilder.Entity<PlaylistSuggestion>()
+            .Property(suggestion => suggestion.Status)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<PlaylistSuggestion>()
+            .HasIndex(suggestion => new { suggestion.PlaylistName, suggestion.SongPath })
+            .IsUnique();
     }
     public DbSet<Thumbnail> Thumbnails { get; set; }
     public DbSet<Playlist> Playlists { get; set; }
@@ -135,6 +143,7 @@ public class MusicContext : DbContext
     public DbSet<AutoPlaySettingsEntity> AutoPlaySettings { get; set; }
     public DbSet<AutoPlaySourceEntity> AutoPlaySources { get; set; }
     public DbSet<AlbumArtDismissal> AlbumArtDismissals { get; set; }
+    public DbSet<PlaylistSuggestion> PlaylistSuggestions { get; set; }
 }
 
 public class Thumbnail
@@ -150,6 +159,13 @@ public class Playlist
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public bool AlwaysShuffle { get; set; }
+
+    /// <summary>
+    /// Set on playlists the server builds from play history (see <c>SmartPlaylistRules</c>);
+    /// their songs are replaced on every refresh. Null for playlists people make.
+    /// </summary>
+    public string? AutoKind { get; set; }
+
     public List<PlaylistItem> Songs { get; set; } = new();
 }
 
@@ -167,6 +183,12 @@ public class Impression
     public string SongPath { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
     public string PlayedBy { get; set; } = string.Empty;
+
+    /// <summary>True when someone skipped the song before hearing half of it.</summary>
+    public bool Skipped { get; set; }
+
+    /// <summary>How much of the song played, when known (older rows don't say).</summary>
+    public int? SecondsHeard { get; set; }
 }
 
 public class RadioStream

@@ -51,11 +51,16 @@ public class PlaylistService
             await dbContext.SaveChangesAsync();
         }
 
+        // playlist.Songs isn't loaded here, so ask the database where the end of the list is.
+        var nextOrder = await dbContext.PlaylistItems
+            .Where(i => i.PlaylistId == playlist.Id)
+            .Select(i => (int?)i.Order)
+            .MaxAsync() is int last ? last + 1 : 0;
         var playlistItem = new PlaylistItem
         {
             PlaylistId = playlist.Id,
             SongPath = songPath,
-            Order = playlist.Songs.Count
+            Order = nextOrder
         };
         await dbContext.PlaylistItems.AddAsync(playlistItem);
         await dbContext.SaveChangesAsync();

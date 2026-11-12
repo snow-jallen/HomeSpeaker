@@ -267,6 +267,12 @@ namespace HomeSpeaker.Server2.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("SecondsHeard")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Skipped")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("SongPath")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -293,6 +299,9 @@ namespace HomeSpeaker.Server2.Migrations
 
                     b.Property<bool>("AlwaysShuffle")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("AutoKind")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -328,6 +337,44 @@ namespace HomeSpeaker.Server2.Migrations
                     b.HasIndex("PlaylistId", "SongPath");
 
                     b.ToTable("PlaylistItems");
+                });
+
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.PlaylistSuggestion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PlaylistName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ReviewedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SongPath")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlaylistName", "SongPath")
+                        .IsUnique();
+
+                    b.ToTable("PlaylistSuggestions");
                 });
 
             modelBuilder.Entity("HomeSpeaker.Server2.Data.PushNotificationAlertState", b =>

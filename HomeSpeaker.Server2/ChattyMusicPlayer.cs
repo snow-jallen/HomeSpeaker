@@ -4,6 +4,9 @@ namespace HomeSpeaker.Server2;
 
 public class ChattyMusicPlayer : IMusicPlayer, IDisposable
 {
+    /// <summary>The <see cref="PlayerEvent"/> message raised when someone skips; play history listens for it.</summary>
+    public const string SkippedMessage = "Skipped to next";
+
     private readonly IMusicPlayer actualPlayer;
     private bool disposed;
 
@@ -81,7 +84,7 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
     public void SkipToNext()
     {
         actualPlayer.SkipToNext();
-        PlayerEvent?.Invoke(this, "Skipped to next");
+        PlayerEvent?.Invoke(this, SkippedMessage);
     }
 
     public void Stop()

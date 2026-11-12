@@ -115,6 +115,7 @@ if (FeatureFlags.AnchorsEnabled(builder.Configuration))
 builder.Services.AddHostedService<AirPlayReceiverService>();
 builder.Services.AddScoped<HomeSpeakerService>(); // Scoped for Blazor components
 builder.Services.AddScoped<PlaylistService>();
+builder.Services.AddScoped<HomeSpeaker.Server2.Services.PlaylistSuggestions.PlaylistSuggestionService>();
 builder.Services.AddScoped<AutoPlayService>();
 builder.Services.AddScoped<OfflineDownloadService>();
 builder.Services.AddSingleton<HomeSpeaker.Server2.Services.Anchors.AnchorChangeNotifier>();
@@ -157,6 +158,8 @@ builder.Services.AddSingleton<ResourceSampler>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ResourceSampler>());
 builder.Services.AddHostedService<LifecycleEvents>();
 builder.Services.AddHostedService<AutoPlayMonitorService>();
+builder.Services.AddHostedService<HomeSpeaker.Server2.Services.PlayHistory.PlayHistoryRecorder>();
+builder.Services.AddHostedService<HomeSpeaker.Server2.Services.PlayHistory.SmartPlaylistWorker>();
 
 // Add memory cache for caching services
 builder.Services.AddMemoryCache();
