@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using HomeSpeaker.Server2.Services.YouTube;
 using TagLib;
 using YoutubeExplode;
 using YoutubeExplode.Common;
@@ -10,7 +11,7 @@ using TagFile = TagLib.File;
 
 namespace HomeSpeaker.Server2.Services;
 
-public class YoutubeService : IDisposable
+public class YoutubeService : IYouTubeDownloader, IDisposable
 {
     public YoutubeService(IConfiguration config, ILogger<YoutubeService> logger, Mp3Library library, TimeProvider timeProvider)
     {
@@ -28,6 +29,9 @@ public class YoutubeService : IDisposable
     private readonly Mp3Library library;
     private readonly TimeProvider timeProvider;
     private bool disposed;
+
+    /// <summary>A pasted playlist link queues at most this many videos.</summary>
+    public const int MaxPlaylistVideos = 500;
 
     public async Task<IEnumerable<VideoDto>> SearchAsync(string searchTerm, int maxItems = 50)
     {
@@ -103,38 +107,89 @@ public class YoutubeService : IDisposable
         return audioStream?.Url;
     }
 
-    public async Task CacheVideoAsync(string id, string title, string? channelName, IProgress<double> progress)
+    /// <summary>Looks up the video, or every video on the playlist (up to <see cref="MaxPlaylistVideos"/>), a pasted link points at.</summary>
+    public async Task<YouTubeLinkContents> ResolveLinkAsync(YouTubeLink link, CancellationToken cancellationToken = default)
     {
-        var fileName = SafeFileName.From($"{title}.mp3");
-        var destinationPath = Path.Combine(config[ConfigKeys.MediaFolder]!, "YouTube Cache");
-        if (!Directory.Exists(destinationPath))
+        if (link.PlaylistId is { } playlistId)
         {
-            Directory.CreateDirectory(destinationPath);
+            var playlist = await client.Playlists.GetAsync(playlistId, cancellationToken);
+            var videos = new List<VideoDto>();
+            await foreach (var v in client.Playlists.GetVideosAsync(playlistId, cancellationToken))
+            {
+                videos.Add(new VideoDto(v.Title, v.Id, v.Url, v.Thumbnails.Count > 0 ? v.Thumbnails[0].Url : null, v.Author?.ChannelTitle, v.Duration));
+                if (videos.Count >= MaxPlaylistVideos)
+                {
+                    break;
+                }
+            }
+
+            return new YouTubeLinkContents(playlist.Title, videos);
         }
 
-        destinationPath = Path.Combine(destinationPath, fileName);
+        var video = await client.Videos.GetAsync(VideoId.Parse(link.VideoId!), cancellationToken);
+        var dto = new VideoDto(video.Title, video.Id, video.Url, video.Thumbnails.Count > 0 ? video.Thumbnails[0].Url : null, video.Author.ChannelTitle, video.Duration);
+        return new YouTubeLinkContents(null, [dto]);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> DownloadAsync(YouTubeDownloadRequest request, IProgress<double> progress, CancellationToken cancellationToken)
+    {
+        var folder = Path.Combine(config[ConfigKeys.MediaFolder]!, "YouTube Cache");
+        if (!string.IsNullOrWhiteSpace(request.Collection))
+        {
+            folder = Path.Combine(folder, SafeFileName.From(request.Collection));
+        }
+
+        Directory.CreateDirectory(folder);
+        var destinationPath = Path.Combine(folder, SafeFileName.From($"{request.Title}.mp3"));
+        if (System.IO.File.Exists(destinationPath))
+        {
+            logger.LogInformation("Skipping {Title}: {Destination} already exists", request.Title, destinationPath);
+            return false;
+        }
+
         var ffmpegLocation = config[ConfigKeys.FFMpegLocation] ?? throw new InvalidOperationException("Missing ffmeg path in config: " + ConfigKeys.FFMpegLocation);
 
-        logger.LogInformation("Beginning to cache {Title}", title);
-
-        await client.Videos.DownloadAsync(VideoId.Parse(id), destinationPath, o => o
-            .SetFFmpegPath(ffmpegLocation)
-            .SetContainer(Container.Mp3)
-            .SetPreset(ConversionPreset.Medium), progress);
-
+        // Download beside the destination under a name the library's *.mp3 watcher ignores, then move it
+        // into place, so a half-finished or cancelled download never shows up as a song.
+        var partialPath = destinationPath + ".part";
+        logger.LogInformation("Beginning to cache {Title}", request.Title);
         try
         {
-            using var mediaFile = MediaFile.Create(destinationPath, timeProvider);
-            mediaFile.SetArtist("YouTube");
-            mediaFile.SetAlbum(string.IsNullOrWhiteSpace(channelName) ? "YouTube" : channelName);
-            mediaFile.SetTitle(title);
+            await client.Videos.DownloadAsync(VideoId.Parse(request.VideoId), partialPath, o => o
+                .SetFFmpegPath(ffmpegLocation)
+                .SetContainer(Container.Mp3)
+                .SetPreset(ConversionPreset.Medium), progress, cancellationToken);
+
+            try
+            {
+                using var mediaFile = MediaFile.Create(partialPath, "audio/mpeg", timeProvider);
+                mediaFile.SetArtist("YouTube");
+                mediaFile.SetAlbum(request.Collection ?? (string.IsNullOrWhiteSpace(request.Channel) ? "YouTube" : request.Channel));
+                mediaFile.SetTitle(request.Title);
+                if (request.TrackNumber is int track and > 0)
+                {
+                    mediaFile.SetTrack((uint)track);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Could not tag {Title}; keeping it untagged", request.Title);
+            }
+
+            System.IO.File.Move(partialPath, destinationPath);
         }
-        catch
+        finally
         {
-            // Media tagging is not critical
+            if (System.IO.File.Exists(partialPath))
+            {
+                System.IO.File.Delete(partialPath);
+            }
         }
 
-        logger.LogInformation("Finished caching {Title}.  Saved to {Destination}", title, destinationPath);
+        library.MarkDirty("youtube-cached");
+        logger.LogInformation("Finished caching {Title}.  Saved to {Destination}", request.Title, destinationPath);
+        return true;
     }
 
     public void Dispose()
@@ -258,6 +313,9 @@ internal sealed partial class MediaFile : IDisposable
     public void SetAlbum(string album) =>
         file.Tag.Album = album;
 
+    public void SetTrack(uint track) =>
+        file.Tag.Track = track;
+
     public void SetDescription(string description) =>
         file.Tag.Description = description;
 
@@ -271,5 +329,6 @@ internal sealed partial class MediaFile : IDisposable
         file.Dispose();
     }
 
-    public static MediaFile Create(string filePath, TimeProvider timeProvider) => new(TagFile.Create(filePath), timeProvider);
+    public static MediaFile Create(string filePath, string mimeType, TimeProvider timeProvider) =>
+        new(TagFile.Create(filePath, mimeType, ReadStyle.Average), timeProvider);
 }

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Server2.Services.LiveActivities;
+using HomeSpeaker.Server2.Services.YouTube;
 using HomeSpeaker.Shared;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
@@ -281,6 +282,18 @@ public static class HomeSpeakerRestEndpoints
             .WithName("CacheVideo")
             .WithSummary("Cache a YouTube video")
             .WithDescription("Downloads and caches a YouTube video for offline playback");
+
+        // POST /api/homespeaker/youtube/download  { "url": "https://www.youtube.com/playlist?list=..." }
+        group.MapPost("/youtube/download", downloadYouTubeLink)
+            .WithName("DownloadYouTubeLink")
+            .WithSummary("Download a YouTube video or playlist link")
+            .WithDescription("Queues the linked video, or every video on the linked playlist, for download into the library");
+
+        // GET /api/homespeaker/youtube/downloads
+        group.MapGet("/youtube/downloads", getYouTubeDownloads)
+            .WithName("GetYouTubeDownloads")
+            .WithSummary("YouTube download queue")
+            .WithDescription("Lists queued, running and recently finished YouTube downloads");
     }
 
     #region Endpoint Implementations
@@ -1264,8 +1277,7 @@ public static class HomeSpeakerRestEndpoints
 
     private static async Task<IResult> cacheVideo(
         [FromBody] CacheVideoRequest request,
-        [FromServices] YoutubeService youtubeService,
-        [FromServices] Mp3Library library,
+        [FromServices] YouTubeDownloadQueue queue,
         [FromServices] ILogger<HomeSpeakerApiLogger> logger)
     {
         using var activity = Activity.Current?.Source.StartActivity("CacheVideo");
@@ -1281,27 +1293,7 @@ public static class HomeSpeakerRestEndpoints
                 return Results.BadRequest("Video information is required");
             }
 
-            // Note: The original gRPC implementation returns a stream for progress updates
-            // For REST, we'll start the download and return immediately
-            // In a real implementation, you might want to use SignalR for progress updates
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    var progress = new Progress<double>(percent =>
-                    {
-                        logger.LogDebug("Caching progress for {Title}: {Percent:P}", request.Video.Title, percent);
-                    });
-                    await youtubeService.CacheVideoAsync(request.Video.Id, request.Video.Title, request.Video.Author, progress);
-                    library.MarkDirty("youtube-cached");
-                    logger.LogInformation("Successfully cached video: {Title}", request.Video.Title);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to cache video: {Title}", request.Video.Title);
-                }
-            });
-
+            queue.Enqueue([new YouTubeDownloadRequest(request.Video.Id, request.Video.Title, request.Video.Author)]);
             logger.LogInformation("Started caching video: {Title}", request.Video.Title);
             return Results.Accepted(uri: null, new { Success = true, Message = "Video caching started", Title = request.Video.Title });
         }
@@ -1312,6 +1304,49 @@ public static class HomeSpeakerRestEndpoints
             return Results.Problem($"Failed to cache video: {ex.Message}");
         }
     }
+
+    private static async Task<IResult> downloadYouTubeLink(
+        [FromBody] YouTubeLinkRequest request,
+        [FromServices] YoutubeService youtubeService,
+        [FromServices] YouTubeDownloadQueue queue,
+        [FromServices] ILogger<HomeSpeakerApiLogger> logger,
+        CancellationToken cancellationToken)
+    {
+        var link = YouTubeLink.TryParse(request.Url);
+        if (link is null)
+        {
+            return Results.BadRequest("Not a YouTube video or playlist link");
+        }
+
+        if (!youtubeService.IsFfmpegAvailable())
+        {
+            return Results.Problem("ffmpeg is not available, so videos can't be converted to MP3", statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        try
+        {
+            var contents = await youtubeService.ResolveLinkAsync(link, cancellationToken);
+            var queued = queue.Enqueue(YouTubeDownloads.RequestsFor(contents));
+            logger.LogInformation("Queued {Queued} of {Total} videos from {Url}", queued, contents.Videos.Count, request.Url);
+            return Results.Accepted(uri: "/api/homespeaker/youtube/downloads", new { contents.PlaylistTitle, Total = contents.Videos.Count, Queued = queued });
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Could not read YouTube link {Url}", request.Url);
+            return Results.Problem($"Could not read that YouTube link: {ex.Message}", statusCode: StatusCodes.Status502BadGateway);
+        }
+    }
+
+    private static IResult getYouTubeDownloads([FromServices] YouTubeDownloadQueue queue) =>
+        Results.Ok(queue.Snapshot().Select(d => new
+        {
+            d.VideoId,
+            d.Title,
+            d.Request.Collection,
+            Status = d.Status.ToString(),
+            d.Progress,
+            d.Error,
+        }));
 
     private static void mapRadioEndpoints(RouteGroupBuilder group)
     {
@@ -1686,6 +1721,8 @@ public static class HomeSpeakerRestEndpoints
     public record ReorderPlaylistSongsRequest(IEnumerable<string> SongPaths);
     public record UpdateQueueRequest(IEnumerable<string> Songs);
     public record CacheVideoRequest(VideoDto Video);
+
+    public record YouTubeLinkRequest(string Url);
     // Station art: FaviconFileName names a file already in the favicons folder (see POST /api/streams/upload-image)
     // and wins over FaviconUrl, an http(s) image to download. Omit both to leave the art unchanged.
     public record CreateRadioStreamRequest(string Name, string Url, string? FaviconFileName = null, string? FaviconUrl = null);

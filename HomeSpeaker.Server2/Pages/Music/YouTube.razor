@@ -1,7 +1,10 @@
 @page "/youtube"
+@using HomeSpeaker.Server2.Services.YouTube
+@implements IDisposable
 @inject ILogger<YouTube> logger
 @inject HomeSpeakerService svc
 @inject YouTubeStateService state
+@inject YouTubeDownloadQueue downloads
 
 <PageTitle>Home Speaker | YouTube</PageTitle>
 
@@ -18,45 +21,144 @@
         </div>
     }
 
-    <form method="dialog" class="glass-search-row">
-        <input type="text" class="glass-input" placeholder="Search YouTube..." aria-label="Search YouTube" @bind=state.SearchTerm />
-        @if (isSearching)
+    <form method="dialog" class="glass-search-row" @onsubmit=submitAsync>
+        <input type="text" class="glass-input" placeholder="Search YouTube, or paste a video or playlist link"
+               aria-label="Search YouTube, or paste a video or playlist link"
+               @bind=state.SearchTerm @bind:event="oninput" />
+        @if (isWorking)
         {
-            <div class="glass-spinner" role="status" aria-label="Searching"></div>
+            <div class="glass-spinner" role="status" aria-label="@(link is null ? "Searching" : "Reading link")"></div>
+        }
+        else if (link is not null)
+        {
+            <button class="glass-btn" type="submit" disabled="@(ffmpegAvailable == false)"
+                    aria-label="@(link.IsPlaylist ? "Download the whole playlist" : "Download this video")">
+                <i class="fas fa-cloud-arrow-down" aria-hidden="true"></i>
+                <span class="glass-btn-label">@(link.IsPlaylist ? "Download playlist" : "Download")</span>
+            </button>
         }
         else
         {
-            <button class="glass-btn" type="submit" @onclick=searchAsync aria-label="Search">
+            <button class="glass-btn" type="submit" aria-label="Search">
                 <i class="fas fa-search" aria-hidden="true"></i>
                 <span class="glass-btn-label">Search</span>
             </button>
         }
     </form>
 
+    @if (linkMessage is not null)
+    {
+        <div class="glass-alert glass-alert--success" role="status">
+            <i class="fas fa-circle-check" aria-hidden="true"></i>
+            <div>@linkMessage</div>
+        </div>
+    }
+
+    @if (linkError is not null)
+    {
+        <div class="glass-alert glass-alert--danger" role="alert">
+            <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+            <div>@linkError</div>
+        </div>
+    }
+
+    @{
+        var queue = downloads.Snapshot();
+    }
+    @if (queue.Count > 0)
+    {
+        var finished = queue.Count(d => d.IsFinished);
+        var saved = queue.Count(d => d.Status is YouTubeDownloadStatus.Done or YouTubeDownloadStatus.AlreadyHad);
+        <section class="youtube-downloads" aria-label="Downloads">
+            <div class="youtube-downloads-head">
+                <h2 class="glass-section-title">Downloads · @saved of @queue.Count saved</h2>
+                <div class="youtube-downloads-actions">
+                    @if (finished < queue.Count)
+                    {
+                        <button class="glass-btn glass-btn--ghost" type="button" @onclick=downloads.CancelAll>
+                            <i class="fas fa-xmark" aria-hidden="true"></i>
+                            <span>Cancel remaining</span>
+                        </button>
+                    }
+                    @if (finished > 0)
+                    {
+                        <button class="glass-btn glass-btn--ghost" type="button" @onclick=downloads.ClearFinished>
+                            <i class="fas fa-broom" aria-hidden="true"></i>
+                            <span>Clear finished</span>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="glass-list">
+                @foreach (var item in queue)
+                {
+                    <div class="glass-row youtube-download" @key=item>
+                        <div class="glass-row-text">
+                            <div class="glass-row-title">@item.Title</div>
+                            <div class="glass-row-sub">@(item.Request.Collection ?? item.Request.Channel ?? "YouTube")</div>
+                        </div>
+                        <div class="glass-row-actions youtube-download-status">
+                            @switch (item.Status)
+                            {
+                                case YouTubeDownloadStatus.Queued:
+                                    <span>Waiting</span>
+                                    break;
+                                case YouTubeDownloadStatus.Downloading:
+                                    <progress class="glass-progress" value="@item.Progress" aria-label="Downloading"></progress>
+                                    break;
+                                case YouTubeDownloadStatus.Done:
+                                    <span class="glass-row-done" role="img" aria-label="Saved" title="Saved"><i class="fas fa-check" aria-hidden="true"></i></span>
+                                    break;
+                                case YouTubeDownloadStatus.AlreadyHad:
+                                    <span>Already saved</span>
+                                    break;
+                                case YouTubeDownloadStatus.Failed:
+                                    <span class="youtube-download-failed" title="@item.Error"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Failed</span>
+                                    break;
+                                case YouTubeDownloadStatus.Cancelled:
+                                    <span>Cancelled</span>
+                                    break;
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+
     @if (state.Videos == null)
     {
-        <div class="glass-empty">
-            <i class="fab fa-youtube" aria-hidden="true"></i>
-            Search for something to create a temporary fair-use local cache.
-        </div>
+        @if (queue.Count == 0)
+        {
+            <div class="glass-empty">
+                <i class="fab fa-youtube" aria-hidden="true"></i>
+                Search for something, or paste a link to a video or a whole playlist, to create a temporary fair-use local cache.
+            </div>
+        }
     }
     else
     {
         <div class="glass-list">
             @foreach (var searchResult in state.Videos)
             {
-                <YouTubeSearchResult SearchResult="searchResult" FfmpegAvailable="ffmpegAvailable ?? true" />
+                <YouTubeSearchResult SearchResult="searchResult" FfmpegAvailable="ffmpegAvailable ?? true"
+                                     Download="downloads.Find(searchResult.Id)" OnDownload="queueVideo" />
             }
         </div>
     }
 </div>
 
 @code {
-    bool isSearching = false;
+    bool isWorking = false;
     bool? ffmpegAvailable;
+    string? linkMessage;
+    string? linkError;
+
+    YouTubeLink? link => YouTubeLink.TryParse(state.SearchTerm);
 
     protected override async Task OnInitializedAsync()
     {
+        downloads.Changed += onDownloadsChanged;
         try
         {
             ffmpegAvailable = await svc.IsFfmpegAvailableAsync();
@@ -68,16 +170,82 @@
         }
     }
 
+    void onDownloadsChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => downloads.Changed -= onDownloadsChanged;
+
+    Task submitAsync() => link is { } pasted ? downloadLinkAsync(pasted) : searchAsync();
+
     async Task searchAsync()
     {
         if (string.IsNullOrWhiteSpace(state.SearchTerm))
             return;
 
-        isSearching = true;
-        logger.LogInformation("Starting youtube search for {SearchTerm}", state.SearchTerm);
-        var results = (await svc.SearchVideosAsync(state.SearchTerm)).ToList();
-        state.Videos = results;
-        logger.LogInformation("Found {ResultCount} results", results.Count);
-        isSearching = false;
+        isWorking = true;
+        linkMessage = linkError = null;
+        try
+        {
+            logger.LogInformation("Starting youtube search for {SearchTerm}", state.SearchTerm);
+            var results = (await svc.SearchVideosAsync(state.SearchTerm)).ToList();
+            state.Videos = results;
+            logger.LogInformation("Found {ResultCount} results", results.Count);
+        }
+        finally
+        {
+            isWorking = false;
+        }
     }
+
+    async Task downloadLinkAsync(YouTubeLink pasted)
+    {
+        isWorking = true;
+        linkMessage = linkError = null;
+        try
+        {
+            var contents = await svc.ResolveYouTubeLinkAsync(pasted);
+            if (contents.Videos.Count == 0)
+            {
+                linkError = "That playlist has no videos that can be downloaded.";
+                return;
+            }
+
+            var queued = downloads.Enqueue(YouTubeDownloads.RequestsFor(contents));
+            linkMessage = describeQueued(contents, queued);
+            state.SearchTerm = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not read YouTube link {Link}", state.SearchTerm);
+            linkError = $"Couldn't read that link: {ex.Message}";
+        }
+        finally
+        {
+            isWorking = false;
+        }
+    }
+
+    static string describeQueued(YouTubeLinkContents contents, int queued)
+    {
+        var total = contents.Videos.Count;
+        if (contents.PlaylistTitle is not { } playlist)
+        {
+            return queued == 0 ? $"“{contents.Videos[0].Title}” is already queued or saved." : $"Downloading “{contents.Videos[0].Title}”.";
+        }
+
+        if (queued == 0)
+        {
+            return $"Everything on “{playlist}” is already queued or saved.";
+        }
+
+        var message = $"Downloading {CountText.Songs(queued)} from “{playlist}” into YouTube Cache/{SafeFileName.From(playlist)}.";
+        if (queued < total)
+        {
+            message += total - queued == 1 ? " The other one is already queued or saved." : $" The other {total - queued} are already queued or saved.";
+        }
+
+        return total >= YoutubeService.MaxPlaylistVideos ? message + $" (Only the first {YoutubeService.MaxPlaylistVideos} are read.)" : message;
+    }
+
+    void queueVideo(VideoDto video) =>
+        downloads.Enqueue([new YouTubeDownloadRequest(video.Id, video.Title, video.Author)]);
 }

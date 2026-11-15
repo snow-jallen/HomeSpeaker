@@ -69,6 +69,10 @@ Both are wrapped in **`ChattyMusicPlayer`** (a decorator that adds logging/event
 
 **Play history.** `PlayHistoryRecorder` (hosted) samples `IMusicPlayer.Status` every 2 s and listens for `ChattyMusicPlayer.SkippedMessage`; the pure `PlayTracker` turns that into an `Impression` per song played on the speaker (≥30 s or half the song), `Skipped` when skipped before halfway, with `SecondsHeard`. Browser-only playback isn't recorded. `SmartPlaylistWorker` rebuilds the automatic playlists from it 5 min after startup and every 6 h (`SmartPlaylistRules`: "Most Loved" = ≥3 plays, ≤25% skipped; "Rediscover" = ≥2 plays, not heard for 120 days). They are ordinary playlists marked with `Playlist.AutoKind`, created once they reach 10 songs, songs replaced on each refresh; a hand-made playlist with the same name is left alone.
 
+### YouTube downloads
+
+`/youtube` (`Pages/Music/YouTube.razor`) searches YouTube, or, when the box holds a video or playlist link (`Services/YouTube/YouTubeLink`, real YouTube URLs only, so a bare id is still a search), downloads it: `YoutubeService.ResolveLinkAsync` lists the video(s) and `YouTubeDownloadQueue` (singleton hosted service) fetches them one at a time server-side, so a playlist keeps going after the page closes. `YoutubeService.DownloadAsync` writes `<title>.mp3.part` and moves it into place, skips files that already exist, and puts playlist videos in `YouTube Cache/<playlist>/` tagged with the playlist as album and a track number. REST: `POST /api/homespeaker/youtube/download {url}`, `GET .../youtube/downloads`.
+
 ### UI and the service facade
 
 Blazor components live under `HomeSpeaker.Server2/Components` (layout, music, health/weather widgets) and routable pages under `HomeSpeaker.Server2/Pages` (`@page` directives; e.g. `Pages/Music/*`, `Pages/Admin/*`, `Pages/Health/*`). Uses both **MudBlazor** and **FluentUI** component libraries.
@@ -85,7 +89,7 @@ Minimal APIs. The bulk are mapped in `Endpoints/HomeSpeakerRestEndpoints.cs` via
 
 ### Background hosted services
 
-Registered in `Program.cs` and run for the process lifetime: `MigrationApplier` (which also runs the one-time `LegacyAnchorImporter`), `AirPlayReceiverService`, `LifecycleEvents`, `AutoPlayMonitorService`, `PlayHistoryRecorder`, `SmartPlaylistWorker`, `PhotoSyncWorker`, `VideoPrefetcher`, `PlayerStatusBroadcaster`, `LiveActivityPushWorker`, `HealthAlertWorker`, `ResourceSampler`, `VolumeMonitorService`, and with anchors on, `RemoteAnchorPoller` and `AnchorFeedSender`.
+Registered in `Program.cs` and run for the process lifetime: `MigrationApplier` (which also runs the one-time `LegacyAnchorImporter`), `AirPlayReceiverService`, `LifecycleEvents`, `AutoPlayMonitorService`, `PlayHistoryRecorder`, `YouTubeDownloadQueue`, `SmartPlaylistWorker`, `PhotoSyncWorker`, `VideoPrefetcher`, `PlayerStatusBroadcaster`, `LiveActivityPushWorker`, `HealthAlertWorker`, `ResourceSampler`, `VolumeMonitorService`, and with anchors on, `RemoteAnchorPoller` and `AnchorFeedSender`.
 
 `PlayerStatusBroadcaster` polls the player (only while something is subscribed) and publishes *material* status changes (song, play state, volume, repeat, sleep timer; not elapsed time). It feeds `GET /api/homespeaker/player/events`, a server-sent-events stream with a 10 s heartbeat, and `LiveActivityPushWorker`, which sends APNs `liveactivity` pushes to iOS Live Activities registered via `PUT/DELETE /api/homespeaker/live-activities/{activityId}` (in memory, 12 h; the app re-registers on foreground). The push `content-state` keys are a contract with `SpeakerActivityAttributes.ContentState` in the iOS app.
 

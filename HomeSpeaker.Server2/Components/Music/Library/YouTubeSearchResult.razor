@@ -1,3 +1,4 @@
+@using HomeSpeaker.Server2.Services.YouTube
 @inject ILogger<YouTubeSearchResult> logger
 @inject HomeSpeakerService svc
 
@@ -26,19 +27,23 @@ else
                     <i class="fas fa-play" aria-hidden="true"></i>
                 </button>
             }
-            @if (isDownloading)
+            @switch (Download?.Status)
             {
-                <progress class="glass-progress" value="@progressValue" />
-            }
-            else if (isComplete)
-            {
-                <span class="glass-row-done" title="Downloaded" role="img" aria-label="Downloaded"><i class="fas fa-check" aria-hidden="true"></i></span>
-            }
-            else
-            {
-                <button class="hs-icon-btn hs-icon-btn--filled" @onclick=cacheVideoAsync disabled="@(!FfmpegAvailable)" title="@(FfmpegAvailable ? "Download" : "ffmpeg not available")" aria-label="@(FfmpegAvailable ? "Download" : "ffmpeg not available")">
-                    <i class="fas fa-cloud-arrow-down" aria-hidden="true"></i>
-                </button>
+                case YouTubeDownloadStatus.Queued:
+                    <span class="youtube-download-status" title="Waiting to download">Waiting</span>
+                    break;
+                case YouTubeDownloadStatus.Downloading:
+                    <progress class="glass-progress" value="@Download.Progress" aria-label="Downloading"></progress>
+                    break;
+                case YouTubeDownloadStatus.Done or YouTubeDownloadStatus.AlreadyHad:
+                    <span class="glass-row-done" title="Downloaded" role="img" aria-label="Downloaded"><i class="fas fa-check" aria-hidden="true"></i></span>
+                    break;
+                default:
+                    <button class="hs-icon-btn hs-icon-btn--filled" @onclick=cacheVideoAsync disabled="@(!FfmpegAvailable)"
+                            title="@downloadLabel" aria-label="@downloadLabel">
+                        <i class="fas @(Download?.Status == YouTubeDownloadStatus.Failed ? "fa-rotate-right" : "fa-cloud-arrow-down")" aria-hidden="true"></i>
+                    </button>
+                    break;
             }
         </div>
     </div>
@@ -51,10 +56,18 @@ else
     [Parameter]
     public bool FfmpegAvailable { get; set; } = true;
 
-    bool isDownloading = false;
-    bool isComplete = false;
+    /// <summary>This video's entry in the download queue, if it has been queued.</summary>
+    [Parameter]
+    public YouTubeDownload? Download { get; set; }
+
+    [Parameter]
+    public EventCallback<VideoDto> OnDownload { get; set; }
+
     bool isStreaming = false;
-    double progressValue;
+
+    string downloadLabel => !FfmpegAvailable ? "ffmpeg not available"
+        : Download?.Status == YouTubeDownloadStatus.Failed ? $"Download failed ({Download.Error}); try again"
+        : "Download";
 
     async Task playStreamAsync()
     {
@@ -89,33 +102,9 @@ else
 
     async Task cacheVideoAsync()
     {
-        if (SearchResult == null)
+        if (SearchResult != null)
         {
-            return;
-        }
-
-        isDownloading = true;
-        isComplete = false;
-        progressValue = 0;
-
-        var progress = new Progress<double>(value =>
-        {
-            progressValue = value;
-            _ = InvokeAsync(StateHasChanged);
-        });
-
-        try
-        {
-            await svc.CacheVideoAsync(SearchResult, progress);
-            isComplete = true;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error caching {title}", SearchResult.Title);
-        }
-        finally
-        {
-            isDownloading = false;
+            await OnDownload.InvokeAsync(SearchResult);
         }
     }
 }

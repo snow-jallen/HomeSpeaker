@@ -135,6 +135,9 @@ builder.Services.AddSingleton<IDataStore, OnDiskDataStore>();
 builder.Services.AddSingleton<IFileSource>(_ => new DefaultFileSource(builder.Configuration[ConfigKeys.MediaFolder] ?? throw new MissingConfigException(ConfigKeys.MediaFolder)));
 builder.Services.AddSingleton<ITagParser, DefaultTagParser>();
 builder.Services.AddSingleton<YoutubeService>();
+builder.Services.AddSingleton<HomeSpeaker.Server2.Services.YouTube.IYouTubeDownloader>(sp => sp.GetRequiredService<YoutubeService>());
+builder.Services.AddSingleton<HomeSpeaker.Server2.Services.YouTube.YouTubeDownloadQueue>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<HomeSpeaker.Server2.Services.YouTube.YouTubeDownloadQueue>());
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
     builder.Services.AddSingleton<WindowsMusicPlayer>();

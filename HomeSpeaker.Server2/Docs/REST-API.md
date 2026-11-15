@@ -52,6 +52,8 @@ Example: `https://localhost:7072/api/homespeaker/songs`
 ### YouTube Integration
 - `GET /youtube/search` - Search YouTube videos
 - `POST /youtube/cache` - Cache a YouTube video
+- `POST /youtube/download` - Download a pasted video or playlist link
+- `GET /youtube/downloads` - The download queue
 
 ### Diagnostics
 - `GET /api/diagnostics` - CPU, memory, disk I/O and container memory pressure sampled every 15 s for the last hour, recent library rescans (with what triggered each and how much they read) and warning/error counts by category. Open from the machine itself (`docker exec homespeaker curl -s localhost/api/diagnostics`); other callers need the admin PIN cookie when a PIN is set.
@@ -260,7 +262,31 @@ Download and cache a YouTube video for offline playback.
 }
 ```
 
-**Response:** 202 Accepted (operation runs in background)
+**Response:** 202 Accepted (the video joins the download queue)
+
+#### POST /api/homespeaker/youtube/download
+Download a pasted YouTube link: one video, or every video on a playlist (up to 500). A
+`watch?v=…&list=…` link counts as the playlist, except YouTube's generated mixes (`list=RD…`).
+Playlist videos are saved to `YouTube Cache/<playlist title>/` with the playlist title as their album
+and numbered in playlist order; a single video goes in `YouTube Cache/`. Videos already queued or
+saved are skipped, so pasting a playlist again only fetches what's missing.
+
+**Request Body:**
+```json
+{ "url": "https://www.youtube.com/playlist?list=PL..." }
+```
+
+**Response:** 202 Accepted `{ "playlistTitle": "Road Trip", "total": 21, "queued": 21 }`;
+400 if the text isn't a YouTube link, 503 without ffmpeg, 502 if YouTube can't be read.
+
+#### GET /api/homespeaker/youtube/downloads
+Queued, running and recently finished downloads, in order:
+
+```json
+[{ "videoId": "abc", "title": "Song", "collection": "Road Trip", "status": "Downloading", "progress": 0.42, "error": null }]
+```
+
+`status` is `Queued`, `Downloading`, `Done`, `AlreadyHad`, `Failed` or `Cancelled`.
 
 ## Error Handling
 

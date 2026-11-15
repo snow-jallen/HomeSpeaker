@@ -2434,6 +2434,46 @@ textarea.glass-input {
   }
 }
 
+.glass-page--youtube .glass-alert--success {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Download queue: what a pasted video or playlist link (or a result's download button) is fetching. */
+.youtube-downloads {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.youtube-downloads-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.youtube-downloads-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.youtube-downloads .glass-list {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.youtube-download-status {
+  font-size: 13px;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+.youtube-download-failed {
+  color: var(--glass-text);
+}
+
 /* ---------- Page: queue ---------- */
 
 .glass-contents {

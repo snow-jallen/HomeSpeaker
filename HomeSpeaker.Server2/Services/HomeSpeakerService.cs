@@ -1,5 +1,6 @@
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Models;
+using HomeSpeaker.Server2.Services.YouTube;
 using Microsoft.EntityFrameworkCore;
 using SharedPlayerStatus = HomeSpeaker.Shared.PlayerStatus;
 using SharedSong = HomeSpeaker.Shared.Song;
@@ -476,11 +477,8 @@ public class HomeSpeakerService
         return await youtubeService.SearchAsync(searchTerm);
     }
 
-    public async Task CacheVideoAsync(VideoDto video, IProgress<double> progress, CancellationToken cancellationToken = default)
-    {
-        await youtubeService.CacheVideoAsync(video.Id, video.Title, video.Author, progress);
-        library.MarkDirty("youtube-cached");
-    }
+    public Task<YouTubeLinkContents> ResolveYouTubeLinkAsync(YouTubeLink link, CancellationToken cancellationToken = default) =>
+        youtubeService.ResolveLinkAsync(link, cancellationToken);
 
     public async Task DeleteRadioStreamAsync(int streamId)
     {
