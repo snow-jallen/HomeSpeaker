@@ -257,6 +257,39 @@ namespace HomeSpeaker.Server2.Migrations
                     b.ToTable("AutoPlaySources");
                 });
 
+            modelBuilder.Entity("HomeSpeaker.Server2.Data.BluetoothSensorReadingEntity", b =>
+                {
+                    b.Property<string>("Mac")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("BatteryPercent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("Humidity")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ObservedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reporter")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Rssi")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("TemperatureC")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Mac");
+
+                    b.ToTable("BluetoothSensorReadings");
+                });
+
             modelBuilder.Entity("HomeSpeaker.Server2.Data.Impression", b =>
                 {
                     b.Property<int>("Id")

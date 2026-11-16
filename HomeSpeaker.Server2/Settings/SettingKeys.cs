@@ -26,6 +26,17 @@ public static class SettingKeys
     public const string TemperatureWindowMinOutside = "Temperature:WindowMinOutside";
     public const string TemperatureThreshold = "TemperatureThreshold";
 
+    /// <summary><c>cloud</c> (Govee API, the default) or <c>bluetooth</c> (speakers scan the sensors themselves).</summary>
+    public const string TemperatureSource = "Temperature:Source";
+
+    /// <summary>With Bluetooth: the hub speaker's base URL; empty on the hub itself.</summary>
+    public const string TemperatureHubUrl = "Temperature:HubUrl";
+
+    /// <summary>With Bluetooth: <c>Room: sensor address</c> rules, in the <see cref="TemperatureRooms"/> format.</summary>
+    public const string TemperatureBluetoothRooms = "Temperature:BluetoothRooms";
+    public const string TemperatureScanSeconds = "Temperature:Bluetooth:ScanSeconds";
+    public const string TemperatureScanEverySeconds = "Temperature:Bluetooth:ScanEverySeconds";
+
     /// <summary>
     /// What the Govee checkbox writes. The service resolves relative paths ("user/devices") against it, so it
     /// carries the API's router path and a trailing slash.
@@ -59,6 +70,11 @@ public static class SettingKeys
         (TemperatureApiBaseUrl, "Govee API URL", false),
         (TemperatureApiKey, "Govee API key", true),
         (TemperatureRooms, "Rooms", false),
+        (TemperatureSource, "Temperature source", false),
+        (TemperatureHubUrl, "Temperature hub URL", false),
+        (TemperatureBluetoothRooms, "Bluetooth rooms", false),
+        (TemperatureScanSeconds, "Bluetooth scan seconds", false),
+        (TemperatureScanEverySeconds, "Seconds between Bluetooth scans", false),
         (TemperatureOutsideRoom, "Outside room", false),
         (TemperatureIndoorRoom, "Indoor room", false),
         (TemperatureWindowAdvice, "Window advice", false),
@@ -89,6 +105,7 @@ public static class SettingKeys
         NightscoutUrl,
         TemperatureApiBaseUrl,
         TemperatureApiKey,
+        TemperatureSource,
         Anchors,
     };
 
@@ -97,6 +114,8 @@ public static class SettingKeys
     {
         SlideSeconds,
         IdleSeconds,
+        TemperatureScanSeconds,
+        TemperatureScanEverySeconds,
     };
 
     /// <summary>Keys that must be numbers, with their inclusive range.</summary>

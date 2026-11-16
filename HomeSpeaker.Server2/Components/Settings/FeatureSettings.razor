@@ -1,5 +1,6 @@
 @using System.Globalization
 @using HomeSpeaker.Server2.Settings
+@using HomeSpeaker.Server2.Services.BleTemperature
 @using System.Net.Http.Json
 @inject IHttpClientFactory HttpClientFactory
 @inject IConfiguration Config
@@ -31,19 +32,43 @@
         <SettingInput Editor="Editor" Key="@SettingKeys.NightscoutUrl" InputMode="url" Placeholder="https://yoursite.herokuapp.com" Hint="Leave blank to turn blood sugar off." />
     </div>
 
-    <h3 class="glass-section-title">Room temperatures (Govee)</h3>
-    <label class="glass-row glass-check hs-settings-check">
-        <input type="checkbox" checked="@goveeOn" @onchange="e => setFlag(SettingKeys.TemperatureApiBaseUrl, e, SettingKeys.GoveeApiBaseUrl, string.Empty)"
-               disabled="@Editor.IsOverridden(SettingKeys.TemperatureApiBaseUrl)" />
-        <span>Show Govee temperature sensors</span>
-    </label>
-    <SettingNote Editor="Editor" Key="@SettingKeys.TemperatureApiBaseUrl" />
-    @if (goveeOn)
+    <h3 class="glass-section-title">Room temperatures</h3>
+    <div class="glass-form-grid">
+        <label class="glass-field">
+            <span>@Editor.Field(SettingKeys.TemperatureSource).Label</span>
+            <select class="glass-input" value="@(bluetoothOn ? TemperatureSource.Bluetooth : TemperatureSource.Cloud)"
+                    @onchange="e => Editor[SettingKeys.TemperatureSource] = e.Value?.ToString()" disabled="@Editor.IsOverridden(SettingKeys.TemperatureSource)">
+                <option value="@TemperatureSource.Cloud">Govee cloud</option>
+                <option value="@TemperatureSource.Bluetooth">Bluetooth (the speakers listen to the sensors)</option>
+            </select>
+            <SettingNote Editor="Editor" Key="@SettingKeys.TemperatureSource" Hint="Bluetooth reads Govee H5100-family sensors directly, with no Govee account. Needs the Bluetooth compose overlay." />
+        </label>
+    </div>
+    @if (bluetoothOn)
     {
         <div class="glass-form-grid">
-            <SecretInput Editor="Editor" Key="@SettingKeys.TemperatureApiKey" />
+            <SettingInput Editor="Editor" Key="@SettingKeys.TemperatureHubUrl" InputMode="url" Placeholder="https://kitchen.example.ts.net"
+                          Hint="Leave blank on the speaker that collects everyone's readings (the hub). On the others, enter the hub's address." />
         </div>
-        <TemperatureRoomPicker Editor="Editor" />
+    }
+    else
+    {
+        <label class="glass-row glass-check hs-settings-check">
+            <input type="checkbox" checked="@goveeOn" @onchange="e => setFlag(SettingKeys.TemperatureApiBaseUrl, e, SettingKeys.GoveeApiBaseUrl, string.Empty)"
+                   disabled="@Editor.IsOverridden(SettingKeys.TemperatureApiBaseUrl)" />
+            <span>Show Govee temperature sensors</span>
+        </label>
+        <SettingNote Editor="Editor" Key="@SettingKeys.TemperatureApiBaseUrl" />
+    }
+    @if (goveeOn || bluetoothOn)
+    {
+        @if (!bluetoothOn)
+        {
+            <div class="glass-form-grid">
+                <SecretInput Editor="Editor" Key="@SettingKeys.TemperatureApiKey" />
+            </div>
+        }
+        <TemperatureRoomPicker Editor="Editor" Bluetooth="bluetoothOn" />
 
         @if (hasOutsideRoom)
         {
@@ -171,6 +196,8 @@
 
     private bool goveeOn => !string.IsNullOrEmpty(Editor[SettingKeys.TemperatureApiBaseUrl]);
 
+    private bool bluetoothOn => string.Equals(Editor[SettingKeys.TemperatureSource]?.Trim(), TemperatureSource.Bluetooth, StringComparison.OrdinalIgnoreCase);
+
     private bool anchorsOn => string.Equals(Editor[SettingKeys.Anchors], "true", StringComparison.OrdinalIgnoreCase);
 
     private bool anchorsRemote => string.Equals(Editor[SettingKeys.AnchorsSource]?.Trim(), AnchorSourceSettings.Remote, StringComparison.OrdinalIgnoreCase);
@@ -255,7 +282,7 @@
 
     private bool adviceOn => !string.Equals(Editor[SettingKeys.TemperatureWindowAdvice], "false", StringComparison.OrdinalIgnoreCase);
 
-    private IReadOnlyList<string> rooms => [.. TemperatureRoomConfig.Parse(Editor[SettingKeys.TemperatureRooms]).Select(r => r.Room)];
+    private IReadOnlyList<string> rooms => [.. TemperatureRoomConfig.Parse(Editor[bluetoothOn ? SettingKeys.TemperatureBluetoothRooms : SettingKeys.TemperatureRooms]).Select(r => r.Room)];
 
     private string? outsideRoom => !string.IsNullOrWhiteSpace(Editor[SettingKeys.TemperatureOutsideRoom])
         ? Editor[SettingKeys.TemperatureOutsideRoom]!.Trim()

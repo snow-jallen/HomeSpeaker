@@ -1,4 +1,6 @@
 using HomeSpeaker.Server2.Services;
+using HomeSpeaker.Server2.Services.BleTemperature;
+using HomeSpeaker.Shared.Temperature;
 
 namespace HomeSpeaker.Server2.Endpoints;
 
@@ -59,6 +61,36 @@ public static class TemperatureEndpoints
                 return Results.Problem($"Failed to refresh temperature data: {ex.Message}");
             }
         });
+
+        // Bluetooth readings from the speakers (the hub keeps the best per sensor). No auth, like the rest of the
+        // household API: a forged reading could at worst skew the climate card or trigger a window alert.
+        app.MapPost("/api/temperature/readings", (SensorReading[]? readings, SensorReadingStore store, TimeProvider timeProvider, IConfiguration configuration) =>
+        {
+            if (!TemperatureSource.IsHub(configuration))
+            {
+                return Results.Conflict("This speaker isn't the Bluetooth temperature hub (Temperature:Source=bluetooth with no Temperature:HubUrl).");
+            }
+
+            if (readings is null || readings.Length > SensorReadingStore.MaxSensors)
+            {
+                return Results.BadRequest($"Send an array of at most {SensorReadingStore.MaxSensors} readings.");
+            }
+
+            var now = timeProvider.GetUtcNow().UtcDateTime;
+            if (readings.Select(r => SensorReadingValidator.Problem(r, now)).FirstOrDefault(p => p is not null) is { } problem)
+            {
+                return Results.BadRequest(problem);
+            }
+
+            foreach (var reading in readings)
+            {
+                store.Record(reading with { ObservedAt = reading.ObservedAt.ToUniversalTime() });
+            }
+
+            return Results.NoContent();
+        });
+
+        app.MapGet("/api/temperature/sensors", (SensorReadingStore store) => Results.Ok(store.All));
 
         return app;
     }

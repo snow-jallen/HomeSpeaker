@@ -71,4 +71,12 @@ public class FeatureFlagsTests
         });
         Assert.True(FeatureFlags.PushEnabled(config));
     }
+
+    [Fact]
+    public void TemperatureEnabled_BluetoothSource_WithoutGovee_IsTrue() =>
+        Assert.True(FeatureFlags.TemperatureEnabled(build(new() { ["Temperature:Source"] = "bluetooth" })));
+
+    [Fact]
+    public void TemperatureEnabled_NothingSet_IsFalse() =>
+        Assert.False(FeatureFlags.TemperatureEnabled(build(new())));
 }

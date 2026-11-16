@@ -4,8 +4,10 @@ namespace HomeSpeaker.Server2;
 
 public static class FeatureFlags
 {
+    /// <summary>On with the Govee cloud URL set, or with Bluetooth as the source.</summary>
     public static bool TemperatureEnabled(IConfiguration configuration) =>
-        !string.IsNullOrEmpty(configuration["Temperature:ApiBaseUrl"]);
+        !string.IsNullOrEmpty(configuration["Temperature:ApiBaseUrl"]) ||
+        Services.BleTemperature.TemperatureSource.IsBluetooth(configuration);
 
     public static bool BloodSugarEnabled(IConfiguration configuration) =>
         !string.IsNullOrEmpty(configuration["NIGHTSCOUT_URL"]);

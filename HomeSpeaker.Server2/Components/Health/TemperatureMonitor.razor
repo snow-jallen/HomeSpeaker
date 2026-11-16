@@ -1,7 +1,8 @@
 @using HomeSpeaker.Shared.Temperature
 @using HomeSpeaker.Shared.Forecast
 @using HomeSpeaker.Server2.Services
-@inject TemperatureService TemperatureService
+@inject ITemperatureService TemperatureService
+@inject TimeProvider Time
 @inject ForecastService ForecastService
 @inject IConfiguration Configuration
 @using HomeSpeaker.Server2.Services.Dashboard
@@ -61,14 +62,22 @@
                 <div class="temp-two-panel">
                     <!-- Left: 2×2 sensor grid -->
                     <div class="temp-sensors">
+                        @{
+                            var now = Time.GetUtcNow().UtcDateTime;
+                            var outside = ClimateRoom.Outside(temperatureStatus, now);
+                        }
                         <div class="temp-cell">
                             <div class="temp-inline">
-                                <i class="fas fa-cloud-sun" style="color: @GetTemperatureColor(temperatureStatus.OutsideTemperature)"></i>
-                                <span class="temp-value" style="color: @GetTemperatureColor(temperatureStatus.OutsideTemperature)">@FormatTemperature(temperatureStatus.OutsideTemperature)</span>
+                                <i class="fas fa-cloud-sun" style="color: @GetTemperatureColor(outside?.Temperature)"></i>
+                                <span class="temp-value" style="color: @GetTemperatureColor(outside?.Temperature)">@FormatTemperature(outside?.Temperature)</span>
                             </div>
                             <div class="temp-label">@(temperatureStatus.OutsideRoomName ?? "Outside")</div>
+                            @if (outside?.Note is { } outsideNote)
+                            {
+                                <div class="temp-age">@outsideNote</div>
+                            }
                         </div>
-                        @foreach (var room in ClimateRoom.From(temperatureStatus))
+                        @foreach (var room in ClimateRoom.From(temperatureStatus, now))
                         {
                             <div class="temp-cell">
                                 <div class="temp-inline">
@@ -76,6 +85,10 @@
                                     <span class="temp-value" style="color: @GetTemperatureColor(room.Temperature)">@FormatTemperature(room.Temperature)</span>
                                 </div>
                                 <div class="temp-label">@room.Label</div>
+                                @if (room.Note is { } note)
+                                {
+                                    <div class="temp-age">@note</div>
+                                }
                             </div>
                         }
                     </div>

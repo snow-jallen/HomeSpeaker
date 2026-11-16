@@ -87,7 +87,8 @@ A feature is off, and its widgets hidden, until you configure it. Configure each
 | Feature | Turn it on with |
 | --- | --- |
 | Blood sugar (Nightscout) | `NIGHTSCOUT_URL` |
-| Room temperatures (Govee) | `Temperature:ApiBaseUrl` (also set `Temperature:ApiKey`, without it there are no readings) |
+| Room temperatures (Govee cloud) | `Temperature:ApiBaseUrl` (also set `Temperature:ApiKey`, without it there are no readings) |
+| Room temperatures (Bluetooth) | `Temperature:Source=bluetooth` (plus the Bluetooth compose overlay) |
 | Weather forecast | `Forecast:Latitude` and `Forecast:Longitude` |
 | Anchors (daily habits) | `Features:Anchors=true` |
 | Immich slideshow | `Immich:BaseUrl`, `Immich:AlbumId` and `Immich:ApiKey` |
@@ -107,6 +108,17 @@ Get an API key in the Govee Home app (Profile, About, Apply for API Key). Set `T
 - `Temperature:WindowAdvice` (default true) and `Temperature:WindowMinOutside` (default 50) control the "open the windows" hint.
 - `TemperatureThreshold` (default 2) is the margin, in degrees F, within which two temperatures count as "about the same".
 - `Units:Temperature` is `F` or `C`.
+
+### Temperature sensors over Bluetooth (no Govee account)
+
+Govee H5100-family thermometers (H5100, H5101, H5102, H5104) broadcast their readings over Bluetooth, so the speakers can read them directly: no API key, no gateway, and battery levels included. Set `Temperature:Source` to `bluetooth` (the settings page has a menu) and restart.
+
+- Each speaker scans in short bursts (`Temperature:Bluetooth:ScanSeconds`, default 10, every `Temperature:Bluetooth:ScanEverySeconds`, default 60; the Pi's Bluetooth shares its radio with Wi-Fi, so it doesn't scan all the time).
+- One speaker is the **hub**: leave `Temperature:HubUrl` empty there. On every other speaker, set `Temperature:HubUrl` to the hub's address (for example `https://kitchen.example.ts.net`). They send what they hear to the hub and show the hub's rooms, so sensors only one speaker can hear still show everywhere. When two speakers hear the same sensor, the hub keeps the newer reading, or within the same minute the stronger signal.
+- On the hub's settings page, give each sensor a room (the list shows each sensor's Bluetooth name and address), or write `Temperature:BluetoothRooms` yourself as `Room: A4:38:30:34:00:01; Next room: ...`. Window advice and the outside/indoor rooms work as with the cloud.
+- A reading 5 to 20 minutes old is shown with its age ("7 min old"); after 20 minutes the value is dropped and the room says "No reading for 34 min", and it no longer counts for window advice. A room whose sensor has never been heard says "No reading yet".
+
+The container needs the host's D-Bus to talk to Bluetooth. Add the overlay the same way as the HTTPS one: download `docker-compose.bluetooth.yml` next to the compose file (`sudo curl -fsSL -o /opt/homespeaker/docker-compose.bluetooth.yml https://raw.githubusercontent.com/snow-jallen/homespeaker/master/docker-compose.bluetooth.yml`) and add it to `COMPOSE_FILE` in `/opt/homespeaker/.env`, e.g. `COMPOSE_FILE=docker-compose.yml:docker-compose.bluetooth.yml` (or `docker-compose.yml:docker-compose.https.yml:docker-compose.bluetooth.yml`). It mounts `/run/dbus` and `/etc/hostname` read-only. The D-Bus socket can reach other system services too (whatever the host lets your first user, uid 1000, do over D-Bus), so add the overlay only on speakers that use Bluetooth.
 
 ### Weather forecast
 

@@ -1,0 +1,12 @@
+# Bluetooth overlay, for reading Govee temperature sensors directly (Temperature:Source=bluetooth).
+# Gives the app the host's system D-Bus so it can ask BlueZ to scan, and the host's name to label its readings with;
+# nothing else (no extra capabilities, devices or host networking). Note the D-Bus socket reaches every system service
+# the host's D-Bus policy allows uid 1000 to talk to, not only BlueZ, so only add this overlay where you use Bluetooth. The host needs bluetoothd running (Raspberry Pi OS has it) and BlueZ's usual D-Bus policy, which
+# lets any user talk to org.bluez. Use together with the generic file (and the HTTPS overlay if you use it):
+#   docker compose -f docker-compose.yml -f docker-compose.bluetooth.yml up -d
+# or put COMPOSE_FILE=docker-compose.yml:docker-compose.bluetooth.yml in .env so the nightly update keeps it.
+services:
+  homespeaker.server2:
+    volumes:
+    - /run/dbus:/run/dbus:ro
+    - /etc/hostname:/etc/host-hostname:ro

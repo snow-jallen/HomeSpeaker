@@ -120,6 +120,9 @@ public class MusicContext : DbContext
             .HasIndex(dismissal => dismissal.GroupKey)
             .IsUnique();
 
+        modelBuilder.Entity<BluetoothSensorReadingEntity>()
+            .HasKey(reading => reading.Mac);
+
         modelBuilder.Entity<PlaylistSuggestion>()
             .Property(suggestion => suggestion.Status)
             .HasConversion<string>();
@@ -143,6 +146,7 @@ public class MusicContext : DbContext
     public DbSet<AutoPlaySettingsEntity> AutoPlaySettings { get; set; }
     public DbSet<AutoPlaySourceEntity> AutoPlaySources { get; set; }
     public DbSet<AlbumArtDismissal> AlbumArtDismissals { get; set; }
+    public DbSet<BluetoothSensorReadingEntity> BluetoothSensorReadings { get; set; }
     public DbSet<PlaylistSuggestion> PlaylistSuggestions { get; set; }
 }
 

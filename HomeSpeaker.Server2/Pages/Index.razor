@@ -191,7 +191,8 @@
                 @if (Dashboard.TemperatureEnabled)
                 {
                     var advice = WindowAdvice.From(Dashboard.Temperature, Dashboard.TemperatureUnit);
-                    var outsideLow = Dashboard.Temperature?.Rooms.Any(r => string.Equals(r.Name, Dashboard.Temperature.OutsideRoomName, StringComparison.OrdinalIgnoreCase) && ClimateRoom.IsLow(r.BatteryPercent)) == true;
+                    var outside = ClimateRoom.Outside(Dashboard.Temperature, Time.GetUtcNow().UtcDateTime);
+                    var outsideLow = outside?.LowBattery == true;
                     <a class="glass hs-info-card hs-climate" href="climate">
                         <div class="hs-card-head">
                             <span class="hs-card-label">
@@ -208,13 +209,17 @@
                         </div>
                         <div class="hs-climate-top">
                             <div class="hs-climate-outside">
-                                <span class="hs-climate-big">@(TemperatureDisplay.Format(Dashboard.Temperature?.OutsideTemperature, Dashboard.TemperatureUnit))</span>
+                                <span class="hs-climate-big">@(TemperatureDisplay.Format(outside?.Temperature, Dashboard.TemperatureUnit))</span>
                                 @if (outsideLow)
                                 {
                                     <LowBatteryIcon Label="Outside sensor battery is low" />
                                 }
                                 <span class="hs-climate-detail">
                                     <span>Outside@(conditions is null ? "" : " · " + conditions)</span>
+                                    @if (outside?.Note is { } outsideNote)
+                                    {
+                                        <span class="hs-room-age">@outsideNote</span>
+                                    }
                                     @if (highLow is not null)
                                     {
                                         <span>@highLow</span>
@@ -236,15 +241,26 @@
                             <div class="hs-rooms">
                                 @foreach (var room in indoorRooms)
                                 {
-                                    <span class="hs-room">
+                                    <span class="hs-room @(room.Note is null ? "" : room.Temperature is null ? "is-silent" : "is-aging")">
                                         <span class="hs-room-name">@room.Label</span>
                                         <span class="hs-room-temp">
-                                            @TemperatureDisplay.Format(room.Temperature, Dashboard.TemperatureUnit)
+                                            @if (room.Temperature is not null)
+                                            {
+                                                @TemperatureDisplay.Format(room.Temperature, Dashboard.TemperatureUnit)
+                                            }
+                                            else
+                                            {
+                                                <span class="hs-room-age">@room.Note</span>
+                                            }
                                             @if (room.LowBattery)
                                             {
                                                 <LowBatteryIcon Label="@(room.Label + " sensor battery is low")" />
                                             }
                                         </span>
+                                        @if (room.Temperature is not null && room.Note is not null)
+                                        {
+                                            <span class="hs-room-age">@room.Note</span>
+                                        }
                                     </span>
                                 }
                             </div>
@@ -305,7 +321,7 @@
     // Chosen at render time from the cached hourly forecast, so the strip moves on with the clock.
     private IReadOnlyList<HourlyColumn> hourly => !Dashboard.ForecastEnabled ? [] : HourlyColumn.Select(Dashboard.Forecast, Time.GetUtcNow().UtcDateTime);
 
-    private IReadOnlyList<ClimateRoom> indoorRooms => ClimateRoom.From(Dashboard.Temperature);
+    private IReadOnlyList<ClimateRoom> indoorRooms => ClimateRoom.From(Dashboard.Temperature, Time.GetUtcNow().UtcDateTime);
 
     private string? highLow =>
         Dashboard.ForecastEnabled && Dashboard.Forecast is { Error: null, TodayHigh.Temperature: { } high, TonightLow.Temperature: { } low }

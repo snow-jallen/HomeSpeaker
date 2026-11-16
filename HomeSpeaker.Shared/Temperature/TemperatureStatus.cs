@@ -22,4 +22,10 @@ public sealed class TemperatureStatus
     public double TemperatureDifference { get; set; }
     public bool IsWithinThreshold { get; set; }
     public double Threshold { get; set; }
+
+    /// <summary>
+    /// True when rooms carry <see cref="RoomReading.LastReadingAt"/> (the Bluetooth source), so a room without a
+    /// temperature is shown with how long it has been silent instead of being hidden.
+    /// </summary>
+    public bool ShowsReadingAge { get; set; }
 }

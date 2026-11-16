@@ -104,7 +104,7 @@ public sealed class HealthAlertWorker : BackgroundService
 
     private bool temperatureConfigured() =>
         FeatureFlags.TemperatureEnabled(configuration) &&
-        !string.IsNullOrWhiteSpace(configuration["Temperature:ApiKey"]);
+        (BleTemperature.TemperatureSource.IsBluetooth(configuration) || !string.IsNullOrWhiteSpace(configuration["Temperature:ApiKey"]));
 
     private bool bloodSugarConfigured() =>
         FeatureFlags.BloodSugarEnabled(configuration);

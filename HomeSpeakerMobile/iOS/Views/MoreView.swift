@@ -145,16 +145,17 @@ struct MoreView: View {
     private func temperatureRows(_ temp: TemperatureStatus) -> some View {
         let outsideName = temp.outsideRoomName
         let rooms = temp.rooms ?? []
+        let showsAge = temp.tracksReadingAge
         // Outside first: the room the server names as outside, else the bare
         // outside reading. Then every other room in the server's order.
         if let outsideName, let outsideRoom = rooms.first(where: { $0.name == outsideName }) {
-            tempRow(outsideRoom.name, value: outsideRoom.temperature)
+            roomRow(outsideRoom, showsAge: showsAge)
         } else if outsideName != nil || temp.outsideTemperature != nil {
             tempRow(outsideName ?? "Outside", value: temp.outsideTemperature)
         }
         ForEach(Array(rooms.enumerated()), id: \.offset) { _, room in
             if room.name != outsideName {
-                tempRow(room.name, value: room.temperature)
+                roomRow(room, showsAge: showsAge)
             }
         }
         if let close = temp.shouldWindowsBeClosed, temp.indoorTemperature != nil || temp.rooms == nil {
@@ -162,6 +163,41 @@ struct MoreView: View {
                 Image(systemName: close ? "window.closed" : "window.open.slash")
                     .foregroundStyle(close ? .orange : .green)
                 Text(close ? "Close windows" : "Windows OK")
+            }
+        }
+    }
+
+    /// A room's row. When the server tracks reading ages (Bluetooth), the age
+    /// is judged as the row is drawn and redrawn every few seconds, so a value
+    /// can age out while it's on screen.
+    @ViewBuilder
+    private func roomRow(_ room: RoomReading, showsAge: Bool) -> some View {
+        if showsAge {
+            TimelineView(.periodic(from: .now, by: 10)) { context in
+                agedTempRow(room.name, value: room.temperature, age: room.age(at: context.date))
+            }
+        } else {
+            tempRow(room.name, value: room.temperature)
+        }
+    }
+
+    /// Fresh: the value. 5-20 min: the value dimmed, with "N min old".
+    /// Older or never heard: only the note.
+    private func agedTempRow(_ label: String, value: Double?, age: ReadingAge) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            VStack(alignment: .trailing, spacing: 2) {
+                if age.showsValue {
+                    Text(formattedTemperature(value))
+                        .foregroundStyle(age.isAging ? HierarchicalShapeStyle.tertiary : HierarchicalShapeStyle.secondary)
+                        .monospacedDigit()
+                }
+                if let note = age.note {
+                    Text(note)
+                        .font(age.showsValue ? .caption : .subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }

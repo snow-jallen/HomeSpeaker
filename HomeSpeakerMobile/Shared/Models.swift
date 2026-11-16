@@ -253,6 +253,20 @@ struct RoomReading: Codable, Hashable {
     let name: String
     let temperature: Double?
     let batteryPercent: Double?
+    /// Relative humidity in percent, from sources that report it (Bluetooth).
+    let humidity: Double?
+    /// When the sensor was last heard, UTC ISO-8601 from .NET, for sources
+    /// that track it (Bluetooth). Nil when the sensor was never heard.
+    let lastReadingAt: String?
+
+    var lastReadingDate: Date? {
+        lastReadingAt.flatMap(ServerDate.parse)
+    }
+
+    /// How old this reading is at `now`, as the server's `ReadingAge`.
+    func age(at now: Date) -> ReadingAge {
+        ReadingAge.of(lastReadingDate, now: now)
+    }
 }
 
 struct TemperatureStatus: Codable {
@@ -264,6 +278,68 @@ struct TemperatureStatus: Codable {
     let rooms: [RoomReading]?
     let shouldWindowsBeClosed: Bool?
     let temperatureDifference: Double?
+    /// True when rooms carry `lastReadingAt` (the Bluetooth source): show each
+    /// room's age and list rooms without a value too. Nil from older servers.
+    let showsReadingAge: Bool?
+
+    var tracksReadingAge: Bool { showsReadingAge == true }
+}
+
+/// How old a sensor's last reading is and how to show it, mirroring the
+/// server's `ReadingAge`: under 5 minutes as is; 5-20 minutes dimmed with
+/// "N min old"; past 20 minutes no value, only "No reading for N min"; never
+/// heard, "No reading yet". Whole minutes, rounded down. Judge it at display
+/// time so a value can age out while it's on screen.
+struct ReadingAge: Equatable {
+    static let agingAfterMinutes = 5
+    static let lostAfterMinutes = 20
+
+    /// False when the value is too old (or never came) to show.
+    let showsValue: Bool
+    /// "7 min old", "No reading for 34 min", "No reading yet", or nil when fresh.
+    let note: String?
+
+    /// Shown, but old enough to dim and label.
+    var isAging: Bool { showsValue && note != nil }
+
+    static func of(_ lastReadingAt: Date?, now: Date) -> ReadingAge {
+        guard let lastReadingAt else {
+            return ReadingAge(showsValue: false, note: "No reading yet")
+        }
+        let elapsed = max(0, now.timeIntervalSince(lastReadingAt))
+        let minutes = Int(min(elapsed / 60, Double(Int32.max)).rounded(.down))
+        if minutes < agingAfterMinutes {
+            return ReadingAge(showsValue: true, note: nil)
+        }
+        return minutes <= lostAfterMinutes
+            ? ReadingAge(showsValue: true, note: "\(minutes) min old")
+            : ReadingAge(showsValue: false, note: "No reading for \(minutes) min")
+    }
+}
+
+/// Parses the timestamps the server's JSON carries. .NET writes up to seven
+/// fractional digits ("2026-11-16T01:40:17.1234567Z"), which
+/// `ISO8601DateFormatter` rejects, so the fraction is cut off before parsing
+/// and added back as seconds. A missing zone is taken as UTC.
+enum ServerDate {
+    static func parse(_ text: String) -> Date? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard let timeStart = trimmed.firstIndex(of: "T") else { return nil }
+
+        var withoutFraction = trimmed
+        var fraction: TimeInterval = 0
+        if let dot = trimmed[timeStart...].firstIndex(of: ".") {
+            let digitsEnd = trimmed[trimmed.index(after: dot)...].firstIndex(where: { !$0.isNumber }) ?? trimmed.endIndex
+            fraction = TimeInterval("0" + String(trimmed[dot..<digitsEnd])) ?? 0
+            withoutFraction = String(trimmed[..<dot]) + String(trimmed[digitsEnd...])
+        }
+
+        let zoned = trimmed[timeStart...].contains(where: { "Zz+-".contains($0) })
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        guard let whole = formatter.date(from: zoned ? withoutFraction : withoutFraction + "Z") else { return nil }
+        return whole.addingTimeInterval(fraction)
+    }
 }
 
 // MARK: - Push Notifications

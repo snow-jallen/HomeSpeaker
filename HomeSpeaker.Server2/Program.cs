@@ -5,6 +5,7 @@ using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Endpoints;
 using HomeSpeaker.Server2.Services;
 using HomeSpeaker.Server2.Services.AlbumArt;
+using HomeSpeaker.Server2.Services.BleTemperature;
 using HomeSpeaker.Server2.Services.LiveActivities;
 using HomeSpeaker.Server2.Services.MediaSearch;
 using HomeSpeaker.Server2.Services.Photos;
@@ -250,7 +251,28 @@ if (FeatureFlags.PushEnabled(builder.Configuration) &&
 builder.Services.AddHostedService<HomeSpeaker.Server2.Services.VolumeMonitorService>();
 // Add temperature and health-monitor services with caching
 builder.Services.AddHttpClient<TemperatureService>();
-builder.Services.AddScoped<ITemperatureService>(sp => sp.GetRequiredService<TemperatureService>());
+builder.Services.AddScoped<BluetoothTemperatureService>();
+builder.Services.AddScoped<ITemperatureService, TemperatureServiceSelector>();
+builder.Services.AddSingleton<SensorReadingStore>();
+builder.Services.AddHttpClient(BluetoothTemperatureService.HubClient, client => client.Timeout = TimeSpan.FromSeconds(5));
+if (TemperatureSource.IsBluetooth(builder.Configuration))
+{
+    // Every speaker scans; the hub also takes what the others send (POST /api/temperature/readings).
+    builder.Services.AddSingleton<IBleScanner, BlueZScanner>();
+    builder.Services.AddSingleton<HubReadingSender>();
+    builder.Services.AddSingleton(sp => new BleScanCycle(
+        sp.GetRequiredService<IBleScanner>(),
+        sp.GetRequiredService<SensorReadingStore>(),
+        sp.GetRequiredService<HubReadingSender>(),
+        sp.GetRequiredService<IConfiguration>(),
+        sp.GetRequiredService<TimeProvider>(),
+        sp.GetRequiredService<ILogger<BleScanCycle>>(),
+        reporter: TemperatureSource.Reporter(
+            File.Exists(TemperatureSource.HostHostnamePath) ? File.ReadAllText(TemperatureSource.HostHostnamePath) : null,
+            Environment.MachineName)));
+    builder.Services.AddHostedService<BleTemperatureWorker>();
+}
+
 builder.Services.AddHttpClient<BloodSugarService>();
 builder.Services.AddScoped<IBloodSugarService>(sp => sp.GetRequiredService<BloodSugarService>());
 builder.Services.AddHttpClient<ForecastService>(client => client.Timeout = TimeSpan.FromSeconds(10));

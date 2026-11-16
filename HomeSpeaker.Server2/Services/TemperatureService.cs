@@ -214,14 +214,7 @@ public sealed class TemperatureService : ITemperatureService
     {
         logger.LogInformation("Getting temperature status...");
         var settings = TemperatureRoomConfig.FromConfiguration(configuration);
-        var threshold = settings.ThresholdF;
         var devices = await GetDevicesAsync(cancellationToken);
-
-        var temperatureStatus = new TemperatureStatus
-        {
-            ReadingTakenAt = timeProvider.GetUtcNow().UtcDateTime,
-            Threshold = threshold
-        };
 
         var rooms = TemperatureDeviceMatcher.EffectiveRooms(devices, settings.Rooms);
         var deviceMap = TemperatureDeviceMatcher.Match(devices, rooms);
@@ -240,32 +233,6 @@ public sealed class TemperatureService : ITemperatureService
             readings.Add(new RoomReading { Name = room, Temperature = state?.SensorTemperature, BatteryPercent = state?.Battery });
         }
 
-        temperatureStatus.Rooms = readings;
-
-        var outside = findRoom(readings, settings.OutsideRoom);
-        temperatureStatus.OutsideRoomName = outside?.Name;
-        temperatureStatus.OutsideTemperature = outside?.Temperature;
-
-        if (settings.WindowAdvice)
-        {
-            // An unconfigured indoor room defaults to the first room that is not the outside one.
-            var indoor = findRoom(readings, settings.IndoorRoom)
-                ?? readings.FirstOrDefault(r => !string.Equals(r.Name, outside?.Name, StringComparison.OrdinalIgnoreCase));
-            temperatureStatus.IndoorRoomName = indoor?.Name;
-            temperatureStatus.IndoorTemperature = indoor?.Temperature;
-        }
-
-        // Calculate temperature difference and determine if within threshold
-        if (temperatureStatus.OutsideTemperature is { } outsideTemp && temperatureStatus.IndoorTemperature is { } indoorTemp)
-        {
-            temperatureStatus.TemperatureDifference = Math.Abs(outsideTemp - indoorTemp);
-            temperatureStatus.IsWithinThreshold = temperatureStatus.TemperatureDifference <= threshold;
-            temperatureStatus.ShouldWindowsBeClosed = outsideTemp >= indoorTemp || outsideTemp < settings.WindowMinOutsideF;
-        }
-
-        return temperatureStatus;
+        return TemperatureStatusBuilder.Build(readings, settings, timeProvider.GetUtcNow().UtcDateTime);
     }
-
-    private static RoomReading? findRoom(IReadOnlyList<RoomReading> readings, string? name) =>
-        name is null ? null : readings.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase));
 }

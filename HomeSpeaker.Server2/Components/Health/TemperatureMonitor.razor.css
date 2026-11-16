@@ -61,6 +61,13 @@
     margin-top: 2px;
 }
 
+/* How old a Bluetooth reading is ("7 min old", "No reading for 34 min"). */
+.temp-age {
+    font-size: 0.6rem;
+    font-style: italic;
+    color: var(--bs-secondary-color, #6c757d);
+}
+
 .temp-conditions {
     font-size: 0.6rem;
     color: var(--bs-secondary-color, #6c757d);

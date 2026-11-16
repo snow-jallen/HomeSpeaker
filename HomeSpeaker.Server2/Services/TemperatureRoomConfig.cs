@@ -37,9 +37,13 @@ public static class TemperatureRoomConfig
         return rooms;
     }
 
+    /// <summary>The rooms setting for the current source: sensor names for the cloud, sensor addresses for Bluetooth.</summary>
+    public static string RoomsKey(IConfiguration configuration) =>
+        BleTemperature.TemperatureSource.IsBluetooth(configuration) ? Settings.SettingKeys.TemperatureBluetoothRooms : Settings.SettingKeys.TemperatureRooms;
+
     public static TemperatureSettings FromConfiguration(IConfiguration configuration)
     {
-        var rooms = Parse(configuration["Temperature:Rooms"]);
+        var rooms = Parse(configuration[RoomsKey(configuration)]);
 
         var outside = configuration["Temperature:OutsideRoom"]?.Trim();
         if (string.IsNullOrEmpty(outside))

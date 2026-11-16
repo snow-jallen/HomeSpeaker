@@ -13,4 +13,13 @@ public sealed class RoomReading
 
     /// <summary>Battery percent 0-100, or null when the sensor does not report one.</summary>
     public double? BatteryPercent { get; init; }
+
+    /// <summary>Relative humidity in percent, when the sensor source reports it (Bluetooth does).</summary>
+    public double? Humidity { get; init; }
+
+    /// <summary>
+    /// When the sensor was last heard (UTC), for sources that track it (Bluetooth). A reading more than 20 minutes old
+    /// keeps this but has no <see cref="Temperature"/> or <see cref="Humidity"/>; a sensor never heard has neither.
+    /// </summary>
+    public DateTime? LastReadingAt { get; init; }
 }

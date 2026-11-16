@@ -43,6 +43,8 @@ jobs:
         echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
     - name: Choose docker compose command
+      env:
+        BLUETOOTH: "${{ matrix.bluetooth }}"
       run: |
         # Prefer the v2 plugin; fall back to the standalone v1 binary on older runners.
         if docker compose version >/dev/null 2>&1; then DC="docker compose"; else DC="docker-compose"; fi
@@ -54,7 +56,11 @@ jobs:
           echo "::error::Docker Compose 2.24+ is required (found ${VER:-none}); install the docker-compose-plugin"
           exit 1
         fi
-        echo "DC=$DC -f docker-compose.yml -f docker-compose.https.yml" >> "$GITHUB_ENV"
+        # The Bluetooth overlay mounts the host's system D-Bus (for Temperature:Source=bluetooth). That socket reaches
+        # more than BlueZ, so a target that doesn't use Bluetooth sets "bluetooth": false in DEPLOY_TARGETS.
+        FILES="-f docker-compose.yml -f docker-compose.https.yml"
+        if [ "${BLUETOOTH}" != "false" ]; then FILES="$FILES -f docker-compose.bluetooth.yml"; fi
+        echo "DC=$DC $FILES" >> "$GITHUB_ENV"
 
     - name: Renew Tailscale certificate
       run: |

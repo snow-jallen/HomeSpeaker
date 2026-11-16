@@ -1,12 +1,18 @@
 @using HomeSpeaker.Server2.Settings
+@using HomeSpeaker.Server2.Services.BleTemperature
 @inject IServiceScopeFactory ScopeFactory
 @inject IConfiguration Config
+@inject TimeProvider Time
 
 <div class="hs-settings-rooms">
     <h3 class="glass-section-title">Rooms</h3>
-    @if (string.IsNullOrEmpty(Config[SettingKeys.TemperatureApiKey]))
+    @if (!Bluetooth && string.IsNullOrEmpty(Config[SettingKeys.TemperatureApiKey]))
     {
         <p class="glass-hint">Save a Govee API key, then come back to name the rooms.</p>
+    }
+    else if (Bluetooth && !string.IsNullOrWhiteSpace(Editor[SettingKeys.TemperatureHubUrl]))
+    {
+        <p class="glass-hint">Rooms are named on the hub speaker. This one sends what it hears there and shows the hub's rooms.</p>
     }
     else if (loading)
     {
@@ -14,7 +20,9 @@
     }
     else if (rows.Count == 0)
     {
-        <p class="glass-hint">No Govee sensors found. Check the API key, save, and restart.</p>
+        <p class="glass-hint">@(Bluetooth
+            ? "No Bluetooth sensors heard yet. Save, restart, and give the speakers a minute or two to scan."
+            : "No Govee sensors found. Check the API key, save, and restart.")</p>
     }
     else
     {
@@ -33,7 +41,13 @@
                 var index = i;
                 var row = rows[index];
                 <li class="hs-settings-room">
-                    <span class="hs-settings-room-device" title="Govee device">@row.DeviceName</span>
+                    <span class="hs-settings-room-device" title="@(Bluetooth ? "Bluetooth sensor " + row.DeviceName : "Govee device")">
+                        @label(row.DeviceName)
+                        @if (details.GetValueOrDefault(row.DeviceName) is { } detail)
+                        {
+                            <small class="hs-settings-room-detail">@detail</small>
+                        }
+                    </span>
                     <input class="glass-input" type="text" placeholder="Hidden" aria-label="@($"Room for {row.DeviceName}")"
                            value="@row.Room" @onchange="e => setRoom(index, e.Value?.ToString())" disabled="@readOnly" />
                     <label class="hs-settings-radio">
@@ -52,7 +66,7 @@
                 </li>
             }
         </ol>
-        <SettingNote Editor="Editor" Key="@SettingKeys.TemperatureRooms" />
+        <SettingNote Editor="Editor" Key="@roomsKey" />
     }
 </div>
 
@@ -63,27 +77,64 @@
     private bool loading = true;
     private bool representable = true;
 
-    private bool readOnly => Editor.IsOverridden(SettingKeys.TemperatureRooms) || Editor.IsOverridden(SettingKeys.TemperatureOutsideRoom);
+    /// <summary>Bluetooth sensors (rooms by address, <c>Temperature:BluetoothRooms</c>) instead of Govee cloud devices.</summary>
+    [Parameter] public bool Bluetooth { get; set; }
 
-    private bool loaded;
+    private string roomsKey => Bluetooth ? SettingKeys.TemperatureBluetoothRooms : SettingKeys.TemperatureRooms;
 
-    // Loads once a key is saved, which may happen while the page is open.
+    private bool readOnly => Editor.IsOverridden(roomsKey) || Editor.IsOverridden(SettingKeys.TemperatureOutsideRoom);
+
+    private bool? loadedFor;
+
+    // Bluetooth address -> the advertised name, and a second line with the address and when it was last heard.
+    private Dictionary<string, string> labels = new(StringComparer.OrdinalIgnoreCase);
+    private Dictionary<string, string> details = new(StringComparer.OrdinalIgnoreCase);
+
+    private string label(string deviceName) => labels.GetValueOrDefault(deviceName, deviceName);
+
+    // Loads once a key is saved (or the source changes), which may happen while the page is open.
     protected override async Task OnParametersSetAsync()
     {
-        if (loaded || string.IsNullOrEmpty(Config[SettingKeys.TemperatureApiKey]))
+        if (loadedFor == Bluetooth || (!Bluetooth && string.IsNullOrEmpty(Config[SettingKeys.TemperatureApiKey])))
         {
             loading = false;
             return;
         }
 
-        loaded = true;
+        loadedFor = Bluetooth;
         loading = true;
-        // A fresh scope builds a TemperatureService from the current (possibly just saved) key.
         await using var scope = ScopeFactory.CreateAsyncScope();
-        var devices = await scope.ServiceProvider.GetRequiredService<ITemperatureService>().GetDevicesAsync();
-        var names = devices.Select(d => d.DeviceName).ToList();
-        representable = RoomAssignments.IsRepresentable(Editor[SettingKeys.TemperatureRooms], names);
-        rows = [.. RoomAssignments.FromRules(names, Editor[SettingKeys.TemperatureRooms], Editor[SettingKeys.TemperatureOutsideRoom])];
+        List<string> names;
+        if (Bluetooth)
+        {
+            var store = scope.ServiceProvider.GetRequiredService<SensorReadingStore>();
+            var now = Time.GetUtcNow().UtcDateTime;
+            var heard = store.All;
+            labels = heard.ToDictionary(s => s.Mac, s => s.Name, StringComparer.OrdinalIgnoreCase);
+            details = heard.ToDictionary(
+                s => s.Mac,
+                s => $"{s.Mac} · {ReadingAge.Of(s.ObservedAt, now).Note ?? "heard just now"}",
+                StringComparer.OrdinalIgnoreCase);
+
+            // Sensors already given a room but not heard lately stay listed, so editing another row keeps them.
+            var mapped = TemperatureRoomConfig.Parse(Editor[roomsKey]).SelectMany(r => r.Patterns).Select(p => p.Trim().ToUpperInvariant());
+            names = [.. heard.Select(s => s.Mac).Concat(mapped.Where(m => !labels.ContainsKey(m))).Distinct(StringComparer.OrdinalIgnoreCase)];
+            foreach (var missing in names.Where(n => !labels.ContainsKey(n)))
+            {
+                details[missing] = "not heard yet";
+            }
+        }
+        else
+        {
+            // A fresh scope builds a TemperatureService from the current (possibly just saved) key.
+            var devices = await scope.ServiceProvider.GetRequiredService<TemperatureService>().GetDevicesAsync();
+            names = [.. devices.Select(d => d.DeviceName)];
+            labels = new(StringComparer.OrdinalIgnoreCase);
+            details = new(StringComparer.OrdinalIgnoreCase);
+        }
+
+        representable = RoomAssignments.IsRepresentable(Editor[roomsKey], names);
+        rows = [.. RoomAssignments.FromRules(names, Editor[roomsKey], Editor[SettingKeys.TemperatureOutsideRoom])];
         loading = false;
     }
 
@@ -114,18 +165,18 @@
         var named = rows.Where(r => r.Room is not null).Select(r => r.Room!).ToList();
         if (named.Any(r => r.IndexOfAny([';', ':', ',']) >= 0))
         {
-            Editor.Errors[SettingKeys.TemperatureRooms] = "Room names can't contain ; : or ,";
+            Editor.Errors[roomsKey] = "Room names can't contain ; : or ,";
             return;
         }
 
         if (named.Count != named.Distinct(StringComparer.OrdinalIgnoreCase).Count())
         {
-            Editor.Errors[SettingKeys.TemperatureRooms] = "Each room needs a different name.";
+            Editor.Errors[roomsKey] = "Each room needs a different name.";
             return;
         }
 
         var (roomsSetting, outside) = RoomAssignments.ToSettings(rows);
-        Editor[SettingKeys.TemperatureRooms] = roomsSetting;
+        Editor[roomsKey] = roomsSetting;
         Editor[SettingKeys.TemperatureOutsideRoom] = outside ?? "";
         Editor.Errors.Remove(SettingKeys.TemperatureIndoorRoom);
         representable = true;

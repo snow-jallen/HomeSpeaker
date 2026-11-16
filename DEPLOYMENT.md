@@ -36,7 +36,7 @@ gh variable set DEPLOY_USER --body 'pi'
 
 The certificate is issued for the Pi's real hostname (`$(hostname)` on the runner), not for `host`, so `host` should match it. Only `enable-kiosk.yml` reads `matrix.host` (to build the kiosk URL `https://<host>.<TAILNET_DOMAIN>/?kiosk=1`); `deploy.yml` reads `runner` and `airplay_name`.
 
-The deploy writes `.env` in the runner's workspace with `AIRPLAY_NAME`, `HOMESPEAKER_IMAGE`, `HOMESPEAKER_ENV_FILE`, `MUSIC_DIR`, `CERT_DIR`, `TZ`, `COMPOSE_PROFILES=airplay` and `PUID=1000`, and runs `docker compose -f docker-compose.yml -f docker-compose.https.yml`. Containers have fixed names, so each Pi runs one stack. The telemetry profile is not enabled by deploy.
+The deploy writes `.env` in the runner's workspace with `AIRPLAY_NAME`, `HOMESPEAKER_IMAGE`, `HOMESPEAKER_ENV_FILE`, `MUSIC_DIR`, `CERT_DIR`, `TZ`, `COMPOSE_PROFILES=airplay` and `PUID=1000`, and runs `docker compose -f docker-compose.yml -f docker-compose.https.yml -f docker-compose.bluetooth.yml` (the Bluetooth overlay mounts the host's `/run/dbus` and `/etc/hostname` read-only, for `Temperature:Source=bluetooth`; a target without Bluetooth adds `"bluetooth": false` to its `DEPLOY_TARGETS` entry, since the D-Bus socket reaches more than BlueZ). Containers have fixed names, so each Pi runs one stack. The telemetry profile is not enabled by deploy.
 
 ## Settings precedence
 

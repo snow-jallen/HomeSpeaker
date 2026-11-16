@@ -26,10 +26,10 @@ public sealed class ClimateCardTests
             ],
         };
 
-        var rooms = ClimateRoom.From(status);
+        var rooms = ClimateRoom.From(status, DateTime.UtcNow);
 
         Assert.Equal(["Greenhouse", "Emma", "Downstairs", "Girls"], rooms.Select(r => r.Label));
-        Assert.Equal([80, 68, 70, 67], rooms.Select(r => r.Temperature));
+        Assert.Equal(new double?[] { 80, 68, 70, 67 }, rooms.Select(r => r.Temperature));
     }
 
     [Theory]
@@ -40,7 +40,7 @@ public sealed class ClimateCardTests
     [InlineData(0.0, true)]
     public void LowBattery_OnlyBelowFivePercent(double? battery, bool expectedLow)
     {
-        var rooms = ClimateRoom.From(new TemperatureStatus { Rooms = [room("Boys", 70, battery)] });
+        var rooms = ClimateRoom.From(new TemperatureStatus { Rooms = [room("Boys", 70, battery)] }, DateTime.UtcNow);
 
         Assert.Equal(expectedLow, Assert.Single(rooms).LowBattery);
     }
@@ -55,7 +55,62 @@ public sealed class ClimateCardTests
     }
 
     [Fact]
-    public void Rooms_NullStatus_IsEmpty() => Assert.Empty(ClimateRoom.From(null));
+    public void Rooms_NullStatus_IsEmpty() => Assert.Empty(ClimateRoom.From(null, DateTime.UtcNow));
+
+    private static readonly DateTime now = new(2026, 11, 15, 12, 0, 0, DateTimeKind.Utc);
+
+    private static RoomReading heard(string name, double? temperature, int minutesAgo) =>
+        new() { Name = name, Temperature = temperature, LastReadingAt = now.AddMinutes(-minutesAgo) };
+
+    private static TemperatureStatus withAges(params RoomReading[] rooms) =>
+        new() { OutsideRoomName = "Outside", ShowsReadingAge = true, Rooms = [.. rooms] };
+
+    [Fact]
+    public void WithReadingAges_EveryIndoorRoomIsListed_WithItsAge()
+    {
+        var rooms = ClimateRoom.From(
+            withAges(
+                heard("Outside", 50, 1),
+                heard("Fresh", 70, 2),
+                heard("Aging", 68, 7),
+                new RoomReading { Name = "Never" },
+                new RoomReading { Name = "Lost", LastReadingAt = now.AddMinutes(-34) }),
+            now);
+
+        Assert.Equal(["Fresh", "Aging", "Never", "Lost"], rooms.Select(r => r.Label));
+        Assert.Equal(new double?[] { 70, 68, null, null }, rooms.Select(r => r.Temperature));
+        Assert.Equal([null, "7 min old", "No reading yet", "No reading for 34 min"], rooms.Select(r => r.Note));
+    }
+
+    [Fact]
+    public void WithReadingAges_ValueThatAgedPastTwentyMinutesSinceFetch_IsHidden()
+    {
+        var room = Assert.Single(ClimateRoom.From(withAges(heard("Kitchen", 70, 21)), now));
+
+        Assert.Null(room.Temperature);
+        Assert.Equal("No reading for 21 min", room.Note);
+    }
+
+    [Fact]
+    public void Outside_WithReadingAges_CarriesNote()
+    {
+        var outside = ClimateRoom.Outside(withAges(new RoomReading { Name = "Outside" }), now);
+
+        Assert.NotNull(outside);
+        Assert.Null(outside.Temperature);
+        Assert.Equal("No reading yet", outside.Note);
+    }
+
+    [Fact]
+    public void Outside_WithoutReadingAges_HasNoNote()
+    {
+        var outside = ClimateRoom.Outside(new TemperatureStatus { OutsideRoomName = "Outside", OutsideTemperature = 50, Rooms = [room("Outside", 50, 2)] }, now);
+
+        Assert.NotNull(outside);
+        Assert.Equal(50, outside.Temperature);
+        Assert.Null(outside.Note);
+        Assert.True(outside.LowBattery);
+    }
 
     private static TemperatureStatus advice(double outside, double girls, bool shouldClose) => new()
     {
