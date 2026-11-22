@@ -28,12 +28,24 @@ public static class AnchorView
     public static IEnumerable<AnchorDto> Ordered(IEnumerable<AnchorDto> anchors) =>
         anchors.OrderBy(a => SlotRank(a.Slot)).ThenBy(a => a.Order);
 
-    /// <summary>Today's cells worth a dot: anchors expected today (open) or already kept, in display order.</summary>
-    public static IReadOnlyList<AnchorCellDto> TodayCells(AnchorPersonDto person, DateOnly today) =>
-        [.. Ordered(person.Anchors)
-            .Select(a => CellOn(a, today))
-            .OfType<AnchorCellDto>()
-            .Where(c => c.State is "open" or "kept" || c.Pending)];
+    /// <summary>Anchors worth a check chip on <paramref name="date"/>: expected (open), kept, or missed so they can still be ticked, in display order.</summary>
+    public static IReadOnlyList<AnchorDto> CheckableOn(IEnumerable<AnchorDto> anchors, DateOnly date) =>
+        [.. Ordered(anchors).Where(a => CellOn(a, date) is { } cell && (cell.State is "open" or "kept" or "missed" || cell.Pending))];
+
+    /// <summary>How many of a person's anchors were expected on <paramref name="date"/> and how many of those were kept.</summary>
+    public static AnchorDayProgress Progress(AnchorPersonDto person, DateOnly date)
+    {
+        var cells = person.Anchors.Select(a => CellOn(a, date)).OfType<AnchorCellDto>().Where(c => c.State is "open" or "kept" or "missed").ToList();
+        return new AnchorDayProgress(cells.Count(c => c.State == "kept"), cells.Count);
+    }
+
+    /// <summary>Exactly <paramref name="days"/> cells ending on <paramref name="to"/>, oldest first; a date without a cell reads as none.</summary>
+    public static IReadOnlyList<AnchorCellDto> History(AnchorDto anchor, DateOnly to, int days) =>
+        [.. Enumerable.Range(0, days).Select(i => to.AddDays(i - days + 1)).Select(date => CellOn(anchor, date) ?? new AnchorCellDto(date, "none"))];
+
+    /// <summary>Anchors that were active at some point in the board's range (a retired one still shows the days it was kept).</summary>
+    public static IReadOnlyList<AnchorDto> HistoryRows(AnchorPersonDto person) =>
+        [.. Ordered(person.Anchors).Where(a => a.Cells.Any(c => c.State != "none"))];
 
     public static string DotClass(AnchorCellDto cell) => cell.Pending ? "is-pending" : "is-" + cell.State;
 

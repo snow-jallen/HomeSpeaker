@@ -52,37 +52,88 @@
 
 /* ---------- Home card ---------- */
 
-.hs-anchor-row {
+.hs-anchor-lines {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Auto margins spread the lines out when there's room and fall back to the top when they overflow and scroll. */
+.hs-anchor-line {
+  flex: none;
+  margin-block: auto;
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-width: 0;
+  gap: 12px;
+}
+
+.hs-anchor-who {
+  flex: none;
+  width: 84px;
   color: inherit;
   text-decoration: none;
+  font-size: 15px;
 }
 
-.hs-anchor-dots {
-  display: inline-flex;
+.hs-anchor-who .hs-person {
+  max-width: 100%;
+}
+
+.hs-anchor-chips {
+  flex: 1;
+  min-width: 0;
+  display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 6px;
 }
 
-.hs-anchor-dot {
-  width: 10px;
-  height: 10px;
-  box-sizing: border-box;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.7);
+.hs-anchor-none {
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.6;
 }
 
-.hs-anchor-dot.is-kept {
-  border-color: var(--hs-person, #fff);
-  background: var(--hs-person, #fff);
+.hs-anchor-count {
+  flex: none;
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
 }
 
-.hs-anchor-dot.is-pending {
-  border-style: dashed;
-  border-color: var(--hs-person, #fff);
+.hs-anchor-line.is-done .hs-anchor-count {
+  color: var(--hs-person, #fff);
+  opacity: 1;
+}
+
+.hs-anchor-line.is-done .hs-anchor-count::after {
+  content: " \2713";
+}
+
+.hs-anchor-chips .hs-check {
+  width: auto;
+  min-height: 36px;
+  padding: 4px 12px 4px 6px;
+  gap: 6px;
+  border-radius: 999px;
+  font-size: 14px;
+}
+
+.hs-anchor-chips .hs-check-mark {
+  width: 24px;
+  height: 24px;
+  border-width: 2px;
+  font-size: 12px;
+}
+
+.hs-anchor-chips .hs-check-meta {
+  display: none;
 }
 
 /* ---------- Check chips (a person's day, the board's today row) ---------- */
@@ -183,20 +234,100 @@
 }
 
 /* ---------- Board ---------- */
+/* One column per person, side by side; more people than fit scroll sideways inside the panel. */
 
-.hs-board-person {
-  gap: 14px;
+/* The page fills the panel so the columns get a fixed height and each scrolls on its own. */
+.glass-page--anchors {
+  height: 100%;
+  min-height: 0;
 }
 
-.hs-board-person > .glass-card-header a {
+.glass-page--anchors .hs-day-label {
+  min-width: 150px;
+  font-size: 16px;
+}
+
+.hs-board-cols {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(210px, 1fr);
+  gap: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hs-board-col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.hs-board-col-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hs-board-col-who {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 18px;
+}
+
+.hs-board-col-who a {
+  min-width: 0;
   color: inherit;
   text-decoration: none;
 }
 
 .hs-board-streak {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  opacity: 0.8;
+  opacity: 0.75;
+}
+
+.hs-board-me {
+  align-self: flex-start;
+}
+
+.hs-board-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hs-board-checks .hs-check {
+  min-height: 46px;
+  padding: 6px 12px;
+  gap: 10px;
+  font-size: 16px;
+}
+
+/* The two-week grid shows streaks here, so the chips stay one line tall. */
+.hs-board-checks .hs-check-meta {
+  display: none;
+}
+
+.hs-board-checks .hs-check-mark {
+  width: 28px;
+  height: 28px;
+}
+
+.hs-board-nothing {
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.6;
 }
 
 .hs-feed-note {
@@ -204,66 +335,85 @@
   opacity: 0.8;
 }
 
-/* ---------- Week grid ---------- */
+/* ---------- Ring ---------- */
 
-.hs-grid-scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+.hs-ring {
+  flex: none;
 }
 
-.hs-grid {
-  border-collapse: separate;
-  border-spacing: 4px;
+.hs-ring-track,
+.hs-ring-fill {
+  fill: none;
+}
+
+.hs-ring-track {
+  stroke: rgba(255, 255, 255, 0.15);
+}
+
+.hs-ring-fill {
+  stroke: var(--hs-person, #fff);
+  stroke-linecap: round;
+}
+
+.hs-ring-text {
+  fill: var(--glass-text);
   font-family: var(--glass-font);
-  color: var(--glass-text);
+  font-weight: 800;
 }
 
-.hs-grid th {
-  font-size: 11px;
-  font-weight: 700;
-  opacity: 0.75;
-  text-align: center;
-  white-space: nowrap;
+/* ---------- Two-week grid ---------- */
+
+.hs-history {
+  margin-top: auto;
+  padding-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.hs-grid th.hs-grid-name {
-  min-width: 120px;
-  max-width: 200px;
-  padding-right: 8px;
-  text-align: left;
-  font-size: 14px;
-  opacity: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  background: rgba(30, 30, 36, 0.85);
-}
-
-.hs-grid-streak {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
+.hs-history-label {
+  margin-bottom: 2px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
   opacity: 0.7;
 }
 
-.hs-cell {
-  display: block;
-  width: 22px;
-  height: 22px;
-  box-sizing: border-box;
-  border-radius: 6px;
-  margin: 0 auto;
+.hs-history-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
-.hs-cell.is-kept { background: var(--hs-person, #fff); }
-.hs-cell.is-missed { border: 2px solid rgba(255, 255, 255, 0.45); }
-.hs-cell.is-open { border: 2px dashed rgba(255, 255, 255, 0.7); }
-.hs-cell.is-off { background: rgba(255, 255, 255, 0.06); }
-.hs-cell.is-none { background: transparent; }
-.hs-cell.is-unknown { background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.15) 0 3px, transparent 3px 6px); }
-.hs-cell.is-pending { outline: 2px dashed var(--hs-person, #fff); outline-offset: -2px; }
+.hs-history-name {
+  flex: 1 1 0;
+  min-width: 0;
+  margin-right: 4px;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: 0.7;
+}
+
+.hs-hcell {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
+  border-radius: 2px;
+}
+
+.hs-hcell.is-kept { background: var(--hs-person, #fff); }
+.hs-hcell.is-missed { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.4); }
+.hs-hcell.is-open { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.75); }
+.hs-hcell.is-off,
+.hs-hcell.is-none { background: rgba(255, 255, 255, 0.07); }
+.hs-hcell.is-unknown { background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.2) 0 2px, transparent 2px 4px); }
+.hs-hcell.is-pending { box-shadow: inset 0 0 0 1.5px var(--hs-person, #fff); }
+.hs-hcell.is-shown { outline: 1px solid rgba(255, 255, 255, 0.7); outline-offset: 1px; }
 
 /* ---------- A person's day ---------- */
 
@@ -368,6 +518,20 @@
 }
 
 @media (max-width: 700px) {
+  .glass-page--anchors {
+    height: auto;
+  }
+
+  .hs-board-col {
+    overflow-y: visible;
+  }
+
+  .hs-board-cols {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    overflow-x: visible;
+  }
+
   .hs-person--lg .hs-person-name {
     font-size: 22px;
   }

@@ -1,0 +1,34 @@
+@using System.Globalization
+@* A done/total ring in the person's colour (var(--hs-person) from the nearest data-color). *@
+<svg class="hs-ring" width="@Size" height="@Size" viewBox="0 0 @Size @Size" role="img" aria-label="@($"{Done} of {Total} done")">
+    <circle class="hs-ring-track" cx="@half" cy="@half" r="@radius" stroke-width="@Stroke"></circle>
+    @if (Done > 0 && Total > 0)
+    {
+        <circle class="hs-ring-fill" cx="@half" cy="@half" r="@radius" stroke-width="@Stroke"
+                stroke-dasharray="@($"{num(circumference * Math.Min(1, (double)Done / Total))} {num(circumference)}")"
+                transform="@($"rotate(-90 {half} {half})")"></circle>
+    }
+    <text class="hs-ring-text" x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="@num(Size * 0.27)">@Done/@Total</text>
+</svg>
+
+@code {
+    [Parameter, EditorRequired]
+    public int Done { get; set; }
+
+    [Parameter, EditorRequired]
+    public int Total { get; set; }
+
+    [Parameter]
+    public int Size { get; set; } = 54;
+
+    [Parameter]
+    public int Stroke { get; set; } = 6;
+
+    private double half => Size / 2.0;
+
+    private double radius => (Size - Stroke) / 2.0;
+
+    private double circumference => 2 * Math.PI * radius;
+
+    private static string num(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+}

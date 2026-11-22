@@ -1,0 +1,32 @@
+@using System.Globalization
+@* A person's last few days: one row per anchor, oldest on the left, the shown day outlined on the right. *@
+@if (rows.Count > 0)
+{
+    <div class="hs-history" data-color="@Person.Color">
+        <div class="hs-history-label">Last @(Days == 14 ? "2 weeks" : $"{Days} days")</div>
+        @foreach (var anchor in rows)
+        {
+            <div class="hs-history-row">
+                <span class="hs-history-name" title="@anchor.Title">@anchor.Title</span>
+                @foreach (var cell in AnchorView.History(anchor, To, Days))
+                {
+                    <span class="hs-hcell @AnchorView.DotClass(cell) @(cell.Date == To ? "is-shown" : "")"
+                          title="@($"{anchor.Title}, {cell.Date.ToString("ddd MMM d", CultureInfo.InvariantCulture)}: {cell.State}")"></span>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public AnchorPersonDto Person { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public DateOnly To { get; set; }
+
+    [Parameter]
+    public int Days { get; set; } = 14;
+
+    private IReadOnlyList<AnchorDto> rows => AnchorView.HistoryRows(Person);
+}

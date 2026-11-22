@@ -1,0 +1,68 @@
+@inject DashboardState Dashboard
+@implements IDisposable
+@* The Home page's anchors: one line per person with a chip per anchor today; a tap ticks it. *@
+
+<section class="glass hs-info-card hs-anchors-today" aria-label="Anchors today">
+    <div class="hs-card-head">
+        <span class="hs-card-label"><span class="hs-card-label-text">Anchors · today</span></span>
+        <a class="hs-card-label hs-anchors-open" href="anchors"><span class="hs-card-label-text">Open board ›</span></a>
+    </div>
+    @if (error is not null)
+    {
+        <div class="hs-error" role="alert">@error</div>
+    }
+    <ul class="hs-anchor-lines">
+        @foreach (var person in Dashboard.Anchors)
+        {
+            var checkable = AnchorView.CheckableOn(person.Anchors, Dashboard.AnchorsToday);
+            var progress = AnchorView.Progress(person, Dashboard.AnchorsToday);
+            <li class="hs-anchor-line @(progress.Total > 0 && progress.Done >= progress.Total ? "is-done" : "")" data-color="@person.Color">
+                <a class="hs-anchor-who" href="@($"anchors/{person.Id}")"><PersonBadge Person="person" /></a>
+                <div class="hs-anchor-chips">
+                    @if (checkable.Count == 0)
+                    {
+                        <span class="hs-anchor-none">Nothing today</span>
+                    }
+                    @foreach (var anchor in checkable)
+                    {
+                        var cell = AnchorView.CellOn(anchor, Dashboard.AnchorsToday);
+                        <AnchorCheck Anchor="anchor" Cell="cell" Busy="busy.Contains(anchor.Id)" OnToggle="() => ToggleAsync(anchor, cell)" />
+                    }
+                </div>
+                @if (progress.Total > 0)
+                {
+                    <span class="hs-anchor-count">@progress.Done/@progress.Total</span>
+                }
+            </li>
+        }
+    </ul>
+</section>
+
+@code {
+    private readonly HashSet<string> busy = new(StringComparer.Ordinal);
+    private string? error;
+
+    protected override void OnInitialized() => Dashboard.Changed += onChanged;
+
+    private async Task ToggleAsync(AnchorDto anchor, AnchorCellDto? cell)
+    {
+        if (!busy.Add(anchor.Id))
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await Dashboard.SetAnchorDoneAsync(anchor, cell?.State != "kept");
+            error = result == AnchorResult.Ok ? null : $"Couldn't update \"{anchor.Title}\".";
+        }
+        finally
+        {
+            busy.Remove(anchor.Id);
+        }
+    }
+
+    private void onChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Dashboard.Changed -= onChanged;
+}

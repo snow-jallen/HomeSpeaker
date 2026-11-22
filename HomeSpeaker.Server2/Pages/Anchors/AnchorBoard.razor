@@ -1,4 +1,5 @@
 @page "/anchors"
+@using System.Globalization
 @implements IDisposable
 @inject IAnchorStore Store
 @inject AnchorChangeNotifier Changes
@@ -19,6 +20,15 @@ else
         <div class="glass-page-header">
             <h1 class="glass-title">Anchors</h1>
             <div class="glass-page-actions">
+                <div class="hs-day-nav" role="group" aria-label="Day">
+                    <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="() => MoveAsync(-1)" aria-label="Previous day" title="Previous day">
+                        <i class="fas fa-chevron-left" aria-hidden="true"></i>
+                    </button>
+                    <span class="hs-day-label">@dayLabel</span>
+                    <button type="button" class="hs-icon-btn hs-icon-btn--filled" @onclick="() => MoveAsync(1)" disabled="@(day >= today)" aria-label="Next day" title="Next day">
+                        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                    </button>
+                </div>
                 @if (me is not null)
                 {
                     <a class="glass-btn" href="@($"anchors/{me.Id}")">
@@ -31,16 +41,6 @@ else
                     <span class="glass-btn-label">People</span>
                 </a>
             </div>
-        </div>
-
-        <div class="glass-chip-row" role="group" aria-label="History">
-            @foreach (var days in rangeChoices)
-            {
-                <button type="button" class="glass-chip @(days == rangeDays ? "is-on" : "")" aria-pressed="@(days == rangeDays ? "true" : "false")"
-                        @onclick="() => SetRangeAsync(days)">
-                    Last @days days
-                </button>
-            }
         </div>
 
         @if (board?.Feed is { Status: not "ok" } feed)
@@ -81,67 +81,65 @@ else
         }
         else
         {
-            @foreach (var person in board.People)
-            {
-                <section class="glass-card hs-board-person" data-color="@person.Color" aria-label="@person.Name">
-                    <header class="glass-card-header">
-                        <div class="glass-card-heading">
-                            <a href="@($"anchors/{person.Id}")"><PersonBadge Person="person" /></a>
-                            <div class="hs-board-streak">@streakText(person)</div>
-                        </div>
-                        <div class="glass-badges">
-                            <span class="glass-badge @(person.TodayTotal > 0 && person.TodayDone >= person.TodayTotal ? "glass-badge--on" : "")">
-                                @person.TodayDone/@person.TodayTotal today
-                            </span>
-                            @if (!isKiosk && person.Source == "local")
-                            {
-                                <button type="button" class="glass-chip @(me?.Id == person.Id ? "is-on" : "")" @onclick="() => ToggleMeAsync(person)"
-                                        aria-pressed="@(me?.Id == person.Id ? "true" : "false")"
-                                        title="Remember on this device that this is you">
-                                    This is me
-                                </button>
-                            }
-                        </div>
-                    </header>
+            <div class="hs-board-cols">
+                @foreach (var person in board.People)
+                {
+                    var progress = AnchorView.Progress(person, day);
+                    var checkable = AnchorView.CheckableOn(person.Anchors, day);
+                    <section class="hs-board-col" data-color="@person.Color" aria-label="@person.Name">
+                        <header class="hs-board-col-head">
+                            <AnchorRing Done="progress.Done" Total="progress.Total" />
+                            <div class="hs-board-col-who">
+                                <a href="@($"anchors/{person.Id}")"><PersonBadge Person="person" /></a>
+                                <div class="hs-board-streak">@streakText(person)</div>
+                            </div>
+                        </header>
+                        @if (!isKiosk && person.Source == "local")
+                        {
+                            <button type="button" class="glass-chip hs-board-me @(me?.Id == person.Id ? "is-on" : "")" @onclick="() => ToggleMeAsync(person)"
+                                    aria-pressed="@(me?.Id == person.Id ? "true" : "false")"
+                                    title="Remember on this device that this is you">
+                                This is me
+                            </button>
+                        }
 
-                    @{
-                        var todays = AnchorView.Ordered(person.Anchors).Where(a => AnchorView.CellOn(a, board.Today)?.State is "open" or "kept").ToList();
-                    }
-                    @if (todays.Count > 0)
-                    {
-                        <div class="hs-checks">
-                            @foreach (var anchor in todays)
-                            {
-                                <AnchorCheck Anchor="anchor" Cell="AnchorView.CellOn(anchor, board.Today)" Busy="busy.Contains(anchor.Id)"
-                                             OnToggle="() => ToggleAsync(anchor)" />
-                            }
-                        </div>
-                    }
-                    else if (!person.Anchors.Any(a => !a.Retired))
-                    {
-                        <a class="glass-btn glass-btn--ghost" href="@($"anchors/{person.Id}/edit")">
-                            <i class="fas fa-plus" aria-hidden="true"></i>Add @person.Name's anchors
-                        </a>
-                    }
+                        @if (checkable.Count > 0)
+                        {
+                            <div class="hs-board-checks">
+                                @foreach (var anchor in checkable)
+                                {
+                                    <AnchorCheck Anchor="anchor" Cell="AnchorView.CellOn(anchor, day)" Busy="busy.Contains(anchor.Id)"
+                                                 OnToggle="() => ToggleAsync(anchor)" />
+                                }
+                            </div>
+                        }
+                        else if (!person.Anchors.Any(a => !a.Retired))
+                        {
+                            <a class="glass-btn glass-btn--ghost" href="@($"anchors/{person.Id}/edit")">
+                                <i class="fas fa-plus" aria-hidden="true"></i>Add @person.Name's anchors
+                            </a>
+                        }
+                        else
+                        {
+                            <div class="hs-board-nothing">Nothing @(day == today ? "today" : "that day")</div>
+                        }
 
-                    @if (rangeDays > 1 && person.Anchors.Count > 0)
-                    {
-                        <AnchorWeekGrid Person="person" From="board.From" To="board.To" />
-                    }
-                </section>
-            }
+                        <AnchorHistoryGrid Person="person" To="day" Days="historyDays" />
+                    </section>
+                }
+            </div>
         }
     </div>
 }
 
 @code {
-    private static readonly int[] rangeChoices = [7, 14, 30];
+    private const int historyDays = 14;
 
     private AnchorBoardDto? board;
     private AnchorPersonDto? me;
     private string? meId;
     private bool isKiosk = true;
-    private int rangeDays = 7;
+    private DateOnly? shownDay;
     private string? error;
     private readonly HashSet<string> busy = new(StringComparer.Ordinal);
 
@@ -180,8 +178,9 @@ else
     {
         try
         {
-            // The range ends on the anchor home's today (the store's default), so a page left open past midnight moves on.
-            board = await Store.GetBoardAsync(AnchorClock.Today(Time).AddDays(-(rangeDays - 1)));
+            // With no day picked the store ends the range on the anchor home's today, which can differ from this speaker's.
+            var end = shownDay ?? board?.Today ?? AnchorClock.Today(Time);
+            board = await Store.GetBoardAsync(end.AddDays(-(historyDays - 1)), shownDay);
             resolveMe();
         }
         catch (Exception ex) when (ex is AnchorSourceUnavailableException or HttpRequestException or TaskCanceledException or InvalidOperationException)
@@ -193,9 +192,29 @@ else
 
     private void resolveMe() => me = meId is null ? null : board?.People.FirstOrDefault(p => p.Id == meId);
 
-    private async Task SetRangeAsync(int days)
+    // The board's own today (the anchor home's), falling back to this speaker's before the first load.
+    private DateOnly today => board?.Today ?? AnchorClock.Today(Time);
+
+    private DateOnly day => shownDay ?? today;
+
+    private string dayLabel
     {
-        rangeDays = days;
+        get
+        {
+            var date = day.ToString("ddd MMM d", CultureInfo.InvariantCulture);
+            return day == today ? $"Today · {date}" : day == today.AddDays(-1) ? $"Yesterday · {date}" : date;
+        }
+    }
+
+    private async Task MoveAsync(int days)
+    {
+        var next = day.AddDays(days);
+        if (next > today)
+        {
+            return;
+        }
+
+        shownDay = next == today ? null : next;
         await LoadAsync();
     }
 
@@ -208,8 +227,8 @@ else
 
         try
         {
-            var kept = AnchorView.CellOn(anchor, board.Today)?.State == "kept";
-            var result = await Store.SetDoneAsync(anchor.Id, board.Today, new AnchorLogRequest(!kept, DateTimeOffset.UtcNow));
+            var kept = AnchorView.CellOn(anchor, day)?.State == "kept";
+            var result = await Store.SetDoneAsync(anchor.Id, day, new AnchorLogRequest(!kept, DateTimeOffset.UtcNow));
             error = result == AnchorResult.Ok ? null : $"Couldn't update \"{anchor.Title}\".";
             await LoadAsync();
         }

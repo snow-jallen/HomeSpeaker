@@ -394,3 +394,6 @@ HomeSpeaker.Server2/HomeSpeaker.Server2.csproj.lscache
 *.db-shm
 *.db-wal
 .claude/settings.local.json
+
+# Superpowers brainstorm/plan scratch
+.superpowers/

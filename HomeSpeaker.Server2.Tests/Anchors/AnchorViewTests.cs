@@ -13,19 +13,6 @@ public sealed class AnchorViewTests
     private static AnchorPersonDto person(params AnchorDto[] anchors) => new("1", "Sam", "teal", null, "local", 0, 0, 0, [.. anchors]);
 
     [Fact]
-    public void TodayCells_OnlyExpectedOrKept_InSlotOrder()
-    {
-        var sam = person(
-            anchor("evening", "evening", 0, "open"),
-            anchor("off", "day", 0, "off"),
-            anchor("morning", "morning", 1, "kept"),
-            anchor("none", "morning", 0, "none"),
-            anchor("day", "day", 1, "open"));
-
-        Assert.Equal(["kept", "open", "open"], AnchorView.TodayCells(sam, today).Select(c => c.State));
-    }
-
-    [Fact]
     public void DotClass_PendingWins() =>
         Assert.Equal("is-pending", AnchorView.DotClass(new AnchorCellDto(today, "kept", Pending: true)));
 
@@ -93,4 +80,64 @@ public sealed class AnchorViewTests
     [Fact]
     public void CheckMeta_StreakOfOneIsQuiet() =>
         Assert.Equal(string.Empty, AnchorView.CheckMeta(anchor("w", "day", 0, "kept") with { Streak = 1 }, null));
+
+    private static AnchorDto history(string id, params AnchorCellDto[] cells) =>
+        new(id, id, "day", 0, null, DayMask.Every, false, [], "local", true, true, 0, [.. cells]);
+
+    [Fact]
+    public void CheckableOn_IncludesMissedForPastDays_InSlotOrder()
+    {
+        var anchors = new[]
+        {
+            anchor("evening-open", "evening", 0, "open"),
+            anchor("day-off", "day", 0, "off"),
+            anchor("morning-missed", "morning", 0, "missed"),
+            anchor("morning-none", "morning", 1, "none"),
+            anchor("day-kept", "day", 1, "kept"),
+        };
+
+        Assert.Equal(["morning-missed", "day-kept", "evening-open"], AnchorView.CheckableOn(anchors, today).Select(a => a.Id));
+    }
+
+    [Fact]
+    public void CheckableOn_IncludesPendingEvenWhenOff() =>
+        Assert.Single(AnchorView.CheckableOn([anchor("p", "day", 0, "off", pending: true)], today));
+
+    [Fact]
+    public void CheckableOn_SkipsAnchorsWithoutACellThatDay() =>
+        Assert.Empty(AnchorView.CheckableOn([anchor("a", "day", 0, "open")], today.AddDays(-1)));
+
+    [Fact]
+    public void Progress_CountsExpectedAndKept()
+    {
+        var sam = person(
+            anchor("k", "day", 0, "kept"),
+            anchor("m", "day", 1, "missed"),
+            anchor("o", "day", 2, "open"),
+            anchor("f", "day", 3, "off"),
+            anchor("n", "day", 4, "none"));
+
+        Assert.Equal(new AnchorDayProgress(1, 3), AnchorView.Progress(sam, today));
+    }
+
+    [Fact]
+    public void History_FillsMissingDatesWithNone_OldestFirst()
+    {
+        var walk = history("w", new AnchorCellDto(today, "kept"), new AnchorCellDto(today.AddDays(-2), "missed"));
+
+        var cells = AnchorView.History(walk, today, 4);
+
+        Assert.Equal([today.AddDays(-3), today.AddDays(-2), today.AddDays(-1), today], cells.Select(c => c.Date));
+        Assert.Equal(["none", "missed", "none", "kept"], cells.Select(c => c.State));
+    }
+
+    [Fact]
+    public void HistoryRows_SkipsAnchorsWithOnlyNoneCells()
+    {
+        var sam = person(
+            history("old", new AnchorCellDto(today, "none"), new AnchorCellDto(today.AddDays(-1), "none")),
+            history("live", new AnchorCellDto(today, "none"), new AnchorCellDto(today.AddDays(-1), "kept")));
+
+        Assert.Equal(["live"], AnchorView.HistoryRows(sam).Select(a => a.Id));
+    }
 }

@@ -1,0 +1,77 @@
+@using System.Globalization
+@inject DashboardState Dashboard
+@inject TimeProvider Time
+@implements IDisposable
+@* The Home page's glucose card: the reading, its trend arrow and age, and the last three hours. *@
+
+@{
+    var card = GlucoseCard.From(Dashboard.BloodSugar, Time.GetUtcNow().UtcDateTime);
+}
+<a class="glass hs-info-card hs-glucose hs-tone-@toneClass @(Compact ? "is-compact" : "")" href="nightscout">
+    @if (card is not null)
+    {
+        <div class="hs-glucose-reading">
+            <span class="hs-card-label"><span class="hs-card-label-text">Glucose</span></span>
+            <span class="hs-glucose-now @(card.IsStale ? "is-stale" : "")">
+                <span class="hs-glucose-value">@card.Value</span>
+                @if (card.Arrow is not null)
+                {
+                    <span class="hs-glucose-arrow" aria-hidden="true">@card.Arrow</span>
+                }
+            </span>
+            <span class="hs-glucose-meta">
+                <span>mg/dL</span>
+                @if (card.DeltaText is not null)
+                {
+                    <span class="hs-glucose-delta" aria-label="Change since last reading">@card.DeltaText</span>
+                }
+            </span>
+            <span class="hs-glucose-age @(card.IsStale ? "is-stale" : "")">@card.AgeText</span>
+        </div>
+        @if (card.Chart is { } chart)
+        {
+            <div class="hs-trend" role="img" aria-label="Glucose over the last 3 hours">
+                <div class="hs-trend-plot">
+                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                        <rect class="hs-trend-band" x="0" y="@pct(chart.BandTopPercent)" width="100" height="@pct(chart.BandHeightPercent)"></rect>
+                        @foreach (var path in chart.Paths)
+                        {
+                            <path class="hs-trend-line" d="@path"></path>
+                        }
+                    </svg>
+                    <span class="hs-trend-dot" style="left:@(pct(chart.Latest.X))%;top:@(pct(chart.Latest.Y))%"></span>
+                    <span class="hs-trend-tick" style="top:@(pct(chart.BandTopPercent))%">180</span>
+                    <span class="hs-trend-tick" style="top:@(pct(chart.BandTopPercent + chart.BandHeightPercent))%">70</span>
+                </div>
+                <div class="hs-trend-axis"><span>3h ago</span><span>now</span></div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="hs-glucose-reading">
+            <span class="hs-card-label"><span class="hs-card-label-text">Glucose</span></span>
+            <span class="hs-glucose-meta">No reading yet</span>
+        </div>
+    }
+</a>
+
+@code {
+    [Parameter]
+    public bool Compact { get; set; }
+
+    private string toneClass => Dashboard.GlucoseTone switch
+    {
+        GlucoseTone.Caution => "caution",
+        GlucoseTone.Urgent => "urgent",
+        _ => "normal",
+    };
+
+    private static string pct(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    protected override void OnInitialized() => Dashboard.Changed += onChanged;
+
+    private void onChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Dashboard.Changed -= onChanged;
+}

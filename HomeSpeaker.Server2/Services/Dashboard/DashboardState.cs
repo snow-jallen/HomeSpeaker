@@ -34,6 +34,7 @@ public sealed class DashboardState : IDisposable
     private bool started;
     private volatile bool disposed;
     private volatile StationImage? stationImage;
+    private volatile AnchorBoardDto? anchorBoard;
 
     private sealed record StationImage(string? Key, string? Url);
 
@@ -88,7 +89,10 @@ public sealed class DashboardState : IDisposable
     public ForecastStatus? Forecast { get; private set; }
 
     /// <summary>Everyone's anchors for today (one cell each), in board order; empty when there are no people.</summary>
-    public IReadOnlyList<AnchorPersonDto> Anchors { get; private set; } = [];
+    public IReadOnlyList<AnchorPersonDto> Anchors => anchorBoard?.People ?? [];
+
+    /// <summary>The anchor home's today, as the last board said; the day a tap on the Home page ticks.</summary>
+    public DateOnly AnchorsToday => anchorBoard?.Today ?? default;
     public bool BloodSugarEnabled { get; }
     public bool TemperatureEnabled { get; }
     public bool ForecastEnabled { get; }
@@ -245,8 +249,33 @@ public sealed class DashboardState : IDisposable
         }, "anchors");
         if (board is not null)
         {
-            Anchors = board.People;
+            // One write, so a render never sees one board's people with another board's day.
+            anchorBoard = board;
         }
+    }
+
+    /// <summary>Marks one of today's anchors done or not done, then refreshes the anchors so every card shows the change.</summary>
+    public async Task<AnchorResult> SetAnchorDoneAsync(AnchorDto anchor, bool done)
+    {
+        AnchorResult result;
+        try
+        {
+            // Its own scope, like refreshAnchorsAsync, so it never shares the page's DbContext.
+            await using var scope = scopeFactory.CreateAsyncScope();
+            result = await scope.ServiceProvider.GetRequiredService<IAnchorStore>()
+                .SetDoneAsync(anchor.Id, AnchorsToday, new AnchorLogRequest(done, DateTimeOffset.UtcNow));
+        }
+        catch (Exception ex) when (ex is AnchorSourceUnavailableException or HttpRequestException or TaskCanceledException
+            or Microsoft.EntityFrameworkCore.DbUpdateException or System.Data.Common.DbException or InvalidOperationException)
+        {
+            // A failed tap must not escape into the event handler: that would end the kiosk's circuit.
+            logger.LogWarning(ex, "Couldn't update anchor {AnchorId} from the Home page", anchor.Id);
+            return AnchorResult.Unavailable;
+        }
+
+        await refreshAnchorsAsync();
+        raiseChanged("anchor toggled");
+        return result;
     }
 
     private void onAnchorsChanged() => _ = refreshAnchorsAfterChangeAsync();

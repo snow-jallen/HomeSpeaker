@@ -11,7 +11,7 @@
 
 <PageTitle>Home Speaker</PageTitle>
 
-<div class="hs-home @(HomeControl.IsAvailable ? "" : "hs-home--no-home-row")">
+<div class="hs-home @(HomeControl.IsAvailable ? "" : "hs-home--no-home-row") @(anchorsVisible ? "hs-home--anchors" : "")">
     <div class="hs-home-left">
     <section class="glass hs-np-card hs-np-card--compact" aria-label="Now playing">
         @if (NowPlayingInfo.From(Dashboard.Status) is { } np)
@@ -86,33 +86,22 @@
         </label>
     </section>
 
-    @{
-        var hourlyColumns = hourly;
-    }
-    @if (hourlyColumns.Count > 0)
+    @if (anchorsVisible && (Dashboard.TemperatureEnabled || glucoseCardVisible))
     {
-        <a class="glass hs-info-card hs-hours" href="climate">
-            <span class="hs-card-label"><span class="hs-card-label-text">Next hours</span></span>
-            <div class="hs-hours-cols">
-                @foreach (var hour in hourlyColumns)
-                {
-                    <div class="hs-hour">
-                        <span class="hs-hour-label">@hour.Label</span>
-                        <WeatherIconSvg Icon="hour.Icon" IsDay="hour.IsDay" Size="36" Label="@hour.Conditions" />
-                        <span class="hs-hour-temp">@(TemperatureDisplay.Format(hour.Temperature, Dashboard.TemperatureUnit))</span>
-                        <span class="hs-hour-rain" title="@(hour.RainPercent)% chance of rain">
-                            <span class="hs-hour-rain-bar">
-                                @if (hour.RainBarPx > 0)
-                                {
-                                    <span style="height:@(hour.RainBarPx)px"></span>
-                                }
-                            </span>
-                            <span class="hs-hour-rain-pct">@(hour.ShowRainLabel ? hour.RainPercent + "%" : "")</span>
-                        </span>
-                    </div>
-                }
-            </div>
-        </a>
+        <div class="hs-home-minis">
+            @if (Dashboard.TemperatureEnabled)
+            {
+                <HomeClimateCard Compact="true" />
+            }
+            @if (glucoseCardVisible)
+            {
+                <HomeGlucoseCard Compact="true" />
+            }
+        </div>
+    }
+    else
+    {
+        <HomeHoursCard />
     }
     </div>
 
@@ -132,165 +121,23 @@
             </a>
         </nav>
 
-        @if (glucoseCardVisible)
+        @if (anchorsVisible)
         {
-            var card = glucoseCard;
-            <a class="glass hs-info-card hs-glucose hs-tone-@toneClass" href="nightscout">
-                @if (card is not null)
-                {
-                    <div class="hs-glucose-reading">
-                        <span class="hs-card-label"><span class="hs-card-label-text">Glucose</span></span>
-                        <span class="hs-glucose-now @(card.IsStale ? "is-stale" : "")">
-                            <span class="hs-glucose-value">@card.Value</span>
-                            @if (card.Arrow is not null)
-                            {
-                                <span class="hs-glucose-arrow" aria-hidden="true">@card.Arrow</span>
-                            }
-                        </span>
-                        <span class="hs-glucose-meta">
-                            <span>mg/dL</span>
-                            @if (card.DeltaText is not null)
-                            {
-                                <span class="hs-glucose-delta" aria-label="Change since last reading">@card.DeltaText</span>
-                            }
-                        </span>
-                        <span class="hs-glucose-age @(card.IsStale ? "is-stale" : "")">@card.AgeText</span>
-                    </div>
-                    @if (card.Chart is { } chart)
-                    {
-                        <div class="hs-trend" role="img" aria-label="Glucose over the last 3 hours">
-                            <div class="hs-trend-plot">
-                                <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-                                    <rect class="hs-trend-band" x="0" y="@pct(chart.BandTopPercent)" width="100" height="@pct(chart.BandHeightPercent)"></rect>
-                                    @foreach (var path in chart.Paths)
-                                    {
-                                        <path class="hs-trend-line" d="@path"></path>
-                                    }
-                                </svg>
-                                <span class="hs-trend-dot" style="left:@(pct(chart.Latest.X))%;top:@(pct(chart.Latest.Y))%"></span>
-                                <span class="hs-trend-tick" style="top:@(pct(chart.BandTopPercent))%">180</span>
-                                <span class="hs-trend-tick" style="top:@(pct(chart.BandTopPercent + chart.BandHeightPercent))%">70</span>
-                            </div>
-                            <div class="hs-trend-axis"><span>3h ago</span><span>now</span></div>
-                        </div>
-                    }
-                }
-                else
-                {
-                    <div class="hs-glucose-reading">
-                        <span class="hs-card-label"><span class="hs-card-label-text">Glucose</span></span>
-                        <span class="hs-glucose-meta">No reading yet</span>
-                    </div>
-                }
-            </a>
+            <HomeAnchorsCard />
         }
-
-        @if (Dashboard.TemperatureEnabled || anchorsVisible)
+        else
         {
-            <div class="hs-home-lower">
-                @if (Dashboard.TemperatureEnabled)
-                {
-                    var advice = WindowAdvice.From(Dashboard.Temperature, Dashboard.TemperatureUnit);
-                    var outside = ClimateRoom.Outside(Dashboard.Temperature, Time.GetUtcNow().UtcDateTime);
-                    var outsideLow = outside?.LowBattery == true;
-                    <a class="glass hs-info-card hs-climate" href="climate">
-                        <div class="hs-card-head">
-                            <span class="hs-card-label">
-                                <span class="hs-card-label-text">Climate</span>
-                                @if (ClimateRoom.AnySensorLow(Dashboard.Temperature))
-                                {
-                                    <LowBatteryIcon Label="A temperature sensor battery is low" />
-                                }
-                            </span>
-                            @if (advice is not null)
-                            {
-                                <span class="hs-climate-advice @(advice.Close ? "is-close" : "is-open")">@advice.Text</span>
-                            }
-                        </div>
-                        <div class="hs-climate-top">
-                            <div class="hs-climate-outside">
-                                <span class="hs-climate-big">@(TemperatureDisplay.Format(outside?.Temperature, Dashboard.TemperatureUnit))</span>
-                                @if (outsideLow)
-                                {
-                                    <LowBatteryIcon Label="Outside sensor battery is low" />
-                                }
-                                <span class="hs-climate-detail">
-                                    <span>Outside@(conditions is null ? "" : " · " + conditions)</span>
-                                    @if (outside?.Note is { } outsideNote)
-                                    {
-                                        <span class="hs-room-age">@outsideNote</span>
-                                    }
-                                    @if (highLow is not null)
-                                    {
-                                        <span>@highLow</span>
-                                    }
-                                </span>
-                            </div>
-                            @if (outlook.Count > 0)
-                            {
-                                <div class="hs-climate-outlook">
-                                    @foreach (var line in outlook)
-                                    {
-                                        <span>@line</span>
-                                    }
-                                </div>
-                            }
-                        </div>
-                        @if (indoorRooms.Count > 0)
-                        {
-                            <div class="hs-rooms">
-                                @foreach (var room in indoorRooms)
-                                {
-                                    <span class="hs-room @(room.Note is null ? "" : room.Temperature is null ? "is-silent" : "is-aging")">
-                                        <span class="hs-room-name">@room.Label</span>
-                                        <span class="hs-room-temp">
-                                            @if (room.Temperature is not null)
-                                            {
-                                                @TemperatureDisplay.Format(room.Temperature, Dashboard.TemperatureUnit)
-                                            }
-                                            else
-                                            {
-                                                <span class="hs-room-age">@room.Note</span>
-                                            }
-                                            @if (room.LowBattery)
-                                            {
-                                                <LowBatteryIcon Label="@(room.Label + " sensor battery is low")" />
-                                            }
-                                        </span>
-                                        @if (room.Temperature is not null && room.Note is not null)
-                                        {
-                                            <span class="hs-room-age">@room.Note</span>
-                                        }
-                                    </span>
-                                }
-                            </div>
-                        }
-                    </a>
-                }
-                @if (anchorsVisible)
-                {
-                    <div class="glass hs-info-card hs-anchors">
-                        <a class="hs-card-label" href="anchors"><span class="hs-card-label-text">Anchors</span></a>
-                        <ul class="hs-anchors-list">
-                            @foreach (var person in anchors)
-                            {
-                                <li class="hs-anchor-person @(person.TodayTotal > 0 && person.TodayDone >= person.TodayTotal ? "is-done" : "")" data-color="@person.Color">
-                                    <a class="hs-anchor-row" href="@($"anchors/{person.Id}")">
-                                        <PersonBadge Person="person" />
-                                        <span class="hs-anchor-dots" aria-hidden="true">
-                                            @foreach (var cell in AnchorView.TodayCells(person, AnchorClock.Today(Time)))
-                                            {
-                                                <span class="hs-anchor-dot @AnchorView.DotClass(cell)"></span>
-                                            }
-                                        </span>
-                                        <span class="hs-anchor-count">@person.TodayDone/@person.TodayTotal</span>
-                                    </a>
-                                </li>
-                            }
-                        </ul>
-                    </div>
-                }
-            </div>
+            if (glucoseCardVisible)
+            {
+                <HomeGlucoseCard />
+            }
+
+            if (Dashboard.TemperatureEnabled)
+            {
+                <div class="hs-home-lower">
+                    <HomeClimateCard />
+                </div>
+            }
         }
 
         <HomeTileRow />
@@ -303,57 +150,9 @@
 
     private bool isPlaying => Dashboard.Status?.StillPlaying == true;
 
-    private string toneClass => Dashboard.GlucoseTone switch
-    {
-        GlucoseTone.Caution => "caution",
-        GlucoseTone.Urgent => "urgent",
-        _ => "normal",
-    };
-
     private bool glucoseCardVisible => Dashboard.BloodSugarEnabled;
 
-    private GlucoseCard? glucoseCard => GlucoseCard.From(Dashboard.BloodSugar, Time.GetUtcNow().UtcDateTime);
-
-    private IReadOnlyList<AnchorPersonDto> anchors => Dashboard.Anchors;
-
-    private bool anchorsVisible => Dashboard.AnchorsEnabled && anchors.Count > 0;
-
-    // Chosen at render time from the cached hourly forecast, so the strip moves on with the clock.
-    private IReadOnlyList<HourlyColumn> hourly => !Dashboard.ForecastEnabled ? [] : HourlyColumn.Select(Dashboard.Forecast, Time.GetUtcNow().UtcDateTime);
-
-    private IReadOnlyList<ClimateRoom> indoorRooms => ClimateRoom.From(Dashboard.Temperature, Time.GetUtcNow().UtcDateTime);
-
-    private string? highLow =>
-        Dashboard.ForecastEnabled && Dashboard.Forecast is { Error: null, TodayHigh.Temperature: { } high, TonightLow.Temperature: { } low }
-            ? $"H {TemperatureDisplay.Format(high, Dashboard.TemperatureUnit)} · L {TemperatureDisplay.Format(low, Dashboard.TemperatureUnit)}"
-            : null;
-
-    private string? conditions => Dashboard.ForecastEnabled && Dashboard.Forecast is { Error: null } ? Dashboard.Forecast.TodayHigh?.Conditions : null;
-
-    // Rain chance today and tomorrow's high, each only when the forecast has it.
-    private IReadOnlyList<string> outlook
-    {
-        get
-        {
-            var lines = new List<string>();
-            if (Dashboard.ForecastEnabled && Dashboard.Forecast is { Error: null } forecast)
-            {
-                if (forecast.TodayHigh?.PrecipitationChance is { } rain)
-                {
-                    lines.Add(string.Create(CultureInfo.InvariantCulture, $"Rain {rain:0}%"));
-                }
-
-                if (forecast.TomorrowHigh is { Temperature: { } tomorrow } next)
-                {
-                    lines.Add($"Tomorrow {TemperatureDisplay.Format(tomorrow, Dashboard.TemperatureUnit)}" + (string.IsNullOrEmpty(next.Conditions) ? "" : " · " + next.Conditions));
-                }
-            }
-
-            return lines;
-        }
-    }
-
-    private static string pct(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+    private bool anchorsVisible => Dashboard.AnchorsEnabled && Dashboard.Anchors.Count > 0;
 
     protected override void OnInitialized()
     {

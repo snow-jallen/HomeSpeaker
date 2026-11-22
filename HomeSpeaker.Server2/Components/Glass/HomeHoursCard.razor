@@ -1,0 +1,41 @@
+@inject DashboardState Dashboard
+@inject TimeProvider Time
+@implements IDisposable
+@* The Home page's next-hours strip, chosen at render time from the cached hourly forecast so it moves on with the clock. *@
+
+@{
+    var columns = Dashboard.ForecastEnabled ? HourlyColumn.Select(Dashboard.Forecast, Time.GetUtcNow().UtcDateTime) : [];
+}
+@if (columns.Count > 0)
+{
+    <a class="glass hs-info-card hs-hours" href="climate">
+        <span class="hs-card-label"><span class="hs-card-label-text">Next hours</span></span>
+        <div class="hs-hours-cols">
+            @foreach (var hour in columns)
+            {
+                <div class="hs-hour">
+                    <span class="hs-hour-label">@hour.Label</span>
+                    <WeatherIconSvg Icon="hour.Icon" IsDay="hour.IsDay" Size="36" Label="@hour.Conditions" />
+                    <span class="hs-hour-temp">@(TemperatureDisplay.Format(hour.Temperature, Dashboard.TemperatureUnit))</span>
+                    <span class="hs-hour-rain" title="@(hour.RainPercent)% chance of rain">
+                        <span class="hs-hour-rain-bar">
+                            @if (hour.RainBarPx > 0)
+                            {
+                                <span style="height:@(hour.RainBarPx)px"></span>
+                            }
+                        </span>
+                        <span class="hs-hour-rain-pct">@(hour.ShowRainLabel ? hour.RainPercent + "%" : "")</span>
+                    </span>
+                </div>
+            }
+        </div>
+    </a>
+}
+
+@code {
+    protected override void OnInitialized() => Dashboard.Changed += onChanged;
+
+    private void onChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Dashboard.Changed -= onChanged;
+}
