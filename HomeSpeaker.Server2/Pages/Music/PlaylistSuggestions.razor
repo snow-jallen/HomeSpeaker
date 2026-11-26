@@ -79,16 +79,16 @@
                         @if (confirmApproveRest)
                         {
                             <button type="button" class="glass-btn" @onclick="ApproveRestAsync" disabled="@busy">
-                                Approve all @current.Pending?
+                                Add all @current.Pending to “@current.Name”?
                             </button>
                             <button type="button" class="glass-btn glass-btn--ghost" @onclick="() => confirmApproveRest = false">Cancel</button>
                         }
                         else
                         {
                             <button type="button" class="glass-btn glass-btn--ghost" @onclick="() => confirmApproveRest = true"
-                                    title="Approve every song still waiting in this playlist">
+                                    title="Approve every song still waiting and add it to the playlist">
                                 <i class="fas fa-check-double" aria-hidden="true"></i>
-                                <span class="glass-btn-label">Approve the rest</span>
+                                <span>Add all @current.Pending</span>
                             </button>
                         }
                     }

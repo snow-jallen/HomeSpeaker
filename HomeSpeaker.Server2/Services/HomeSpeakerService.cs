@@ -355,6 +355,9 @@ public class HomeSpeakerService
         await playlistService.RemoveSongFromPlaylistAsync(playlistName, songPath);
     }
 
+    /// <summary>Takes the playing song out of the playlist being played and skips it; see <see cref="PlaylistService.RemovePlayingSongAsync"/>.</summary>
+    public Task<bool> RemovePlayingSongFromPlaylistAsync() => playlistService.RemovePlayingSongAsync();
+
     public async Task PlayPlaylistAsync(string playlistName)
     {
         await playlistService.PlayPlaylistAsync(playlistName);

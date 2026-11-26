@@ -1,4 +1,5 @@
 using HomeSpeaker.Server2.Data;
+using HomeSpeaker.Server2.Services.PlayingPlaylist;
 using Microsoft.EntityFrameworkCore;
 
 namespace HomeSpeaker.Server2.Services;
@@ -9,13 +10,39 @@ public class PlaylistService
     private readonly Mp3Library mp3Library;
     private readonly ILogger<PlaylistService> logger;
     private readonly IMusicPlayer player;
+    private readonly PlayingPlaylistTracker playingPlaylist;
 
-    public PlaylistService(MusicContext dbContext, Mp3Library mp3Library, ILogger<PlaylistService> logger, IMusicPlayer player)
+    public PlaylistService(MusicContext dbContext, Mp3Library mp3Library, ILogger<PlaylistService> logger, IMusicPlayer player, PlayingPlaylistTracker playingPlaylist)
     {
         this.dbContext = dbContext;
         this.mp3Library = mp3Library;
         this.logger = logger;
         this.player = player;
+        this.playingPlaylist = playingPlaylist;
+    }
+
+    /// <summary>The playlist the playing song came from, when a playlist is being played; else null.</summary>
+    public string? PlayingPlaylistName => playingPlaylist.PlaylistFor(player.Status.CurrentSong);
+
+    /// <summary>
+    /// Takes the playing song out of the playlist it's being played from and skips to the next song. An approved
+    /// suggestion for it becomes rejected, so the suggestions page doesn't offer it again. False when no playlist is playing.
+    /// </summary>
+    public async Task<bool> RemovePlayingSongAsync()
+    {
+        var song = player.Status.CurrentSong;
+        if (playingPlaylist.PlaylistFor(song) is not { } playlistName || song?.Path is not { } path)
+        {
+            return false;
+        }
+
+        await RemoveSongFromPlaylistAsync(playlistName, path);
+        await dbContext.PlaylistSuggestions
+            .Where(s => s.PlaylistName == playlistName && s.SongPath == path && s.Status == SuggestionStatus.Approved)
+            .ExecuteUpdateAsync(u => u.SetProperty(s => s.Status, SuggestionStatus.Rejected));
+        playingPlaylist.Removed(path);
+        player.SkipToNext();
+        return true;
     }
     private Shared.Song? findSong(PlaylistItem item) => mp3Library.Songs.Where(s => s.Path == item.SongPath).FirstOrDefault();
 
@@ -132,6 +159,8 @@ public class PlaylistService
         {
             player.EnqueueSong(song);
         }
+
+        playingPlaylist.Started(playlistName, songs.Select(s => s.Path!));
     }
 
     public async Task RenamePlaylistAsync(string oldName, string newName)

@@ -1,0 +1,58 @@
+@using HomeSpeaker.Server2.Services.PlayingPlaylist
+@inject PlayingPlaylistTracker PlayingPlaylist
+@inject HomeSpeakerService Svc
+@inject ILogger<PlayingPlaylistRemove> Logger
+@* "From <playlist>" with a Remove chip, only while the playing song came from a playlist being played. Remove asks once more, then takes the song out and skips it. *@
+
+@if (PlayingPlaylist.PlaylistFor(CurrentSong) is { } playlistName && CurrentSong is { } song)
+{
+    <div class="hs-np-playlist">
+        @if (armedSongId == song.SongId)
+        {
+            <button type="button" class="glass-chip hs-np-remove is-armed" title="Take this song out of “@playlistName” and skip it"
+                    @onclick="RemoveAsync" disabled="@busy">
+                Remove &amp; skip
+            </button>
+            <button type="button" class="glass-chip" @onclick="() => armedSongId = null">Keep</button>
+        }
+        else
+        {
+            <span class="hs-np-playlist-name" title="Playing the “@playlistName” playlist">From “@playlistName”</span>
+            <button type="button" class="glass-chip hs-np-remove" title="Take this song out of “@playlistName”"
+                    @onclick="() => armedSongId = song.SongId">
+                Remove
+            </button>
+        }
+    </div>
+}
+
+@code {
+    private int? armedSongId;
+    private bool busy;
+
+    [Parameter, EditorRequired]
+    public HomeSpeaker.Shared.Song? CurrentSong { get; set; }
+
+    /// <summary>Called after the song was removed and skipped, so the page can refresh what's playing.</summary>
+    [Parameter]
+    public EventCallback OnRemoved { get; set; }
+
+    private async Task RemoveAsync()
+    {
+        armedSongId = null;
+        busy = true;
+        try
+        {
+            await Svc.RemovePlayingSongFromPlaylistAsync();
+            await OnRemoved.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Removing the playing song from its playlist failed");
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

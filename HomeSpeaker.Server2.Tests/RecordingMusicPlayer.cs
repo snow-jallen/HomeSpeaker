@@ -10,6 +10,10 @@ internal sealed class RecordingMusicPlayer : IMusicPlayer
 
     public int StopCount { get; private set; }
 
+    public int SkipCount { get; private set; }
+
+    public List<string> Streams { get; } = [];
+
     public bool StillPlaying => Played.Count > 0;
 
     public PlayerStatus Status => new() { StillPlaying = StillPlaying, CurrentSong = Played.LastOrDefault() };
@@ -32,13 +36,13 @@ internal sealed class RecordingMusicPlayer : IMusicPlayer
 
     public void EnqueueSong(Song song) => Enqueued.Add(song);
 
-    public void PlayStream(string streamUrl, string? name = null) => throw new NotSupportedException();
+    public void PlayStream(string streamUrl, string? name = null) => Streams.Add(streamUrl);
 
     public void ClearQueue() => Enqueued.Clear();
 
     public void ResumePlay() => throw new NotSupportedException();
 
-    public void SkipToNext() => throw new NotSupportedException();
+    public void SkipToNext() => SkipCount++;
 
     public void Stop() => StopCount++;
 

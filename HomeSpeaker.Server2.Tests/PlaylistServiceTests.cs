@@ -1,5 +1,6 @@
 using HomeSpeaker.Server2.Data;
 using HomeSpeaker.Server2.Services;
+using HomeSpeaker.Server2.Services.PlayingPlaylist;
 using HomeSpeaker.Shared;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,7 @@ public sealed class PlaylistServiceTests : IAsyncDisposable
 
     private readonly SqliteConnection connection = new("Data Source=:memory:");
     private readonly RecordingMusicPlayer player = new();
+    private readonly PlayingPlaylistTracker tracker = new();
     private readonly Mp3Library library = new(new FakeFileSource(), new FakeTagParser(), new OnDiskDataStore(), NullLogger<Mp3Library>.Instance);
     private MusicContext? dbContext;
 
@@ -47,6 +49,56 @@ public sealed class PlaylistServiceTests : IAsyncDisposable
         Assert.Single(player.Enqueued);
     }
 
+    [Fact]
+    public async Task PlayPlaylistRemembersWhichPlaylistIsPlaying()
+    {
+        var service = await createServiceAsync();
+
+        await service.PlayPlaylistAsync("Mix");
+
+        Assert.Equal("Mix", tracker.PlaylistFor(player.Status.CurrentSong));
+    }
+
+    [Fact]
+    public async Task RemovePlayingSongTakesItOutOfThePlaylistAndSkipsIt()
+    {
+        var service = await createServiceAsync();
+        await service.PlayPlaylistAsync("Mix");
+
+        var removed = await service.RemovePlayingSongAsync();
+
+        Assert.True(removed);
+        Assert.Equal(["/music/b.mp3", "/music/c.mp3"], await playlistPathsAsync("Mix"));
+        Assert.Equal(1, player.SkipCount);
+        Assert.Null(tracker.PlaylistFor(library.Songs.Single(s => s.Path == "/music/a.mp3")));
+    }
+
+    [Fact]
+    public async Task RemovePlayingSongDoesNothingWhenNoPlaylistIsPlaying()
+    {
+        var service = await createServiceAsync();
+        player.PlaySong(library.Songs.Single(s => s.Path == "/music/a.mp3"));
+
+        var removed = await service.RemovePlayingSongAsync();
+
+        Assert.False(removed);
+        Assert.Equal(3, (await playlistPathsAsync("Mix")).Count);
+        Assert.Equal(0, player.SkipCount);
+    }
+
+    [Fact]
+    public async Task RemovePlayingSongRejectsItsApprovedSuggestionSoItIsNotSuggestedAgain()
+    {
+        var service = await createServiceAsync();
+        dbContext!.PlaylistSuggestions.Add(new PlaylistSuggestion { PlaylistName = "Mix", SongPath = "/music/a.mp3", Status = SuggestionStatus.Approved });
+        await dbContext.SaveChangesAsync();
+        await service.PlayPlaylistAsync("Mix");
+
+        await service.RemovePlayingSongAsync();
+
+        Assert.Equal(SuggestionStatus.Rejected, (await dbContext.PlaylistSuggestions.AsNoTracking().SingleAsync()).Status);
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (dbContext is not null)
@@ -74,8 +126,12 @@ public sealed class PlaylistServiceTests : IAsyncDisposable
             ],
         });
         await dbContext.SaveChangesAsync();
-        return new PlaylistService(dbContext, library, NullLogger<PlaylistService>.Instance, player);
+        return new PlaylistService(dbContext, library, NullLogger<PlaylistService>.Instance, player, tracker);
     }
+
+    private async Task<List<string>> playlistPathsAsync(string name) =>
+        (await dbContext!.Playlists.AsNoTracking().Include(p => p.Songs).SingleAsync(p => p.Name == name))
+            .Songs.OrderBy(s => s.Order).Select(s => s.SongPath).ToList();
 
     private sealed class FakeFileSource : IFileSource
     {

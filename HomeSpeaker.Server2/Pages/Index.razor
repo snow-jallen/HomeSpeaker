@@ -35,6 +35,7 @@
                     {
                         <div class="hs-np-next">Up next: @next.Name</div>
                     }
+                    <PlayingPlaylistRemove CurrentSong="Dashboard.Status?.CurrentSong" OnRemoved="Dashboard.RefreshStatusAsync" />
                 </div>
             </div>
             @if (!np.IsStream)

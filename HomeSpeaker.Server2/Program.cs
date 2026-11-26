@@ -155,8 +155,9 @@ builder.Services.AddSingleton<IMusicPlayer>(services =>
         ? services.GetRequiredService<WindowsMusicPlayer>()
         : services.GetRequiredService<LinuxSoxMusicPlayer>();
 
-    return new ChattyMusicPlayer(actualPlayer);
+    return new ChattyMusicPlayer(actualPlayer, services.GetRequiredService<HomeSpeaker.Server2.Services.PlayingPlaylist.PlayingPlaylistTracker>());
 });
+builder.Services.AddSingleton<HomeSpeaker.Server2.Services.PlayingPlaylist.PlayingPlaylistTracker>();
 builder.Services.AddSingleton<Mp3Library>();
 builder.Services.AddSingleton<ResourceSampler>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ResourceSampler>());

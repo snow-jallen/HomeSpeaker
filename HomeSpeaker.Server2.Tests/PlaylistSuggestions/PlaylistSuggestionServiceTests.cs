@@ -92,7 +92,7 @@ public sealed class PlaylistSuggestionServiceTests : IAsyncDisposable
             new PlaylistSuggestion { PlaylistName = "Fun", SongPath = "/music/missing.mp3", SortOrder = 0 },
             new PlaylistSuggestion { PlaylistName = "Fun", SongPath = "/music/c.mp3", SortOrder = 1 });
         await db.SaveChangesAsync();
-        var playlists = new PlaylistService(db, library, NullLogger<PlaylistService>.Instance, new RecordingMusicPlayer());
+        var playlists = new PlaylistService(db, library, NullLogger<PlaylistService>.Instance, new RecordingMusicPlayer(), new HomeSpeaker.Server2.Services.PlayingPlaylist.PlayingPlaylistTracker());
         return new PlaylistSuggestionService(db, library, playlists, TimeProvider.System);
     }
 

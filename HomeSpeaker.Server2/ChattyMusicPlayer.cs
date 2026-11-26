@@ -1,3 +1,4 @@
+using HomeSpeaker.Server2.Services.PlayingPlaylist;
 using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server2;
@@ -8,11 +9,13 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
     public const string SkippedMessage = "Skipped to next";
 
     private readonly IMusicPlayer actualPlayer;
+    private readonly PlayingPlaylistTracker? playingPlaylist;
     private bool disposed;
 
-    public ChattyMusicPlayer(IMusicPlayer actualPlayer)
+    public ChattyMusicPlayer(IMusicPlayer actualPlayer, PlayingPlaylistTracker? playingPlaylist = null)
     {
         this.actualPlayer = actualPlayer;
+        this.playingPlaylist = playingPlaylist;
         actualPlayer.PlayerEvent += (_, msg) => PlayerEvent?.Invoke(this, msg);
     }
 
@@ -37,6 +40,7 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
     public void ClearQueue()
     {
         actualPlayer.ClearQueue();
+        playingPlaylist?.Forget();
         PlayerEvent?.Invoke(this, "Cleared queue");
     }
 
@@ -60,6 +64,7 @@ public class ChattyMusicPlayer : IMusicPlayer, IDisposable
     public void PlayStream(string streamUrl, string? name = null)
     {
         actualPlayer.PlayStream(streamUrl, name);
+        playingPlaylist?.Forget();
         PlayerEvent?.Invoke(this, "Played stream: " + (name ?? streamUrl));
     }
 
