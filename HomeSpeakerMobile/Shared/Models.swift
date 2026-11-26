@@ -113,6 +113,8 @@ struct PlayerStatus: Codable {
     let repeatMode: Bool?
     let isStream: Bool?
     let streamName: String?
+    /// The playlist the playing song came from while a playlist is playing (older servers omit it).
+    let playingPlaylist: String?
 
     var isPlaying: Bool { stillPlaying }
     var quietDownVolume: Int { volume > 0 ? max(1, volume / 2) : 0 }

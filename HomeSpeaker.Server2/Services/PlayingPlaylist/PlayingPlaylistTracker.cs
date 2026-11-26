@@ -7,7 +7,8 @@ namespace HomeSpeaker.Server2.Services.PlayingPlaylist;
 /// Remembers which playlist the speaker is working through, so the UI can offer to take the playing song out
 /// of it. <see cref="PlaylistService.PlayPlaylistAsync"/> starts it; clearing the queue or playing a stream
 /// (through <see cref="ChattyMusicPlayer"/>) ends it. A song counts only if it came from that playlist, so a
-/// song played or queued by hand in between doesn't offer the button. In memory only: a restart forgets it.
+/// song played or queued by hand in between doesn't offer the button. <see cref="LifecycleEvents"/> saves it
+/// with the rest of the playback state, so a restart that resumes the queue resumes the playlist too.
 /// </summary>
 public sealed class PlayingPlaylistTracker
 {
@@ -17,6 +18,9 @@ public sealed class PlayingPlaylistTracker
         current = new PlayingPlaylistState(playlistName, songPaths.ToImmutableHashSet(StringComparer.Ordinal));
 
     public void Forget() => current = null;
+
+    /// <summary>The playlist being played and the songs that count as coming from it, or null.</summary>
+    public PlayingPlaylistState? Current => current;
 
     /// <summary>The playlist <paramref name="song"/> is being played from, or null.</summary>
     public string? PlaylistFor(Song? song) =>

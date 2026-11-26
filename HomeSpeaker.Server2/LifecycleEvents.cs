@@ -1,13 +1,15 @@
 using System.Text.Json;
+using HomeSpeaker.Server2.Services.PlayingPlaylist;
 using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server2;
 
 public class LifecycleEvents : IHostedService
 {
-    public LifecycleEvents(ILogger<LifecycleEvents> logger, IMusicPlayer player, IConfiguration config, TimeProvider timeProvider)
+    public LifecycleEvents(ILogger<LifecycleEvents> logger, IMusicPlayer player, IConfiguration config, TimeProvider timeProvider, PlayingPlaylistTracker playingPlaylist)
     {
         this.logger = logger;
+        this.playingPlaylist = playingPlaylist;
         this.player = player;
         this.config = config;
         this.timeProvider = timeProvider;
@@ -25,6 +27,7 @@ public class LifecycleEvents : IHostedService
     private readonly IMusicPlayer player;
     private readonly IConfiguration config;
     private readonly TimeProvider timeProvider;
+    private readonly PlayingPlaylistTracker playingPlaylist;
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -51,6 +54,11 @@ public class LifecycleEvents : IHostedService
                     player.EnqueueSong(s);
                 }
 
+                if (lastState.PlayingPlaylistName is { } playlistName && lastState.PlayingPlaylistSongs is { } playlistSongs)
+                {
+                    playingPlaylist.Started(playlistName, playlistSongs);
+                }
+
                 logger.LogInformation("Restarted using {LastState}", lastState);
             }
         }
@@ -64,10 +72,13 @@ public class LifecycleEvents : IHostedService
             if (player.Status.StillPlaying)
             {
                 logger.LogInformation("Still playing music...saving current song and queue");
+                var playlist = playingPlaylist.Current;
                 var lastState = new LastState
                 {
                     CurrentSong = player.Status.CurrentSong,
-                    Queue = player.SongQueue
+                    Queue = player.SongQueue,
+                    PlayingPlaylistName = playlist?.PlaylistName,
+                    PlayingPlaylistSongs = playlist?.SongPaths.ToList(),
                 };
                 var json = JsonSerializer.Serialize(lastState);
                 await File.WriteAllTextAsync(LastStatePath, json, cancellationToken);
@@ -112,5 +123,10 @@ public class LifecycleEvents : IHostedService
     {
         public Song? CurrentSong { get; set; }
         public IEnumerable<Song>? Queue { get; set; }
+
+        /// <summary>The playlist being played when the app stopped (see <see cref="PlayingPlaylistTracker"/>), if any.</summary>
+        public string? PlayingPlaylistName { get; set; }
+
+        public IReadOnlyList<string>? PlayingPlaylistSongs { get; set; }
     }
 }

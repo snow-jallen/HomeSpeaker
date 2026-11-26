@@ -288,6 +288,12 @@ final class APIClient: @unchecked Sendable {
             body: PlayerControlRequest(stop: false, play: true, clearQueue: false, skipToNext: false, setVolume: false, volumeLevel: 0))
     }
 
+    /// Takes the playing song out of the playlist being played and skips it. The server answers 409 when no
+    /// playlist is playing (see `PlayerStatus.playingPlaylist`).
+    func removePlayingSongFromPlaylist() async throws {
+        try await requestVoid("api/homespeaker/player/remove-from-playlist", method: "POST")
+    }
+
     func skipToNext() async throws {
         try await requestVoid("api/homespeaker/player/control", method: "POST",
             body: PlayerControlRequest(stop: false, play: false, clearQueue: false, skipToNext: true, setVolume: false, volumeLevel: 0))

@@ -123,6 +123,11 @@ public static class HomeSpeakerRestEndpoints
 
     private static void mapPlayerEndpoints(RouteGroupBuilder group)
     {
+        // POST /api/homespeaker/player/remove-from-playlist
+        group.MapPost("/player/remove-from-playlist", removePlayingSongFromPlaylist)
+            .WithName("RemovePlayingSongFromPlaylist")
+            .WithSummary("Takes the playing song out of the playlist being played and skips it; 409 when no playlist is playing");
+
         // GET /api/homespeaker/player/status
         group.MapGet("/player/status", getPlayerStatus)
             .WithName("GetPlayerStatus")
@@ -613,6 +618,9 @@ public static class HomeSpeakerRestEndpoints
             return Results.Problem($"Failed to play album: {ex.Message}");
         }
     }
+
+    private static async Task<IResult> removePlayingSongFromPlaylist([FromServices] PlaylistService playlists) =>
+        await playlists.RemovePlayingSongAsync() ? Results.NoContent() : Results.Conflict("No playlist is playing.");
 
     private static async Task<IResult> getPlayerStatus(
         [FromServices] IPlayerStatusProvider statusProvider,

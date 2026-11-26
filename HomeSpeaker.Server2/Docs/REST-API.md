@@ -29,6 +29,7 @@ Example: `https://localhost:7072/api/homespeaker/songs`
 ### Player Controls
 - `GET /player/status` - Get current player status
 - `POST /player/control` - Control playback (play/pause/stop/skip/volume)
+- `POST /player/remove-from-playlist` - Remove the playing song from the playlist being played, and skip it
 - `POST /folders/{path}/play` - Play all songs in a folder
 - `POST /folders/{path}/enqueue` - Add folder to queue
 - `POST /stream/play` - Play an internet radio stream
@@ -128,9 +129,16 @@ Get current player status including playback position, current song, and volume.
     "album": "Album",
     "artist": "Artist"
   },
-  "volume": 75
+  "volume": 75,
+  "playingPlaylist": "Sunday Morning"
 }
 ```
+
+`playingPlaylist` names the playlist the playing song came from while a playlist is being played, else null.
+
+#### POST /api/homespeaker/player/remove-from-playlist
+Takes the playing song out of the playlist being played (an approved playlist suggestion for it becomes rejected) and
+skips to the next song. 204 on success, 409 when no playlist is playing.
 
 #### POST /api/homespeaker/player/control
 Control player operations like play, pause, stop, skip, and volume.

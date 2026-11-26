@@ -48,7 +48,7 @@ internal sealed class RecordingMusicPlayer : IMusicPlayer
 
     public void SetVolume(int level0to100) => throw new NotSupportedException();
 
-    public Task<int> GetVolume() => throw new NotSupportedException();
+    public Task<int> GetVolume() => Task.FromResult(50);
 
     public void ShuffleQueue() => throw new NotSupportedException();
 

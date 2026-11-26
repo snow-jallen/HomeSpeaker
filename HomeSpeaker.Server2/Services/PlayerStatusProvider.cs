@@ -1,3 +1,4 @@
+using HomeSpeaker.Server2.Services.PlayingPlaylist;
 using HomeSpeaker.Shared;
 
 namespace HomeSpeaker.Server2.Services;
@@ -9,10 +10,12 @@ namespace HomeSpeaker.Server2.Services;
 public sealed class PlayerStatusProvider : IPlayerStatusProvider
 {
     private readonly IMusicPlayer musicPlayer;
+    private readonly PlayingPlaylistTracker playingPlaylist;
 
-    public PlayerStatusProvider(IMusicPlayer musicPlayer)
+    public PlayerStatusProvider(IMusicPlayer musicPlayer, PlayingPlaylistTracker playingPlaylist)
     {
         this.musicPlayer = musicPlayer;
+        this.playingPlaylist = playingPlaylist;
     }
 
     public async Task<PlayerStatusDto> GetAsync(CancellationToken cancellationToken)
@@ -32,7 +35,8 @@ public sealed class PlayerStatusProvider : IPlayerStatusProvider
             SleepTimerRemainingMinutes = musicPlayer.SleepTimerRemaining?.TotalMinutes,
             RepeatMode = musicPlayer.RepeatMode,
             IsStream = status.IsStream,
-            StreamName = status.IsStream ? status.StreamName : null
+            StreamName = status.IsStream ? status.StreamName : null,
+            PlayingPlaylist = status.IsStream ? null : playingPlaylist.PlaylistFor(status.CurrentSong),
         };
     }
 }

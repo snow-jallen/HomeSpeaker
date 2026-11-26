@@ -3,12 +3,15 @@ import SwiftUI
 struct WatchNowPlayingView: View {
     @Environment(ConnectionStore.self) private var store
     @State private var status: PlayerStatus?
+    @State private var confirmingRemove = false
+    @State private var removing = false
 
     var body: some View {
         VStack(spacing: 8) {
             songInfo
             progressBar
             transportControls
+            playlistRemove
         }
         .padding(.horizontal, 4)
         .navigationTitle("Now Playing")
@@ -82,6 +85,41 @@ struct WatchNowPlayingView: View {
             .buttonStyle(.borderedProminent)
             .tint(.secondary)
         }
+    }
+
+    /// While a playlist is playing: take this song out of it (and skip it), to prune the playlist from the wrist.
+    @ViewBuilder
+    private var playlistRemove: some View {
+        if let playlist = status?.playingPlaylist {
+            Button(role: .destructive) {
+                confirmingRemove = true
+            } label: {
+                Label("Remove from \(playlist)", systemImage: "minus.circle")
+                    .font(.caption2)
+                    .lineLimit(1)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .disabled(removing)
+            .confirmationDialog(
+                "Remove \(status?.currentSong?.displayTitle ?? "this song") from \(playlist)?",
+                isPresented: $confirmingRemove,
+                titleVisibility: .visible
+            ) {
+                Button("Remove & Skip", role: .destructive) {
+                    Task { await removeFromPlaylist() }
+                }
+                Button("Keep", role: .cancel) {}
+            }
+        }
+    }
+
+    private func removeFromPlaylist() async {
+        guard let api = store.api else { return }
+        removing = true
+        defer { removing = false }
+        try? await api.removePlayingSongFromPlaylist()
+        await refresh()
     }
 
     private enum Control { case play, pause, stop, skip }

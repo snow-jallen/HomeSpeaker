@@ -24,4 +24,10 @@ public record PlayerStatusDto
 
     /// <summary>The radio station name the stream was started with (or its URL when unnamed).</summary>
     public string? StreamName { get; init; }
+
+    /// <summary>
+    /// The playlist the playing song came from, while a playlist is being played; null otherwise. Clients offer
+    /// <c>POST /api/homespeaker/player/remove-from-playlist</c> while it is set.
+    /// </summary>
+    public string? PlayingPlaylist { get; init; }
 }
